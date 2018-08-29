@@ -3,6 +3,7 @@
 *.eps
 *.data
 *.old
+*.s
 
 
 # Created by https://www.gitignore.io/api/vim,c++,macos
