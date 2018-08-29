@@ -1,6 +1,8 @@
 *.txt
 *.dat
 *.eps
+*.data
+*.old
 
 
 # Created by https://www.gitignore.io/api/vim,c++,macos
