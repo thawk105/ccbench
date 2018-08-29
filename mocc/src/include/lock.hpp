@@ -39,7 +39,7 @@ public:
 			desired = expected + 1;
 		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
 
-		return;
+		return true;
 	}
 
 	void r_unlock() {

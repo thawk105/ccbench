@@ -9,8 +9,8 @@
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL
 
-GLOBAL std::atomic<int> Running(0);
-GLOBAL std::atomic<int> Ending(0);
+GLOBAL std::atomic<unsigned int> Running(0);
+GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<uint64_t> GlobalEpoch(1);
 GLOBAL std::atomic<bool> Finish(false);
 

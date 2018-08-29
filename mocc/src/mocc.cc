@@ -22,7 +22,7 @@ extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 static bool
 chkInt(const char *arg)
 {
-	for (auto i = 0; i < strlen(arg); ++i) {
+	for (unsigned int i = 0; i < strlen(arg); ++i) {
 		if (!isdigit(arg[i])) {
 			cout << string(arg) << "is not a number." << endl;
 			exit(0);
@@ -92,7 +92,7 @@ chkArg(const int argc, char *argv[])
 		ERR;
 	}
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		FinishTransactions[i].num = 0;
 		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
@@ -107,7 +107,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (auto i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -121,7 +121,7 @@ void threadEndProcess(int *myid);
 bool
 chkEpochLoaded()
 {
-	for (auto i = 1; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		if (ThLocalEpoch[i].load(memory_order_acquire) != GlobalEpoch) return false;
 	}
 
@@ -152,8 +152,8 @@ epoch_worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	int expected;
-	int desired;
+	unsigned int expected;
+	unsigned int desired;
 	do {
 		expected = Running.load(memory_order_acquire);
 		desired = expected + 1;
@@ -198,8 +198,8 @@ worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	int expected;
-	int desired;
+	unsigned int expected;
+	unsigned int desired;
 	do {
 		expected = Running.load(memory_order_acquire);
 		desired = expected + 1;
@@ -213,7 +213,7 @@ worker(void *arg)
 	if (*myid == 1) Bgn = rdtsc();
 
 	try {
-		for (int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
+		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
 			if (*myid == 1) {
 				if (FinishTransactions[*myid].num % 1000 == 0) {
 					End = rdtsc();
@@ -239,7 +239,7 @@ worker(void *arg)
 			Transaction trans(*myid);
 RETRY:
 			trans.begin();
-			for (int j = 0; j < MAX_OPE; ++j) {
+			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				unsigned int value_read;
 				switch(Pro[i][j].ope) {
 					case(Ope::READ) :
@@ -308,11 +308,11 @@ main(int argc, char *argv[])
 
 	pthread_t thread[THREAD_NUM];
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		thread[i] = threadCreate(i);
 	}
 	
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		pthread_join(thread[i], nullptr);
 	}
 
