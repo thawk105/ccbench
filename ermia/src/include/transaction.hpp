@@ -43,6 +43,8 @@ class TransactionTable {
 public:
 	std::atomic<uint64_t> cstamp;
 	std::atomic<uint64_t> sstamp;
+	std::atomic<uint64_t> lastcstamp;
+	std::atomic<uint64_t> prev_cstamp;
 	std::atomic<TransactionStatus> status;
 };
 

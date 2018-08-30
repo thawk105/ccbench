@@ -96,19 +96,18 @@ chkArg(const int argc, const char *argv[])
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&TMT, 64, THREAD_NUM * sizeof(TransactionTable)) != 0) ERR;
-		if (posix_memalign((void**)&TMT_waitFor, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		ThtxID[i].num = 0;
 		AbortCounts[i].num = 0;
 		FinishTransactions[i].num = 0;
-		TMT_waitFor[i].num = 0;
 
 		TMT[i].cstamp.store(0, memory_order_release);
 		TMT[i].sstamp.store(UINT64_MAX, memory_order_release);
+		TMT[i].lastcstamp.store(0, memory_order_release);
 		TMT[i].status.store(TransactionStatus::inFlight, memory_order_release);
 	}
 }
@@ -122,7 +121,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -143,7 +142,7 @@ manager_worker(void *arg)
 		ERR;
 	}
 
-	int expected, desired;
+	unsigned int expected, desired;
 	do {
 		expected = Running.load(std::memory_order_acquire);
 		desired = expected + 1;
@@ -156,14 +155,14 @@ manager_worker(void *arg)
 	//garbage collector
 	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
 		uint64_t mintxID = UINT64_MAX;
-		for (auto i = 1; i < THREAD_NUM; ++i) {
+		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 			mintxID = min(mintxID, ThtxID[i].num.load(memory_order_acquire));
 		}
 		if (mintxID == 0) continue;
 		else {
 			//mintxIDから到達不能なバージョンを削除する
 			Version *verTmp, *delTarget;
-			for (auto i = 0; i < TUPLE_NUM; ++i) {
+			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 
 				verTmp = Table[i].latest.load(memory_order_acquire);
 				if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
@@ -210,7 +209,6 @@ worker(void *arg)
 	//----------
 	pid_t pid;
 	cpu_set_t cpu_set;
-	int result;
 
 	pid = syscall(SYS_gettid);
 	CPU_ZERO(&cpu_set);
@@ -225,7 +223,7 @@ worker(void *arg)
 	//----------
 	
 	//-----
-	int expected, desired;
+	unsigned int expected, desired;
 	do {
 		expected = Running.load();
 		desired = expected + 1;
@@ -239,7 +237,7 @@ worker(void *arg)
 	if (*myid == 1) Bgn = rdtsc();
 
 	try {
-		for (int i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM - 1) * (*myid); ++i) {
+		for (unsigned int i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM - 1) * (*myid); ++i) {
 RETRY:
 			//End judgment
 			if (*myid == 1) {
@@ -269,7 +267,7 @@ RETRY:
 			trans.tbegin(*myid);
 			//transaction begin
 			
-			for (int j = 0; j < MAX_OPE; ++j) {
+			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				int value_read;
 				switch (Pro[i][j].ope) {
 					case (Ope::READ) :
@@ -353,18 +351,18 @@ main(const int argc, const char *argv[])
 
 	pthread_t thread[THREAD_NUM];
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		thread[i] = threadCreate(i);
 	}
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		pthread_join(thread[i], nullptr);
 	}
 
 	//displayDB();
 
-	//prtRslt(Bgn, End);
-	displayAbortRate();
+	prtRslt(Bgn, End);
+	//displayAbortRate();
 
 	return 0;
 }

@@ -12,7 +12,11 @@ void
 Transaction::tbegin(const int &thid)
 {
 	this->thid = thid;
-	this->txid = Lsn.load(std::memory_order_acquire);	
+
+	this->txid = TMT[1].prev_cstamp.load(memory_order_acquire);
+	for (unsigned int i = 2; i < THREAD_NUM; ++i) {
+		this->txid = max(this->txid, TMT[i].prev_cstamp.load(memory_order_acquire));
+	}
 	ThtxID[thid].num.store(txid, memory_order_release);
 
 	TMT[thid].cstamp.store(0, memory_order_release);
@@ -272,25 +276,9 @@ Transaction::ssn_parallel_commit()
 				if (ctmp < this->cstamp) {
 					TransactionStatus statusTmp = TMT[worker].status.load(memory_order_acquire);
 					// parallel_commit 終了待ち（sstamp確定待ち)
-					TMT_waitFor[thid].num.store(worker, memory_order_release);
 					while (statusTmp == TransactionStatus::committing) {
-						// 別のワーカーと，parallel_commit 終了待ちでコンフリクトしてデッドロックすることがあるので，対策をする
-						// 対策 - immediate restart
-						// 相手が自分を待っていたら，自分をアボートする
-						
-						uint8_t tmp = TMT_waitFor[worker].num.load(memory_order_acquire);
-						while (tmp != 0) {
-							if (tmp == thid) {
-								TMT_waitFor[thid].num.store(0, memory_order_release);
-								status = TransactionStatus::aborted;
-								TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
-								return;
-							}
-							tmp = TMT_waitFor[tmp].num.load(memory_order_acquire);
-						}
 						statusTmp = TMT[worker].status.load(memory_order_acquire);
 					}
-					TMT_waitFor[thid].num.store(0, memory_order_release);
 					if (statusTmp == TransactionStatus::committed) {
 						this->sstamp = min(this->sstamp, TMT[worker].sstamp.load(memory_order_acquire));
 					}
@@ -307,7 +295,7 @@ Transaction::ssn_parallel_commit()
 
 		//for r in v.prev.readers
 		uint64_t rdrs = itr->second->readers.load(memory_order_acquire);
-		for (int worker = 1; worker <= THREAD_NUM; ++worker) {
+		for (unsigned int worker = 1; worker <= THREAD_NUM; ++worker) {
 			if ((rdrs & (one << worker)) ? 1 : 0) {
 				TransactionStatus statusTmp = TMT[worker].status.load(memory_order_acquire);
 				// 並行 reader が committing なら無視できない．
@@ -329,25 +317,9 @@ Transaction::ssn_parallel_commit()
 					if (ctmp < this->cstamp) {
 						TransactionStatus statusTmp = TMT[worker].status.load(memory_order_acquire);
 						// parallel_commit 終了待ち (sstamp 確定待ち)
-						TMT_waitFor[thid].num.store(worker, memory_order_release);
 						while (statusTmp == TransactionStatus::committing) {
-							// 別のワーカーと，parallel_commit 終了待ちでコンフリクトしてデッドロックすることがあるので，対策をする
-							// 対策 - immediate restart
-
-							uint8_t tmp = TMT_waitFor[worker].num.load(memory_order_acquire);
-							while (tmp != 0) {
-									if (tmp == thid) {
-										TMT_waitFor[thid].num.store(0, memory_order_release);
-										status = TransactionStatus::aborted;
-										TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
-										return;
-									}
-
-									tmp = TMT_waitFor[tmp].num.load(memory_order_acquire);
-							}
 							statusTmp = TMT[worker].status.load(memory_order_acquire);
 						}
-						TMT_waitFor[thid].num.store(0, memory_order_release);
 						if (statusTmp == TransactionStatus::committed) {
 							this->pstamp = min(this->pstamp, TMT[worker].cstamp.load(memory_order_acquire));
 						}
@@ -363,10 +335,12 @@ Transaction::ssn_parallel_commit()
 	if (pstamp < sstamp) {
 		status = TransactionStatus::committed;
 		TMT[thid].sstamp.store(this->sstamp, memory_order_release);
+		TMT[thid].lastcstamp.store(this->cstamp, memory_order_release);
 		TMT[thid].status.store(TransactionStatus::committed, memory_order_release);
 	} else {
 		status = TransactionStatus::aborted;
 		TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
+		TMT[thid].prev_cstamp.store(this->cstamp, memory_order_release);
 		return;
 	}
 
@@ -404,6 +378,7 @@ Transaction::ssn_parallel_commit()
 
 	safeRetry = false;
 	FinishTransactions[thid].num++;
+	TMT[thid].prev_cstamp.store(this->cstamp, memory_order_release);
 	return;
 }
 
