@@ -23,12 +23,12 @@ public:
 // use for read-write set
 class ReadElement {
 public:
-	uint64_t tid;
+	uint64_t tidword;
 	unsigned int key;
 	bool failed_verification;
 
-	ReadElement (uint64_t tid, unsigned int key) {
-		this->tid = tid;
+	ReadElement (uint64_t tidword, unsigned int key) {
+		this->tidword = tidword;
 		this->key = key;
 		this->failed_verification = false;
 	}

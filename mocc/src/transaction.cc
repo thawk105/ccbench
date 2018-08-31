@@ -88,17 +88,30 @@ Transaction::lock(Tuple *tuple, bool mode)
 {
 	vector<LockElement> violations;
 
+	sort(CLL.begin(), CLL.end());
+	vector<LockElement>::iterator cllviobgn = CLL.end();
+	bool firstvio = true;
+	bool upgrade_flag = false;
 	// lock exists in CLL (Current Lock List)
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		// lock already exists in CLL 
 		// 		&& its lock mode is equal to needed mode or it is stronger than needed mode.
-		if ((*itr).key == tuple->key 
-				&& (mode == (*itr).mode || mode < (*itr).mode))
-			return;
+		if ((*itr).key == tuple->key) {
+			if (mode == (*itr).mode || mode < (*itr).mode) {
+				return;
+			} else {
+				upgrade_flag = true;
+			}
+		}
 
 		// collect violation
-		if ((*itr).key > tuple->key)
+		if ((*itr).key > tuple->key) {
+			if (firstvio) {
+				cllviobgn = itr;
+				firstvio = false;
+			}
 			violations.push_back(*itr);
+		}
 
 	}
 
@@ -132,31 +145,13 @@ Transaction::lock(Tuple *tuple, bool mode)
 			} else {
 				(*itr).lock->r_unlock();
 			}
-			//delete from CLL
-			for (auto includeCLL = CLL.begin(); includeCLL != CLL.end(); ++itr) {
-				if ((*includeCLL).key == (*itr).key) {
-					CLL.erase(includeCLL);
-					break;
-				}
-			}
 			RLL.push_back(*itr);
 		}
-	}
-
-	sort(CLL.begin(), CLL.end());
-	int cllctr = 0;
-	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
-		if ((*itr).key < tuple->key) {
-			cllctr++;
-			RLL.push_back(*itr);
-		} else break;
-	}
-	if (cllctr != 0) {
-		CLL.erase(CLL.begin(), CLL.begin() + cllctr);
+		//delete from CLL
+		CLL.erase(cllviobgn, CLL.end());
 	}
 
 	sort(RLL.begin(), RLL.end());
-	int rllctr = 0;
 	// unconditional lock in canonical mode.
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key < tuple->key) {
@@ -169,18 +164,28 @@ Transaction::lock(Tuple *tuple, bool mode)
 			}
 			rllctr++;
 			CLL.push_back(*itr);
-		} else break;
+		} else {
+			break;
+		}
 	}
 	if (rllctr != 0) {
 		RLL.erase(RLL.begin(), RLL.begin() + rllctr);
 	}
 
+	LockElement acquired_lock(tuple->key, &(tuple->lock), mode);
 	if (mode) {
-		tuple->lock.w_lock();	
-		CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
-	} else {
-		tuple->lock.r_lock();
-		CLL.push_back(LockElement(tuple->key, &(tuple->lock), false));
+		if (upgrade_flag) tuple->lock.upgrade();
+		else tuple->lock.w_lock();	
+	}
+	else tuple->lock.r_lock();
+	CLL.push_back(acquired_lock);
+
+	// remove acquired lock from RLL
+	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
+		if (acquired_lock == *itr) {
+			RLL.erase(itr);
+			break;
+		}
 	}
 
 	return;
@@ -222,6 +227,14 @@ Transaction::construct_rll()
 bool
 Transaction::commit()
 {
+	// phase 1 lock write set.
+	sort(writeSet.begin(), writeSet.end());
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		lock(&Table[(*itr).key % TUPLE_NUM], true);
+	}
+
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		uint64_t tmptidword = Table[(*itr
 	
 	return true;
 }
