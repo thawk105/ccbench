@@ -22,11 +22,11 @@ public:
 	vector<LockElement> CLL;
 	TransactionStatus status;
 
-	uint8_t thid;
+	int thid;
 	// 前回TX実行結果が commit なら true, abort なら false
 	bool pre_ex = true; 
 
-	Transaction(uint8_t thid) {
+	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
 		RLL.reserve(MAX_OPE);
@@ -36,13 +36,16 @@ public:
 		this->status = TransactionStatus::inFlight;
 	}
 
-	void begin();
+	void begin(int thid);
 	unsigned int read(unsigned int key);
 	void write(unsigned int key, unsigned int val);
 	void lock(Tuple *tuple, bool mode);
 	void construct_rll();	// invoked on abort;
+	void unlockCLL();
 	bool commit();
 	void abort();
+	void writePhase();
+	void dispLock();
 };
 
 

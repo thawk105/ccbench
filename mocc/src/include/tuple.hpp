@@ -13,11 +13,12 @@ using namespace std;
 
 class Tuple	{
 public:
-	RWLock lock;
+	RWLock lock;	// 4byte
+	unsigned int key = 0;
 	atomic<uint64_t> tidword;
 	atomic<uint64_t> temp;	//	temprature, min 0, max 20
-	unsigned int key = 0;
 	atomic<unsigned int> val;
+	uint8_t padding[4];
 };
 
 // use for read-write set

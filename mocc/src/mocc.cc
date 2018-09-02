@@ -35,9 +35,9 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 1) {
+	if (argc != 9) {
 		cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO CPU_MHZ EXTIME" << endl;
-		cout << "example: ./mocc.exe 200 10 24 10000 0.5 2400 3" << endl;
+		cout << "example: ./mocc.exe 200 10 24 10000 0.5 2400 40 3" << endl;
 
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
@@ -45,9 +45,11 @@ chkArg(const int argc, char *argv[])
 		cout << "PRO_NUM(int): Initial total numbers of transactions" << endl;
 		cout << "READ_RATIO(float): ratio of read in transaction" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
+		cout << "EPOCH_TIME(unsigned int)(ms): Ex. 40" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
+		cout << "RWLock " << sizeof(RWLock) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 
 		exit(0);
@@ -60,6 +62,7 @@ chkArg(const int argc, char *argv[])
 	chkInt(argv[4]);
 	chkInt(argv[6]);
 	chkInt(argv[7]);
+	chkInt(argv[8]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
@@ -73,7 +76,8 @@ chkArg(const int argc, char *argv[])
 		ERR;
 	}
 
-	EXTIME = atoi(argv[7]);
+	EPOCH_TIME = atoi(argv[7]);
+	EXTIME = atoi(argv[8]);
 
 	if (THREAD_NUM > PRO_NUM) {
 		cout << "THREAD_NUM must be smaller than PRO_NUM" << endl;
@@ -139,8 +143,9 @@ epoch_worker(void *arg)
 	int *myid = (int *)arg;
 	pid_t pid = gettid();
 	cpu_set_t cpu_set;
-	uint64_t EpochTimerStart;
-	uint64_t EpochTimerStop;
+	uint64_t EpochTimerStart, EpochTimerStop;
+	//uint64_t TempTimerStart, TempTimerStop;
+	// temprature reset timer
 
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
@@ -163,18 +168,24 @@ epoch_worker(void *arg)
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {};
 	//----------
 
-	//Epoch Control
 	EpochTimerStart = rdtsc();
 	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
+		//Epoch Control
 		EpochTimerStop = rdtsc();
 		//chkEpochLoaded は最新のグローバルエポックを
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
 			GlobalEpoch++;
+		
+			//Reset temprature
+			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+				Table[i % TUPLE_NUM].temp.store(0, memory_order_release);
+			}
+			
 			EpochTimerStart = rdtsc();
 		}
+		//----------
 	}
-	//----------
 	
 	return NULL;
 }
@@ -212,6 +223,7 @@ worker(void *arg)
 	//start work (transaction)
 	if (*myid == 1) Bgn = rdtsc();
 
+	Transaction trans(*myid);
 	try {
 		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
 			if (*myid == 1) {
@@ -236,16 +248,18 @@ worker(void *arg)
 				}
 			}
 
-			Transaction trans(*myid);
 RETRY:
-			trans.begin();
+			trans.begin(*myid);
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				unsigned int value_read;
+				//trans.dispLock();
 				switch(Pro[i][j].ope) {
 					case(Ope::READ) :
+						//cout << "th " << trans.thid << ": read(" << Pro[i][j].key << ")" << endl;
 						value_read = trans.read(Pro[i][j].key);
 						break;
 					case(Ope::WRITE) :
+						//cout << "th " << trans.thid << ": write(" << Pro[i][j].key << ", " << Pro[i][j].val << ")" << endl;
 						trans.write(Pro[i][j].key, Pro[i][j].val);
 						break;
 					default:
@@ -259,8 +273,11 @@ RETRY:
 
 			if (!(trans.commit())) {
 				trans.abort();
+				//cout << "th " << trans.thid << ": abort" << endl;
 				goto RETRY;
 			}
+			//cout << "th " << trans.thid << ": commit" << endl;
+			trans.writePhase();
 
 			if (i == (PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1)) i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
 		}

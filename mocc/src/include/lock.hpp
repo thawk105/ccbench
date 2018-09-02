@@ -3,6 +3,8 @@
 
 #include <atomic>
 
+#include "debug.hpp"
+
 using namespace std;
 
 class RWLock {
