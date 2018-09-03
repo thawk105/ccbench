@@ -27,17 +27,27 @@ public:
 	TimeStamp *wts;
 	bool ronly = false;
 	unsigned int transactionNum;
-	std::map<int, Version *, less<int>, tbb::scalable_allocator<Version *>> readSet;
-	std::map<int, ElementSet *, less<int>, tbb::scalable_allocator<ElementSet *>> writeSet;
+	std::map<unsigned int, Version *, less<int>, tbb::scalable_allocator<Version *>> readSet;
+	std::map<unsigned int, ElementSet *, less<int>, tbb::scalable_allocator<ElementSet *>> writeSet;
 	//ElementSet class include Version *sourceObject, Version *newObject.
+	//vector<ReadElement> readSet;
+	//vector<WriteElement> writeSet;
 	int eleNum_wset = 0;	//element number of wset, used by pwal
 
 	uint64_t start, stop;
 	unsigned int thid;
 
-	void tbegin(TimeStamp &thrts, TimeStamp &thwts, bool &firstFlag, const int &thid, const unsigned int transactionNum);
-	int tread(int key);
-	void twrite(int key, int val);
+	Transaction(TimeStamp *thrts, TimeStamp *thwts, unsigned int thid) {
+		this->rts = thrts;
+		this->wts = thwts;
+		this->thid = thid;
+
+		Start[thid].num = rdtsc();
+	}
+
+	void tbegin(const unsigned int transactionNum);
+	int tread(unsigned int key);
+	void twrite(unsigned int key, unsigned int val);
 	bool validation();
 	void writePhase();
 	void noticeToClients();

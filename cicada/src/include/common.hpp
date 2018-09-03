@@ -14,8 +14,8 @@
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL
 
-GLOBAL std::atomic<int> Running(0);
-GLOBAL std::atomic<int> Ending(0);
+GLOBAL std::atomic<unsigned int> Running(0);
+GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> MinRts(0);
 GLOBAL std::atomic<uint64_t> MinWts(0);
@@ -23,18 +23,18 @@ GLOBAL std::atomic<uint64_t> MinWts(0);
 #else
 	#define GLOBAL extern
 
-GLOBAL std::atomic<int> Running;
-GLOBAL std::atomic<int> Ending;
+GLOBAL std::atomic<unsigned int> Running;
+GLOBAL std::atomic<unsigned int> Ending;
 GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> MinRts;
 GLOBAL std::atomic<uint64_t> MinWts;
 
 #endif
 
-GLOBAL int TUPLE_NUM;
-GLOBAL int MAX_OPE;
-GLOBAL int THREAD_NUM;
-GLOBAL int PRO_NUM;
+GLOBAL unsigned int TUPLE_NUM;
+GLOBAL unsigned int MAX_OPE;
+GLOBAL unsigned int THREAD_NUM;
+GLOBAL unsigned int PRO_NUM;
 GLOBAL float READ_RATIO;
 GLOBAL int SPIN_WAIT_TIMEOUT_US;	//US = micro(µ) seconds
 GLOBAL bool P_WAL;
@@ -48,11 +48,12 @@ GLOBAL int GROUP_COMMIT_TIMEOUT_US;	//micro seconds
 GLOBAL int GARBAGE_COLLECTION_INTERVAL_US;	//micro seconds
 GLOBAL int EXTIME;
 
-GLOBAL TimeStamp **ThreadWtsArray;
-GLOBAL TimeStamp **ThreadRtsArray;
-GLOBAL uint64_t *ThreadRtsArrayForGroup;	//グループコミットをする時，これが必要である．
 GLOBAL TimeStamp *ThreadWts;
 GLOBAL TimeStamp *ThreadRts;
+GLOBAL TimeStamp **ThreadWtsArray;
+GLOBAL TimeStamp **ThreadRtsArray;
+GLOBAL uint64_t_64byte *ThreadRtsArrayForGroup;	//グループコミットをする時，これが必要である．
+
 GLOBAL std::atomic<bool> *FirstAllocateTimeStamp;
 GLOBAL uint64_t_64byte *FinishTransactions;
 

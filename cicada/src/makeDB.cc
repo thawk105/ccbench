@@ -16,7 +16,7 @@ void makeDB() {
 
 	try {
 		if (posix_memalign((void**)&HashTable, 64, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
-		for (int i = 0; i < TUPLE_NUM; i++) {
+		for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 			HashTable[i].latest = new Version();
 		}
 	} catch (bad_alloc) {
@@ -25,8 +25,8 @@ void makeDB() {
 
 	TimeStamp tstmp;
 	tstmp.generateTimeStamp(0);
-	for (int i = 1; i <= TUPLE_NUM; i++) {
-		hashTmp = &HashTable[i % TUPLE_NUM];
+	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
+		hashTmp = &HashTable[i];
 		hashTmp->gClock.store(-1, memory_order_release);
 		hashTmp->key = i;
 		verTmp = hashTmp->latest.load();

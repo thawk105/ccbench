@@ -17,123 +17,37 @@ extern void displayDB();
 
 using namespace std;
 
-void Transaction::tbegin(TimeStamp &thrts, TimeStamp &thwts, bool &firstFlag, const int &thid, const unsigned int transactionNum)
+void Transaction::tbegin(const unsigned int transactionNum)
 {
-	Version *verTmp;
-
-	this->thid = thid;
 	this->transactionNum = transactionNum;
-
 	if (Pro[transactionNum][0].ronly) this->ronly = true;
 
-	//first allocate timestamp
-	if (firstFlag == true) {
-		firstFlag = false;
-		thwts.generateTimeStampFirst(thid);
-		verTmp = HashTable[0].latest.load();
-		thrts.ts = verTmp->wts + 1;
-		this->wts = &thwts;
-		this->rts = &thrts;
-		ThreadRtsArrayForGroup[this->thid] = this->rts->ts;
-		
+	this->wts->generateTimeStamp(thid);
+	this->rts->ts = MinWts.load(std::memory_order_acquire) - 1;
+
+	//one-sided synchronization
+	Stop[thid].num = rdtsc();
+	if (chkClkSpan(Start[thid].num, Stop[thid].num, 100 * CLOCK_PER_US)) {
+		unsigned int maxwIndex = 0;
+		//最速のものを記録し、それに合わせる
+		//one-sided synchronization
+		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+			if (ThreadWtsArray[maxwIndex]->ts < ThreadWtsArray[i]->ts) maxwIndex = i;
+		}
+		this->wts->ts = ThreadWtsArray[maxwIndex]->ts;
+
+		//stopwatchの起点修正
 		Start[thid].num = rdtsc();
-		FirstAllocateTimeStamp[thid].store(true, std::memory_order_release);
-
-		//FirstAllocateTimeStamp の更新 -> FirstAllocateTimeStamp のチェック
-
-		//最後にタイムスタンプを割り当てられたスレッドを検知
-		//そのスレッドのwtsが最小
-		int i;
-		for (i = 0; i < THREAD_NUM; i++) {
-			if (i == thid) continue;
-			if (FirstAllocateTimeStamp[i].load(std::memory_order_acquire) == false) break;
-		}
-		if (i == THREAD_NUM) {
-			MinWts.store(thwts.ts, std::memory_order_release);
-		}
-	}
-	else {
-		//allocate timestamp after first allocate timestamp
-		thwts.generateTimeStamp(thid);
-		thrts.ts = MinWts.load(std::memory_order_acquire) - 1;
-		this->wts = &thwts;
-		this->rts = &thrts;
-
-		//leader thread work
-		if (thid == 0) {
-			Stop[thid].num = rdtsc();
-
-			//chkClkSpan(start, stop, threshold(us))
-			if (chkClkSpan(Start[thid].num, Stop[thid].num, 10 * CLOCK_PER_US)) {
-				//10 * clock_per_us = 10 us
-				//
-				//一定時間ごとに仕事する
-				//
-				//work can be done by leader thread
-				//compute min_wts, min_rts,
-				unsigned int maxwIndex = 0;
-				//リーダースレッドの余計な仕事をしているうちにtsが遅れて、
-				//これから処理するトランザクションのabort確率が上がってしまうことが考えられる。
-				//最速のものも記録し、それに合わせる(tanabe original)
-				//(one-sided synchronization)
-				uint64_t minw = ThreadWtsArray[0]->ts;
-				uint64_t minr;
-			   	if (GROUP_COMMIT == 0) {
-			   		minr = ThreadRtsArray[0]->ts;
-				} else {
-					minr = ThreadRtsArrayForGroup[0];
-				}
-				for (int i = 0; i < THREAD_NUM; i++) {
-					//MinRtsの計算も同様
-					//
-					//maxwInexはなるべく早めにしたい意図なので本当のmaxでなくても構わない．
-					uint64_t tmp = ThreadWtsArray[i]->ts;
-					if (minw > tmp) minw = tmp;
-
-					if (GROUP_COMMIT == 0) {
-						tmp = ThreadRtsArray[i]->ts;
-						if (minr > tmp) minr = tmp;
-					} else {
-						tmp = ThreadRtsArrayForGroup[i];
-						if (minr > tmp) minr = tmp;
-					}
-
-					if (ThreadWtsArray[maxwIndex]->ts < ThreadWtsArray[i]->ts) maxwIndex = i;
-				}
-				MinWts.store(minw, std::memory_order_release);;
-				MinRts.store(minr, std::memory_order_release);
-				thwts = *ThreadWtsArray[maxwIndex];
-
-				//stopwatchの起点修正
-				Start[thid].num = rdtsc();
-			}
-		}
-		else {
-			//one-sided synchronization
-			Stop[thid].num = rdtsc();
-			if (chkClkSpan(Start[thid].num, Stop[thid].num, 100 * CLOCK_PER_US)) {
-				unsigned int maxwIndex = 0;
-				//最速のものを記録し、それに合わせる
-				//one-sided synchronization
-				for (int i = 0; i < THREAD_NUM; i++) {
-					if (ThreadWtsArray[maxwIndex]->ts < ThreadWtsArray[i]->ts) maxwIndex = i;
-				}
-				thwts = *ThreadWtsArray[maxwIndex];
-
-				//stopwatchの起点修正
-				Start[thid].num = rdtsc();
-			}
-		}
 	}
 }
 
 int
-Transaction::tread(int key)
+Transaction::tread(unsigned int key)
 {
 	//read-own-writes
 	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 	//if n E write set
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		if (itr->first == key) {
 			return itr->second->newObject->val;
 		}
@@ -148,7 +62,7 @@ Transaction::tread(int key)
 	//Search version
 	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 	//簡単にスキップできるもの(先頭の方にある使えないバージョンの固まり等)は先にスキップする．
-	Version *version = HashTable[key % TUPLE_NUM].latest;
+	Version *version = HashTable[key].latest;
 	while ((version->wts.load(memory_order_acquire) > trts) || (version->status.load(std::memory_order_acquire) == VersionStatus::aborted)) {
 		version = version->next.load(std::memory_order_acquire);
 		//if version is not found.
@@ -213,9 +127,9 @@ Transaction::tread(int key)
 }
 
 void
-Transaction::twrite(int key,  int val)
+Transaction::twrite(unsigned int key,  unsigned int val)
 {
-	Version *version = HashTable[key % TUPLE_NUM].latest.load();
+	Version *version = HashTable[key].latest.load();
 
 	//Search version (for early abort check)
 	//(committed or pending)の最新versionを探して、early abort check(EAC)
@@ -312,7 +226,7 @@ SKIP_EAC:
 		}
 		
 		//else
-		version = HashTable[key % TUPLE_NUM].latest.load();
+		version = HashTable[key].latest.load();
 		if (NLR) {
 			while (version->status.load(std::memory_order_acquire) != VersionStatus::committed) {
 				while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
@@ -366,11 +280,11 @@ Transaction::validation()
 {
 	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 	//Install pending version
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		
 		Version *expected;
 		do {
-			expected = HashTable[itr->second->sourceObject->key % TUPLE_NUM].latest.load();
+			expected = HashTable[itr->second->sourceObject->key].latest.load();
 			Version *version = expected;
 
 			while (version->status.load(std::memory_order_acquire) != VersionStatus::committed && version->status.load(std::memory_order_acquire) != VersionStatus::precommitted) {
@@ -409,15 +323,15 @@ Transaction::validation()
 				return false;
 			}
 
-			itr->second->newObject->next.store(HashTable[itr->second->sourceObject->key % TUPLE_NUM].latest.load(), std::memory_order_release);
-		} while (!HashTable[itr->second->sourceObject->key % TUPLE_NUM].latest.compare_exchange_weak(expected, itr->second->newObject));
+			itr->second->newObject->next.store(HashTable[itr->second->sourceObject->key].latest.load(), std::memory_order_release);
+		} while (!HashTable[itr->second->sourceObject->key].latest.compare_exchange_weak(expected, itr->second->newObject));
 	}
 	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 
 	//Read timestamp update
 	//
 	//printf("read timestamp update\n");
-	for (auto itr = readSet.begin(); itr != readSet.end(); itr++) {
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		uint64_t expected;
 		do {
 			expected = itr->second->rts.load(memory_order_acquire);
@@ -428,7 +342,7 @@ Transaction::validation()
 
 	//validation consistency check
 	//(a) every previously visible version v of the records in the read set is the currently visible version to the transaction.
-	for (auto itr = readSet.begin(); itr != readSet.end(); itr++) {
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		if (ELR) {
 			if (itr->second->status.load(std::memory_order_acquire) != VersionStatus::committed && itr->second->status.load(std::memory_order_acquire) != VersionStatus::precommitted) {
 				return false;
@@ -441,7 +355,7 @@ Transaction::validation()
 	}
 
 	//(b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		if (itr->second->sourceObject->rts.load(memory_order_acquire) > this->wts->ts) {
 			return false;
 		}
@@ -458,7 +372,7 @@ Transaction::swal()
 		if (pthread_mutex_lock(&Lock)) ERR;	// lock
 
 		int i = 0;
-		for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			SLogSet[i] = itr->second->newObject;
 			i++;
 		}
@@ -476,7 +390,7 @@ Transaction::swal()
 	}
 	else {	//group commit
 		if (pthread_mutex_lock(&Lock)) ERR;	// lock
-		for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			SLogSet[GROUP_COMMIT_INDEX[0].num] = itr->second->newObject;
 			GROUP_COMMIT_INDEX[0].num++;
 		}
@@ -518,7 +432,7 @@ Transaction::pwal()
 		logSet = new Version*[writeSet.size()];
 
 		int i = 0;
-		for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			logSet[i] = itr->second->newObject;
 			i++;
 		}
@@ -536,14 +450,14 @@ Transaction::pwal()
 		delete logSet;
 	} 
 	else {
-		for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			PLogSet[this->thid][GROUP_COMMIT_INDEX[this->thid].num] = itr->second->newObject;
 			GROUP_COMMIT_INDEX[this->thid].num++;
 		}
 
 		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
 			GCommitStart[this->thid].num = rdtsc();	//最初の初期化もここで代用している
-			ThreadRtsArrayForGroup[this->thid] = this->rts->ts;
+			ThreadRtsArrayForGroup[this->thid].num = this->rts->ts;
 		}
 
 		//ログをWALバッファへ挿入後，ローカルのコミットキューへトランザクションIDとwtsをエンキュー
@@ -567,7 +481,7 @@ Transaction::pwal()
 inline void
 Transaction::cpv()	//commit pending versions
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		itr->second->newObject->status.store(VersionStatus::committed, std::memory_order_release);
 	}
 
@@ -576,7 +490,7 @@ Transaction::cpv()	//commit pending versions
 void
 Transaction::precpv() 
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		itr->second->newObject->status.store(VersionStatus::precommitted, std::memory_order_release);
 	}
 
@@ -586,14 +500,14 @@ void
 Transaction::gcpv()
 {
 	if (S_WAL) {
-		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; i++) {
+		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; ++i) {
 			SLogSet[i]->status.store(VersionStatus::committed, std::memory_order_release);
 		}
 		GROUP_COMMIT_COUNTER[0].num = 0;
 		GROUP_COMMIT_INDEX[0].num = 0;
 	}
 	else if (P_WAL) {
-		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[this->thid].num; i++) {
+		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[this->thid].num; ++i) {
 			PLogSet[this->thid][i]->status.store(VersionStatus::committed, std::memory_order_release);
 		}
 		GROUP_COMMIT_COUNTER[this->thid].num = 0;
@@ -610,6 +524,8 @@ Transaction::earlyAbort()
 		chkGcpvTimeout();
 	}
 
+	AbortCounts[thid].num++;
+
 	this->wts->set_clockBoost(CLOCK_PER_US);
 	this->status = TransactionStatus::abort;
 }
@@ -618,7 +534,7 @@ void
 Transaction::abort()
 {
 	//pending versionのステータスをabortedに変更
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		itr->second->newObject->status.store(VersionStatus::aborted, std::memory_order_release);
 	}
 
@@ -628,6 +544,11 @@ Transaction::abort()
 		chkGcpvTimeout();
 	}
 
+	readSet.clear();
+	writeSet.clear();
+
+	AbortCounts[thid].num++;
+
 	this->wts->set_clockBoost(CLOCK_PER_US);
 	this->status = TransactionStatus::abort;
 }
@@ -635,7 +556,7 @@ Transaction::abort()
 void
 Transaction::wSetClean()
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		delete itr->second;
 	}
 }
@@ -643,7 +564,7 @@ Transaction::wSetClean()
 void
 Transaction::displayWset()
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		printf("%d ", itr->second->newObject->key);
 	}
 	cout << endl;
@@ -694,31 +615,31 @@ Transaction::mainte(int proIndex)
 	//write setで取り扱ったバージョンリストを対象にする
 	Version *version = nullptr;
 
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		int lockHolder;
 		bool conteFlag = false;
 		do {
 			if (conteFlag) break;
-			lockHolder = HashTable[itr->first % TUPLE_NUM].gClock.load(memory_order_acquire);
+			lockHolder = HashTable[itr->first].gClock.load(memory_order_acquire);
 			if (lockHolder != -1) {
 				conteFlag = true;
 				break;
 			}
-		} while (!HashTable[itr->first % TUPLE_NUM].gClock.compare_exchange_weak(lockHolder, this->thid));
+		} while (!HashTable[itr->first].gClock.compare_exchange_weak(lockHolder, this->thid));
 		if (conteFlag) {
 			conteFlag = false;
 			continue;
 		}
 
 
-		version = HashTable[itr->second->newObject->key % TUPLE_NUM].latest.load(memory_order_acquire);
+		version = HashTable[itr->second->newObject->key].latest.load(memory_order_acquire);
 		//デリートオペレーション等でバージョンリストが存在しない場合
 		if (version == nullptr) {
 			// delete ope を実装していないので、到達不能
 			ERR;
 			// delete ope を実装していた場合、獲得していたロックを解放して次の要素を扱う。
 			/*
-			HashTable[itr->first % TUPLE_NUM].gClock.store(-1, memory_order_release);
+			HashTable[itr->first].gClock.store(-1, memory_order_release);
 			continue;
 			*/
 		}
@@ -731,7 +652,7 @@ Transaction::mainte(int proIndex)
 		}
 		if (version == nullptr) {
 			//削除可能バージョン無し
-			HashTable[itr->first % TUPLE_NUM].gClock.store(-1, memory_order_release);
+			HashTable[itr->first].gClock.store(-1, memory_order_release);
 			continue;
 		}
 		//ここに到達したら、versionは
@@ -744,7 +665,7 @@ Transaction::mainte(int proIndex)
 		}
 		if (version == nullptr) {
 			//削除可能バージョン無し
-			HashTable[itr->first % TUPLE_NUM].gClock.store(-1, memory_order_release);
+			HashTable[itr->first].gClock.store(-1, memory_order_release);
 			continue;
 		}
 		//ここに到達したら、versionは
@@ -761,7 +682,7 @@ Transaction::mainte(int proIndex)
 			delTarget = tmp;
 		}
 		
-		HashTable[itr->first % TUPLE_NUM].gClock.store(-1, memory_order_release);
+		HashTable[itr->first].gClock.store(-1, memory_order_release);
 	}
 
 	wSetClean();
@@ -788,6 +709,10 @@ Transaction::writePhase()
 
 	//ここまで来たらコミットしている
 	this->wts->set_clockBoost(0);
+	readSet.clear();
+	writeSet.clear();
+
+	FinishTransactions[thid].num++;
 }
 
 void

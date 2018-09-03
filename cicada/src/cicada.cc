@@ -151,16 +151,11 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		exit(0);
 	}
 	try {
-		//cout << "timestamp size " << sizeof(TimeStamp) << endl;	// sizeof(TimeStamp) 	was 24
-		//cout << "uint64_t size " << sizeof(uint64_t) << endl;		// sizeof(uint64_t) 	was 8
-		//cout << "int size " << sizeof(int) << endl;				// sizeof(int) 			was 4
-		//cout << "timeval size " << sizeof(timeval) << endl;		// sizeof(timeval) 		was 16
 
 		ThreadWtsArray = new TimeStamp*[THREAD_NUM];
 		//allo = posix_memalign((void**)ThreadWtsArray, 64, THREAD_NUM * sizeof(TimeStamp*));
-		//seg fault 未解明
 		ThreadRtsArray = new TimeStamp*[THREAD_NUM];
-		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
+		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadRts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadFlushedWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
@@ -180,19 +175,24 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		PLogSet = new Version**[THREAD_NUM];
 
 		MessageQueue = new std::queue<Message>[THREAD_NUM];	//コミット通知用
-		for (int i = 0; i < THREAD_NUM; i++) {
+		for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 			PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
 		}
 	} catch (bad_alloc) {
 		ERR;
 	}
 	//init
-	for (int i = 0; i < THREAD_NUM; i++) {
-		FirstAllocateTimeStamp[i].store(false, memory_order_release);
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		AbortCounts[i].num = 0;
+		FinishTransactions[i].num = 0;
+		FirstAllocateTimeStamp[i].store(false, memory_order_release);
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
-		FinishTransactions[i].num = 0;
+		ThreadRtsArray[i] = &ThreadRts[i];
+		ThreadWtsArray[i] = &ThreadWts[i];
+		ThreadRtsArrayForGroup[i].num = 0;
+		ThreadRts[i].ts = 0;
+		ThreadWts[i].ts = 0;
 	}
 }
 
@@ -216,7 +216,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		//cout << "FinishTransactions[" << i << "]: " << FinishTransactions[i] << endl;
 		sumTrans += FinishTransactions[i].num;
 	}
@@ -228,9 +228,63 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
-pid_t gettid(void) 
+static void *
+maneger_worker(void *arg)
 {
-	return syscall(SYS_gettid);
+	int *myid = (int *)arg;
+	pid_t pid = syscall(SYS_gettid);
+	cpu_set_t cpu_set;
+
+	CPU_ZERO(&cpu_set);
+	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
+		ERR;
+	}
+
+	unsigned int expected, desired;
+	do {
+		expected = Running.load(memory_order_acquire);
+		desired = expected + 1;
+	} while (!Running.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+
+	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
+
+	// leader work
+	Start[*myid].num = rdtsc();
+	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
+		
+		Stop[*myid].num = rdtsc();
+		if (chkClkSpan(Start[*myid].num, Stop[*myid].num, 10 * CLOCK_PER_US)) {
+			//work can be done by leader thread
+			//compute min_wts, min_rts;
+			uint64_t minw = ThreadWtsArray[1]->ts;
+			uint64_t minr;
+			if (GROUP_COMMIT == 0) {
+				minr = ThreadRtsArray[1]->ts;
+			}
+			else {
+				minr = ThreadRtsArrayForGroup[1].num;
+			}
+
+			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+				uint64_t tmp = ThreadWtsArray[i]->ts;
+				if (minw > tmp) minw = tmp;
+				if (GROUP_COMMIT == 0) {
+					tmp = ThreadRtsArray[i]->ts;
+					if (minr > tmp) minr = tmp;
+				}
+				else {
+					tmp = ThreadRtsArrayForGroup[i].num;
+					if (minr > tmp) minr = tmp;
+				}
+			}
+			MinWts.store(minw, memory_order_release);
+			MinRts.store(minr, memory_order_release);
+
+			Start[*myid].num = rdtsc();
+		}
+	}
 }
 
 static void *
@@ -241,10 +295,9 @@ worker(void *arg)
 	//----------
 	pid_t pid;
 	cpu_set_t cpu_set;
-	int result;
 	Version *verTmp;
 
-	pid = gettid();
+	pid = syscall(SYS_gettid);
 	CPU_ZERO(&cpu_set);
 	//int core_num = *myid % sysconf(_SC_NPROCESSORS_CONF) * 2;
 	//if (core_num > 23) core_num -= 23;	//	chris numa 対策
@@ -260,23 +313,19 @@ worker(void *arg)
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
 	//----------
 	
-	bool firstFlag = true;
-	TimeStamp& thwts = ThreadWts[*myid];
-	TimeStamp& thrts = ThreadRts[*myid];
-	ThreadRtsArray[*myid] = &thrts;
-	ThreadWtsArray[*myid] = &thwts;
-
-	
-	//実装上HashTable[0]が一番最後に作られているので、それを参照できたら良い
-	verTmp = HashTable[0].latest.load();
+	//実装上HashTable[TUPLE_NUM - 1]が一番最後に作られているので、それを参照できたら良い
+	verTmp = HashTable[TUPLE_NUM - 1].latest.load();
 	MinRts = verTmp->wts + 1;
-	
-	//前処理
+	ThreadRts[*myid].ts = MinRts;
+	if (GROUP_COMMIT)
+		ThreadRtsArrayForGroup[*myid].num = MinRts;
+
+
 	GCollectionStart[*myid].num = rdtsc();
 
 	//----------
 	//wait for all threads start. CAS.
-	int expected, desired;
+	unsigned int expected, desired;
 	do {
 		expected = Running.load();
 		desired = expected + 1;
@@ -287,68 +336,48 @@ worker(void *arg)
 	//----------
 	
 	//start work(transaction)
-	if (*myid == 0) Bgn = rdtsc();
+	if (*myid == 1) Bgn = rdtsc();
 
 
 	try {
-		uint64_t localFinishTransactions = 0;
-		uint64_t localAbortCounts = 0;
-
-		for (int i = PRO_NUM / THREAD_NUM * (*myid); i < PRO_NUM / THREAD_NUM * (*myid + 1); i++) {
+		Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
+		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
 RETRY:
-			if (*myid == 0) {
-				if (FinishTransactions[*myid].num % 1000 == 0) {
-					End = rdtsc();
-					if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
-						Finish.store(true, std::memory_order_release);
-						FinishTransactions[*myid].num = localFinishTransactions;
-						AbortCounts[*myid].num = localAbortCounts;
-						return NULL;
-					}
+			if (*myid == 1) {
+				End = rdtsc();
+				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
+					do {
+						expected = Ending.load(memory_order_acquire);
+						desired = expected + 1;
+					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+					Finish.store(true, std::memory_order_release);
+					return nullptr;
 				}
 			} else {
 				if (Finish.load(std::memory_order_acquire)) {
-					FinishTransactions[*myid].num = localFinishTransactions;
-						AbortCounts[*myid].num = localAbortCounts;
-					return NULL;
+					do {
+						expected = Ending.load(memory_order_acquire);
+						desired = expected + 1;
+					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+					return nullptr;
 				}
 			}
 
-			Transaction trans;
-			trans.tbegin(thrts, thwts, firstFlag, *myid, i);
-
-			//test
-			//random_device rnd;
-			//----
+			trans.tbegin(i);
 
 			//Read phase
 			//Search versions
-			for (int j = 0; j < MAX_OPE; j++) {
-				int value_read;
-
-				//--test--
-				//if ((rnd() % 100) < (READ_RATIO * 100))
-				//	Pro[i][j].ope = Ope::READ;
-				//else
-				//	Pro[i][j].ope = Ope::WRITE;
-				////--------
-				
+			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				switch(Pro[i][j].ope) {
 					case(Ope::READ):
-						value_read = trans.tread(Pro[i][j].key);
-						//printf("read(%d) = %d\n", Pro[i][j].key, value_read);
+						trans.tread(Pro[i][j].key);
 						break;
 					case(Ope::WRITE):
-						//test
-						//Pro[i][j].key = rnd() % TUPLE_NUM + 1;
-						//Pro[i][j].val = rnd() % (TUPLE_NUM*10);
-						//----
 						trans.twrite(Pro[i][j].key, Pro[i][j].val);
 						
 						//early abort
 						if (trans.status == TransactionStatus::abort) {
 							trans.earlyAbort();
-							localAbortCounts++;
 							goto RETRY;
 						}
 						break;
@@ -360,27 +389,22 @@ RETRY:
 			//read onlyトランザクションはread setを集めず、validationもしない。
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
-				if (i == (PRO_NUM / THREAD_NUM * (*myid + 1)) - 1) {
+				if (i == PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1) {
 					//NNN;
-					i = PRO_NUM / THREAD_NUM * (*myid);
+					i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
 				}
-				localFinishTransactions++;
-				//FinishTransactions[*myid].num++;
+				FinishTransactions[*myid].num++;
 				continue;
 			}
 
 			//Validation phase
 			if (!trans.validation()) {
 				trans.abort();
-				localAbortCounts++;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
-
-			//クライアントへの通知
-			//trans.noticeToClients();
 
 			//Maintenance
 			//Schedule garbage collection
@@ -388,18 +412,15 @@ RETRY:
 			//Collect garbage created by prior transactions
 			trans.mainte(i);
 
-			if (i == (PRO_NUM / THREAD_NUM * (*myid + 1)) - 1) {
-				//NNN;
-				i = PRO_NUM / THREAD_NUM * (*myid);
+			if (i == PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1) {
+				i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
 			}
-			localFinishTransactions++;
-			//FinishTransactions[*myid].num++;
 		}
 	} catch (bad_alloc) {
 		ERR;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 static pthread_t
@@ -415,9 +436,14 @@ threadCreate(int id)
 	}
 	*myid = id;
 
-	if (pthread_create(&t, NULL, worker, (void *)myid)) ERR;
-
-	return t;
+	if (id == 0) {
+		if (pthread_create(&t, nullptr, maneger_worker, (void *)myid)) ERR;
+		return t;
+	}
+	else {
+		if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
+		return t;
+	}
 }
 
 extern void displayMinRts();
@@ -433,38 +459,34 @@ extern void mutexInit();
 
 int 
 main(int argc, char *argv[]) {
+
 	chkArg(argc, argv);
+
 	mutexInit();
 	makeDB();
 	makeProcedure();
 
-	//test
-	/*if (pthread_mutex_lock(&HashTable[0].lock)) ERR;
-	cout << "success!" << endl;
-	if (pthread_mutex_unlock(&HashTable[0].lock)) ERR;
-	printf("main(int argc, char *argv[]): sizeof(Version) = %d\n", sizeof(Version));*/
-	
-	//displayDB();
+	displayDB();
 	//displayPRO();
 
 	pthread_t thread[THREAD_NUM];
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		thread[i] = threadCreate(i);
 	}
 
-	for (int i = 0; i < THREAD_NUM; i++) {
-		pthread_join(thread[i], NULL);
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
+		pthread_join(thread[i], nullptr);
 	}
 
-	//displayDB();
+	displayDB();
 	//displayMinRts();
 	//displayMinWts();
 	//displayThreadWtsArray();
 	//displayThreadRtsArray();
-	displayAbortRate();
+	//displayAbortRate();
 	
-	//prtRslt(Bgn, End);
+	prtRslt(Bgn, End);
 
 	return 0;
 }
