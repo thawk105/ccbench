@@ -19,24 +19,25 @@ public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 	vector<LockElement> RLL;
+	vector<LockElement>::iterator rllbgn;
 	vector<LockElement> CLL;
 	TransactionStatus status;
 
 	int thid;
-	// 前回TX実行結果が commit なら true, abort なら false
-	bool pre_ex = true; 
+	
 
 	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
 		RLL.reserve(MAX_OPE);
+		rllbgn = RLL.begin();
 		CLL.reserve(MAX_OPE);
 
 		this->thid = thid;
 		this->status = TransactionStatus::inFlight;
 	}
 
-	void begin(int thid);
+	void begin();
 	unsigned int read(unsigned int key);
 	void write(unsigned int key, unsigned int val);
 	void lock(Tuple *tuple, bool mode);
@@ -45,7 +46,7 @@ public:
 	bool commit();
 	void abort();
 	void writePhase();
-	void dispLock();
+	void dispCLL();
 };
 
 

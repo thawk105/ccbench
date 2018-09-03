@@ -249,10 +249,9 @@ worker(void *arg)
 			}
 
 RETRY:
-			trans.begin(*myid);
+			trans.begin();
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				unsigned int value_read;
-				//trans.dispLock();
 				switch(Pro[i][j].ope) {
 					case(Ope::READ) :
 						//cout << "th " << trans.thid << ": read(" << Pro[i][j].key << ")" << endl;
@@ -322,6 +321,8 @@ main(int argc, char *argv[])
 	chkArg(argc, argv);
 	makeDB();
 	makeProcedure();
+
+	//displayDB();
 
 	pthread_t thread[THREAD_NUM];
 

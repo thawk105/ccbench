@@ -10,10 +10,9 @@
 using namespace std;
 
 void
-Transaction::begin(int thid)
+Transaction::begin()
 {
 	this->status = TransactionStatus::inFlight;
-	this->thid = thid;
 
 	return;
 }
@@ -21,7 +20,7 @@ Transaction::begin(int thid)
 unsigned int
 Transaction::read(unsigned int key)
 {
-	Tuple *tuple = &Table[key % TUPLE_NUM];
+	Tuple *tuple = &Table[key];
 
 	// tuple exists in write set.
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -34,18 +33,19 @@ Transaction::read(unsigned int key)
 	}
 
 	// tuple doesn't exist in read/write set.
+	bool inrll = false;
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key == key) {
 			lock(tuple, max((*itr).mode, false));
-			goto LOCK_FINISH;
+			inrll = true;
+			break;
 		}
 	}
 
-	if (tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
+	if (inrll == false && tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
 		lock(tuple, false);
-		goto LOCK_FINISH;
 	}
-LOCK_FINISH:
+	
 	if (this->status == TransactionStatus::aborted) return -1;
 	
 	readSet.push_back(ReadElement(tuple->tidword.load(memory_order_acquire), key));
@@ -63,21 +63,21 @@ Transaction::write(unsigned int key, unsigned int val)
 		}
 	}
 
-	Tuple *tuple = &Table[key % TUPLE_NUM];
+	Tuple *tuple = &Table[key];
 
+	bool inrll = false;
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key == key) {
 			lock(tuple, max((*itr).mode, true));
-			goto LOCK_FINISH;
+			inrll = true;
+			break;
 		}
 	}
 
-	if (tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
+	if (inrll == false && tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
 		lock(tuple, true);
-		goto LOCK_FINISH;
 	}
 
-LOCK_FINISH:
 	if (this->status == TransactionStatus::aborted) return;
 
 	//construct log 後で書く
@@ -91,10 +91,7 @@ LOCK_FINISH:
 void
 Transaction::lock(Tuple *tuple, bool mode)
 {
-	//cout << "th " << thid << ": lock " << tuple->key << endl;
-
 	vector<LockElement> violations;
-
 	sort(CLL.begin(), CLL.end());
 	vector<LockElement>::iterator cllviobgn = CLL.end();
 	bool firstvio = true;
@@ -106,7 +103,6 @@ Transaction::lock(Tuple *tuple, bool mode)
 			if (mode == (*itr).mode || mode < (*itr).mode) return;
 		}
 
-		//cout << (*itr).key << " " << tuple->key << endl;
 		// collect violation
 		if ((*itr).key >= tuple->key) {
 			if (firstvio) {
@@ -122,12 +118,11 @@ Transaction::lock(Tuple *tuple, bool mode)
 	uint64_t lockBit = 0b100;
 	// if too many violations
 	if ((CLL.size() / 2) < violations.size() && CLL.size() >= (MAX_OPE / 2)) {
-		NNN;
 		if (mode) {
 			if (tuple->lock.w_trylock()) {
 				//ロックを取ってからビットを上げる
-				expected = Table[tuple->key % TUPLE_NUM].tidword.load(memory_order_acquire);
-				Table[tuple->key % TUPLE_NUM].tidword.store(expected | lockBit, memory_order_release);
+				expected = Table[tuple->key].tidword.load(memory_order_acquire);
+				Table[tuple->key].tidword.store(expected | lockBit, memory_order_release);
 				//-----
 				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
 
@@ -149,19 +144,19 @@ Transaction::lock(Tuple *tuple, bool mode)
 		}
 	}
 	else if (!violations.empty()) {
-		NNN;
 		// Not in canonical mode. Restore.
-		for (auto itr = cllviobgn; itr != violations.end(); ++itr) {
+		for (auto itr = cllviobgn; itr != CLL.end(); ++itr) {
 			if ((*itr).mode) {
 				//ビットを落としてからロックを解放する
-				expected = Table[(*itr).key % TUPLE_NUM].tidword.load(memory_order_acquire);
-				Table[(*itr).key % TUPLE_NUM].tidword.store(expected &(~lockBit), memory_order_release);
+				expected = Table[(*itr).key].tidword.load(memory_order_acquire);
+				Table[(*itr).key].tidword.store(expected &(~lockBit), memory_order_release);
 				//-----
+				cout << (*itr).key << ".w_unlock() start" << endl;
 				(*itr).lock->w_unlock();
+				cout << (*itr).key << ".w_unlock() end" << endl;
 			} else {
 				(*itr).lock->r_unlock();
 			}
-			RLL.push_back(*itr);
 		}
 		//delete from CLL
 		CLL.erase(cllviobgn, CLL.end());
@@ -171,13 +166,13 @@ Transaction::lock(Tuple *tuple, bool mode)
 	int rllctr = 0;
 
 	// unconditional lock in canonical mode.
-	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
+	for (auto itr = rllbgn; itr != RLL.end(); ++itr) {
 		if ((*itr).key < tuple->key) {
 			if ((*itr).mode) {
 				(*itr).lock->w_lock();
 				//ロックを取ってからビットを上げる
-				expected = Table[(*itr).key % TUPLE_NUM].tidword.load(memory_order_acquire);
-				Table[(*itr).key % TUPLE_NUM].tidword.store(expected | lockBit, memory_order_release);
+				expected = Table[(*itr).key].tidword.load(memory_order_acquire);
+				Table[(*itr).key].tidword.store(expected | lockBit, memory_order_release);
 				//-----
 			} else {
 				(*itr).lock->r_lock();
@@ -185,10 +180,10 @@ Transaction::lock(Tuple *tuple, bool mode)
 			rllctr++;
 			CLL.push_back(*itr);
 		} else {
+			rllbgn = itr;
 			break;
 		}
 	}
-
 	if (rllctr != 0) {
 		RLL.erase(RLL.begin(), RLL.begin() + rllctr);
 	}
@@ -198,20 +193,16 @@ Transaction::lock(Tuple *tuple, bool mode)
 		tuple->lock.w_lock();	
 	
 		//ロックを取ってからビットを上げる
-		expected = Table[tuple->key % TUPLE_NUM].tidword.load(memory_order_acquire);
-		Table[tuple->key % TUPLE_NUM].tidword.store(expected | lockBit, memory_order_release);
+		expected = Table[tuple->key].tidword.load(memory_order_acquire);
+		Table[tuple->key].tidword.store(expected | lockBit, memory_order_release);
 	}
 	else tuple->lock.r_lock();
 
 	CLL.push_back(acquired_lock);
 
 	// remove acquired lock from RLL
-	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
-		while (acquired_lock.key == (*itr).key) {
-			RLL.erase(itr);
-			if (itr == RLL.end()) break;
-		}
-		if (itr == RLL.end()) break;
+	if ((*rllbgn).key == acquired_lock.key) {
+		rllbgn = RLL.erase(rllbgn);
 	}
 
 	return;
@@ -223,7 +214,7 @@ Transaction::construct_rll()
 	RLL.clear();
 	
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key % TUPLE_NUM].lock), true));
+		RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key].lock), true));
 	}
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -239,9 +230,9 @@ Transaction::construct_rll()
 		// r not in RLL
 		// if temprature >= threshold
 		// 	|| r failed verification
-		if (Table[(*itr).key % TUPLE_NUM].temp.load(memory_order_acquire) >= TEMP_THRESHOLD 
+		if (Table[(*itr).key].temp.load(memory_order_acquire) >= TEMP_THRESHOLD 
 				|| (*itr).failed_verification) {
-			RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key % TUPLE_NUM].lock), false));
+			RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key].lock), false));
 		}
 
 		// maintain temprature p
@@ -249,7 +240,7 @@ Transaction::construct_rll()
 			random_device rnd;
 			uint64_t expected, desired;
 			do {
-				expected = Table[(*itr).key % TUPLE_NUM].temp.load(memory_order_acquire);
+				expected = Table[(*itr).key].temp.load(memory_order_acquire);
 				double result = rnd() / (double)random_device::max();
 				if (result == 0) {
 					printf("temprature result is 0\n");
@@ -259,9 +250,9 @@ Transaction::construct_rll()
 					printf("temprature result is ERR\n");
 					exit(1);
 				}
-				if (result < 1.0 / pow(2, expected)) break;
+				if (result > 1.0 / pow(2, expected)) break;
 				desired = expected + 1;
-			} while (!Table[(*itr).key % TUPLE_NUM].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+			} while (!Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel));
 		}
 	}
 
@@ -278,14 +269,14 @@ Transaction::commit()
 	// phase 1 lock write set.
 	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		lock(&Table[(*itr).key % TUPLE_NUM], true);
+		lock(&Table[(*itr).key], true);
 		if (this->status == TransactionStatus::aborted) return false;
 	}
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		uint64_t tmptidword = Table[(*itr).key % TUPLE_NUM].tidword.load(memory_order_acquire);
+		uint64_t tmptidword = Table[(*itr).key].tidword.load(memory_order_acquire);
 		if (((*itr).tidword >> 3) != tmptidword >> 3) {
-			//(*itr).failed_verification = true;
+			(*itr).failed_verification = true;
 			this->status = TransactionStatus::aborted;
 			//cout << "tid miss abort" << endl;
 			return false;
@@ -335,8 +326,8 @@ Transaction::unlockCLL()
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		if ((*itr).mode) {
 			// ビットを下げてからロックを解放する
-			expected = Table[(*itr).key % TUPLE_NUM].tidword.load(memory_order_acquire);
-			Table[(*itr).key % TUPLE_NUM].tidword.store(expected & (~lockBit), memory_order_release);
+			expected = Table[(*itr).key].tidword.load(memory_order_acquire);
+			Table[(*itr).key].tidword.store(expected & (~lockBit), memory_order_release);
 			(*itr).lock->w_unlock();
 		}
 		else {
@@ -361,7 +352,7 @@ Transaction::writePhase()
 	}
 	// about writeSet
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		tid_a = max(tid_a, Table[(*itr).key % TUPLE_NUM].tidword.load(memory_order_acquire));
+		tid_a = max(tid_a, Table[(*itr).key].tidword.load(memory_order_acquire));
 	}
 
 	//下位 3ビットは予約されている
@@ -383,8 +374,8 @@ Transaction::writePhase()
 	//write (record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//update nad down lockBit
-		Table[(*itr).key % TUPLE_NUM].val.store((*itr).val, memory_order_release);
-		Table[(*itr).key % TUPLE_NUM].tidword.store(ThRecentTID[thid].num, memory_order_release);
+		Table[(*itr).key].val.store((*itr).val, memory_order_release);
+		Table[(*itr).key].tidword.store(ThRecentTID[thid].num, memory_order_release);
 	}
 
 	unlockCLL();
@@ -395,7 +386,7 @@ Transaction::writePhase()
 }
 
 void
-Transaction::dispLock()
+Transaction::dispCLL()
 {
 	cout << "th " << this->thid << ": ";
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {

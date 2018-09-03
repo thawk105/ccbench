@@ -16,6 +16,7 @@ displayDB()
 		cout << "----------" << endl; // - is 10
 		cout << "key: " << tuple->key << endl;
 		cout << "val: " << tuple->val << endl;
+		cout << "lockctr: " << tuple->lock.counter << endl;
 		cout << "TIDword: " << tuple->tidword.load() << endl;
 		cout << "bit: " << static_cast<bitset<64>>(tuple->tidword.load()) << endl;
 		cout << endl;

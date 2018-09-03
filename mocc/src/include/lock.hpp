@@ -45,7 +45,15 @@ public:
 	}
 
 	void r_unlock() {
-		counter--;
+		int expected, desired;
+		do {
+			expected = counter.load(memory_order_acquire);
+			if (expected < 1) {
+				NNN; ERR;
+			}
+			desired = expected - 1;
+		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+
 		return;
 	}
 
@@ -62,7 +70,15 @@ public:
 	}
 
 	void w_unlock() {
-		counter++;
+		int expected, desired;
+		do {
+			expected = counter.load(memory_order_acquire);
+			if (expected != -1) {
+				cout << expected << endl; NNN; ERR;
+			}
+			desired = expected + 1;
+		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+		
 		return;
 	}
 
