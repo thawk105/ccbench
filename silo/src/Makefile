@@ -2,7 +2,7 @@ PROG = silo.exe
 SOURCES = silo.cc makeDB.cc makeProcedure.cc transaction.cc stopWatch.cc displayGlobal.cc
 
 CC = g++
-CFLAGS = -c -Wall -g -O2 -std=c++11
+CFLAGS = -c -Wall -g -O2 -std=c++11 -march=native
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 

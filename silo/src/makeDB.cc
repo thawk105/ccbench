@@ -10,13 +10,13 @@ void makeDB() {
 	random_device rnd;
 
 	try {
-		if (posix_memalign((void**)&Table, 2*8*64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+		if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 
-	for (int i = 1; i <= TUPLE_NUM; i++) {
-		tmp = &Table[i % TUPLE_NUM];
+	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
+		tmp = &Table[i];
 		tmp->tidword = 1;
 		tmp->tidword = tmp->tidword << 32;
 		tmp->tidword = tmp->tidword | 0b010;

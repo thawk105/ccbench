@@ -1,33 +1,32 @@
 #include "include/transaction.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
-#include <sys/time.h>
-#include <stdio.h>
-#include <fstream>
-#include <string>
-#include <bitset>
-#include <sstream>
 #include <algorithm>
+#include <bitset>
+#include <fstream>
+#include <sstream>
+#include <stdio.h>
+#include <string>
+#include <sys/time.h>
+#include <xmmintrin.h>
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void displayDB();
 
 using namespace std;
 
-int Transaction::tread(int key)
+int Transaction::tread(unsigned int key)
 {
 	int read_value;
 
 	//w
-	auto includeW = writeSet.find(key);
-	if (includeW != writeSet.end()) {
-		return includeW->second;
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) return (*itr).val;
 	}
 
 	//r
-	auto includeR = readSet.find(key);
-	if (includeR != readSet.end()) {
-		return Table[includeR->first % TUPLE_NUM].val;
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		if ((*itr).key == key) return (*itr).val;
 	}
 	
 	//(a) reads the TID word, spinning until the lock is clear
@@ -35,12 +34,12 @@ int Transaction::tread(int key)
 	uint64_t expected_check;
 	uint64_t lockBit = 0b100;
 
-	expected = Table[key % TUPLE_NUM].tidword.load(memory_order_acquire);
+	expected = Table[key].tidword.load(memory_order_acquire);
 	//check if it is locked.
 	//spinning until the lock is clear
 RETRY:
 	while (expected & lockBit) {
-		expected = Table[key % TUPLE_NUM].tidword.load(memory_order_acquire);
+		expected = Table[key].tidword.load(memory_order_acquire);
 	}
 	
 	//(b) checks whether the record is the latest version
@@ -48,25 +47,33 @@ RETRY:
 	
 	
 	//(c) reads the data
-	read_value = Table[key % TUPLE_NUM].val.load(memory_order_acquire);
-	readSet[key] = expected;
+	read_value = Table[key].val.load(memory_order_acquire);
 
 	//(d) performs a memory fence
 	//x
 	
 	//(e) checks the TID word again
-	expected_check = Table[key % TUPLE_NUM].tidword.load(memory_order_acquire);
+	expected_check = Table[key].tidword.load(memory_order_acquire);
 	if (expected != expected_check) {
 		expected = expected_check;
 		goto RETRY;
 	}
 	
+	readSet.push_back(ReadElement(key, read_value, expected));
 	return read_value;
 }
 
-void Transaction::twrite(int key, int val)
+void Transaction::twrite(unsigned int key, unsigned int val)
 {
-	writeSet[key] = val;
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) {
+			(*itr).val = val;
+			return;
+		}
+	}
+
+	writeSet.push_back(WriteElement(key, val));
+	return;
 }
 
 bool Transaction::validationPhase()
@@ -76,6 +83,7 @@ bool Transaction::validationPhase()
 
 	//Phase 1 
 	//ソートされた writeSet をロックする．
+	sort(writeSet.begin(), writeSet.end());
 	lockWriteSet();
 
 	asm volatile("" ::: "memory");
@@ -92,32 +100,33 @@ bool Transaction::validationPhase()
 		//readPhaseではロックビットが下がっている（ロックされていない）物を読み込んでいるので，
 		//in readSet かつ in writeSet の時は一致しようがない．よって3ビットシフト
 
-		uint64_t tmptidword = Table[itr->first % TUPLE_NUM].tidword.load(memory_order_acquire);
-		if ((itr->second >> 3) != (tmptidword) >> 3) {
-			unlockWriteSet();
+		uint64_t tmptidword = Table[(*itr).key].tidword.load(memory_order_acquire);
+		if (((*itr).tidword >> 3) != (tmptidword) >> 3) {
 			return false;
 		}
 		//2
 		//今回は無し
 		//3
 		if (tmptidword & lockBit) {	//ロックされていて
-			auto include = writeSet.find(itr->first);
-			if (include == writeSet.end()) {
-				unlockWriteSet();
-				return false;	//writeSetに含まれていない
+			auto include = writeSet.begin();
+			for (; include != writeSet.end(); ++include) {
+				if ((*include).key == (*itr).key) return true;
 			}
+			return false;	//writeSetに含まれていない
 		}
 	}
 
 	//Phase 3 writePhase()へ
-	
-
 	return true;
 }
 
 void Transaction::abort() 
 {
+	unlockWriteSet();
 	AbortCounts[thid].num++;
+
+	readSet.clear();
+	writeSet.clear();
 }
 
 void Transaction::writePhase()
@@ -135,11 +144,11 @@ void Transaction::writePhase()
 	//calculates (a)
 	//about readSet
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		if (tid_a < itr->second) tid_a = itr->second;
+		if (tid_a < (*itr).tidword) tid_a = (*itr).tidword;
 	}
 	//about writeSet
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		uint64_t tmp = Table[itr->first % TUPLE_NUM].tidword.load(memory_order_acquire);
+		uint64_t tmp = Table[(*itr).key].tidword.load(memory_order_acquire);
 		tid_a = max(tid_a, tmp);
 	}
 	//下位3ビットは予約されている．
@@ -160,9 +169,12 @@ void Transaction::writePhase()
 	//write(record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//update and unlock
-		Table[itr->first % TUPLE_NUM].val.store(itr->second, memory_order_release);
-		Table[itr->first % TUPLE_NUM].tidword.store(ThRecentTID[thid].num, memory_order_release);
+		Table[(*itr).key].val.store((*itr).val, memory_order_release);
+		Table[(*itr).key].tidword.store(ThRecentTID[thid].num, memory_order_release);
 	}
+
+	readSet.clear();
+	writeSet.clear();
 }
 
 void Transaction::lockWriteSet()
@@ -173,9 +185,9 @@ void Transaction::lockWriteSet()
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//lock
 		for (;;) {
-			expected = Table[itr->first % TUPLE_NUM].tidword.load(memory_order_acquire);
+			expected = Table[(*itr).key].tidword.load(memory_order_acquire);
 			if (!(expected & lockBit)) {
-				if (Table[itr->first % TUPLE_NUM].tidword.compare_exchange_strong(expected, expected | lockBit, memory_order_acq_rel)) break;
+				if (Table[(*itr).key].tidword.compare_exchange_strong(expected, expected | lockBit, memory_order_acq_rel)) break;
 			}
 		}
 	}
@@ -188,7 +200,7 @@ void Transaction::unlockWriteSet()
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//unlock
-		expected = Table[itr->first % TUPLE_NUM].tidword.load(memory_order_acquire);
-		Table[itr->first % TUPLE_NUM].tidword.store(expected & (~lockBit), memory_order_release);
+		expected = Table[(*itr).key].tidword.load(memory_order_acquire);
+		Table[(*itr).key].tidword.store(expected & (~lockBit), memory_order_release);
 	}
 }

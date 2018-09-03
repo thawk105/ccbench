@@ -12,16 +12,16 @@
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL
 
-GLOBAL std::atomic<int> Running(0);
-GLOBAL std::atomic<int> Ending(0);
+GLOBAL std::atomic<unsigned int> Running(0);
+GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<uint64_t> GlobalEpoch (1);
 GLOBAL std::atomic<bool> Finish(false);
 
 #else
 	#define GLOBAL extern
 
-GLOBAL std::atomic<int> Running;
-GLOBAL std::atomic<int> Ending;
+GLOBAL std::atomic<unsigned int> Running;
+GLOBAL std::atomic<unsigned int> Ending;
 GLOBAL std::atomic<uint64_t> GlobalEpoch;
 GLOBAL std::atomic<bool> Finish;
 
@@ -29,14 +29,14 @@ GLOBAL std::atomic<bool> Finish;
 
 GLOBAL std::atomic<uint64_t> *ThLocalEpoch;
 
-GLOBAL int TUPLE_NUM;
-GLOBAL int MAX_OPE;
-GLOBAL int THREAD_NUM;
-GLOBAL int PRO_NUM;
+GLOBAL unsigned int TUPLE_NUM;
+GLOBAL unsigned int MAX_OPE;
+GLOBAL unsigned int THREAD_NUM;
+GLOBAL unsigned int PRO_NUM;
 GLOBAL float READ_RATIO;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
-GLOBAL int EXTIME;
+GLOBAL unsigned int EXTIME;
 
 //GLOBAL uint64_t *ThLocalEpoch;
 GLOBAL uint64_t_64byte *ThRecentTID;

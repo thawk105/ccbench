@@ -8,16 +8,28 @@
 #include "common.hpp"
 #include <iostream>
 #include <set>
-#include <map>
+#include <vector>
+
+using namespace std;
 
 class Transaction {
 public:
-	std::map<int, uint64_t, std::less<int>, tbb::scalable_allocator<uint64_t>> readSet;
-	std::map<int, unsigned int, std::less<int>, tbb::scalable_allocator<unsigned int>> writeSet;
+	//std::map<int, uint64_t, std::less<int>, tbb::scalable_allocator<uint64_t>> readSet;
+	//std::map<int, unsigned int, std::less<int>, tbb::scalable_allocator<unsigned int>> writeSet;
+	vector<ReadElement> readSet;
+	vector<WriteElement> writeSet;
+
+	Transaction(int thid) {
+		readSet.reserve(MAX_OPE);
+		writeSet.reserve(MAX_OPE);
+
+		this->thid = thid;
+	}
+
 	int thid;
 
-	int tread(int key);
-	void twrite(int key, int val);
+	int tread(unsigned int key);
+	void twrite(unsigned int key, unsigned int val);
 	bool validationPhase();
 	void abort();
 	void writePhase();

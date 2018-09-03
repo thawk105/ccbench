@@ -87,7 +87,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 		ERR;
 	}
 	//init
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
 		FinishTransactions[i].num = 0;
@@ -114,7 +114,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -129,7 +129,7 @@ bool
 chkEpochLoaded()
 {
 //全てのワーカースレッドが最新エポックを読み込んだか確認する．
-	for (int i = 1; i < THREAD_NUM; i++) {
+	for (unsigned int i = 1; i < THREAD_NUM; i++) {
 		if (ThLocalEpoch[i].load(std::memory_order_acquire) != GlobalEpoch) return false;
 	}
 
@@ -164,8 +164,8 @@ epoch_worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	int expected;
-	int desired;
+	unsigned int expected;
+	unsigned int desired;
 	do {
 		expected = Running.load(std::memory_order_acquire);
 		desired = expected + 1;
@@ -221,8 +221,8 @@ worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	int expected;
-	int desired;
+	unsigned int expected;
+	unsigned int desired;
 	do {
 		expected = Running.load(std::memory_order_acquire);
 		desired = expected + 1;
@@ -239,7 +239,8 @@ worker(void *arg)
 	try {
 		uint64_t localFinishTransactions = 0;
 
-		for (int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); i++) {
+		Transaction trans(*myid);
+		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); i++) {
 RETRY:
 			if (*myid == 1) {
 				if (FinishTransactions[*myid].num % 1000 == 0) {
@@ -266,14 +267,12 @@ RETRY:
 				}
 			}
 
-			Transaction trans;
-			trans.thid = *myid;
 			//transaction begin
 
 			//Read phase
 			//Search versions
-			for (int j = 0; j < MAX_OPE; ++j) {
-				int value_read;
+			for (unsigned int j = 0; j < MAX_OPE; ++j) {
+				unsigned int value_read;
 				switch(Pro[i][j].ope) {
 					case(Ope::READ):
 						value_read = trans.tread(Pro[i][j].key);
@@ -346,11 +345,11 @@ main(int argc, char *argv[]) {
 
 	pthread_t thread[THREAD_NUM];
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		thread[i] = threadCreate(i);
 	}
 
-	for (int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		pthread_join(thread[i], NULL);
 	}
 
