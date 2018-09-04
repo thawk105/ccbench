@@ -7,17 +7,15 @@
 
 using namespace std;
 
-extern void mutexInit(pthread_mutex_t& lock);
-
 void makeDB() {
-	Tuple *hashTmp;
+	Tuple *tmp;
 	Version *verTmp;
 	random_device rnd;
 
 	try {
-		if (posix_memalign((void**)&HashTable, 64, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
+		if (posix_memalign((void**)&Table, 64, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
 		for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-			HashTable[i].latest = new Version();
+			Table[i].latest = new Version();
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -26,10 +24,11 @@ void makeDB() {
 	TimeStamp tstmp;
 	tstmp.generateTimeStamp(0);
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-		hashTmp = &HashTable[i];
-		hashTmp->gClock.store(-1, memory_order_release);
-		hashTmp->key = i;
-		verTmp = hashTmp->latest.load();
+		tmp = &Table[i];
+		tmp->gClock.store(0, memory_order_release);
+		tmp->key = i;
+		tmp->min_wts = tstmp.ts;
+		verTmp = tmp->latest.load();
 		verTmp->wts.store(tstmp.ts, memory_order_release);;
 		verTmp->status.store(VersionStatus::committed, std::memory_order_release);
 		verTmp->key = i;

@@ -6,10 +6,11 @@
 
 class Tuple	{
 public:
-	std::atomic<int> gClock;
-	int32_t key;
+	unsigned int key;
 	std::atomic<Version *> latest;
-	int8_t padding[48];		// 64
+	std::atomic<int> gClock;
+	std::atomic<uint64_t> min_wts;
+	int8_t padding[40];		// 64
 
 	Tuple() {
 		latest.store(nullptr);

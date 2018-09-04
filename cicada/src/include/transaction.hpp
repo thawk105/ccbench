@@ -16,6 +16,7 @@ using namespace std;
 
 enum class TransactionStatus : uint8_t {
 	invalid,
+	inflight,
 	commit,
 	abort,
 };
@@ -27,14 +28,14 @@ public:
 	TimeStamp *wts;
 	bool ronly = false;
 	unsigned int transactionNum;
-	std::map<unsigned int, Version *, less<int>, tbb::scalable_allocator<Version *>> readSet;
-	std::map<unsigned int, ElementSet *, less<int>, tbb::scalable_allocator<ElementSet *>> writeSet;
-	//ElementSet class include Version *sourceObject, Version *newObject.
-	//vector<ReadElement> readSet;
-	//vector<WriteElement> writeSet;
+	vector<ReadElement> readSet;
+	vector<WriteElement> writeSet;
+	vector<GCElement> gcSet;
+
 	int eleNum_wset = 0;	//element number of wset, used by pwal
 
-	uint64_t start, stop;
+	uint64_t start, stop;	// for one-sided synchronization
+	uint64_t GCstart, GCstop; // for garbage collection
 	unsigned int thid;
 
 	Transaction(TimeStamp *thrts, TimeStamp *thwts, unsigned int thid) {
@@ -42,7 +43,11 @@ public:
 		this->wts = thwts;
 		this->thid = thid;
 
-		Start[thid].num = rdtsc();
+		start = rdtsc();
+		GCstart = start;
+		readSet.reserve(MAX_OPE);
+		writeSet.reserve(MAX_OPE);
+		gcSet.reserve(MAX_OPE);
 	}
 
 	void tbegin(const unsigned int transactionNum);
@@ -50,7 +55,6 @@ public:
 	void twrite(unsigned int key, unsigned int val);
 	bool validation();
 	void writePhase();
-	void noticeToClients();
 	void swal();
 	void pwal();	//parallel write ahead log.
 	void precpv();	//pre-commit pending versions

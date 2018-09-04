@@ -34,24 +34,22 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 15) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) SPIN_WAIT_TIMEOUT_US \n\
-             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US GARBAGE_COLLECTION_INTERVAL_US LOCK_RELEASE_METHOD EXTIME\n\
+	if (argc != 13) {
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) \n\
+             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
 \n\
-example:./main 1000000 20 15 10000 0.5 2 OFF OFF 2400 5 2 0 E 3\n\
+example:./main 1000000 20 15 10000 0.5 OFF OFF 2400 5 2 E 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of worker thread.\n\
 PRO_NUM(int):    Initial total numbers of transactions.\n\
 READ_RATIO(float): ratio of read in transaction.\n\
-SPIN_WAIT_TIMEOUT_US(int):   limit of waiting time(µs) to commit pending version by other.\n\
 WAL: P or S or OFF.\n\
 GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
 CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
 IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds).\n\
 GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds).\n\
-GARBAGE_COLLECTION_INTERVAL_US: Interval for calling garbage collection(micro seconds). i reccomend 0. Setting 0 is executing for each transaction.\n\
 LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release.\n\n");
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
@@ -65,15 +63,13 @@ LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
-	chkInt(argv[6]);
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
 	PRO_NUM = atoi(argv[4]);
 	READ_RATIO = atof(argv[5]);
-	SPIN_WAIT_TIMEOUT_US = atoi(argv[6]);
 	
-	string tmp = argv[7];
+	string tmp = argv[6];
 	if (tmp == "P")  {
 		P_WAL = true;
 		S_WAL = false;
@@ -84,7 +80,7 @@ LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal
 		P_WAL = false;
 		S_WAL = false;
 
-		tmp = argv[8];
+		tmp = argv[7];
 		if (tmp != "OFF") {
 			printf("i don't implement below.\n\
 P_WAL OFF, S_WAL OFF, GROUP_COMMIT number.\n\
@@ -94,42 +90,33 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		}
 	}
 	else {
-		printf("WAL(argv[7]) must be P or S or OFF\n");
+		printf("WAL(argv[6]) must be P or S or OFF\n");
 		exit(0);
 	}
 
-	tmp = argv[8];
+	tmp = argv[7];
 	if (tmp == "OFF") GROUP_COMMIT = 0;
-	else if (chkInt(argv[8])) {
-	   	GROUP_COMMIT = atoi(argv[8]);
+	else if (chkInt(argv[7])) {
+	   	GROUP_COMMIT = atoi(argv[7]);
 	}
 	else {
 		printf("GROUP_COMMIT(argv[8]) must be unsigned integer or OFF\n");
 		exit(0);
 	}
 
-	chkInt(argv[9]);
-	CLOCK_PER_US = atof(argv[9]);
+	chkInt(argv[8]);
+	CLOCK_PER_US = atof(argv[8]);
 	if (CLOCK_PER_US < 100) {
 		printf("CPU_MHZ is less than 100. are you really?\n");
 		exit(0);
 	}
 
+	chkInt(argv[9]);
+	IO_TIME_NS = atof(argv[9]);
 	chkInt(argv[10]);
-	IO_TIME_NS = atof(argv[10]);
-	chkInt(argv[11]);
-	GROUP_COMMIT_TIMEOUT_US = atoi(argv[11]);
-	chkInt(argv[12]);
-	GARBAGE_COLLECTION_INTERVAL_US = atoi(argv[12]);
-	if (GARBAGE_COLLECTION_INTERVAL_US < 0) {
-		printf("GARBAGE_COLLECTION_INTERVAL_US must be positive number.( > 0)\n");
-		exit(0);
-	}
+	GROUP_COMMIT_TIMEOUT_US = atoi(argv[10]);
 
-	//ELR	tanabe		early lock release
-	//NLR 				normal lock release
-	//NER	normal 		early lock release
-	tmp = argv[13];
+	tmp = argv[11];
 	if (tmp == "N") {
 		NLR = true;
 		ELR = false;
@@ -139,12 +126,12 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		ELR = true;
 	}
 	else {
-		printf("LockRelease(argv[13]) must be E or N\n");
+		printf("LockRelease(argv[11]) must be E or N\n");
 		exit(0);
 	}
 
-	chkInt(argv[14]);
-	EXTIME = atoi(argv[14]);
+	chkInt(argv[12]);
+	EXTIME = atoi(argv[12]);
 	
 	if (THREAD_NUM > PRO_NUM) {
 		printf("THREAD_NUM must be smaller than PRO_NUM\n");
@@ -159,22 +146,15 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&ThreadWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadRts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadFlushedWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
-		if (posix_memalign((void**)&FirstAllocateTimeStamp, 64, THREAD_NUM * sizeof(std::atomic<bool>)) != 0) ERR;
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_INDEX, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&GCommitStart, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-	    if (posix_memalign((void**)&GCommitStop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&GCollectionStart, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&GCollectionStop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		
 		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	//実装の簡単のため、どちらもメモリを確保してしまう。
 		PLogSet = new Version**[THREAD_NUM];
 
-		MessageQueue = new std::queue<Message>[THREAD_NUM];	//コミット通知用
 		for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 			PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
 		}
@@ -185,7 +165,7 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		AbortCounts[i].num = 0;
 		FinishTransactions[i].num = 0;
-		FirstAllocateTimeStamp[i].store(false, memory_order_release);
+		GCFlag[i].num = 0;
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
 		ThreadRtsArray[i] = &ThreadRts[i];
@@ -242,6 +222,15 @@ maneger_worker(void *arg)
 		ERR;
 	}
 
+	//実装上Table[TUPLE_NUM - 1]が一番最後に作られているので、それを参照できたら良い
+	Version *verTmp = Table[TUPLE_NUM - 1].latest.load();
+	MinRts = verTmp->wts + 1;
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		ThreadRts[i].ts = MinRts;
+		if (GROUP_COMMIT)
+			ThreadRtsArrayForGroup[i].num = MinRts;
+	}
+
 	unsigned int expected, desired;
 	do {
 		expected = Running.load(memory_order_acquire);
@@ -251,13 +240,16 @@ maneger_worker(void *arg)
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
 
 	// leader work
-	Start[*myid].num = rdtsc();
 	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
-		
-		Stop[*myid].num = rdtsc();
-		if (chkClkSpan(Start[*myid].num, Stop[*myid].num, 10 * CLOCK_PER_US)) {
-			//work can be done by leader thread
-			//compute min_wts, min_rts;
+		bool gc_update = true;
+		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		//check all thread's flag raising
+			if (GCFlag[i].num == 0) {
+				gc_update = false;
+				break;
+			}
+		}
+		if (gc_update) {
 			uint64_t minw = ThreadWtsArray[1]->ts;
 			uint64_t minr;
 			if (GROUP_COMMIT == 0) {
@@ -282,9 +274,14 @@ maneger_worker(void *arg)
 			MinWts.store(minw, memory_order_release);
 			MinRts.store(minr, memory_order_release);
 
-			Start[*myid].num = rdtsc();
+			// downgrade gc flag
+			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+				GCFlag[i].num = 0;
+			}
 		}
 	}
+
+	return nullptr;
 }
 
 static void *
@@ -295,7 +292,6 @@ worker(void *arg)
 	//----------
 	pid_t pid;
 	cpu_set_t cpu_set;
-	Version *verTmp;
 
 	pid = syscall(SYS_gettid);
 	CPU_ZERO(&cpu_set);
@@ -313,17 +309,6 @@ worker(void *arg)
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
 	//----------
 	
-	//実装上HashTable[TUPLE_NUM - 1]が一番最後に作られているので、それを参照できたら良い
-	verTmp = HashTable[TUPLE_NUM - 1].latest.load();
-	MinRts = verTmp->wts + 1;
-	ThreadRts[*myid].ts = MinRts;
-	if (GROUP_COMMIT)
-		ThreadRtsArrayForGroup[*myid].num = MinRts;
-
-
-	GCollectionStart[*myid].num = rdtsc();
-
-	//----------
 	//wait for all threads start. CAS.
 	unsigned int expected, desired;
 	do {
@@ -337,7 +322,6 @@ worker(void *arg)
 	
 	//start work(transaction)
 	if (*myid == 1) Bgn = rdtsc();
-
 
 	try {
 		Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
@@ -466,7 +450,7 @@ main(int argc, char *argv[]) {
 	makeDB();
 	makeProcedure();
 
-	displayDB();
+	//displayDB();
 	//displayPRO();
 
 	pthread_t thread[THREAD_NUM];
@@ -479,7 +463,7 @@ main(int argc, char *argv[]) {
 		pthread_join(thread[i], nullptr);
 	}
 
-	displayDB();
+	//displayDB();
 	//displayMinRts();
 	//displayMinWts();
 	//displayThreadWtsArray();

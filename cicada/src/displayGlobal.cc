@@ -13,7 +13,7 @@ void displayDB() {
 	Version *version;
 
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-		tuple = &HashTable[i % TUPLE_NUM];
+		tuple = &Table[i % TUPLE_NUM];
 		cout << "------------------------------" << endl;	//-は30個
 		cout << "key:	" << tuple->key << endl;
 
