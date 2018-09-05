@@ -19,8 +19,8 @@ makeDB()
 		ERR;
 	}
 
-	for (int i = 1; i <= TUPLE_NUM; i++) {
-		tmp = &Table[i % TUPLE_NUM];
+	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
+		tmp = &Table[i];
 		tmp->key = i;
 		tmp->val = rnd() % (TUPLE_NUM * 10);
 	}
