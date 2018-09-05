@@ -1,19 +1,24 @@
 #ifndef TUPLE_HPP
 #define TUPLE_HPP
+
 #include <atomic>
 #include <cstdint>
+
 #include "version.hpp"
+
+using namespace std;
 
 class Tuple	{
 public:
+	atomic<Version *> latest;
+	atomic<uint64_t> min_wts;
 	unsigned int key;
-	std::atomic<Version *> latest;
-	std::atomic<int> gClock;
-	std::atomic<uint64_t> min_wts;
-	int8_t padding[40];		// 64
+	atomic<uint8_t> gClock;
+	int8_t pad[43];		// 64
 
 	Tuple() {
 		latest.store(nullptr);
+		gClock.store(0, memory_order_release);
 	}
 };
 

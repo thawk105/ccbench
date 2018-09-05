@@ -7,10 +7,10 @@
 #include "timeStamp.hpp"
 #include "version.hpp"
 
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
-
+#include <atomic>
 #include <iostream>
 #include <map>
+#include <queue>
 
 using namespace std;
 
@@ -26,28 +26,35 @@ public:
 	TransactionStatus status = TransactionStatus::invalid;
 	TimeStamp *rts;
 	TimeStamp *wts;
-	bool ronly = false;
-	unsigned int transactionNum;
+	bool ronly;
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
-	vector<GCElement> gcSet;
-
-	int eleNum_wset = 0;	//element number of wset, used by pwal
+	queue<GCElement> gcq;
 
 	uint64_t start, stop;	// for one-sided synchronization
 	uint64_t GCstart, GCstop; // for garbage collection
-	unsigned int thid;
+	uint8_t thid;
 
 	Transaction(TimeStamp *thrts, TimeStamp *thwts, unsigned int thid) {
 		this->rts = thrts;
 		this->wts = thwts;
+		this->wts->generateTimeStampFirst(thid);
+		this->wts->ts = InitialWts + 2;
 		this->thid = thid;
+		this->ronly = false;
 
+		unsigned int expected, desired;
+		do {
+			expected = FirstAllocateTimestamp.load(memory_order_acquire);
+			desired = expected + 1;
+		} while (!FirstAllocateTimestamp.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+		
 		start = rdtsc();
 		GCstart = start;
+		readSet.clear();
 		readSet.reserve(MAX_OPE);
+		writeSet.clear();
 		writeSet.reserve(MAX_OPE);
-		gcSet.reserve(MAX_OPE);
 	}
 
 	void tbegin(const unsigned int transactionNum);

@@ -20,8 +20,8 @@ using namespace std;
 
 void Transaction::tbegin(const unsigned int transactionNum)
 {
-	this->transactionNum = transactionNum;
 	if (Pro[transactionNum][0].ronly) this->ronly = true;
+	else this->ronly = false;
 
 	this->status = TransactionStatus::inflight;
 	this->wts->generateTimeStamp(thid);
@@ -29,7 +29,7 @@ void Transaction::tbegin(const unsigned int transactionNum)
 
 	//one-sided synchronization
 	stop = rdtsc();
-	if (chkClkSpan(start, stop, 100 * CLOCK_PER_US)) {
+	if (chkClkSpan(start, stop, 10 * CLOCK_PER_US)) {
 		unsigned int maxwIndex = 1;
 		//最速のものを記録し、それに合わせる
 		//one-sided synchronization
@@ -63,7 +63,9 @@ Transaction::tread(unsigned int key)
 
 	//else
 	uint64_t trts;
-	if (this->ronly) trts = this->rts->ts;
+	if (this->ronly) {
+		trts = this->rts->ts;
+	}
 	else	trts = this->wts->ts;
 	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 
@@ -84,6 +86,7 @@ Transaction::tread(unsigned int key)
 		//タイムスタンプ的には適用可能なので，あとはステータスが重要．
 		if (version->status.load(std::memory_order_acquire) != VersionStatus::aborted) {
 			if (NLR) {
+				NNN;
 				//pendingへの対応
 				//spin wait
 				if (GROUP_COMMIT) {
@@ -103,6 +106,9 @@ Transaction::tread(unsigned int key)
 				//プレコミットを利用．
 				while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
 				if (version->status.load(std::memory_order_acquire) == VersionStatus::committed || version->status.load(std::memory_order_acquire) == VersionStatus::precommitted) break;
+				// もし committed または precommitted ならば，利用したいので
+				// break する． break しないと， version = version->next 
+				// となってしまう
 			}
 		}
 
@@ -162,6 +168,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	}
 
 	if (NLR) {
+		NNN;
 		while (version->status.load(std::memory_order_acquire) != VersionStatus::committed) {
 			while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
 				//spin-wait
@@ -204,11 +211,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	}
 
 	Version *newObject;
-   	newObject = new Version();
-	newObject->rts.store(0, memory_order_release);
-	newObject->wts.store(this->wts->ts, memory_order_release);
-	newObject->key = version->key;
-	newObject->val = val;
+   	newObject = new Version(0, this->wts->ts, key, val);
 	writeSet.push_back(WriteElement(key, version, newObject));
 	return;
 }
@@ -235,6 +238,7 @@ Transaction::validation()
 				//to avoid cascading aborts.
 				//install pending version step blocks concurrent transactions that share the same visible version and have higher timestamp than (tx.ts).
 				if (NLR && GROUP_COMMIT) {
+					NNN;
 					uint64_t spinstart = rdtsc();
 					uint64_t spinstop;
 					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
@@ -255,7 +259,8 @@ Transaction::validation()
 				return false;
 			}
 
-			(*itr).newObject->next.store(Table[(*itr).key].latest.load(), std::memory_order_release);
+			(*itr).newObject->status.store(VersionStatus::pending, memory_order_release);
+			(*itr).newObject->next.store(Table[(*itr).key].latest.load(), memory_order_release);
 		} while (!Table[(*itr).key].latest.compare_exchange_weak(expected, (*itr).newObject));
 	}
 
@@ -462,7 +467,6 @@ Transaction::abort()
 	AbortCounts[thid].num++;
 
 	this->wts->set_clockBoost(CLOCK_PER_US);
-	this->status = TransactionStatus::abort;
 }
 
 void
@@ -509,57 +513,52 @@ Transaction::mainte(int proIndex)
 	//バージョンリストにおいてMinRtsよりも古いバージョンの中でコミット済み最新のもの
 	//以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
 	//
-	
+
 	if (GCFlag[thid].num == 0) {
-		this->GCstop = rdtsc();
-		if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US)) {
-			GCFlag[thid].num = 1;
-			this->GCstart = rdtsc();
-		}
-	}
+		while (gcq.size() > 0) {
+			if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
+		
+			// (a) acquiring the garbage collection lock succeeds
+			uint8_t zero = 0;
+			if (!Table[gcq.front().key].gClock.compare_exchange_weak(zero, this->thid)) {
+				// fail acquiring the lock
+				gcq.pop();
+				continue;
+			}
 
-	int gcctr = 0;
-	for (auto itr = gcSet.begin(); itr != gcSet.end(); ++itr) {
-		if ((*itr).wts >= MinRts.load(memory_order_acquire)) break;
-
-		// (a) v.wts > record.min_wts
-		if ((*itr).wts <= Table[(*itr).key].min_wts) {
-			gcctr++;
-			continue;
-			break;
-		}
-		//this pointer may be dangling.
-
-		// (b) acquiring the garbage collection lock succeeds
-		int lockHolder;
-		bool conteFlag = false;
-		do {
-			if (conteFlag) break;
-			lockHolder = Table[(*itr).key].gClock.load(memory_order_acquire);
-			if (lockHolder != -1) {
-				conteFlag = true;
+			// (b) v.wts > record.min_wts
+			if (gcq.front().wts <= Table[gcq.front().key].min_wts) {
+				gcq.pop();
+				continue;
 				break;
 			}
-		} while (!Table[(*itr).key].gClock.compare_exchange_weak(lockHolder, this->thid));
-		if (conteFlag) {
-			conteFlag = false;
-			gcctr++;
-			continue;
-		}
+			//this pointer may be dangling.
 
-		Version *delTarget = (*itr).ver->next.load(std::memory_order_acquire);
-		(*itr).ver->next.store(nullptr, std::memory_order_release);
-		while (delTarget != nullptr) {
-			//nextポインタ退避
-			Version *tmp = delTarget->next.load(std::memory_order_acquire);
-			delete delTarget;
-			delTarget = tmp;
+			Version *delTarget = gcq.front().ver->next.load(std::memory_order_acquire);
+
+			// the thread detaches the rest of the version list from v
+			gcq.front().ver->next.store(nullptr, std::memory_order_release);
+			// updates record.min_wts
+			Table[gcq.front().key].min_wts.store(gcq.front().ver->wts, memory_order_release);
+
+			while (delTarget != nullptr) {
+				//nextポインタ退避
+				Version *tmp = delTarget->next.load(std::memory_order_acquire);
+				delete delTarget;
+				delTarget = tmp;
+			}
+			
+			// releases the lock
+			Table[gcq.front().key].gClock.store(0, memory_order_release);
+			gcq.pop();
 		}
-		
-		Table[(*itr).key].gClock.store(-1, memory_order_release);
 	}
-	if (gcctr != 0)
-		gcSet.erase(gcSet.begin(), gcSet.begin()+gcctr);
+
+	this->GCstop = rdtsc();
+	if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US)) {
+		GCFlag[thid].num = 1;
+		this->GCstart = rdtsc();
+	}
 }
 
 void
@@ -582,7 +581,7 @@ Transaction::writePhase()
 	}
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		gcSet.push_back(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
+		gcq.push(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
 	}
 
 	//ここまで来たらコミットしている

@@ -6,6 +6,8 @@
 #include <sys/time.h>
 #include "timeStamp.hpp"
 
+using namespace std;
+
 enum class VersionStatus : uint8_t {
 	invalid,
 	pending,
@@ -17,19 +19,26 @@ enum class VersionStatus : uint8_t {
 
 class Version {
 public:
-	std::atomic<uint64_t> rts;
-	std::atomic<uint64_t> wts;
+	atomic<uint64_t> rts;
+	atomic<uint64_t> wts;
 	
 	unsigned int key;	//log what is this key.
 	unsigned int val;			
-	std::atomic<Version *> next;
+	atomic<Version *> next;
 
-	std::atomic<VersionStatus> status;	//commit record
+	atomic<VersionStatus> status;	//commit record
 	int8_t padding2[24];
 
 	Version() {
-		status.store(VersionStatus::pending, std::memory_order_release);
-		next.store(nullptr, std::memory_order_release);
+		status.store(VersionStatus::pending, memory_order_release);
+		next.store(nullptr, memory_order_release);
+	}
+
+	Version(uint64_t rts, uint64_t wts, unsigned int key, unsigned int val) {
+		this->rts.store(rts, memory_order_relaxed);
+		this->wts.store(wts, memory_order_relaxed);
+		this->key = key;
+		this->val = val;
 	}
 };
 
