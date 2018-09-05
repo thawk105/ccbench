@@ -12,7 +12,7 @@ displayDB()
 {
 	Tuple *tuple;
 
-	for (int i = 0; i < TUPLE_NUM; i++) {
+	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 		tuple = &Table[i % TUPLE_NUM];
 		cout << "------------------------------" << endl;	// - 30
 		cout << "key:	" << tuple->key << endl;
@@ -24,9 +24,9 @@ displayDB()
 void
 displayPRO()
 {
-	for (int i = 0; i < PRO_NUM; i++) {
+	for (unsigned int i = 0; i < PRO_NUM; i++) {
 		cout << "transaction No." << i << endl;
-		for (int j = 0; j < MAX_OPE; j++) {
+		for (unsigned int j = 0; j < MAX_OPE; j++) {
 			cout << "(ope, key, val) = (";
 			switch (Pro[i][j].ope) {
 				case Ope::READ:

@@ -23,10 +23,10 @@ GLOBAL std::atomic<bool> Finish;
 #endif
 
 //run-time args
-GLOBAL int TUPLE_NUM;
-GLOBAL int MAX_OPE;
-GLOBAL int THREAD_NUM;
-GLOBAL int PRO_NUM;
+GLOBAL unsigned int TUPLE_NUM;
+GLOBAL unsigned int MAX_OPE;
+GLOBAL unsigned int THREAD_NUM;
+GLOBAL unsigned int PRO_NUM;
 GLOBAL float READ_RATIO;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL int EXTIME;

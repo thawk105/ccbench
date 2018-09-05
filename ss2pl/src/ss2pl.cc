@@ -83,7 +83,7 @@ chkArg(const int argc, const char *argv[])
 		ERR;
 	}
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		AbortCounts[i].num = 0;
 		AbortCounts2[i].num = 0;
 		FinishTransactions[i].num = 0;
@@ -97,7 +97,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -142,7 +142,8 @@ worker(void *arg)
 	if (*myid == 0) Bgn = rdtsc();
 
 	try {
-		for (int i = PRO_NUM / THREAD_NUM * (*myid); i < PRO_NUM / THREAD_NUM * (*myid + 1); i++) {
+		Transaction trans(*myid);
+		for (unsigned int i = PRO_NUM / THREAD_NUM * (*myid); i < PRO_NUM / THREAD_NUM * (*myid + 1); i++) {
 RETRY:
 			//End judgment
 			if (*myid == 0) {
@@ -164,11 +165,10 @@ RETRY:
 			}
 			//-----
 			
-			Transaction trans;
-			trans.tbegin(*myid);
+			trans.tbegin();
 			//transaction begin
 			
-			for (int j = 0; j < MAX_OPE; j++) {
+			for (unsigned int j = 0; j < MAX_OPE; j++) {
 				int value_read;
 				switch (Pro[i][j].ope) {
 					case (Ope::READ) :
@@ -236,11 +236,11 @@ main(const int argc, const char *argv[])
 
 	pthread_t thread[THREAD_NUM];
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		thread[i] = threadCreate(i);
 	}
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		pthread_join(thread[i], NULL);
 	}
 

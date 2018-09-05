@@ -25,7 +25,7 @@ makeProcedure()
 				Pro[i][j].ope = Ope::READ;
 			else
 				Pro[i][j].ope = Ope::WRITE;
-			Pro[i][j].key = rnd() % TUPLE_NUM + 1;	// range of key 1 ~ TUPLE_NUM
+			Pro[i][j].key = rnd() % TUPLE_NUM;
 			Pro[i][j].val = rnd() % (TUPLE_NUM * 10);
 		}
 	}

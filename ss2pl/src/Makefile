@@ -2,7 +2,7 @@ PROG = ss2pl.exe
 SOURCES = ss2pl.cc makeDB.cc makeProcedure.cc displayGlobal.cc transaction.cc stopWatch.cc
 
 CC = g++
-CFLAGS = -c -Wall -g -O2 -std=c++11
+CFLAGS = -c -Wall -g -O2 -std=c++11 -march=native
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy
 
