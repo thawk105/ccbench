@@ -330,6 +330,8 @@ threadCreate(int id)
 
 extern void displayDB();
 extern void displayPRO();
+extern void displayFinishTransactions();
+extern void displayAbortCounts();
 extern void displayAbortRate();
 extern void makeProcedure();
 extern void makeDB();
@@ -355,6 +357,9 @@ main(int argc, char *argv[]) {
 
 	//displayDB();
 	//displayAbortRate();
+	displayFinishTransactions();
+	displayAbortCounts();
+
 	prtRslt(Bgn, End);
 
 	return 0;
