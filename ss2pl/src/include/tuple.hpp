@@ -14,7 +14,7 @@ public:
 	atomic<unsigned int> key;
 	atomic<unsigned int> val;
 
-	uint8_t padding[16];
+	uint8_t padding[20];
 };
 
 class SetElement {

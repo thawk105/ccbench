@@ -47,6 +47,7 @@ chkArg(const int argc, const char *argv[])
 
 		cout << "Tuple size " << sizeof(Tuple) << endl;
 		cout << "std::mutex size " << sizeof(mutex) << endl;
+		cout << "RWLock size " << sizeof(RWLock) << endl;
 		exit(0);
 	}
 
@@ -237,8 +238,8 @@ main(const int argc, const char *argv[])
 		pthread_join(thread[i], NULL);
 	}
 
-	//prtRslt(Bgn, End);
-	displayAbortRate();
+	prtRslt(Bgn, End);
+	//displayAbortRate();
 
 	return 0;
 }
