@@ -27,7 +27,8 @@ public:
 	atomic<Version *> next;
 
 	atomic<VersionStatus> status;	//commit record
-	int8_t padding2[24];
+	int8_t pad[7];
+	int8_t pad2[24];
 
 	Version() {
 		status.store(VersionStatus::pending, memory_order_release);

@@ -14,7 +14,8 @@ public:
 	atomic<uint64_t> min_wts;
 	unsigned int key;
 	atomic<uint8_t> gClock;
-	int8_t pad[43];		// 64
+	int8_t pad[3];
+	int8_t pad2[40];
 
 	Tuple() {
 		latest.store(nullptr);
