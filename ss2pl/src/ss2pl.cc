@@ -47,6 +47,7 @@ chkArg(const int argc, const char *argv[])
 
 		cout << "Tuple size " << sizeof(Tuple) << endl;
 		cout << "std::mutex size " << sizeof(mutex) << endl;
+		cout << "RWLock size " << sizeof(RWLock) << endl;
 		exit(0);
 	}
 
@@ -83,7 +84,7 @@ chkArg(const int argc, const char *argv[])
 		ERR;
 	}
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		AbortCounts[i].num = 0;
 		AbortCounts2[i].num = 0;
 		FinishTransactions[i].num = 0;
@@ -97,7 +98,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -113,7 +114,6 @@ worker(void *arg)
 	//----------
 	pid_t pid;
 	cpu_set_t cpu_set;
-	int result;
 
 	pid = syscall(SYS_gettid);
 	CPU_ZERO(&cpu_set);
@@ -128,7 +128,7 @@ worker(void *arg)
 	//----------
 	
 	//-----
-	int expected, desired;
+	unsigned int expected, desired;
 	do {
 		expected = Running.load();
 		desired = expected + 1;
@@ -142,7 +142,8 @@ worker(void *arg)
 	if (*myid == 0) Bgn = rdtsc();
 
 	try {
-		for (int i = PRO_NUM / THREAD_NUM * (*myid); i < PRO_NUM / THREAD_NUM * (*myid + 1); i++) {
+		Transaction trans(*myid);
+		for (unsigned int i = PRO_NUM / THREAD_NUM * (*myid); i < PRO_NUM / THREAD_NUM * (*myid + 1); i++) {
 RETRY:
 			//End judgment
 			if (*myid == 0) {
@@ -164,21 +165,14 @@ RETRY:
 			}
 			//-----
 			
-			Transaction trans;
-			trans.tbegin(*myid);
+			trans.tbegin();
 			//transaction begin
 			
-			for (int j = 0; j < MAX_OPE; j++) {
-				int value_read;
-				switch (Pro[i][j].ope) {
-					case (Ope::READ) :
-						value_read = trans.tread(Pro[i][j].key);
-						break;
-					case (Ope::WRITE) :
-						trans.twrite(Pro[i][j].key, Pro[i][j].val);
-						break;
-					default:
-						break;
+			for (unsigned int j = 0; j < MAX_OPE; j++) {
+				if (Pro[i][j].ope == Ope::READ) {
+					trans.tread(Pro[i][j].key);
+				} else {
+					trans.twrite(Pro[i][j].key, Pro[i][j].val);
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
@@ -236,16 +230,16 @@ main(const int argc, const char *argv[])
 
 	pthread_t thread[THREAD_NUM];
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		thread[i] = threadCreate(i);
 	}
 
-	for (int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		pthread_join(thread[i], NULL);
 	}
 
 	prtRslt(Bgn, End);
-	//displayAbortRatio();
+	//displayAbortRate();
 
 	return 0;
 }

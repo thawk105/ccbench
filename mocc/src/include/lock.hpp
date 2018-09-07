@@ -2,6 +2,8 @@
 #define LOCK_HPP
 
 #include <atomic>
+#include <utility>
+#include <xmmintrin.h>
 
 #include "debug.hpp"
 
@@ -20,78 +22,61 @@ public:
 
 	// Read lock
 	void r_lock() {
-		int expected, desired;
+		int expected;
 		do {
 			expected = counter.load(memory_order_acquire);
-			while (expected == -1) 
+			while (expected == -1) {
 				expected = counter.load(memory_order_acquire);
-			desired = expected + 1;
-		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
-
+			}
+		} while (!counter.compare_exchange_weak(expected, expected + 1, memory_order_acq_rel));
 		return;
 	}
 
 	bool r_trylock() {
 		// success return true;
 		// fail	   return false;
-		int expected, desired;
+		int expected;
 		do {
 			expected = counter.load(memory_order_acquire);
 			if (expected == -1) return false;
-			desired = expected + 1;
-		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+		} while (!counter.compare_exchange_weak(expected, expected + 1, memory_order_acq_rel));
 
 		return true;
 	}
 
 	void r_unlock() {
-		int expected, desired;
-		do {
-			expected = counter.load(memory_order_acquire);
-			if (expected < 1) {
-				NNN; ERR;
-			}
-			desired = expected - 1;
-		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
-
-		return;
+		counter--;
 	}
 
 	// Write lock
 	void w_lock() {
-		int zero = 0;
-		while(!counter.compare_exchange_strong(zero, -1, memory_order_acq_rel)) {}
+		int expected, desired(-1);
+		do {
+			expected = counter.load(memory_order_acquire);
+			while (expected != 0) {
+				expected = counter.load(memory_order_acquire);
+			}
+		} while (!counter.compare_exchange_weak(expected, desired, memory_order_acq_rel));
 		return;
 	}
 
 	bool w_trylock() {
 		int zero = 0;
-		return counter.compare_exchange_strong(zero, -1, memory_order_acq_rel);
+		return counter.compare_exchange_weak(zero, -1, memory_order_acq_rel);
 	}
 
 	void w_unlock() {
-		int expected, desired;
-		do {
-			expected = counter.load(memory_order_acquire);
-			if (expected != -1) {
-				cout << expected << endl; NNN; ERR;
-			}
-			desired = expected + 1;
-		} while (!counter.compare_exchange_strong(expected, desired, memory_order_acq_rel));
-		
-		return;
+		counter++;
 	}
 
 	// Upgrae, read -> write
-	void upgrade() {
-		int one = 1;
-		while (!counter.compare_exchange_strong(one, -1, memory_order_acq_rel)) {}
-		return;
+	bool upgrade() {
+		int expected = 1;
+		return counter.compare_exchange_weak(expected, -1, memory_order_acq_rel);
 	}
 };
 
-// ロックリストに使用
-// thread-local に使用するため，アライメント気にしない
+// for lock list
 class LockElement {
 public:
 	unsigned int key;	// record を識別する．
@@ -106,6 +91,29 @@ public:
 
 	bool operator<(const LockElement& right) const {
 		return this->key < right.key;
+	}
+
+	// Copy constructor
+	LockElement(const LockElement& other) {
+		key = other.key;
+		lock = other.lock;
+		mode = other.mode;
+	}
+		
+	// move constructor
+	LockElement(LockElement && other) {
+		key = other.key;
+		lock = other.lock;
+		mode = other.mode;
+	}
+
+	LockElement& operator=(LockElement&& other) noexcept {
+		if (this != &other) {
+			key = other.key;
+			lock = other.lock;
+			mode = other.mode;
+		}
+		return *this;
 	}
 };
 		

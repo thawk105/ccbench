@@ -2,7 +2,7 @@ PROG = mocc.exe
 SOURCES = mocc.cc makeDB.cc makeProcedure.cc transaction.cc stopWatch.cc displayGlobal.cc
 
 CC = g++
-CFLAGS = -c -Wall -g -O0 -std=c++11
+CFLAGS = -c -Wall -g -O0 -std=c++11 -march=native
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 

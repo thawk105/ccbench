@@ -24,9 +24,9 @@ Transaction::abort()
 void
 Transaction::commit()
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); itr++) {
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//cout << itr->first << " " << itr->second << endl;
-		Table[itr->first % TUPLE_NUM].val = itr->second;
+		Table[(*itr).key].val = (*itr).val;
 	}
 
 	unlock_list();
@@ -37,9 +37,8 @@ Transaction::commit()
 }
 
 void
-Transaction::tbegin(int myid)
+Transaction::tbegin()
 {
-	this->thid = myid;
 	this->status = TransactionStatus::inFlight;
 	
 	//printf("LockList size %d\n", lockList.size());
@@ -47,22 +46,20 @@ Transaction::tbegin(int myid)
 }
 
 int
-Transaction::tread(int key)
+Transaction::tread(unsigned int key)
 {
-	auto includeW = writeSet.find(key);
-	if (includeW != writeSet.end()) {
-		return includeW->second;
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) return (*itr).val;
 	}
 
-	auto includeR = readSet.find(key);
-	if (includeR != readSet.end()) {
-		return includeR->second;
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		if ((*itr).key == key) return (*itr).val;
 	}
 
-	if (Table[key % TUPLE_NUM].lock.r_lock()) {
-		r_lockList.push_back(&Table[key % TUPLE_NUM].lock);
-		int val = Table[key % TUPLE_NUM].val;
-		readSet[key] = val;
+	if (Table[key].lock.r_lock()) {
+		r_lockList.push_back(&Table[key].lock);
+		unsigned int val = Table[key].val;
+		readSet.push_back(SetElement(key, val));
 		return val;
 	} else {
 		this->status = TransactionStatus::aborted;
@@ -71,37 +68,42 @@ Transaction::tread(int key)
 }
 
 void
-Transaction::twrite(int key, int val)
+Transaction::twrite(unsigned int key, unsigned int val)
 {
-	auto includeW = writeSet.find(key);
-	if (includeW != writeSet.end()) {
-		includeW->second = val;
-		return;
-	}
-
-	auto includeR = readSet.find(key);
-	if (includeR != readSet.end()) {
-		if (!Table[key % TUPLE_NUM].lock.upgrade()) {
-			this->status = TransactionStatus::aborted;
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) {
+			(*itr).val = val;
 			return;
 		}
-		// upgrade 成功
-		for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr) {
-			if (*itr == &(Table[key % TUPLE_NUM].lock)) {
-				r_lockList.erase(itr);
-				break;
+	}
+
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		if ((*itr).key == key) {
+			if (!Table[key % TUPLE_NUM].lock.upgrade()) {
+				this->status = TransactionStatus::aborted;
+				return;
+			}
+			// upgrade 成功
+			for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr) {
+				if (*itr == &(Table[key].lock)) {
+					r_lockList.erase(itr);
+					w_lockList.push_back(&Table[key].lock);
+					writeSet.push_back(SetElement(key, val));
+					return;
+				}
 			}
 		}
 	}
-	else {
-		if (!Table[key % TUPLE_NUM].lock.w_lock()) {
-			this->status = TransactionStatus::aborted;
-			return;
-		}
+
+	// trylock
+	if (!Table[key % TUPLE_NUM].lock.w_lock()) {
+		this->status = TransactionStatus::aborted;
+		return;
 	}
 
 	w_lockList.push_back(&Table[key % TUPLE_NUM].lock);
-	writeSet[key] = val;
+	writeSet.push_back(SetElement(key, val));
+	return;
 }
 
 void
@@ -110,8 +112,11 @@ Transaction::unlock_list()
 	for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr) {
 		(*itr)->r_unlock();
 	}
+	r_lockList.clear();
+
 	for (auto itr = w_lockList.begin(); itr != w_lockList.end(); ++itr) {
 		(*itr)->w_unlock();
 	}
+	w_lockList.clear();
 }
 

@@ -9,12 +9,23 @@
 using namespace std;
 
 class Tuple {
-	public:
-		RWLock lock;
-		atomic<int> key;
-		atomic<int> val;
+public:
+	RWLock lock;
+	atomic<unsigned int> key;
+	atomic<unsigned int> val;
 
-		uint8_t padding[16];
+	uint8_t padding[20];
+};
+
+class SetElement {
+public:
+	unsigned int key;
+	unsigned int val;
+
+	SetElement(unsigned int key, unsigned int val) {
+		this->key = key;
+		this->val = val;
+	}
 };
 
 #endif	//	TUPLE_HPP
