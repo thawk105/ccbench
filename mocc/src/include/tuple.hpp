@@ -7,6 +7,7 @@
 #include "lock.hpp"
 
 #define TEMP_THRESHOLD 10
+#define TEMP_MAX 20
 #define TEMP_RESET_US 100
 
 using namespace std;

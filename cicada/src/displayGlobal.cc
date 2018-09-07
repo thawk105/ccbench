@@ -7,8 +7,9 @@
 
 using namespace std;
 
-void displayDB() {
-
+void 
+displayDB() 
+{
 	Tuple *tuple;
 	Version *version;
 
@@ -55,7 +56,8 @@ void displayDB() {
 	}
 }
 
-void displayPRO() 
+void 
+displayPRO() 
 {
    	for (unsigned int i = 0; i < PRO_NUM; i++) { 
 		cout << "transaction No." << i << endl;
@@ -77,15 +79,21 @@ void displayPRO()
 	}
 }
 
-void displayMinRts() {
+void 
+displayMinRts() 
+{
 	cout << "MinRts:	" << MinRts << endl << endl;
 }
 
-void displayMinWts() {
+void 
+displayMinWts() 
+{
 	cout << "MinWts:	" << MinWts << endl << endl;
 }
 
-void displayThreadWtsArray() {
+void 
+displayThreadWtsArray() 
+{
 	cout << "ThreadWtsArray:" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		cout << "thid " << i << ": " << ThreadWtsArray[i]->ts << endl;
@@ -93,7 +101,9 @@ void displayThreadWtsArray() {
 	cout << endl << endl;
 }
 
-void displayThreadRtsArray() {
+void 
+displayThreadRtsArray() 
+{
 	cout << "ThreadRtsArray:" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		cout << "thid " << i << ": " << ThreadRtsArray[i]->ts << endl;
@@ -101,7 +111,38 @@ void displayThreadRtsArray() {
     cout << endl << endl;
 }
 
-void displayAbortRate() 
+void
+displayTransactionRange()
+{
+	cout << "display TransactionRange()" << endl;
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		cout << "th #" << i << ": " << PRO_NUM / (THREAD_NUM - 1) * (i - 1) << ", " << PRO_NUM / (THREAD_NUM - 1) * (i) - 1 << endl;
+	}
+	cout << endl;
+}
+
+void
+displayFinishTransactions()
+{
+	cout << "display FinishTransactions" << endl;
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		cout << "th #" << i << ": " << FinishTransactions[i].num << endl;
+	}
+	cout << endl;
+}
+
+void
+displayAbortCounts()
+{
+	cout << "display AbortCounts()" << endl;
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		cout << "th #" << i << ": " << AbortCounts[i].num << endl;
+	}
+	cout << endl;
+}
+
+void 
+displayAbortRate() 
 {
 	long double sumT(0), sumA(0);
 	long double rate[THREAD_NUM] = {};
@@ -120,7 +161,9 @@ void displayAbortRate()
 	cout << ave_rate << endl;
 }
 
-void displaySLogSet() {
+void 
+displaySLogSet() 
+{
 	if (!GROUP_COMMIT) {
 	}
 	else {

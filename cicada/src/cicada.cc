@@ -55,7 +55,7 @@ LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "Version " << sizeof(Version) << endl;
 		cout << "TimeStamp " << sizeof(TimeStamp) << endl;
-		cout << "pthread_mutex_t " << sizeof(pthread_mutex_t) << endl;
+		cout << "Procedure" << sizeof(Procedure) << endl;
 
 		exit(0);
 	}
@@ -146,10 +146,10 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&ThreadWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadRts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadFlushedWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_INDEX, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		
 		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	//実装の簡単のため、どちらもメモリを確保してしまう。
@@ -221,15 +221,9 @@ maneger_worker(void *arg)
 	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
 		ERR;
 	}
+	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 
-	//実装上Table[TUPLE_NUM - 1]が一番最後に作られているので、それを参照できたら良い
-	Version *verTmp = Table[TUPLE_NUM - 1].latest.load();
-	MinRts = verTmp->wts + 1;
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		ThreadRts[i].ts = MinRts;
-		if (GROUP_COMMIT)
-			ThreadRtsArrayForGroup[i].num = MinRts;
-	}
+	MinWts.store(InitialWts + 2, memory_order_release);
 
 	unsigned int expected, desired;
 	do {
@@ -238,6 +232,7 @@ maneger_worker(void *arg)
 	} while (!Running.compare_exchange_weak(expected, desired, memory_order_acq_rel));
 
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
+	while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
 	// leader work
 	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
@@ -329,12 +324,16 @@ worker(void *arg)
 RETRY:
 			if (*myid == 1) {
 				End = rdtsc();
-				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
+				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
 					do {
 						expected = Ending.load(memory_order_acquire);
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
 					Finish.store(true, std::memory_order_release);
+					//if (trans.gcSet.size() != 0)
+					//	cout << trans.gcSet.size() << endl;
+					//else
+					//	cout << "0" << endl;
 					return nullptr;
 				}
 			} else {
@@ -343,30 +342,34 @@ RETRY:
 						expected = Ending.load(memory_order_acquire);
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+					//if (trans.gcSet.size() != 0)
+					//	cout << trans.gcSet.size() << endl;
+					//else
+					//	cout << "0" << endl;
 					return nullptr;
 				}
 			}
 
 			trans.tbegin(i);
 
+			//if (*myid == 1) {
+			//	if (trans.gcq.size() > 100)
+			//		cout << trans.gcq.size() << endl;
+			//	if (trans.gcq.size() > 1000) exit(1);
+			//}
+
 			//Read phase
 			//Search versions
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				switch(Pro[i][j].ope) {
-					case(Ope::READ):
-						trans.tread(Pro[i][j].key);
-						break;
-					case(Ope::WRITE):
-						trans.twrite(Pro[i][j].key, Pro[i][j].val);
-						
-						//early abort
-						if (trans.status == TransactionStatus::abort) {
-							trans.earlyAbort();
-							goto RETRY;
-						}
-						break;
-					default:
-						break;
+				if (Pro[i][j].ope == Ope::READ) {
+					trans.tread(Pro[i][j].key);
+				} else {
+					trans.twrite(Pro[i][j].key, Pro[i][j].val);
+				}
+
+				if (trans.status == TransactionStatus::abort) {
+					trans.earlyAbort();
+					goto RETRY;
 				}
 			}
 
@@ -374,7 +377,6 @@ RETRY:
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
 				if (i == PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1) {
-					//NNN;
 					i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
 				}
 				FinishTransactions[*myid].num++;
@@ -437,6 +439,9 @@ extern void displayThreadRtsArray();
 extern void displayDB();
 extern void displayPRO();
 extern void displayAbortRate();
+extern void displayFinishTransactions();
+extern void displayAbortCounts();
+extern void displayTransactionRange();
 extern void makeProcedure();
 extern void makeDB();
 extern void mutexInit();
@@ -469,6 +474,9 @@ main(int argc, char *argv[]) {
 	//displayThreadWtsArray();
 	//displayThreadRtsArray();
 	//displayAbortRate();
+	//displayFinishTransactions();
+	//displayAbortCounts();
+	//displayTransactionRange();
 	
 	prtRslt(Bgn, End);
 

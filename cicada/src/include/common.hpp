@@ -18,6 +18,7 @@ GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> MinRts(0);
 GLOBAL std::atomic<uint64_t> MinWts(0);
+GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp(0);
 
 #else
 	#define GLOBAL extern
@@ -27,6 +28,7 @@ GLOBAL std::atomic<unsigned int> Ending;
 GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> MinRts;
 GLOBAL std::atomic<uint64_t> MinWts;
+GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
 
 #endif
 
@@ -40,11 +42,11 @@ GLOBAL bool S_WAL;
 GLOBAL bool ELR;	//early lock release
 GLOBAL bool NLR;
 GLOBAL uint64_t GROUP_COMMIT;
-GLOBAL double CLOCK_PER_US;	//US = micro(µ) seconds 
+GLOBAL uint64_t CLOCK_PER_US;	//US = micro(µ) seconds 
 GLOBAL double IO_TIME_NS;	//nano second
 GLOBAL int GROUP_COMMIT_TIMEOUT_US;	//micro seconds
 GLOBAL int GARBAGE_COLLECTION_INTERVAL_US;	//micro seconds
-GLOBAL int EXTIME;
+GLOBAL uint64_t EXTIME;
 
 GLOBAL TimeStamp *ThreadWts;
 GLOBAL TimeStamp *ThreadRts;
@@ -70,7 +72,9 @@ GLOBAL uint64_t_64byte *GCFlag;
 GLOBAL Procedure **Pro;
 
 GLOBAL Tuple *Table;
+GLOBAL uint64_t InitialWts;
 
 #define SPIN_WAIT_TIMEOUT_US 2
-#define GC_INTER_US 10
+#define GC_INTER_US 10 
+
 #endif	//	COMMON_HPP

@@ -179,7 +179,7 @@ epoch_worker(void *arg)
 		
 			//Reset temprature
 			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-				Table[i % TUPLE_NUM].temp.store(0, memory_order_release);
+				Table[i].temp.store(0, memory_order_release);
 			}
 			
 			EpochTimerStart = rdtsc();
@@ -187,7 +187,7 @@ epoch_worker(void *arg)
 		//----------
 	}
 	
-	return NULL;
+	return nullptr;
 }
 
 static void *
@@ -226,8 +226,9 @@ worker(void *arg)
 	Transaction trans(*myid);
 	try {
 		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
+RETRY:
 			if (*myid == 1) {
-				if (FinishTransactions[*myid].num % 1000 == 0) {
+				//if (FinishTransactions[*myid].num % 1000 == 0) {
 					End = rdtsc();
 					if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
 						Finish.store(true, memory_order_release);
@@ -235,34 +236,25 @@ worker(void *arg)
 							expected = Ending.load(memory_order_acquire);
 							desired = expected + 1;
 						} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-						return NULL;
+						return nullptr;
 					}
-				}
+				//}
 			} else {
 				if (Finish.load(memory_order_acquire)) {
 					do {
 						expected = Ending.load(memory_order_acquire);
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-					return NULL;
+					return nullptr;
 				}
 			}
 
-RETRY:
 			trans.begin();
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				unsigned int value_read;
-				switch(Pro[i][j].ope) {
-					case(Ope::READ) :
-						//cout << "th " << trans.thid << ": read(" << Pro[i][j].key << ")" << endl;
-						value_read = trans.read(Pro[i][j].key);
-						break;
-					case(Ope::WRITE) :
-						//cout << "th " << trans.thid << ": write(" << Pro[i][j].key << ", " << Pro[i][j].val << ")" << endl;
-						trans.write(Pro[i][j].key, Pro[i][j].val);
-						break;
-					default:
-						break;
+				if (Pro[i][j].ope == Ope::READ) {
+					trans.read(Pro[i][j].key);
+				} else {
+					trans.write(Pro[i][j].key, Pro[i][j].val);
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
@@ -272,10 +264,9 @@ RETRY:
 
 			if (!(trans.commit())) {
 				trans.abort();
-				//cout << "th " << trans.thid << ": abort" << endl;
 				goto RETRY;
 			}
-			//cout << "th " << trans.thid << ": commit" << endl;
+
 			trans.writePhase();
 
 			if (i == (PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1)) i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
@@ -284,7 +275,7 @@ RETRY:
 		ERR;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 static pthread_t

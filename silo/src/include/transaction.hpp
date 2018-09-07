@@ -14,8 +14,6 @@ using namespace std;
 
 class Transaction {
 public:
-	//std::map<int, uint64_t, std::less<int>, tbb::scalable_allocator<uint64_t>> readSet;
-	//std::map<int, unsigned int, std::less<int>, tbb::scalable_allocator<unsigned int>> writeSet;
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 

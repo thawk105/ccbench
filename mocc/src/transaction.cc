@@ -46,7 +46,9 @@ Transaction::read(unsigned int key)
 		lock(tuple, false);
 	}
 	
-	if (this->status == TransactionStatus::aborted) return -1;
+	if (this->status == TransactionStatus::aborted) {
+		return -1;
+	}
 	
 	readSet.push_back(ReadElement(tuple->tidword.load(memory_order_acquire), key));
 	return tuple->val.load(memory_order_acquire);
@@ -68,7 +70,7 @@ Transaction::write(unsigned int key, unsigned int val)
 	bool inrll = false;
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key == key) {
-			lock(tuple, max((*itr).mode, true));
+			lock(tuple, true);
 			inrll = true;
 			break;
 		}
@@ -78,7 +80,9 @@ Transaction::write(unsigned int key, unsigned int val)
 		lock(tuple, true);
 	}
 
-	if (this->status == TransactionStatus::aborted) return;
+	if (this->status == TransactionStatus::aborted) {
+		return;
+	}
 
 	//construct log 後で書く
 	//-----
@@ -91,34 +95,52 @@ Transaction::write(unsigned int key, unsigned int val)
 void
 Transaction::lock(Tuple *tuple, bool mode)
 {
-	vector<LockElement> violations;
-	sort(CLL.begin(), CLL.end());
-	vector<LockElement>::iterator cllviobgn = CLL.end();
-	bool firstvio = true;
 	// lock exists in CLL (Current Lock List)
+	sort(CLL.begin(), CLL.end());
+	unsigned int vioctr = 0;
+	unsigned int threshold;
+	bool upgrade = false;
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		// lock already exists in CLL 
 		// 		&& its lock mode is equal to needed mode or it is stronger than needed mode.
 		if ((*itr).key == tuple->key) {
-			if (mode == (*itr).mode || mode < (*itr).mode) return;
+			if (mode == (*itr).mode || mode < (*itr).mode) {
+				return;
+			}
+			else {
+				upgrade = true;
+			}
 		}
 
 		// collect violation
 		if ((*itr).key >= tuple->key) {
-			if (firstvio) {
-				cllviobgn = itr;
-				firstvio = false;
-			}
-			violations.push_back(*itr);
+			if (vioctr == 0) threshold = (*itr).key;
+			vioctr++;
 		}
 
 	}
 
+	if (vioctr == 0) threshold = -1;
+
 	uint64_t expected;
 	uint64_t lockBit = 0b100;
 	// if too many violations
-	if ((CLL.size() / 2) < violations.size() && CLL.size() >= (MAX_OPE / 2)) {
+	if ((CLL.size() / 2) < vioctr && CLL.size() >= (MAX_OPE / 2)) {
 		if (mode) {
+			if (upgrade) {
+				if (tuple->lock.upgrade()) {
+					for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
+						if ((*itr).key == tuple->key) {
+							(*itr).mode = true;
+							break;
+						}
+					}
+					return;
+				} else {
+					this->status = TransactionStatus::aborted;
+					return;
+				}
+			}
 			if (tuple->lock.w_trylock()) {
 				//ロックを取ってからビットを上げる
 				expected = Table[tuple->key].tidword.load(memory_order_acquire);
@@ -143,30 +165,30 @@ Transaction::lock(Tuple *tuple, bool mode)
 			}
 		}
 	}
-	else if (!violations.empty()) {
+	
+	if (vioctr != 0) {
 		// Not in canonical mode. Restore.
-		for (auto itr = cllviobgn; itr != CLL.end(); ++itr) {
+		for (auto itr = CLL.begin() + (CLL.size() - vioctr); itr != CLL.end(); ++itr) {
 			if ((*itr).mode) {
 				//ビットを落としてからロックを解放する
 				expected = Table[(*itr).key].tidword.load(memory_order_acquire);
 				Table[(*itr).key].tidword.store(expected &(~lockBit), memory_order_release);
 				//-----
-				cout << (*itr).key << ".w_unlock() start" << endl;
 				(*itr).lock->w_unlock();
-				cout << (*itr).key << ".w_unlock() end" << endl;
 			} else {
 				(*itr).lock->r_unlock();
 			}
 		}
 		//delete from CLL
-		CLL.erase(cllviobgn, CLL.end());
+		if (CLL.size() == vioctr) CLL.clear();
+		else {
+			CLL.erase(CLL.begin() + (CLL.size() - vioctr), CLL.end());
+		}
 	}
 
-	sort(RLL.begin(), RLL.end());
-	int rllctr = 0;
-
 	// unconditional lock in canonical mode.
-	for (auto itr = rllbgn; itr != RLL.end(); ++itr) {
+	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
+		if ((*itr).key <= threshold) continue;
 		if ((*itr).key < tuple->key) {
 			if ((*itr).mode) {
 				(*itr).lock->w_lock();
@@ -177,34 +199,23 @@ Transaction::lock(Tuple *tuple, bool mode)
 			} else {
 				(*itr).lock->r_lock();
 			}
-			rllctr++;
 			CLL.push_back(*itr);
 		} else {
-			rllbgn = itr;
 			break;
 		}
 	}
-	if (rllctr != 0) {
-		RLL.erase(RLL.begin(), RLL.begin() + rllctr);
-	}
 
-	LockElement acquired_lock(tuple->key, &(tuple->lock), mode);
 	if (mode) {
 		tuple->lock.w_lock();	
-	
 		//ロックを取ってからビットを上げる
 		expected = Table[tuple->key].tidword.load(memory_order_acquire);
 		Table[tuple->key].tidword.store(expected | lockBit, memory_order_release);
 	}
-	else tuple->lock.r_lock();
-
-	CLL.push_back(acquired_lock);
-
-	// remove acquired lock from RLL
-	if ((*rllbgn).key == acquired_lock.key) {
-		rllbgn = RLL.erase(rllbgn);
+	else {
+		tuple->lock.r_lock();
 	}
 
+	CLL.push_back(LockElement(tuple->key, &(tuple->lock), mode));
 	return;
 }
 
@@ -239,20 +250,22 @@ Transaction::construct_rll()
 		if ((*itr).failed_verification) {
 			random_device rnd;
 			uint64_t expected, desired;
-			do {
-				expected = Table[(*itr).key].temp.load(memory_order_acquire);
-				double result = rnd() / (double)random_device::max();
-				if (result == 0) {
-					printf("temprature result is 0\n");
-					exit(1);
-				}
-				if (result < 0 || result > 1) {
-					printf("temprature result is ERR\n");
-					exit(1);
-				}
-				if (result > 1.0 / pow(2, expected)) break;
-				desired = expected + 1;
-			} while (!Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+			expected = Table[(*itr).key].temp.load(memory_order_acquire);
+			if (expected == TEMP_MAX) {
+				sort(RLL.begin(), RLL.end());
+				return;
+			}
+			double result = rnd() / (double)random_device::max();
+			if (result > 1.0 / pow(2, expected)) {
+				do {
+					expected = Table[(*itr).key].temp.load(memory_order_acquire);
+					if (expected == TEMP_MAX) {
+						sort(RLL.begin(), RLL.end());
+						return;
+					}
+					desired = expected + 1;
+				} while (!Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+			}
 		}
 	}
 
@@ -270,7 +283,9 @@ Transaction::commit()
 	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		lock(&Table[(*itr).key], true);
-		if (this->status == TransactionStatus::aborted) return false;
+		if (this->status == TransactionStatus::aborted) {
+			return false;
+		}
 	}
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -278,7 +293,6 @@ Transaction::commit()
 		if (((*itr).tidword >> 3) != tmptidword >> 3) {
 			(*itr).failed_verification = true;
 			this->status = TransactionStatus::aborted;
-			//cout << "tid miss abort" << endl;
 			return false;
 		}
 
@@ -294,7 +308,6 @@ Transaction::commit()
 			//ロックが取られていて，自分が持ち主でないのなら abort
 			if (includeW == writeSet.end()) {
 				this->status = TransactionStatus::aborted;
-				//cout << "another acquired lock " << (*itr).key << " abort" << endl;
 				return false;
 			}
 		}
@@ -388,7 +401,7 @@ Transaction::writePhase()
 void
 Transaction::dispCLL()
 {
-	cout << "th " << this->thid << ": ";
+	cout << "th " << this->thid << ": CLL: ";
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		cout << (*itr).key << "(";
 		if ((*itr).mode) cout << "w) ";
@@ -396,3 +409,26 @@ Transaction::dispCLL()
 	}
 	cout << endl;
 }
+
+void
+Transaction::dispRLL()
+{
+	cout << "th " << this->thid << ": RLL: ";
+	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
+		cout << (*itr).key << "(";
+		if ((*itr).mode) cout << "w) ";
+		else cout << "r) ";
+	}
+	cout << endl;
+}
+
+void
+Transaction::dispWS()
+{
+	cout << "th " << this->thid << ": write set: ";
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		cout << "(" << (*itr).key << ", " << (*itr).val << "), ";
+	}
+	cout << endl;
+}
+

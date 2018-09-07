@@ -2,6 +2,7 @@
 #define LOCK_HPP
 
 #include <atomic>
+#include <xmmintrin.h>
 
 class RWLock {
 public:

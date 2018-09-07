@@ -11,7 +11,7 @@ makeProcedure()
 {
 	try {
 		Pro = new Procedure*[PRO_NUM];
-		for (int i = 0; i < PRO_NUM; i++) {
+		for (unsigned int i = 0; i < PRO_NUM; i++) {
 			Pro[i] = new Procedure[MAX_OPE];
 		}
 	} catch (bad_alloc) {
@@ -19,13 +19,13 @@ makeProcedure()
 	}
 
 	random_device rnd;
-	for (int i = 0; i < PRO_NUM; i++) {
-		for (int j = 0; j < MAX_OPE; j++) {
+	for (unsigned int i = 0; i < PRO_NUM; i++) {
+		for (unsigned int j = 0; j < MAX_OPE; j++) {
 			if ((rnd() % 100) < (READ_RATIO * 100))
 				Pro[i][j].ope = Ope::READ;
 			else
 				Pro[i][j].ope = Ope::WRITE;
-			Pro[i][j].key = rnd() % TUPLE_NUM + 1;	// range of key 1 ~ TUPLE_NUM
+			Pro[i][j].key = rnd() % TUPLE_NUM;
 			Pro[i][j].val = rnd() % (TUPLE_NUM * 10);
 		}
 	}

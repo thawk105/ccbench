@@ -7,7 +7,9 @@
 
 using namespace std;
 
-void displayDB() {
+void 
+displayDB() 
+{
 
 	Tuple *tuple;
 
@@ -22,7 +24,8 @@ void displayDB() {
 	}
 }
 
-void displayPRO() 
+void 
+displayPRO() 
 {
    	for (unsigned int i = 0; i < PRO_NUM; i++) { 
 		cout << "transaction No." << i << endl;
@@ -44,7 +47,38 @@ void displayPRO()
 	}
 }
 
-void displayAbortRate() 
+void
+displayTransactionRange()
+{
+	cout << "display TransactionRange()" << endl;
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		cout << "th #" << i << ": " << PRO_NUM / (THREAD_NUM - 1) * (i - 1) << ", " << PRO_NUM / (THREAD_NUM - 1) * (i) - 1 << endl;
+	}
+	cout << endl;
+}
+
+void
+displayFinishTransactions()
+{
+	cout << "display FinishTransactions" << endl;
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		cout << "th #" << i << ": " << FinishTransactions[i].num << endl;
+	}
+	cout << endl;
+}
+
+void
+displayAbortCounts()
+{
+	cout << "display AbortCounts()" << endl;
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		cout << "th #" << i << ": " << AbortCounts[i].num << endl;
+	}
+	cout << endl;
+}
+
+void 
+displayAbortRate() 
 {
 	long double sumT(0), sumA(0);
 	long double rate[THREAD_NUM] = {};

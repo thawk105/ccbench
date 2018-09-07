@@ -19,18 +19,15 @@ public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 	vector<LockElement> RLL;
-	vector<LockElement>::iterator rllbgn;
 	vector<LockElement> CLL;
 	TransactionStatus status;
 
 	int thid;
-	
 
 	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
 		RLL.reserve(MAX_OPE);
-		rllbgn = RLL.begin();
 		CLL.reserve(MAX_OPE);
 
 		this->thid = thid;
@@ -47,6 +44,8 @@ public:
 	void abort();
 	void writePhase();
 	void dispCLL();
+	void dispRLL();
+	void dispWS();
 };
 
 
