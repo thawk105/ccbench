@@ -10,7 +10,7 @@ set ylabel "Throughput (Trans/Sec)"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_tuple200_r5.eps"
-plot "result_cicada_r5_tuple200.dat" w errorlines title "Cicada", "result_silo_r5_tuple200.dat" w errorlines title "Silo", "result_ermia_r5_tuple200.dat" w errorlines title "ERMIA", "result_ermia-latchFreeSSN_r5_tuple200.dat" w errorlines title "ERMIA - latchFree", "result_ss2pl_r5_tuple200.dat" w errorlines title "SS2PL"
+plot "result_cicada_r5_tuple200.dat" w errorlines title "Cicada", "result_silo_r5_tuple200.dat" w errorlines title "Silo", "result_ermia_r5_tuple200.dat" w errorlines title "ERMIA", "result_ermia-latchFreeSSN_r5_tuple200.dat" w errorlines title "ERMIA - latchFree", "result_ss2pl_r5_tuple200.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple200.dat" w errorlines title "MOCC",
 
 set title "tuple 10k, read 50%"
 set xlabel "Number of threads"
@@ -18,7 +18,7 @@ set ylabel "Throughput (Trans/Sec)"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_tuple10000_r5.eps"
-plot "result_cicada_r5_tuple10000.dat" w errorlines title "Cicada", "result_silo_r5_tuple10000.dat" w errorlines title "Silo", "result_ermia-serialSSN_r5_tuple10000.dat" w errorlines title "ERMIA-serialSSN", "result_ermia-latchFreeSSN_r5_tuple10000.dat" w errorlines title "ERMIA-latchFreeSSN", "result_ss2pl_r5_tuple10000.dat" w errorlines title "SS2PL"
+plot "result_cicada_r5_tuple10000.dat" w errorlines title "Cicada", "result_silo_r5_tuple10000.dat" w errorlines title "Silo", "result_ermia-latchFreeSSN_r5_tuple10000.dat" w errorlines title "ERMIA", "result_ss2pl_r5_tuple10000.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple10000.dat" w errorlines title "MOCC"
 
 set title "SS2PL"
 set xlabel "Number of threads"
