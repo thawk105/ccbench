@@ -4,12 +4,14 @@
 #include "include/debug.hpp"
 #include "include/version.hpp"
 #include "include/tsc.hpp"
+
 #include <algorithm>
 #include <sys/time.h>
 #include <stdio.h>
 #include <fstream>
 #include <string>
 #include <vector>
+#include <xmmintrin.h>
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
@@ -99,12 +101,16 @@ Transaction::tread(unsigned int key)
 						}
 					}
 				} else {
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
+					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) { 
+						_mm_pause();
+					}
 				}
 				if (version->status.load(std::memory_order_acquire) == VersionStatus::committed) break;
 			} else if (ELR) {
 				//プレコミットを利用．
-				while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
+				while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) { 
+					_mm_pause();
+				}
 				if (version->status.load(std::memory_order_acquire) == VersionStatus::committed || version->status.load(std::memory_order_acquire) == VersionStatus::precommitted) break;
 				// もし committed または precommitted ならば，利用したいので
 				// break する． break しないと， version = version->next 
@@ -184,6 +190,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 						}
 					}
 				}	
+				_mm_pause();
 			}
 			if (version->status.load(std::memory_order_acquire) == VersionStatus::committed) break;
 		
@@ -198,7 +205,9 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	} 
 	else if (ELR) {
 		//ここにきてる時点でステータスはpending or committed or precomitted.
-		while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
+		while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
+			_mm_pause();
+		}
 		while (version->status.load(std::memory_order_acquire) != VersionStatus::precommitted && version->status.load(std::memory_order_acquire) != VersionStatus::committed) {
 			//status == aborted
 			version = version->next.load(std::memory_order_acquire);
@@ -246,9 +255,12 @@ Transaction::validation()
 						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
 							return false;
 						}
+						_mm_pause();
 					}
 				} else {
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
+					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
+						_mm_pause();
+					}
 				}
 				//now, version->status is not pending.
 			}	
