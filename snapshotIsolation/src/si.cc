@@ -163,12 +163,12 @@ manager_worker(void *arg)
 
 				verTmp = Table[i].latest.load(memory_order_acquire);
 				if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
-					verTmp = verTmp->prev;
+					verTmp = verTmp->committed_prev;
 				// この時点で， verTmp はコミット済み最新バージョン
 
 				uint64_t verWts = verTmp->wts.load(memory_order_acquire);
 				while (mintxID < verWts) {
-					verTmp = verTmp->prev;
+					verTmp = verTmp->committed_prev;
 					if (verTmp == nullptr) break;
 					verWts = verTmp->wts.load(memory_order_acquire);
 				}
@@ -230,7 +230,7 @@ worker(void *arg)
 	if (*myid == 1) Bgn = rdtsc();
 
 	try {
-		Transaction trans(*myid);
+		Transaction trans(*myid, MAX_OPE);
 		for (unsigned int i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM - 1) * (*myid); ++i) {
 RETRY:
 			//End judgment

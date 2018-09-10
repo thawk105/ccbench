@@ -29,8 +29,8 @@ makeDB()
 		tmp->lock.store(-1, memory_order_release);
 		verTmp = tmp->latest.load(std::memory_order_acquire);
 		verTmp->rts.store(0, memory_order_release);
-		verTmp->wts.store(0, memory_order_release);
-		verTmp->val.store(rnd() % (TUPLE_NUM * 10), memory_order_release);
+		verTmp->wts = 0;
+		verTmp->val = rnd() % (TUPLE_NUM * 10);
 		verTmp->prev = nullptr;
 		verTmp->status.store(VersionStatus::committed, std::memory_order_release);
 	}
