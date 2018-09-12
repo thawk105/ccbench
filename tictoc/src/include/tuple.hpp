@@ -8,38 +8,30 @@
 class Tuple	{
 public:
 	std::atomic<uint64_t> tsword;
+	// wts 48bit, rts-wts 15bit, lockbit 1bit
 	unsigned int key = 0;
 	std::atomic<unsigned int> val;
 	int8_t padding[16];
+
+	bool isLocked() {
+		if (tsword & 1) return true;
+		else return false;
+	}
 };
 
-class ReadElement {
+class SetElement {
 public:
-	uint64_t tsword;
 	unsigned int key;
 	unsigned int val;
+	uint64_t tsword;
 
-	ReadElement(unsigned int key, unsigned int val, uint64_t tsword) {
+	SetElement(unsigned int key, unsigned int val, uint64_t tsword) {
 		this->key = key;
 		this->val = val;
 		this->tsword = tsword;
 	}
 
-	bool operator<(const ReadElement& right) const {
-		return this->key < right.key;
-	}
-};
-
-class WriteElement {
-public:
-	unsigned int key, val;
-
-	WriteElement(unsigned int key, unsigned int val) {
-		this->key = key;
-		this->val = val;
-	}
-
-	bool operator<(const WriteElement& right) const {
+	bool operator<(const SetElement& right) const {
 		return this->key < right.key;
 	}
 };

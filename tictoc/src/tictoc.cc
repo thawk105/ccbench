@@ -20,7 +20,7 @@ using namespace std;
 static bool
 chkInt(char *arg)
 {
-    for (uint i=0; i<strlen(arg); i++) {
+    for (uint i=0; i<strlen(arg); ++i) {
         if (!isdigit(arg[i])) {
 			cout << std::string(arg) << " is not a number." << endl;
 			exit(0);
@@ -35,7 +35,7 @@ chkArg(const int argc, char *argv[])
 	if (argc != 8) {
 		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) EXTIME\n\
 \n\
-example:./main 1000000 20 15 10000 0.5 2400 40 3\n\
+example:./main 1000000 20 15 10000 0.5 2400 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
@@ -55,7 +55,6 @@ EXTIME: execution time.\n\
 	chkInt(argv[4]);
 	chkInt(argv[6]);
 	chkInt(argv[7]);
-	chkInt(argv[8]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
@@ -76,20 +75,14 @@ So you have to set THREAD_NUM >= 2.\n\n");
 
 	try {
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
-		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
-		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(std::atomic<uint64_t>)) != 0) ERR;	//[0]は使わない
-		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 	//init
-	for (unsigned int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		AbortCounts[i].num = 0;
-		ThRecentTID[i].num = 0;
 		FinishTransactions[i].num = 0;
-		ThLocalEpoch[i] = 0;
 	}
 }
 
@@ -112,7 +105,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; i++) {
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -121,18 +114,6 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 }
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-void threadEndProcess(int *myid);
-
-bool
-chkEpochLoaded()
-{
-//全てのワーカースレッドが最新エポックを読み込んだか確認する．
-	for (unsigned int i = 1; i < THREAD_NUM; i++) {
-		if (ThLocalEpoch[i].load(std::memory_order_acquire) != GlobalEpoch) return false;
-	}
-
-	return true;
-}
 
 static void *
 worker(void *arg)
@@ -189,8 +170,7 @@ RETRY:
 							expected = Ending.load(std::memory_order_acquire);
 							desired = expected + 1;
 						} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-						FinishTransactions[*myid].num = localFinishTransactions;
-						return NULL;
+						return nullptr;
 					}
 				}
 			} else {
@@ -199,8 +179,7 @@ RETRY:
 						expected = Ending.load(std::memory_order_acquire);
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-					FinishTransactions[*myid].num = localFinishTransactions;
-					return NULL;
+					return nullptr;
 				}
 			}
 
@@ -209,17 +188,12 @@ RETRY:
 			//Read phase
 			//Search versions
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				unsigned int value_read;
-				switch(Pro[i][j].ope) {
-					case(Ope::READ):
-						value_read = trans.tread(Pro[i][j].key);
-						//printf("read(%d) = %d\n", Pro[i][j].key, value_read);
-						break;
-					case(Ope::WRITE):
-						trans.twrite(Pro[i][j].key, Pro[i][j].val);
-						break;
-					default:
-						break;
+				if (Pro[i][j].ope == Ope::READ) {
+					trans.tread(Pro[i][j].key);
+				} else if (Pro[i][j].ope == Ope::WRITE) {
+					trans.twrite(Pro[i][j].key, Pro[i][j].val);
+				} else {
+					ERR;
 				}
 			}
 			
@@ -233,14 +207,13 @@ RETRY:
 			trans.writePhase();
 
 			//Maintenance
-			if (i == (PRO_NUM / (THREAD_NUM-1) * (*myid) - 1)) i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1);
-			localFinishTransactions++;
+			if (i == (PRO_NUM / (THREAD_NUM) * (*myid+1) - 1)) i = PRO_NUM / (THREAD_NUM) * (*myid);
 		}
 	} catch (bad_alloc) {
 		ERR;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 static pthread_t
@@ -256,11 +229,7 @@ threadCreate(int id)
 	}
 	*myid = id;
 
-	if (*myid == 0) {
-		if (pthread_create(&t, NULL, epoch_worker, (void *)myid)) ERR;
-	} else {
-		if (pthread_create(&t, NULL, worker, (void *)myid)) ERR;
-	}
+	if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
 
 	return t;
 }
@@ -289,7 +258,7 @@ main(int argc, char *argv[]) {
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		pthread_join(thread[i], NULL);
+		pthread_join(thread[i], nullptr);
 	}
 
 	//displayDB();

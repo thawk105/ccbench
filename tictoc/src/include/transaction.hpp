@@ -14,8 +14,8 @@ using namespace std;
 
 class Transaction {
 public:
-	vector<ReadElement> readSet;
-	vector<WriteElement> writeSet;
+	vector<SetElement> readSet;
+	vector<SetElement> writeSet;
 
 	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);

@@ -1,12 +1,12 @@
-PROG = silo.exe
-SOURCES = silo.cc makeDB.cc makeProcedure.cc transaction.cc stopWatch.cc displayGlobal.cc
+PROG = tictoc.exe
+SOURCES = tictoc.cc makeDB.cc makeProcedure.cc transaction.cc stopWatch.cc displayGlobal.cc
 
 CC = g++
 CFLAGS = -c -Wall -g -O2 -std=c++11 -march=native
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 
-O1 = silo.o
+O1 = tictoc.o
 O2 = makeDB.o
 O3 = makeProcedure.o
 O4 = transaction.o
