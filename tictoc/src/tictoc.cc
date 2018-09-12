@@ -20,7 +20,7 @@ using namespace std;
 static bool
 chkInt(char *arg)
 {
-    for (uint i=0; i<strlen(arg); ++i) {
+    for (uint i=0; i<strlen(arg); i++) {
         if (!isdigit(arg[i])) {
 			cout << std::string(arg) << " is not a number." << endl;
 			exit(0);
@@ -32,8 +32,8 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 9) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) EPOCH_TIME EXTIME\n\
+	if (argc != 8) {
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) EXTIME\n\
 \n\
 example:./main 1000000 20 15 10000 0.5 2400 40 3\n\
 \n\
@@ -43,7 +43,6 @@ THREAD_NUM(int): total numbers of thread.\n\
 PRO_NUM(int):    initial total numbers of transactions.\n\
 READ_RATIO(float): ratio of read in transaction.\n\
 CLOCK_PER_US: CPU_MHZ\n\
-EPOCH_TIME(int)(ms): Ex. 40\n\
 EXTIME: execution time.\n\
 \n\n");
 	    cout << "Tuple " << sizeof(Tuple) << endl;
@@ -64,8 +63,7 @@ EXTIME: execution time.\n\
 	PRO_NUM = atoi(argv[4]);
 	READ_RATIO = atof(argv[5]);
 	CLOCK_PER_US = atof(argv[6]);
-	EPOCH_TIME = atoi(argv[7]);
-	EXTIME = atoi(argv[8]);
+	EXTIME = atoi(argv[7]);
 	
 	if (THREAD_NUM > PRO_NUM) {
 		printf("THREAD_NUM must be smaller than PRO_NUM\n");
@@ -87,7 +85,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 		ERR;
 	}
 	//init
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
 		FinishTransactions[i].num = 0;
@@ -114,7 +112,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 0; i < THREAD_NUM; i++) {
 		sumTrans += FinishTransactions[i].num;
 	}
 
@@ -129,71 +127,11 @@ bool
 chkEpochLoaded()
 {
 //全てのワーカースレッドが最新エポックを読み込んだか確認する．
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+	for (unsigned int i = 1; i < THREAD_NUM; i++) {
 		if (ThLocalEpoch[i].load(std::memory_order_acquire) != GlobalEpoch) return false;
 	}
 
 	return true;
-}
-
-pid_t gettid(void)
-{
-	return syscall(SYS_gettid);
-}
-
-static void *
-epoch_worker(void *arg)
-{
-//1. 40msごとに global epoch を必要に応じてインクリメントする
-//2. 十分条件
-//	全ての worker が最新の epoch を読み込んでいる。
-//
-	int *myid = (int *)arg;
-	pid_t pid = gettid();
-	cpu_set_t cpu_set;
-	uint64_t EpochTimerStart;
-	uint64_t EpochTimerStop;
-
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-	
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
-
-	//----------
-	//wait for all threads start. CAS.
-	unsigned int expected;
-	unsigned int desired;
-	do {
-		expected = Running.load(std::memory_order_acquire);
-		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-	
-	//spin wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {
-	}
-	//----------
-
-	//----------
-	//Epoch Control
-	//
-	EpochTimerStart = rdtsc();
-	while (Ending.load(std::memory_order_acquire) != THREAD_NUM - 1) {
-		EpochTimerStop = rdtsc();
-		//chkEpochLoaded は最新のグローバルエポックを
-		//全てのワーカースレッドが読み込んだか確認する．
-		//if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME)) printf("passed epoch time\n");
-		//if (chkEpochLoaded()) printf("all worker read global epoch\n");
-		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
-			GlobalEpoch++;
-			EpochTimerStart = rdtsc();
-		}
-	}
-	//----------
-
-	return NULL;
 }
 
 static void *
@@ -202,7 +140,7 @@ worker(void *arg)
 	int *myid = (int *)arg;
 
 	//----------
-	pid_t pid = gettid();
+	pid_t pid = syscall(SYS_gettid);
 	cpu_set_t cpu_set;
 
 	CPU_ZERO(&cpu_set);
@@ -234,15 +172,14 @@ worker(void *arg)
 	//----------
 	
 	//start work(transaction)
-	if (*myid == 1) Bgn = rdtsc();
+	if (*myid == 0) Bgn = rdtsc();
 
 	try {
-		uint64_t localFinishTransactions = 0;
 
 		Transaction trans(*myid);
-		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
+		for (unsigned int i = PRO_NUM / (THREAD_NUM) * (*myid); i < PRO_NUM / (THREAD_NUM) * (*myid+1); ++i) {
 RETRY:
-			if (*myid == 1) {
+			if (*myid == 0) {
 				if (FinishTransactions[*myid].num % 1000 == 0) {
 					End = rdtsc();
 					if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {

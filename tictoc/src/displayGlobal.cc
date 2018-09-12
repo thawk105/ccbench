@@ -18,8 +18,8 @@ displayDB()
 		cout << "------------------------------" << endl;	//-は30個
 		cout << "key: " << tuple->key << endl;
 		cout << "val: " << tuple->val << endl;
-		cout << "TIDword: " << tuple->tidword.load() << endl;
-		cout << "bit: " << static_cast<bitset<64>>(tuple->tidword.load()) << endl;
+		cout << "TS_word: " << tuple->tsword.load() << endl;
+		cout << "bit: " << static_cast<bitset<64>>(tuple->tsword.load()) << endl;
 		cout << endl;
 	}
 }
@@ -27,7 +27,7 @@ displayDB()
 void 
 displayPRO() 
 {
-   	for (unsigned int i = 0; i < PRO_NUM; ++i) { 
+   	for (unsigned int i = 0; i < PRO_NUM; i++) { 
 		cout << "transaction No." << i << endl;
 		for (unsigned int j = 0; j < MAX_OPE; j++) {
 	   		cout << "(ope, key, val) = (";
