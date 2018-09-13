@@ -68,10 +68,6 @@ EXTIME: execution time.\n\
 		printf("THREAD_NUM must be smaller than PRO_NUM\n");
 		exit(0);
 	}
-	if (THREAD_NUM < 2) {
-		printf("One thread is epoch thread, and others are worker threads.\n\
-So you have to set THREAD_NUM >= 2.\n\n");
-	}
 
 	try {
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -198,13 +194,13 @@ RETRY:
 			}
 			
 			//Validation phase
-			if (!(trans.validationPhase())) {
+			if (trans.validationPhase()) {
+				//Write phase
+				trans.writePhase();
+			} else {
 				trans.abort();
 				goto RETRY;
 			}
-
-			//Write phase
-			trans.writePhase();
 
 			//Maintenance
 			if (i == (PRO_NUM / (THREAD_NUM) * (*myid+1) - 1)) i = PRO_NUM / (THREAD_NUM) * (*myid);

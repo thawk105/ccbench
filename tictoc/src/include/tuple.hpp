@@ -5,30 +5,52 @@
 #include <cstdint>
 #include <pthread.h>
 
-class Tuple	{
-public:
-	std::atomic<uint64_t> tsword;
-	// wts 48bit, rts-wts 15bit, lockbit 1bit
-	unsigned int key = 0;
-	std::atomic<unsigned int> val;
-	int8_t padding[16];
+struct TsWord {
+	union {
+		uint64_t obj;
+		struct {
+			bool lock:1;
+			uint16_t delta:15;
+			uint64_t wts:48;
+		};
+	};
+
+	TsWord () {
+		obj = 0;
+	}
+
+	bool operator==(const TsWord& right) const {
+		return obj == right.obj;
+	}
+
+	bool operator!=(const TsWord& right) const {
+		return !operator==(right);
+	}
 
 	bool isLocked() {
-		if (tsword & 1) return true;
+		if (lock) return true;
 		else return false;
 	}
+};
+class Tuple	{
+public:
+	TsWord tsw;
+	// wts 48bit, rts-wts 15bit, lockbit 1bit
+	unsigned int key = 0;
+	unsigned int val;
+	int8_t padding[16];
 };
 
 class SetElement {
 public:
 	unsigned int key;
 	unsigned int val;
-	uint64_t tsword;
+	TsWord tsw;
 
-	SetElement(unsigned int key, unsigned int val, uint64_t tsword) {
+	SetElement(unsigned int key, unsigned int val, TsWord tsw) {
 		this->key = key;
 		this->val = val;
-		this->tsword = tsword;
+		this->tsw.obj = tsw.obj;
 	}
 
 	bool operator<(const SetElement& right) const {

@@ -18,8 +18,8 @@ displayDB()
 		cout << "------------------------------" << endl;	//-は30個
 		cout << "key: " << tuple->key << endl;
 		cout << "val: " << tuple->val << endl;
-		cout << "TS_word: " << tuple->tsword.load() << endl;
-		cout << "bit: " << static_cast<bitset<64>>(tuple->tsword.load()) << endl;
+		cout << "TS_word: " << tuple->tsw.obj << endl;
+		cout << "bit: " << static_cast<bitset<64>>(tuple->tsw.obj) << endl;
 		cout << endl;
 	}
 }

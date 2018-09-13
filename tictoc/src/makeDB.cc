@@ -17,9 +17,9 @@ void makeDB() {
 
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 		tmp = &Table[i];
-		tmp->tsword = 0;
+		tmp->tsw.obj = 0;
 		tmp->key = i;
-		tmp->val.store(rnd() % (TUPLE_NUM * 10), memory_order_release);
+		tmp->val = rnd() % (TUPLE_NUM * 10);
 	}
 
 }

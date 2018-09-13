@@ -25,6 +25,7 @@ public:
 	}
 
 	int thid;
+	uint64_t commit_ts;
 
 	int tread(unsigned int key);
 	void twrite(unsigned int key, unsigned int val);
