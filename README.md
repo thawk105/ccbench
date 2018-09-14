@@ -6,7 +6,6 @@
 ## MOCC
 思ったより性能が出ていない．後で最適化したい．
 ## TicToc
-書きかけ
 ## Snapshot Isolation
 書きかけ
 
