@@ -202,7 +202,7 @@ Transaction::lockWriteSet()
 					expected.obj = __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
 					desired.obj = expected.obj;
 					desired.lock = 0;
-					__atomic_store_n(&(Table[(*itr).key].tsw.obj), desired.obj, __ATOMIC_RELAXED);
+					__atomic_store_n(&(Table[(*itr).key].tsw.obj), desired.obj, __ATOMIC_RELEASE);
 				}
 				return;
 			}
@@ -224,7 +224,7 @@ Transaction::unlockWriteSet()
 		expected.obj = __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
 		desired.obj = expected.obj;
 		desired.lock = 0;
-		__atomic_store_n(&(Table[(*itr).key].tsw.obj), desired.obj, __ATOMIC_RELAXED);
+		__atomic_store_n(&(Table[(*itr).key].tsw.obj), desired.obj, __ATOMIC_RELEASE);
 	}
 }
 
