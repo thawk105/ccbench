@@ -18,6 +18,7 @@ void makeDB() {
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 		tmp = &Table[i];
 		tmp->tsw.obj = 0;
+		tmp->pre_tsw.obj = 0;
 		tmp->key = i;
 		tmp->val = rnd() % (TUPLE_NUM * 10);
 	}

@@ -181,10 +181,15 @@ RETRY:
 
 			//Read phase
 			//Search versions
+			trans.tbegin();
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				if (Pro[i][j].ope == Ope::READ) {
 					//printf("thid #%d: read(%d)\n", trans.thid, Pro[i][j].key);
 					trans.tread(Pro[i][j].key);
+					if (trans.status == TransactionStatus::aborted) {
+						trans.abort();
+						goto RETRY;
+					}
 				} else if (Pro[i][j].ope == Ope::WRITE) {
 					//printf("thid #%d: write(%d, %d)\n", trans.thid, Pro[i][j].key, Pro[i][j].val);
 					trans.twrite(Pro[i][j].key, Pro[i][j].val);

@@ -35,10 +35,11 @@ struct TsWord {
 class Tuple	{
 public:
 	TsWord tsw;
+	TsWord pre_tsw;
 	// wts 48bit, rts-wts 15bit, lockbit 1bit
 	unsigned int key = 0;
 	unsigned int val;
-	int8_t padding[16];
+	int8_t padding[8];
 };
 
 class SetElement {

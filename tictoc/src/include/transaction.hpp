@@ -12,21 +12,32 @@
 
 using namespace std;
 
+enum class TransactionStatus : uint8_t {
+	inFlight,
+	committed,
+	aborted,
+};
+
 class Transaction {
 public:
+	int thid;
+	uint64_t commit_ts;
+	uint64_t appro_commit_ts;
+	TransactionStatus status;
 	vector<SetElement> readSet;
 	vector<SetElement> writeSet;
+	vector<unsigned int> cll;	// current lock list;
+	//use for lockWriteSet() to record locks;
 
 	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
+		cll.reserve(MAX_OPE);
 
 		this->thid = thid;
 	}
 
-	int thid;
-	uint64_t commit_ts;
-
+	void tbegin();
 	int tread(unsigned int key);
 	void twrite(unsigned int key, unsigned int val);
 	bool validationPhase();
