@@ -157,17 +157,15 @@ worker(void *arg)
 		for (unsigned int i = PRO_NUM / (THREAD_NUM) * (*myid); i < PRO_NUM / (THREAD_NUM) * (*myid+1); ++i) {
 RETRY:
 			if (*myid == 0) {
-				if (FinishTransactions[*myid].num % 1000 == 0) {
-					End = rdtsc();
-					if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
-						Finish.store(true, std::memory_order_release);
+				End = rdtsc();
+				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
+					Finish.store(true, std::memory_order_release);
 
-						do {
-							expected = Ending.load(std::memory_order_acquire);
-							desired = expected + 1;
-						} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-						return nullptr;
-					}
+					do {
+						expected = Ending.load(std::memory_order_acquire);
+						desired = expected + 1;
+					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+					return nullptr;
 				}
 			} else {
 				if (Finish.load(std::memory_order_acquire)) {
@@ -185,8 +183,10 @@ RETRY:
 			//Search versions
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
 				if (Pro[i][j].ope == Ope::READ) {
+					//printf("thid #%d: read(%d)\n", trans.thid, Pro[i][j].key);
 					trans.tread(Pro[i][j].key);
 				} else if (Pro[i][j].ope == Ope::WRITE) {
+					//printf("thid #%d: write(%d, %d)\n", trans.thid, Pro[i][j].key, Pro[i][j].val);
 					trans.twrite(Pro[i][j].key, Pro[i][j].val);
 				} else {
 					ERR;
@@ -197,6 +197,7 @@ RETRY:
 			if (trans.validationPhase()) {
 				//Write phase
 				trans.writePhase();
+				//cout << "commit" << endl;
 			} else {
 				trans.abort();
 				goto RETRY;

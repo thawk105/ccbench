@@ -34,6 +34,7 @@ public:
 	void writePhase();
 	void lockWriteSet();
 	void unlockWriteSet();
+	void dispWS();
 };
 
 #endif	//	TRANSACTION_HPP
