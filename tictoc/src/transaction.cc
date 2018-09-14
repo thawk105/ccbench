@@ -172,8 +172,8 @@ Transaction::writePhase()
 		result.wts = this->commit_ts;
 		result.delta = 0;
 		result.lock = 0;
-		__atomic_store_n(&(Table[(*itr).key].tsw.obj), result.obj, __ATOMIC_RELAXED);
 		__atomic_store_n(&(Table[(*itr).key].pre_tsw.obj), (*itr).tsw.obj, __ATOMIC_RELAXED);
+		__atomic_store_n(&(Table[(*itr).key].tsw.obj), result.obj, __ATOMIC_RELEASE);
 	}
 
 	FinishTransactions[thid].num++;
