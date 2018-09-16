@@ -1,6 +1,8 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/transaction.hpp"
+#include "include/tsc.hpp"
+
 #include <atomic>
 #include <stdio.h>
 
@@ -14,7 +16,6 @@ Transaction::abort()
 	if (AbortCounts[thid].num == UINT64_MAX) {
 		AbortCounts[thid].num = 0;
 		AbortCounts2[thid].num++;
-		NNN;
 	}
 
 	readSet.clear();
@@ -25,8 +26,17 @@ void
 Transaction::commit()
 {
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		//cout << itr->first << " " << itr->second << endl;
+		//my experiment consume about 60 clocks
 		Table[(*itr).key].val = (*itr).val;
+
+		// modify time test
+		// experiment " if locks acquire more clocks, what is the performance
+		//uint64_t start, stop;
+		//start = rdtsc();
+		//do {
+		//	stop = rdtsc();
+		//} while ((stop - start) < 600);
+		//-----
 	}
 
 	unlock_list();
@@ -40,9 +50,6 @@ void
 Transaction::tbegin()
 {
 	this->status = TransactionStatus::inFlight;
-	
-	//printf("LockList size %d\n", lockList.size());
-	//printf("writeSet size %d\n", writeSet.size());
 }
 
 int
@@ -83,7 +90,7 @@ Transaction::twrite(unsigned int key, unsigned int val)
 				this->status = TransactionStatus::aborted;
 				return;
 			}
-			// upgrade 成功
+			// upgrade success
 			for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr) {
 				if (*itr == &(Table[key].lock)) {
 					r_lockList.erase(itr);
