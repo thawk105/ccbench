@@ -1,11 +1,13 @@
 # 並行性制御ベンチマーク
 ## Cicada
+SIGMOD 2017
 ## Silo
+SOSP 2013
 ## ERMIA (SI + SSN)
-思ったより性能が出ていない．後で最適化したい．
+SIGMOD 2016
 ## MOCC
-思ったより性能が出ていない．後で最適化したい．
+VLDB 2017
 ## TicToc
+SIGMOD 2016
 ## Snapshot Isolation
-書きかけ
-
+TBD (To Be Determined)
