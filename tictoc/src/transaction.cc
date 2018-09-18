@@ -1,5 +1,6 @@
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
+#include "include/tsc.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include <algorithm>
@@ -17,6 +18,26 @@ extern void displayDB();
 
 using namespace std;
 
+SetElement *
+Transaction::searchWriteSet(unsigned int key)
+{
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
+SetElement *
+Transaction::searchReadSet(unsigned int key)
+{
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
 void
 Transaction::tbegin()
 {
@@ -28,19 +49,19 @@ Transaction::tbegin()
 int 
 Transaction::tread(unsigned int key)
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).key == key) return (*itr).val;
-	}
+	SetElement *result;
 
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		if ((*itr).key == key) return (*itr).val;
-	}
+	result = searchWriteSet(key);
+	if (result) return result->val;
 
+	result = searchReadSet(key);
+	if (result) return result->val;
 
 	TsWord v1, v2;
 	unsigned int return_val;
-	do {
+	for (;;) {
 		v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
+TREAD_RETRY:
 		if (v1.lock & 1) {
 			if ((v1.wts + v1.delta) < this->appro_commit_ts) {
 				// it must check whether this write set include the tuple,
@@ -52,28 +73,33 @@ Transaction::tread(unsigned int key)
 		}
 		return_val = Table[key].val;
 		v2.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
-	} while (v1 != v2 || v1.lock & 1);
+		if (v1 == v2 && v1.lock != LOCK_BIT) break;
+		else {
+			v1 = v2;
+			goto TREAD_RETRY;
+		}
+	} 
 
 	this->appro_commit_ts = max(this->appro_commit_ts, v1.wts);
 	readSet.push_back(SetElement(key, return_val, v1));
-	
 
-	return 0;
+	return return_val;
 }
 
 void 
 Transaction::twrite(unsigned int key, unsigned int val)
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).key == key) {
-			(*itr).val = val;
-			return;
-		}
+	SetElement *result;
+
+	result = searchWriteSet(key);
+	if (result) {
+		result->val = val;
+		return;
 	}
 
 	TsWord tsword;
 	tsword.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
-	this->appro_commit_ts = max(this->appro_commit_ts, tsword.wts + tsword.delta);
+	this->appro_commit_ts = max(this->appro_commit_ts, tsword.wts + tsword.delta + 1);
 	writeSet.push_back(SetElement(key, val, tsword));
 }
 
@@ -85,15 +111,17 @@ Transaction::validationPhase()
 		return false;
 	}
 
-	// i must wait lockWriteSet();
-	__atomic_thread_fence(__ATOMIC_RELEASE);
+	// logically, it must execute full fence here,
+	// while we assume intel architecture and CAS(cmpxchg) in lockWriteSet() did it.
+	//
+	asm volatile ("" ::: "memory");
 
 	// step2, compute the commit timestamp
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		uint64_t e_tuple_rts;
 		TsWord loadtsw;
 	    loadtsw.obj	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
-		e_tuple_rts = loadtsw.wts + loadtsw.delta + 1;
+		e_tuple_rts = loadtsw.rts() + 1;
 		commit_ts = max(commit_ts, e_tuple_rts);
 	}	
 
@@ -106,35 +134,25 @@ Transaction::validationPhase()
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 
 		TsWord v1, v2;
-		bool success;
-		do {
-			success = true;
-		    v1.obj 	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
+		SetElement *inW = searchWriteSet((*itr).key);
 
+		for (;;) {
+		    v1.obj 	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
+VALI_RETRY:
 			if ((*itr).tsw.wts != v1.wts) {
 				TsWord pre_v1;
 				pre_v1.obj = __atomic_load_n(&(Table[(*itr).key].pre_tsw.obj), __ATOMIC_ACQUIRE);
-				if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) {
-					goto TIMESTAMP_HISTORY_PASS;
-				} else {
+				if (!(pre_v1.wts <= commit_ts && commit_ts < v1.wts)) {
 					return false;
 				}
 			}
-
-TIMESTAMP_HISTORY_PASS:
 
 			if ((v1.wts + v1.delta) < commit_ts && v1.lock) {
-				bool includeW = false;
-				for (auto itr_w = writeSet.begin(); itr_w != writeSet.end(); ++itr_w) {
-					if ((*itr).key == (*itr_w).key) {
-						includeW = true;
-						break;
-					}
-				}
-				if (!includeW) {
-					return false;
-				}
+				if (inW == nullptr) return false;
+				// 関数化する ( ex. rts(), )
 			}
+
+			if (inW != nullptr) break;
 
 			//extend the rts of the tuple
 			if ((v1.wts + v1.delta) < commit_ts) {
@@ -144,9 +162,14 @@ TIMESTAMP_HISTORY_PASS:
 				v2.obj = v1.obj;
 				v2.wts = v2.wts + shift;
 				v2.delta = delta - shift;
-				success = __atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+				if (__atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+					break;
+				else goto VALI_RETRY;
+
 			}
-		} while (!success);
+			else break;
+
+		}
 	}
 
 	return true;
@@ -155,7 +178,7 @@ TIMESTAMP_HISTORY_PASS:
 void 
 Transaction::abort() 
 {
-	unlockWriteSet();
+	unlockCLL();
 	AbortCounts[thid].num++;
 
 	readSet.clear();
@@ -174,6 +197,14 @@ Transaction::writePhase()
 		result.lock = 0;
 		__atomic_store_n(&(Table[(*itr).key].pre_tsw.obj), (*itr).tsw.obj, __ATOMIC_RELAXED);
 		__atomic_store_n(&(Table[(*itr).key].tsw.obj), result.obj, __ATOMIC_RELEASE);
+
+		//modify time test
+		//uint64_t start, stop;
+		//start = rdtsc();
+		//do {
+		//	stop = rdtsc();
+		//} while ((stop - start) < 6000);
+		//-----
 	}
 
 	FinishTransactions[thid].num++;
@@ -194,37 +225,31 @@ Transaction::lockWriteSet()
 		expected.obj = __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
 		do {
 			//no-wait locking in validation
+			//ロックオブジェクトを作ってデストラクタで解放
+			//オブジェクトの中身はtsw へのポインタ
 			if (expected.lock) {
 				this->status = TransactionStatus::aborted;
-				// i must wait to finish *1
-				__atomic_thread_fence(__ATOMIC_RELEASE);
-				for (auto c_itr = cll.begin(); c_itr != cll.end(); ++c_itr) {
-					expected.obj = __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
-					desired.obj = expected.obj;
-					desired.lock = 0;
-					__atomic_store_n(&(Table[(*itr).key].tsw.obj), desired.obj, __ATOMIC_RELEASE);
-				}
+				unlockCLL();
 				return;
 			}
 			desired = expected;
 			desired.lock = 1;
-			// *1
 		} while (!__atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
 		cll.push_back((*itr).key);
 	}
 }
 
 void 
-Transaction::unlockWriteSet()
+Transaction::unlockCLL()
 {
 	TsWord expected, desired;
 
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+	for (auto itr = cll.begin(); itr != cll.end(); ++itr) {
 		//unlock
-		expected.obj = __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
+		expected.obj = __atomic_load_n(&(Table[(*itr)].tsw.obj), __ATOMIC_ACQUIRE);
 		desired.obj = expected.obj;
 		desired.lock = 0;
-		__atomic_store_n(&(Table[(*itr).key].tsw.obj), desired.obj, __ATOMIC_RELEASE);
+		__atomic_store_n(&(Table[(*itr)].tsw.obj), desired.obj, __ATOMIC_RELEASE);
 	}
 }
 

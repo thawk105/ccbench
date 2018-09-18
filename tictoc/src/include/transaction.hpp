@@ -44,7 +44,9 @@ public:
 	void abort();
 	void writePhase();
 	void lockWriteSet();
-	void unlockWriteSet();
+	void unlockCLL();
+	SetElement *searchWriteSet(unsigned int key);
+	SetElement *searchReadSet(unsigned int key);
 	void dispWS();
 };
 

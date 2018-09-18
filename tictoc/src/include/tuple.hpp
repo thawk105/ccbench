@@ -31,6 +31,11 @@ struct TsWord {
 		if (lock) return true;
 		else return false;
 	}
+
+	uint64_t rts() {
+		return wts + delta;
+	}
+
 };
 class Tuple	{
 public:
@@ -59,4 +64,13 @@ public:
 	}
 };
 
+class LockElement {
+public:
+	unsigned int key;
+
+	LockElement(unsigned int key) {
+		this->key = key;
+	}
+};
+	
 #endif	//	TUPLE_HPP

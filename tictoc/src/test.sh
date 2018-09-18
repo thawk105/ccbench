@@ -7,7 +7,7 @@ extime=3
 epoch=3
 
 rratio=0.5
-result=result_tictoc_r5_tuple200.dat
+result=result_tictoc_r5_modify100x_tuple200.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 for ((thread = 1; thread <= 24; thread+=1))
@@ -47,7 +47,7 @@ done
 
 tuple=10000
 rratio=0.5
-result=result_tictoc_r5_tuple10000.dat
+result=result_tictoc_r5_modify100x_tuple10000.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 for ((thread = 1; thread <= 24; thread+=1))
