@@ -1,5 +1,4 @@
-#ifndef VERSION_HPP
-#define VERSION_HPP
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -18,7 +17,7 @@ public:
 	Version *prev;	// Pointer to overwritten version
 	Version *committed_prev;	// Pointer to the next committed version
 
-	std::atomic<uint64_t> val;
+	unsigned int val;
 	std::atomic<uint64_t> readers;	// summarize all of V's readers.
 	std::atomic<VersionStatus> status;
 	int8_t padding[71];
@@ -31,4 +30,18 @@ public:
 	}
 };
 
-#endif	//	VERSION_HPP
+class SetElement {
+public:
+	unsigned int key;
+	Version *ver;
+
+	SetElement(unsigned int key, Version *ver) {
+		this->key = key;
+		this->ver = ver;
+	}
+
+	bool operator<(const SetElement& right) const {
+		return this->key < right.key;
+	}
+};
+

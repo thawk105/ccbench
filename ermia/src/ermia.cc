@@ -237,6 +237,7 @@ worker(void *arg)
 	if (*myid == 1) Bgn = rdtsc();
 
 	try {
+		Transaction trans(*myid, MAX_OPE);
 		for (unsigned int i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM - 1) * (*myid); ++i) {
 RETRY:
 			//End judgment
@@ -263,24 +264,18 @@ RETRY:
 				}
 			}
 			//-----
-			Transaction trans;
-			trans.tbegin(*myid);
 			//transaction begin
-			
+			trans.tbegin();
 			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				int value_read;
-				switch (Pro[i][j].ope) {
-					case (Ope::READ) :
-						//printf("thread #%d: read(%d) = %d\n", *myid, Pro[i][j].key, value_read);
-						value_read = trans.ssn_tread(Pro[i][j].key);
-						break;
-					case (Ope::WRITE) :
-						//printf("thread #%d: write(%d, %d)\n", *myid, Pro[i][j].key, Pro[i][j].val);
-						trans.ssn_twrite(Pro[i][j].key, Pro[i][j].val);
-						break;
-					default:
-						break;
+				unsigned int value_read;
+				if (Pro[i][j].ope == Ope::READ) {
+					value_read = trans.ssn_tread(Pro[i][j].key);
+				} else if (Pro[i][j].ope == Ope::WRITE) {
+					trans.ssn_twrite(Pro[i][j].key, Pro[i][j].val);
+				} else {
+					ERR;
 				}
+
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
 					goto RETRY;
@@ -299,9 +294,6 @@ RETRY:
 				i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
 				//NNN;
 			}
-			
-			trans.rwsetClear();
-
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -362,7 +354,8 @@ main(const int argc, const char *argv[])
 	//displayDB();
 
 	prtRslt(Bgn, End);
-	//displayAbortRate();
+	//displayAbortCounts();
+	displayAbortRate();
 
 	return 0;
 }

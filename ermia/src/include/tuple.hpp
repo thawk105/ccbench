@@ -7,7 +7,7 @@
 class Tuple {
 public: 
 	std::atomic<Version *> latest;
-	int key;
+	unsigned int key;
 	int8_t padding[48];
 };
 

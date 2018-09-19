@@ -23,8 +23,8 @@ makeDB()
 		ERR;
 	}
 
-	for (unsigned int i = 1; i <= TUPLE_NUM; i++) {
-		tmp = &Table[i % TUPLE_NUM];
+	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+		tmp = &Table[i];
 		tmp->key = i;
 		verTmp = tmp->latest.load(std::memory_order_acquire);
 		verTmp->cstamp = 0;
@@ -32,7 +32,7 @@ makeDB()
 		verTmp->sstamp = UINT64_MAX & ~(1);
 		// cstamp, sstamp の最下位ビットは TID フラグ
 		// 1の時はTID, 0の時はstamp
-		verTmp->val.store(rnd() % (TUPLE_NUM * 10), memory_order_release);
+		verTmp->val = rnd() % (TUPLE_NUM * 10);
 		verTmp->prev = nullptr;
 		verTmp->committed_prev = nullptr;
 		verTmp->status.store(VersionStatus::committed, std::memory_order_release);
