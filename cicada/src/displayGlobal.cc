@@ -168,12 +168,11 @@ displaySLogSet()
 	}
 	else {
 		if (S_WAL) {
-
-			if (pthread_mutex_lock(&Lock)) ERR;
-			for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; i++) {
+			SwalLock.w_lock();
+			for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; ++i) {
 				printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key, SLogSet[i]->val);
 			}
-			if (pthread_mutex_unlock(&Lock)) ERR;
+			SwalLock.w_unlock();
 
 			//if (i == 0) printf("SLogSet is empty\n");
 		}

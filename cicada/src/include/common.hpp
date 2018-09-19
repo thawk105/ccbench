@@ -2,6 +2,7 @@
 #define COMMON_HPP
 
 #include "int64byte.hpp"
+#include "lock.hpp"
 #include "procedure.hpp"
 #include "tuple.hpp"
 #include "version.hpp"
@@ -60,7 +61,7 @@ GLOBAL TimeStamp *ThreadFlushedWts;
 
 GLOBAL Version ***PLogSet;	//[thID][index] pointer array
 GLOBAL Version **SLogSet;	//[index] pointer array
-GLOBAL pthread_mutex_t Lock;
+GLOBAL RWLock SwalLock;
 
 GLOBAL uint64_t_64byte *FinishTransactions;
 GLOBAL uint64_t_64byte *AbortCounts;
@@ -68,6 +69,8 @@ GLOBAL uint64_t_64byte *AbortCounts;
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 GLOBAL uint64_t_64byte *GCFlag;
+GLOBAL uint64_t_64byte *GCommitStart;
+GLOBAL uint64_t_64byte *GCommitStop;
 
 GLOBAL Procedure **Pro;
 

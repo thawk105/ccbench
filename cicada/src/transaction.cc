@@ -312,100 +312,87 @@ Transaction::validation()
 void
 Transaction::swal()
 {
-//	if (!GROUP_COMMIT) {	//non-group commit
-//		if (pthread_mutex_lock(&Lock)) ERR;	// lock
-//
-//		int i = 0;
-//		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-//			SLogSet[i] = itr->second->newObject;
-//			i++;
-//		}
-//
-//		//ログをWALバッファへ挿入後，ローカルのコミットキューへトランザクションIDとwtsをエンキュー
-//
-//		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-//		uint64_t start = rdtsc();
-//		while ((rdtsc() - start) < threshold) {}	//spin-wait
-//		ThreadFlushedWts[this->thid].ts = this->wts->ts;
-//
-//		if (pthread_mutex_unlock(&Lock)) ERR;	// unlock
-//	}
-//	else {	//group commit
-//		if (pthread_mutex_lock(&Lock)) ERR;	// lock
-//		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-//			SLogSet[GROUP_COMMIT_INDEX[0].num] = itr->second->newObject;
-//			GROUP_COMMIT_INDEX[0].num++;
-//		}
-//
-//		if (GROUP_COMMIT_COUNTER[0].num == 0) {
-//			GCommitStart[0].num = rdtsc();	//最初の初期化もここで代用している
-//		}
-//
-//		GROUP_COMMIT_COUNTER[0].num++;
-//
-//		if (GROUP_COMMIT_COUNTER[0].num == GROUP_COMMIT) {
-//			//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
-//			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-//			uint64_t start = rdtsc();
-//			while ((rdtsc() - start) < threshold) {}	//spin-wait
-//			ThreadFlushedWts[this->thid].ts = this->wts->ts;
-//
-//			//group commit pending version.
-//			gcpv();
-//			if (pthread_mutex_unlock(&Lock)) ERR;	// unlock
-//			return;
-//		}
-//		else {
-//			if (pthread_mutex_unlock(&Lock)) ERR;	// unlock
-//		}
-//	}
+	if (!GROUP_COMMIT) {	//non-group commit
+		SwalLock.w_lock();
+
+		int i = 0;
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+			SLogSet[i] = (*itr).newObject;
+			i++;
+		}
+
+		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+		uint64_t start = rdtsc();
+		while ((rdtsc() - start) < threshold) {}	//spin-wait
+		ThreadFlushedWts[this->thid].ts = this->wts->ts;
+
+		SwalLock.w_unlock();
+	}
+	else {	//group commit
+		SwalLock.w_lock();
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+			SLogSet[GROUP_COMMIT_INDEX[0].num] = (*itr).newObject;
+			GROUP_COMMIT_INDEX[0].num++;
+		}
+
+		if (GROUP_COMMIT_COUNTER[0].num == 0) {
+			GCommitStart[0].num = rdtsc();	//最初の初期化もここで代用している
+		}
+
+		GROUP_COMMIT_COUNTER[0].num++;
+
+		if (GROUP_COMMIT_COUNTER[0].num == GROUP_COMMIT) {
+			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+			uint64_t start = rdtsc();
+			while ((rdtsc() - start) < threshold) {}	//spin-wait
+			ThreadFlushedWts[this->thid].ts = this->wts->ts;
+
+			//group commit pending version.
+			gcpv();
+		}
+		SwalLock.w_unlock();
+	}
 }
 
 void
 Transaction::pwal()
 {
-//	Version **logSet;
-//
-//	if (!GROUP_COMMIT) {
-//		logSet = new Version*[writeSet.size()];
-//
-//		int i = 0;
-//		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-//			logSet[i] = itr->second->newObject;
-//			i++;
-//		}
-//
-//		//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
-//		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-//		uint64_t start = rdtsc();
-//		while ((rdtsc() - start) < threshold) {}	//spin-wait
-//		ThreadFlushedWts[this->thid].ts = this->wts->ts;
-//
-//		delete logSet;
-//	} 
-//	else {
-//		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-//			PLogSet[this->thid][GROUP_COMMIT_INDEX[this->thid].num] = itr->second->newObject;
-//			GROUP_COMMIT_INDEX[this->thid].num++;
-//		}
-//
-//		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
-//			GCommitStart[this->thid].num = rdtsc();	//最初の初期化もここで代用している
-//			ThreadRtsArrayForGroup[this->thid].num = this->rts->ts;
-//		}
-//
-//		GROUP_COMMIT_COUNTER[this->thid].num++;
-//
-//		if (GROUP_COMMIT_COUNTER[this->thid].num == GROUP_COMMIT) {
-//			//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
-//			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-//			uint64_t start = rdtsc();
-//			while ((rdtsc() - start) < threshold) {}	//spin-wait	
-//			ThreadFlushedWts[this->thid].ts = this->wts->ts;
-//
-//			gcpv();
-//		} 
-//	}
+	if (!GROUP_COMMIT) {
+		int i = 0;
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+			PLogSet[thid][i] = (*itr).newObject;
+			i++;
+		}
+
+		//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
+		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+		uint64_t start = rdtsc();
+		while ((rdtsc() - start) < threshold) {}	//spin-wait
+		ThreadFlushedWts[this->thid].ts = this->wts->ts;
+	} 
+	else {
+		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+			PLogSet[thid][GROUP_COMMIT_INDEX[thid].num] = (*itr).newObject;
+			GROUP_COMMIT_INDEX[this->thid].num++;
+		}
+
+		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
+			GCommitStart[this->thid].num = rdtsc();	//最初の初期化もここで代用している
+			ThreadRtsArrayForGroup[this->thid].num = this->rts->ts;
+		}
+
+		GROUP_COMMIT_COUNTER[this->thid].num++;
+
+		if (GROUP_COMMIT_COUNTER[this->thid].num == GROUP_COMMIT) {
+			//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
+			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+			uint64_t start = rdtsc();
+			while ((rdtsc() - start) < threshold) {}	//spin-wait	
+			ThreadFlushedWts[this->thid].ts = this->wts->ts;
+
+			gcpv();
+		} 
+	}
 }
 
 inline void
@@ -429,20 +416,20 @@ Transaction::precpv()
 void 
 Transaction::gcpv()
 {
-//	if (S_WAL) {
-//		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; ++i) {
-//			SLogSet[i]->status.store(VersionStatus::committed, std::memory_order_release);
-//		}
-//		GROUP_COMMIT_COUNTER[0].num = 0;
-//		GROUP_COMMIT_INDEX[0].num = 0;
-//	}
-//	else if (P_WAL) {
-//		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[this->thid].num; ++i) {
-//			PLogSet[this->thid][i]->status.store(VersionStatus::committed, std::memory_order_release);
-//		}
-//		GROUP_COMMIT_COUNTER[this->thid].num = 0;
-//		GROUP_COMMIT_INDEX[this->thid].num = 0;
-//	}
+	if (S_WAL) {
+		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; ++i) {
+			SLogSet[i]->status.store(VersionStatus::committed, memory_order_release);
+		}
+		GROUP_COMMIT_COUNTER[0].num = 0;
+		GROUP_COMMIT_INDEX[0].num = 0;
+	}
+	else if (P_WAL) {
+		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[thid].num; ++i) {
+			PLogSet[thid][i]->status.store(VersionStatus::committed, memory_order_release);
+		}
+		GROUP_COMMIT_COUNTER[thid].num = 0;
+		GROUP_COMMIT_INDEX[thid].num = 0;
+	}
 }
 
 void 
@@ -493,25 +480,25 @@ Transaction::displayWset()
 bool
 Transaction::chkGcpvTimeout()
 {
-//	if (P_WAL) {
-//		GCommitStop[this->thid].num = rdtsc();
-//		if (chkClkSpan(GCommitStart[this->thid].num, GCommitStop[this->thid].num, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
-//			gcpv();
-//			return true;
-//		}
-//	}
-//	else if (S_WAL) {
-//		GCommitStop[0].num = rdtsc();
-//		if (chkClkSpan(GCommitStart[0].num, GCommitStop[0].num, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
-//			if (pthread_mutex_lock(&Lock)) ERR;
-//			gcpv();
-//			if (pthread_mutex_unlock(&Lock)) ERR;
-//
-//			return true;
-//		}
-//	}
-//
-//	return false;
+	if (P_WAL) {
+		GCommitStop[this->thid].num = rdtsc();
+		if (chkClkSpan(GCommitStart[this->thid].num, GCommitStop[this->thid].num, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
+			gcpv();
+			return true;
+		}
+	}
+	else if (S_WAL) {
+		GCommitStop[0].num = rdtsc();
+		if (chkClkSpan(GCommitStart[0].num, GCommitStop[0].num, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
+			SwalLock.w_lock();
+			gcpv();
+			SwalLock.w_unlock();
+
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void 

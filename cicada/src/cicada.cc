@@ -148,6 +148,8 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&ThreadFlushedWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_INDEX, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&GCommitStart, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&GCommitStop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -444,14 +446,12 @@ extern void displayAbortCounts();
 extern void displayTransactionRange();
 extern void makeProcedure();
 extern void makeDB();
-extern void mutexInit();
 
 int 
 main(int argc, char *argv[]) {
 
 	chkArg(argc, argv);
 
-	mutexInit();
 	makeDB();
 	makeProcedure();
 
