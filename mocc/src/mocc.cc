@@ -92,6 +92,7 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(std::atomic<uint64_t>)) != 0) ERR;
 		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&Rnd, 64, THREAD_NUM * sizeof(Xoroshiro128Plus)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
@@ -101,6 +102,7 @@ chkArg(const int argc, char *argv[])
 		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
 		ThLocalEpoch[i] = 0;
+		Rnd[i].init();
 	}
 }
 

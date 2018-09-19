@@ -34,6 +34,9 @@ public:
 		this->status = TransactionStatus::inFlight;
 	}
 
+	ReadElement *searchReadSet(unsigned int key);
+	WriteElement *searchWriteSet(unsigned int key);
+	LockElement *searchRLL(unsigned int key);
 	void begin();
 	unsigned int read(unsigned int key);
 	void write(unsigned int key, unsigned int val);

@@ -3,6 +3,7 @@
 
 #include "int64byte.hpp"
 #include "procedure.hpp"
+#include "random.hpp"
 #include "tuple.hpp"
 #include <atomic>
 
@@ -43,6 +44,10 @@ GLOBAL uint64_t_64byte *AbortCounts;
 // ログ永続化エミュレーション用
 GLOBAL uint64_t_64byte *Start;	
 GLOBAL uint64_t_64byte *Stop;
+
+// random generator for each worker thread
+GLOBAL Xoroshiro128Plus *Rnd;
+
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 

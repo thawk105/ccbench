@@ -9,6 +9,36 @@
 
 using namespace std;
 
+ReadElement *
+Transaction::searchReadSet(unsigned int key)
+{
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
+WriteElement *
+Transaction::searchWriteSet(unsigned int key)
+{
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
+LockElement *
+Transaction::searchRLL(unsigned int key)
+{
+	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
 void
 Transaction::begin()
 {
@@ -23,26 +53,18 @@ Transaction::read(unsigned int key)
 	Tuple *tuple = &Table[key];
 
 	// tuple exists in write set.
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).key == key) return (*itr).val;
-	}
+	WriteElement *inW = searchWriteSet(key);
+	if (inW) return inW->val;
 
 	// tuple exists in read set.
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		if ((*itr).key == key) return tuple->val.load(memory_order_acquire);
-	}
+	ReadElement *inR = searchReadSet(key);
+	if (inR) return inR->val;
 
 	// tuple doesn't exist in read/write set.
-	bool inrll = false;
-	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
-		if ((*itr).key == key) {
-			lock(tuple, max((*itr).mode, false));
-			inrll = true;
-			break;
-		}
-	}
-
-	if (inrll == false && tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
+	LockElement *inRLL = searchRLL(key);
+	if (inRLL) {
+		lock(tuple, max(inRLL->mode, false));
+	} else if (tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
 		lock(tuple, false);
 	}
 	
@@ -50,7 +72,7 @@ Transaction::read(unsigned int key)
 		return -1;
 	}
 	
-	readSet.push_back(ReadElement(tuple->tidword.load(memory_order_acquire), key));
+	readSet.push_back(ReadElement(tuple->tidword.load(memory_order_acquire), key, tuple->val.load(memory_order_acquire)));
 	return tuple->val.load(memory_order_acquire);
 }
 
@@ -58,35 +80,22 @@ void
 Transaction::write(unsigned int key, unsigned int val)
 {
 	// tuple exists in write set.
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).key == key) {
-			(*itr).val = val;
-			return;
-		}
+	WriteElement *inW = searchWriteSet(key);
+	if (inW) {
+		inW->val = val;
+		return;
 	}
 
 	Tuple *tuple = &Table[key];
 
-	bool inrll = false;
-	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
-		if ((*itr).key == key) {
-			lock(tuple, true);
-			inrll = true;
-			break;
-		}
-	}
-
-	if (inrll == false && tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
+	LockElement *inRLL = searchRLL(key);
+	if (inRLL || tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
 		lock(tuple, true);
 	}
 
 	if (this->status == TransactionStatus::aborted) {
 		return;
 	}
-
-	//construct log 後で書く
-	//-----
-	//
 	
 	writeSet.push_back(WriteElement(key, val));
 	return;
@@ -125,6 +134,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 	uint64_t expected;
 	uint64_t lockBit = 0b100;
 	// if too many violations
+	// paper に too many の条件が無いので，自分で設定
 	if ((CLL.size() / 2) < vioctr && CLL.size() >= (MAX_OPE / 2)) {
 		if (mode) {
 			if (upgrade) {
@@ -230,14 +240,8 @@ Transaction::construct_rll()
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		// check whether itr exists in RLL
-		bool includeRLL = false;
-		for (auto rll = RLL.begin(); rll != RLL.end(); ++rll) {
-			if ((*itr).key == (*rll).key) {
-				includeRLL = true;
-				break;
-			}
-		}
-		if (includeRLL) continue;
+		if (searchRLL((*itr).key) != nullptr) continue;
+
 		// r not in RLL
 		// if temprature >= threshold
 		// 	|| r failed verification
@@ -248,23 +252,16 @@ Transaction::construct_rll()
 
 		// maintain temprature p
 		if ((*itr).failed_verification) {
-			random_device rnd;
 			uint64_t expected, desired;
-			expected = Table[(*itr).key].temp.load(memory_order_acquire);
-			if (expected == TEMP_MAX) {
-				sort(RLL.begin(), RLL.end());
-				return;
-			}
-			double result = rnd() / (double)random_device::max();
-			if (result > 1.0 / pow(2, expected)) {
-				do {
-					expected = Table[(*itr).key].temp.load(memory_order_acquire);
-					if (expected == TEMP_MAX) {
-						sort(RLL.begin(), RLL.end());
-						return;
-					}
+			for (;;) {
+				expected = Table[(*itr).key].temp.load(memory_order_acquire);
+RETRY_MAINTE_TEMP:
+				if (expected == TEMP_MAX) break;
+				if (Rnd[thid].next() % (1 << expected) == 0) {
 					desired = expected + 1;
-				} while (!Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel));
+				} else break;
+				if (Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+				else goto RETRY_MAINTE_TEMP;
 			}
 		}
 	}

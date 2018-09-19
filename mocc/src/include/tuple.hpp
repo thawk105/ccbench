@@ -26,12 +26,13 @@ public:
 class ReadElement {
 public:
 	uint64_t tidword;
-	unsigned int key;
+	unsigned int key, val;
 	bool failed_verification;
 
-	ReadElement (uint64_t tidword, unsigned int key) {
+	ReadElement (uint64_t tidword, unsigned int key, unsigned int val) {
 		this->tidword = tidword;
 		this->key = key;
+		this->val = val;
 		this->failed_verification = false;
 	}
 
