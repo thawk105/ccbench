@@ -1,16 +1,17 @@
-#include <random>
 #include <atomic>
-#include "include/tuple.hpp"
-#include "include/timeStamp.hpp"
 #include "include/debug.hpp"
 #include "include/common.hpp"
+#include "include/random.hpp"
+#include "include/timeStamp.hpp"
+#include "include/tuple.hpp"
 
 using namespace std;
 
 void makeDB() {
 	Tuple *tmp;
 	Version *verTmp;
-	random_device rnd;
+	Xoroshiro128Plus rnd;
+	rnd.init();
 
 	try {
 		if (posix_memalign((void**)&Table, 64, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
@@ -33,7 +34,7 @@ void makeDB() {
 		verTmp->wts.store(tstmp.ts, memory_order_release);;
 		verTmp->status.store(VersionStatus::committed, std::memory_order_release);
 		verTmp->key = i;
-		verTmp->val = rnd() % (TUPLE_NUM * 10);
+		verTmp->val = rnd.next() % (TUPLE_NUM * 10);
 	}
 
 }

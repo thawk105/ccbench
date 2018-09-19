@@ -1,9 +1,9 @@
-#include <random>
 #include <stdlib.h>
 #include <atomic>
-#include "include/tuple.hpp"
 #include "include/debug.hpp"
 #include "include/common.hpp"
+#include "include/random.hpp"
+#include "include/tuple.hpp"
 
 using namespace std;
 
@@ -11,7 +11,8 @@ void
 makeDB()
 {
 	Tuple *tmp;
-	random_device rnd;
+	Xoroshiro128Plus rnd;
+	rnd.init();
 
 	try {
 		if (posix_memalign((void**)&Table, 64, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
@@ -22,7 +23,7 @@ makeDB()
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 		tmp = &Table[i];
 		tmp->key = i;
-		tmp->val = rnd() % (TUPLE_NUM * 10);
+		tmp->val = rnd.next() % (TUPLE_NUM * 10);
 	}
 }
 

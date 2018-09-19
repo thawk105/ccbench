@@ -1,13 +1,14 @@
-#include <random>
-#include "include/tuple.hpp"
 #include "include/debug.hpp"
 #include "include/common.hpp"
+#include "include/random.hpp"
+#include "include/tuple.hpp"
 
 using namespace std;
 
 void makeDB() {
 	Tuple *tmp;
-	random_device rnd;
+	Xoroshiro128Plus rnd();
+	rnd.init();
 
 	try {
 		if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
@@ -21,7 +22,7 @@ void makeDB() {
 		tmp->tidword = tmp->tidword << 32;
 		tmp->tidword = tmp->tidword | 0b010;
 		tmp->key = i;
-		tmp->val.store(rnd() % (TUPLE_NUM * 10), memory_order_release);
+		tmp->val.store(rnd.next() % (TUPLE_NUM * 10), memory_order_release);
 	}
 
 }

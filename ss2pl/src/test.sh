@@ -6,7 +6,7 @@ cpu_mhz=2400
 extime=3
 epoch=3
 
-result=result_ss2pl_r5_tuple200.dat
+result=result_ss2pl_r5_modify100x_tuple200.dat
 rratio=0.5
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
@@ -47,7 +47,7 @@ do
 done
 
 tuple=10000
-result=result_ss2pl_r5_tuple10000.dat
+result=result_ss2pl_r5_modify100x_tuple10000.dat
 rratio=0.5
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result

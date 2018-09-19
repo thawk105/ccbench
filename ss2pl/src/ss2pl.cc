@@ -239,7 +239,7 @@ main(const int argc, const char *argv[])
 	}
 
 	prtRslt(Bgn, End);
-	//displayAbortRate();
+	displayAbortRate();
 
 	return 0;
 }

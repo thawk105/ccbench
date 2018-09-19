@@ -1,9 +1,10 @@
-#include <random>
 #include <stdlib.h>
 #include <atomic>
-#include "include/tuple.hpp"
 #include "include/debug.hpp"
 #include "include/common.hpp"
+#include "include/random.hpp"
+#include "include/tuple.hpp"
+
 
 using namespace std;
 
@@ -12,11 +13,12 @@ makeDB()
 {
 	Tuple *tmp;
 	Version *verTmp;
-	random_device rnd;
+	Xoroshiro128Plus rnd;
+	rnd.init();
 
 	try {
 		if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
-		for (unsigned int i = 0; i < TUPLE_NUM; i++) {
+		for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 			if (posix_memalign((void**)&Table[i].latest, 64, sizeof(Version)) != 0) ERR;
 		}
 	} catch (bad_alloc) {
@@ -32,7 +34,7 @@ makeDB()
 		verTmp->sstamp = UINT64_MAX & ~(1);
 		// cstamp, sstamp の最下位ビットは TID フラグ
 		// 1の時はTID, 0の時はstamp
-		verTmp->val = rnd() % (TUPLE_NUM * 10);
+		verTmp->val = rnd.next() % (TUPLE_NUM * 10);
 		verTmp->prev = nullptr;
 		verTmp->committed_prev = nullptr;
 		verTmp->status.store(VersionStatus::committed, std::memory_order_release);

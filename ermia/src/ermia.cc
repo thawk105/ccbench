@@ -355,7 +355,7 @@ main(const int argc, const char *argv[])
 
 	prtRslt(Bgn, End);
 	//displayAbortCounts();
-	displayAbortRate();
+	//displayAbortRate();
 
 	return 0;
 }

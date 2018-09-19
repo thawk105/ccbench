@@ -6,10 +6,10 @@ cpu_mhz=2400
 extime=3
 epoch=3
 
-result=result_ermia-latchFreeSSN_r5_tuple200_ar.dat
+result=result_ermia_r5_tuple200_ar.dat
 rratio=0.5
 rm $result
-echo "#worker threads, abort_rate, min, max" >> $result
+echo "#worker threads, throughput, min, max" >> $result
 for ((thread=2; thread<=24; thread+=2))
 do
 	sum=0
@@ -46,10 +46,10 @@ do
 done
 
 tuple=10000
-result=result_ermia-latchFreeSSN_r5_tuple10000_ar.dat
+result=result_ermia_r5_tuple10000_ar.dat
 rratio=0.5
 rm $result
-echo "#worker threads, abort_rate, min, max" >> $result
+echo "#worker threads, throughput, min, max" >> $result
 for ((thread=2; thread<=24; thread+=2))
 do
 	sum=0
