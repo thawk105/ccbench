@@ -26,17 +26,7 @@ void
 Transaction::commit()
 {
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		//my experiment consume about 60 clocks
 		Table[(*itr).key].val = (*itr).val;
-
-		// modify time test
-		// experiment " if locks acquire more clocks, what is the performance
-		//uint64_t start, stop;
-		//start = rdtsc();
-		//do {
-		//	stop = rdtsc();
-		//} while ((stop - start) < 600);
-		//-----
 	}
 
 	unlock_list();
