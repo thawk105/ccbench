@@ -1,7 +1,9 @@
-#ifndef PROCEDURE_HPP
-#define PROCEDURE_HPP
-
+#pragma once
 #include <cstdint>
+
+#define R_INTENS 80
+#define RW_EVEN 50
+#define W_INTENS 20 
 
 enum class Ope {
 	READ, 
@@ -16,5 +18,3 @@ public:
 	bool ronly = false;
 	uint8_t pad[3];
 };
-
-#endif	//	PROCEDURE_HPP

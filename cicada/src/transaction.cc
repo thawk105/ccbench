@@ -20,9 +20,9 @@ extern void displayDB();
 
 using namespace std;
 
-void Transaction::tbegin(const unsigned int transactionNum)
+void Transaction::tbegin(bool ronly)
 {
-	if (Pro[transactionNum][0].ronly) this->ronly = true;
+	if (ronly) this->ronly = true;
 	else this->ronly = false;
 
 	this->status = TransactionStatus::inflight;
@@ -502,7 +502,7 @@ Transaction::chkGcpvTimeout()
 }
 
 void 
-Transaction::mainte(int proIndex)
+Transaction::mainte()
 {
 	//Maintenance
 	//Schedule garbage collection

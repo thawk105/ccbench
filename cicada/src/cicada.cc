@@ -15,6 +15,7 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/int64byte.hpp"
+#include "include/random.hpp"
 #include "include/transaction.hpp"
 
 using namespace std;
@@ -34,17 +35,20 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 13) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) \n\
+	if (argc != 12) {
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD(1~5) \n\
              WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
 \n\
-example:./main 1000000 20 15 10000 0.5 OFF OFF 2400 5 2 E 3\n\
+example:./main 1000000 20 15 3 OFF OFF 2400 5 2 E 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of worker thread.\n\
-PRO_NUM(int):    Initial total numbers of transactions.\n\
-READ_RATIO(float): ratio of read in transaction.\n\
+WORKLOAD: 1. read only (read 100%%)\n\
+		  2. read intensive (read 80%%)\n\
+		  3. read write even (read 50%%)\n\
+		  4. write intensive (write 80%%)\n\
+		  5. write only (write 100%%)\n\
 WAL: P or S or OFF.\n\
 GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
 CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
@@ -66,10 +70,9 @@ LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	PRO_NUM = atoi(argv[4]);
-	READ_RATIO = atof(argv[5]);
+	WORKLOAD = atoi(argv[4]);
 	
-	string tmp = argv[6];
+	string tmp = argv[5];
 	if (tmp == "P")  {
 		P_WAL = true;
 		S_WAL = false;
@@ -80,7 +83,7 @@ LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal
 		P_WAL = false;
 		S_WAL = false;
 
-		tmp = argv[7];
+		tmp = argv[6];
 		if (tmp != "OFF") {
 			printf("i don't implement below.\n\
 P_WAL OFF, S_WAL OFF, GROUP_COMMIT number.\n\
@@ -90,33 +93,33 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		}
 	}
 	else {
-		printf("WAL(argv[6]) must be P or S or OFF\n");
+		printf("WAL(argv[5]) must be P or S or OFF\n");
 		exit(0);
 	}
 
-	tmp = argv[7];
+	tmp = argv[6];
 	if (tmp == "OFF") GROUP_COMMIT = 0;
-	else if (chkInt(argv[7])) {
-	   	GROUP_COMMIT = atoi(argv[7]);
+	else if (chkInt(argv[6])) {
+	   	GROUP_COMMIT = atoi(argv[6]);
 	}
 	else {
-		printf("GROUP_COMMIT(argv[8]) must be unsigned integer or OFF\n");
+		printf("GROUP_COMMIT(argv[6]) must be unsigned integer or OFF\n");
 		exit(0);
 	}
 
-	chkInt(argv[8]);
-	CLOCK_PER_US = atof(argv[8]);
+	chkInt(argv[7]);
+	CLOCK_PER_US = atof(argv[7]);
 	if (CLOCK_PER_US < 100) {
 		printf("CPU_MHZ is less than 100. are you really?\n");
 		exit(0);
 	}
 
+	chkInt(argv[8]);
+	IO_TIME_NS = atof(argv[8]);
 	chkInt(argv[9]);
-	IO_TIME_NS = atof(argv[9]);
-	chkInt(argv[10]);
-	GROUP_COMMIT_TIMEOUT_US = atoi(argv[10]);
+	GROUP_COMMIT_TIMEOUT_US = atoi(argv[9]);
 
-	tmp = argv[11];
+	tmp = argv[10];
 	if (tmp == "N") {
 		NLR = true;
 		ELR = false;
@@ -126,17 +129,13 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		ELR = true;
 	}
 	else {
-		printf("LockRelease(argv[11]) must be E or N\n");
+		printf("LockRelease(argv[10]) must be E or N\n");
 		exit(0);
 	}
 
-	chkInt(argv[12]);
-	EXTIME = atoi(argv[12]);
+	chkInt(argv[11]);
+	EXTIME = atoi(argv[11]);
 	
-	if (THREAD_NUM > PRO_NUM) {
-		printf("THREAD_NUM must be smaller than PRO_NUM\n");
-		exit(0);
-	}
 	try {
 
 		ThreadWtsArray = new TimeStamp*[THREAD_NUM];
@@ -281,10 +280,15 @@ maneger_worker(void *arg)
 	return nullptr;
 }
 
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+
 static void *
 worker(void *arg)
 {
 	int *myid = (int *)arg;
+	Xoroshiro128Plus rnd;
+	rnd.init();
+	Procedure pro[MAX_OPE];
 
 	//----------
 	pid_t pid;
@@ -322,8 +326,7 @@ worker(void *arg)
 
 	try {
 		Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
-		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
-RETRY:
+		for (;;) {
 			if (*myid == 1) {
 				End = rdtsc();
 				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
@@ -332,10 +335,6 @@ RETRY:
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
 					Finish.store(true, std::memory_order_release);
-					//if (trans.gcSet.size() != 0)
-					//	cout << trans.gcSet.size() << endl;
-					//else
-					//	cout << "0" << endl;
 					return nullptr;
 				}
 			} else {
@@ -344,29 +343,22 @@ RETRY:
 						expected = Ending.load(memory_order_acquire);
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
-					//if (trans.gcSet.size() != 0)
-					//	cout << trans.gcSet.size() << endl;
-					//else
-					//	cout << "0" << endl;
 					return nullptr;
 				}
 			}
 
-			trans.tbegin(i);
-
-			//if (*myid == 1) {
-			//	if (trans.gcq.size() > 100)
-			//		cout << trans.gcq.size() << endl;
-			//	if (trans.gcq.size() > 1000) exit(1);
-			//}
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
+			trans.tbegin(pro[0].ronly);
 
 			//Read phase
 			//Search versions
-			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				if (Pro[i][j].ope == Ope::READ) {
-					trans.tread(Pro[i][j].key);
+			for (unsigned int i = 0; i < MAX_OPE; ++i) {
+				if (pro[i].ope == Ope::READ) {
+					trans.tread(pro[i].key);
 				} else {
-					trans.twrite(Pro[i][j].key, Pro[i][j].val);
+					trans.twrite(pro[i].key, pro[i].val);
 				}
 
 				if (trans.status == TransactionStatus::abort) {
@@ -378,9 +370,6 @@ RETRY:
 			//read onlyトランザクションはread setを集めず、validationもしない。
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
-				if (i == PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1) {
-					i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
-				}
 				FinishTransactions[*myid].num++;
 				continue;
 			}
@@ -398,11 +387,7 @@ RETRY:
 			//Schedule garbage collection
 			//Declare quiescent state
 			//Collect garbage created by prior transactions
-			trans.mainte(i);
-
-			if (i == PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1) {
-				i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
-			}
+			trans.mainte();
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -444,7 +429,6 @@ extern void displayAbortRate();
 extern void displayFinishTransactions();
 extern void displayAbortCounts();
 extern void displayTransactionRange();
-extern void makeProcedure();
 extern void makeDB();
 
 int 
@@ -453,7 +437,6 @@ main(int argc, char *argv[]) {
 	chkArg(argc, argv);
 
 	makeDB();
-	makeProcedure();
 
 	//displayDB();
 	//displayPRO();

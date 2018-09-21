@@ -36,8 +36,7 @@ GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int PRO_NUM;
-GLOBAL float READ_RATIO;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
 GLOBAL bool ELR;	//early lock release
@@ -71,8 +70,6 @@ GLOBAL uint64_t End;
 GLOBAL uint64_t_64byte *GCFlag;
 GLOBAL uint64_t_64byte *GCommitStart;
 GLOBAL uint64_t_64byte *GCommitStop;
-
-GLOBAL Procedure **Pro;
 
 GLOBAL Tuple *Table;
 GLOBAL uint64_t InitialWts;

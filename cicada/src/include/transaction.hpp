@@ -57,7 +57,7 @@ public:
 		writeSet.reserve(MAX_OPE);
 	}
 
-	void tbegin(const unsigned int transactionNum);
+	void tbegin(bool ronly);
 	int tread(unsigned int key);
 	void twrite(unsigned int key, unsigned int val);
 	bool validation();
@@ -72,7 +72,7 @@ public:
 	void abort();
 	void wSetClean();
 	void displayWset();
-	void mainte(int proIndex);	//maintenance
+	void mainte();	//maintenance
 };
 
 #endif	//	TRANSACTION_HPP
