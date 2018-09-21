@@ -7,27 +7,39 @@
 using namespace std;
 
 void
-makeProcedure()
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
 {
-	try {
-		Pro = new Procedure*[PRO_NUM];
-		for (unsigned int i = 0; i < PRO_NUM; ++i) {
-			if (posix_memalign((void**)&Pro[i], 64, (MAX_OPE) * sizeof(Procedure)) != 0) ERR;
+	for (unsigned int i = 0; i < MAX_OPE; ++i) {
+		switch (WORKLOAD) {
+			case 1:
+				pro[i].ope = Ope::READ;
+				break;
+			case 2:
+				if ((rnd.next() % 100) < R_INTENS) {
+					pro[i].ope = Ope::READ;
+				} else {
+					pro[i].ope = Ope::WRITE;
+				}
+				break;
+			case 3:
+				if ((rnd.next() % 100) < RW_EVEN) {
+					pro[i].ope = Ope::READ;
+				} else {
+					pro[i].ope = Ope::WRITE;
+				}
+				break;
+			case 4:
+				if ((rnd.next() % 100) < W_INTENS) {
+					pro[i].ope = Ope::READ;
+				} else {
+					pro[i].ope = Ope::WRITE;
+				}
+				break;
+			case 5:
+				pro[i].ope = Ope::WRITE;
+				break;
 		}
-	} catch (bad_alloc) {
-		ERR;
-	}
-
-	Xoroshiro128Plus rnd;
-	rnd.init();
-	for (unsigned int i = 0; i < PRO_NUM; ++i) {
-		for (unsigned int j = 0; j < MAX_OPE; ++j) {
-			if ((rnd.next() % 100) < (READ_RATIO * 100))
-				Pro[i][j].ope = Ope::READ;
-			else
-				Pro[i][j].ope = Ope::WRITE;
-			Pro[i][j].key = rnd.next() % TUPLE_NUM;	// range of key 1 ~ TUPLE_NUM
-			Pro[i][j].val = rnd.next() % (TUPLE_NUM * 10);
-		}
+		pro[i].key = rnd.next() % TUPLE_NUM;	// range of key 1 ~ TUPLE_NUM
+		pro[i].val = rnd.next() % TUPLE_NUM;
 	}
 }

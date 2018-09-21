@@ -29,8 +29,7 @@ GLOBAL std::atomic<bool> Finish;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int PRO_NUM;
-GLOBAL float READ_RATIO;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL int EXTIME;
 
@@ -41,7 +40,6 @@ GLOBAL uint64_t_64byte *FinishTransactions;
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
-GLOBAL Procedure **Pro;
 GLOBAL Tuple *Table;
 GLOBAL TransactionTable *TMT;	// Transaction Mapping Table
 

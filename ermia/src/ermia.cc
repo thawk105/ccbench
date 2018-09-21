@@ -12,6 +12,7 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/int64byte.hpp"
+#include "include/random.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
@@ -34,15 +35,18 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, const char *argv[])
 {
-	if (argc != 8) {
+	if (argc != 7) {
 	//if (argc != 1) {
-		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO CPU_MHZ EXTIME" << endl;
-		cout << "example: ./ermia.exe 200 10 24 10000 0.5 2400 3" << endl;
+		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CPU_MHZ EXTIME" << endl;
+		cout << "example: ./ermia.exe 200 10 24 3 2400 3" << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "PRO_NUM(int): Initial total numbers of transactions" << endl;
-		cout << "READ_RATIO(float): ratio of read in transaction" << endl;
+		cout << "WORKLOAD: 1. read only (read 100%%)" << endl;
+		cout << "		   2. read intensive (read 80%%)" << endl;
+		cout << "		   3. read write even (read 50%%)" << endl;
+		cout << "		   4. write intensive (write 80%%)" << endl;
+		cout << "		   5. write only (write 100%%)" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
 
@@ -69,27 +73,23 @@ chkArg(const int argc, const char *argv[])
 	chkInt(argv[3]);
 	chkInt(argv[4]);
 	chkInt(argv[6]);
-	chkInt(argv[7]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	PRO_NUM = atoi(argv[4]);
-	READ_RATIO = atof(argv[5]);
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD < 1 || WORKLOAD > 5) {
+		cout << "workload is irregular" << endl;
+		ERR;
+	}
 
-	CLOCK_PER_US = atof(argv[6]);
+	CLOCK_PER_US = atof(argv[5]);
 	if (CLOCK_PER_US < 100) {
 		cout << "CPU_MHZ is less than 100. are your really?" << endl;
 		ERR;
 	}
 
-	EXTIME = atoi(argv[7]);
-
-	if (THREAD_NUM > PRO_NUM) {
-		cout << "THREAD_NUM must be smaller than PRO_NUM" << endl;
-		ERR;
-	}
-
+	EXTIME = atoi(argv[6]);
 
 	try {
 		if (posix_memalign((void**)&ThtxID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -201,10 +201,15 @@ manager_worker(void *arg)
 	return nullptr;
 }
 
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+
 static void *
 worker(void *arg)
 {
 	int *myid = (int *)arg;
+	Procedure pro[MAX_OPE];
+	Xoroshiro128Plus rnd;
+	rnd.init();
 
 	//----------
 	pid_t pid;
@@ -238,8 +243,7 @@ worker(void *arg)
 
 	try {
 		Transaction trans(*myid, MAX_OPE);
-		for (unsigned int i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM - 1) * (*myid); ++i) {
-RETRY:
+		for(;;) {
 			//End judgment
 			if (*myid == 1) {
 				End = rdtsc();
@@ -265,13 +269,16 @@ RETRY:
 			}
 			//-----
 			//transaction begin
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
 			trans.tbegin();
-			for (unsigned int j = 0; j < MAX_OPE; ++j) {
+			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				unsigned int value_read;
-				if (Pro[i][j].ope == Ope::READ) {
-					value_read = trans.ssn_tread(Pro[i][j].key);
-				} else if (Pro[i][j].ope == Ope::WRITE) {
-					trans.ssn_twrite(Pro[i][j].key, Pro[i][j].val);
+				if (pro[i].ope == Ope::READ) {
+					value_read = trans.ssn_tread(pro[i].key);
+				} else if (pro[i].ope == Ope::WRITE) {
+					trans.ssn_twrite(pro[i].key, pro[i].val);
 				} else {
 					ERR;
 				}
@@ -287,12 +294,6 @@ RETRY:
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
 				goto RETRY;
-			}
-
-			
-			if (i == (PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1)) {
-				i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
-				//NNN;
 			}
 		}
 	} catch (bad_alloc) {
@@ -328,7 +329,6 @@ extern void displayDB();
 extern void displayPRO();
 extern void displayAbortCounts();
 extern void displayAbortRate();
-extern void makeProcedure();
 extern void makeDB();
 
 int
@@ -336,7 +336,6 @@ main(const int argc, const char *argv[])
 {
 	chkArg(argc, argv);
 	makeDB();
-	makeProcedure();
 
 	//displayDB();
 	//displayPRO();
