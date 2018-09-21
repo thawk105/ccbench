@@ -12,6 +12,7 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/common.hpp"
 #include "include/debug.hpp"
+#include "include/random.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
@@ -32,16 +33,19 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 8) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) EXTIME\n\
+	if (argc != 7) {
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CLOCK_PER_US EXTIME\n\
 \n\
-example:./main 1000000 20 15 10000 0.5 2400 3\n\
+example:./main 1000000 20 15 3 2400 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of thread.\n\
-PRO_NUM(int):    initial total numbers of transactions.\n\
-READ_RATIO(float): ratio of read in transaction.\n\
+WORKLOAD: 1. read only (read 100%%)\n\
+		  2. read intensive (read 80%%)\n\
+		  3. read write even (read 50%%)\n\
+		  4. write intensive (write 80%%)\n\
+		  5. write only (write 100%%)\n\
 CLOCK_PER_US: CPU_MHZ\n\
 EXTIME: execution time.\n\
 \n\n");
@@ -53,21 +57,19 @@ EXTIME: execution time.\n\
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
+	chkInt(argv[5]);
 	chkInt(argv[6]);
-	chkInt(argv[7]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	PRO_NUM = atoi(argv[4]);
-	READ_RATIO = atof(argv[5]);
-	CLOCK_PER_US = atof(argv[6]);
-	EXTIME = atoi(argv[7]);
-	
-	if (THREAD_NUM > PRO_NUM) {
-		printf("THREAD_NUM must be smaller than PRO_NUM\n");
-		exit(0);
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD < 1 || WORKLOAD > 5) {
+		cout << "workload is irregular" << endl;
+		ERR;
 	}
+	CLOCK_PER_US = atof(argv[5]);
+	EXTIME = atoi(argv[6]);
 
 	try {
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -110,11 +112,15 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 }
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
 {
 	int *myid = (int *)arg;
+	Procedure pro[MAX_OPE];
+	Xoroshiro128Plus rnd;
+	rnd.init();
 
 	//----------
 	pid_t pid = syscall(SYS_gettid);
@@ -154,8 +160,7 @@ worker(void *arg)
 	try {
 
 		Transaction trans(*myid);
-		for (unsigned int i = PRO_NUM / (THREAD_NUM) * (*myid); i < PRO_NUM / (THREAD_NUM) * (*myid+1); ++i) {
-RETRY:
+		for (;;) {
 			if (*myid == 0) {
 				End = rdtsc();
 				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
@@ -181,18 +186,19 @@ RETRY:
 
 			//Read phase
 			//Search versions
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
 			trans.tbegin();
-			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				if (Pro[i][j].ope == Ope::READ) {
-					//printf("thid #%d: read(%d)\n", trans.thid, Pro[i][j].key);
-					trans.tread(Pro[i][j].key);
+			for (unsigned int i = 0; i < MAX_OPE; ++i) {
+				if (pro[i].ope == Ope::READ) {
+					trans.tread(pro[i].key);
 					if (trans.status == TransactionStatus::aborted) {
 						trans.abort();
 						goto RETRY;
 					}
-				} else if (Pro[i][j].ope == Ope::WRITE) {
-					//printf("thid #%d: write(%d, %d)\n", trans.thid, Pro[i][j].key, Pro[i][j].val);
-					trans.twrite(Pro[i][j].key, Pro[i][j].val);
+				} else if (pro[i].ope == Ope::WRITE) {
+					trans.twrite(pro[i].key, pro[i].val);
 				} else {
 					ERR;
 				}
@@ -207,9 +213,6 @@ RETRY:
 				trans.abort();
 				goto RETRY;
 			}
-
-			//Maintenance
-			if (i == (PRO_NUM / (THREAD_NUM) * (*myid+1) - 1)) i = PRO_NUM / (THREAD_NUM) * (*myid);
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -241,14 +244,12 @@ extern void displayPRO();
 extern void displayFinishTransactions();
 extern void displayAbortCounts();
 extern void displayAbortRate();
-extern void makeProcedure();
 extern void makeDB();
 
 int 
 main(int argc, char *argv[]) {
 	chkArg(argc, argv);
 	makeDB();
-	makeProcedure();
 	
 	//displayDB();
 	//displayPRO();

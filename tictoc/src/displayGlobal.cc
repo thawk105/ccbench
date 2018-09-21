@@ -25,36 +25,23 @@ displayDB()
 }
 
 void 
-displayPRO() 
+displayPRO(Procedure *pro) 
 {
-   	for (unsigned int i = 0; i < PRO_NUM; i++) { 
-		cout << "transaction No." << i << endl;
-		for (unsigned int j = 0; j < MAX_OPE; j++) {
-	   		cout << "(ope, key, val) = (";
-			switch(Pro[i][j].ope){
-				case Ope::READ:
-					cout << "READ";
-					break;
-				case Ope::WRITE:
-					cout << "WRITE";
-					break;
-				default:
-					break;
-			}
-   			cout << ", " << Pro[i][j].key
-   			<< ", " << Pro[i][j].val << ")" << endl;
+	for (unsigned int i = 0; i < MAX_OPE; i++) {
+   		cout << "(ope, key, val) = (";
+		switch(pro[i].ope){
+			case Ope::READ:
+				cout << "READ";
+				break;
+			case Ope::WRITE:
+				cout << "WRITE";
+				break;
+		default:
+				break;
 		}
+   		cout << ", " << pro[i].key
+   		<< ", " << pro[i].val << ")" << endl;
 	}
-}
-
-void
-displayTransactionRange()
-{
-	cout << "display TransactionRange()" << endl;
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << PRO_NUM / (THREAD_NUM - 1) * (i - 1) << ", " << PRO_NUM / (THREAD_NUM - 1) * (i) - 1 << endl;
-	}
-	cout << endl;
 }
 
 void

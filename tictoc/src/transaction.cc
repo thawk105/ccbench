@@ -198,13 +198,6 @@ Transaction::writePhase()
 		__atomic_store_n(&(Table[(*itr).key].pre_tsw.obj), (*itr).tsw.obj, __ATOMIC_RELAXED);
 		__atomic_store_n(&(Table[(*itr).key].tsw.obj), result.obj, __ATOMIC_RELEASE);
 
-		//modify time test
-		//uint64_t start, stop;
-		//start = rdtsc();
-		//do {
-		//	stop = rdtsc();
-		//} while ((stop - start) < 6000);
-		//-----
 	}
 
 	FinishTransactions[thid].num++;
