@@ -23,25 +23,21 @@ void makeProcedure(Procedure *pro, unsigned int thid) {
 				} 
 				break;
 			case 3:
-				if ((Rnd[thid].next() % 100) < R_INTENS) {
+				if ((Rnd[thid].next() % 100) < RW_EVEN) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
 			case 4:
 				break;
-				if ((Rnd[thid].next() % 100) < RW_EVEN) {
+				if ((Rnd[thid].next() % 100) < W_INTENS) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
 				break;
 			case 5:
-				if ((Rnd[thid].next() % 100) < W_INTENS) {
-					pro[i].ope = Ope::READ;
-				} else {
-					pro[i].ope = Ope::WRITE;
-				} 
+				pro[i].ope = Ope::WRITE;
 				break;
 		}
 		pro[i].key = Rnd[thid].next() % TUPLE_NUM;
