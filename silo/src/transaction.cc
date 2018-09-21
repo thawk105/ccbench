@@ -175,6 +175,7 @@ void Transaction::writePhase()
 
 	readSet.clear();
 	writeSet.clear();
+	FinishTransactions[thid].num++;
 }
 
 void Transaction::lockWriteSet()

@@ -7,7 +7,7 @@ using namespace std;
 
 void makeDB() {
 	Tuple *tmp;
-	Xoroshiro128Plus rnd();
+	Xoroshiro128Plus rnd;
 	rnd.init();
 
 	try {

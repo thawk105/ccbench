@@ -12,6 +12,7 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/common.hpp"
 #include "include/debug.hpp"
+#include "include/random.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
@@ -32,16 +33,19 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 9) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO(0~1) EPOCH_TIME EXTIME\n\
+	if (argc != 8) {
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD EPOCH_TIME EXTIME\n\
 \n\
-example:./main 1000000 20 15 10000 0.5 2400 40 3\n\
+example:./main 1000000 20 15 3 2400 40 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of thread.\n\
-PRO_NUM(int):    initial total numbers of transactions.\n\
-READ_RATIO(float): ratio of read in transaction.\n\
+WORKLOAD: 1. read only (read 100%%)\n\
+		  2. read intensive (read 80%%)\n\
+		  3. read write even (read 50%%)\n\
+		  4. write intensive (write 80%%)\n\
+		  5. write only (write 100%%)\n\
 CLOCK_PER_US: CPU_MHZ\n\
 EPOCH_TIME(int)(ms): Ex. 40\n\
 EXTIME: execution time.\n\
@@ -54,23 +58,18 @@ EXTIME: execution time.\n\
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
+	chkInt(argv[5]);
 	chkInt(argv[6]);
 	chkInt(argv[7]);
-	chkInt(argv[8]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	PRO_NUM = atoi(argv[4]);
-	READ_RATIO = atof(argv[5]);
-	CLOCK_PER_US = atof(argv[6]);
-	EPOCH_TIME = atoi(argv[7]);
-	EXTIME = atoi(argv[8]);
+	WORKLOAD = atoi(argv[4]);
+	CLOCK_PER_US = atof(argv[5]);
+	EPOCH_TIME = atoi(argv[6]);
+	EXTIME = atoi(argv[7]);
 	
-	if (THREAD_NUM > PRO_NUM) {
-		printf("THREAD_NUM must be smaller than PRO_NUM\n");
-		exit(0);
-	}
 	if (THREAD_NUM < 2) {
 		printf("One thread is epoch thread, and others are worker threads.\n\
 So you have to set THREAD_NUM >= 2.\n\n");
@@ -196,10 +195,15 @@ epoch_worker(void *arg)
 	return NULL;
 }
 
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+
 static void *
 worker(void *arg)
 {
 	int *myid = (int *)arg;
+	Procedure pro[MAX_OPE];
+	Xoroshiro128Plus rnd;
+	rnd.init();
 
 	//----------
 	pid_t pid = gettid();
@@ -237,11 +241,8 @@ worker(void *arg)
 	if (*myid == 1) Bgn = rdtsc();
 
 	try {
-		uint64_t localFinishTransactions = 0;
-
 		Transaction trans(*myid);
-		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
-RETRY:
+		for (;;) {
 			if (*myid == 1) {
 				if (FinishTransactions[*myid].num % 1000 == 0) {
 					End = rdtsc();
@@ -252,7 +253,6 @@ RETRY:
 							expected = Ending.load(std::memory_order_acquire);
 							desired = expected + 1;
 						} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-						FinishTransactions[*myid].num = localFinishTransactions;
 						return NULL;
 					}
 				}
@@ -262,24 +262,23 @@ RETRY:
 						expected = Ending.load(std::memory_order_acquire);
 						desired = expected + 1;
 					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-					FinishTransactions[*myid].num = localFinishTransactions;
 					return NULL;
 				}
 			}
 
 			//transaction begin
-
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
 			//Read phase
 			//Search versions
-			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				unsigned int value_read;
-				switch(Pro[i][j].ope) {
+			for (unsigned int i = 0; i < MAX_OPE; ++i) {
+				switch(pro[i].ope) {
 					case(Ope::READ):
-						value_read = trans.tread(Pro[i][j].key);
-						//printf("read(%d) = %d\n", Pro[i][j].key, value_read);
+						trans.tread(pro[i].key);
 						break;
 					case(Ope::WRITE):
-						trans.twrite(Pro[i][j].key, Pro[i][j].val);
+						trans.twrite(pro[i].key, pro[i].val);
 						break;
 					default:
 						break;
@@ -294,10 +293,6 @@ RETRY:
 
 			//Write phase
 			trans.writePhase();
-
-			//Maintenance
-			if (i == (PRO_NUM / (THREAD_NUM-1) * (*myid) - 1)) i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1);
-			localFinishTransactions++;
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -333,14 +328,12 @@ extern void displayPRO();
 extern void displayFinishTransactions();
 extern void displayAbortCounts();
 extern void displayAbortRate();
-extern void makeProcedure();
 extern void makeDB();
 
 int 
 main(int argc, char *argv[]) {
 	chkArg(argc, argv);
 	makeDB();
-	makeProcedure();
 	
 	//displayDB();
 	//displayPRO();
