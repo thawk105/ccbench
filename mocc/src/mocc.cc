@@ -35,15 +35,18 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 9) {
-		cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM PRO_NUM READ_RATIO CPU_MHZ EXTIME" << endl;
-		cout << "example: ./mocc.exe 200 10 24 10000 0.5 2400 40 3" << endl;
+	if (argc != 8) {
+		cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CPU_MHZ EPOCH_TIME EXTIME" << endl;
+		cout << "example: ./mocc.exe 200 10 24 3 2400 40 3" << endl;
 
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "PRO_NUM(int): Initial total numbers of transactions" << endl;
-		cout << "READ_RATIO(float): ratio of read in transaction" << endl;
+		cout << "WORKLOAD: 1. read only (read 100%%)" << endl;
+		cout << "		   2. read intensive (read 80%%)" << endl;
+		cout << "		   3. read write even (read 50%%)" << endl;
+		cout << "		   4. write intensive (write 80%%)" << endl;
+		cout << "		   5. write only (write 100%%)" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EPOCH_TIME(unsigned int)(ms): Ex. 40" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
@@ -60,30 +63,23 @@ chkArg(const int argc, char *argv[])
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
+	chkInt(argv[5]);
 	chkInt(argv[6]);
 	chkInt(argv[7]);
-	chkInt(argv[8]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	PRO_NUM = atoi(argv[4]);
-	READ_RATIO = atof(argv[5]);
+	WORKLOAD = atoi(argv[4]);
 
-	CLOCK_PER_US = atof(argv[6]);
+	CLOCK_PER_US = atof(argv[5]);
 	if (CLOCK_PER_US < 100) {
 		cout << "CPU_MHZ is less than 100. are your really?" << endl;
 		ERR;
 	}
 
-	EPOCH_TIME = atoi(argv[7]);
-	EXTIME = atoi(argv[8]);
-
-	if (THREAD_NUM > PRO_NUM) {
-		cout << "THREAD_NUM must be smaller than PRO_NUM" << endl;
-		ERR;
-	}
-
+	EPOCH_TIME = atoi(argv[6]);
+	EXTIME = atoi(argv[7]);
 
 	try {
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -192,10 +188,13 @@ epoch_worker(void *arg)
 	return nullptr;
 }
 
+extern void makeProcedure(Procedure *pro, unsigned int thid);
+
 static void *
 worker(void *arg)
 {
 	int *myid = (int *) arg;
+	Procedure pro[MAX_OPE];
 
 	//----------
 	pid_t pid = gettid();
@@ -227,8 +226,7 @@ worker(void *arg)
 
 	Transaction trans(*myid);
 	try {
-		for (unsigned int i = PRO_NUM / (THREAD_NUM-1) * (*myid - 1); i < PRO_NUM / (THREAD_NUM-1) * (*myid); ++i) {
-RETRY:
+		for (;;) {
 			if (*myid == 1) {
 				//if (FinishTransactions[*myid].num % 1000 == 0) {
 					End = rdtsc();
@@ -251,12 +249,15 @@ RETRY:
 				}
 			}
 
+			makeProcedure(pro, *myid);
+			asm volatile ("" ::: "memory");
+RETRY:
 			trans.begin();
-			for (unsigned int j = 0; j < MAX_OPE; ++j) {
-				if (Pro[i][j].ope == Ope::READ) {
-					trans.read(Pro[i][j].key);
+			for (unsigned int i = 0; i < MAX_OPE; ++i) {
+				if (pro[i].ope == Ope::READ) {
+					trans.read(pro[i].key);
 				} else {
-					trans.write(Pro[i][j].key, Pro[i][j].val);
+					trans.write(pro[i].key, pro[i].val);
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
@@ -271,7 +272,6 @@ RETRY:
 
 			trans.writePhase();
 
-			if (i == (PRO_NUM / (THREAD_NUM - 1) * (*myid) - 1)) i = PRO_NUM / (THREAD_NUM - 1) * (*myid - 1);
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -305,7 +305,6 @@ threadCreate(int id)
 extern void displayDB();
 extern void displayPRO();
 extern void displayAbortRate();
-extern void makeProcedure();
 extern void makeDB();
 
 int
@@ -313,7 +312,6 @@ main(int argc, char *argv[])
 {
 	chkArg(argc, argv);
 	makeDB();
-	makeProcedure();
 
 	//displayDB();
 

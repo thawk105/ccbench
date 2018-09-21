@@ -1,5 +1,8 @@
-#ifndef PROCEDURE_HPP
-#define PROCEDURE_HPP
+#pragma once
+
+#define R_INTENS 80
+#define RW_EVEN 50
+#define W_INTENS 20
 
 enum class Ope {
 	READ, 
@@ -13,4 +16,3 @@ public:
 	unsigned int val = 0;
 };
 
-#endif	//	PROCEDURE_HPP

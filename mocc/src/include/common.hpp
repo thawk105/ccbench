@@ -31,8 +31,7 @@ GLOBAL std::atomic<uint64_t> *ThLocalEpoch;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int PRO_NUM;
-GLOBAL float READ_RATIO;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
 GLOBAL int EXTIME;
@@ -51,7 +50,6 @@ GLOBAL Xoroshiro128Plus *Rnd;
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
-GLOBAL Procedure **Pro;
 GLOBAL Tuple *Table;
 
 #endif	//	COMMON_HPP
