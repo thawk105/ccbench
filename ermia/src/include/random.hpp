@@ -19,7 +19,14 @@ public:
 	inline void init() {
 		std::random_device rnd;
 		s[0] = rnd();
-		s[1] = rnd();
+		s[1] = splitMix64(s[0]);
+	}
+
+	uint64_t splitMix64(uint64_t seed) {
+		uint64_t z = (seed += 0x9e3779b97f4a7c15);
+		z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+		z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+		return z ^ (z >> 31);
 	}
 
 	inline uint64_t rotl(const uint64_t x, int k) {
