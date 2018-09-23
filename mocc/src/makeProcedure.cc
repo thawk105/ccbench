@@ -12,31 +12,31 @@ using namespace std;
 void makeProcedure(Procedure *pro, unsigned int thid) {
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
 		switch (WORKLOAD) {
-			case 1:
+			case Workload::R_ONLY:
 				pro[i].ope = Ope::READ;
 				break;
-			case 2:
-				if ((Rnd[thid].next() % 100) < R_INTENS) {
+			case Workload::R_INTENS:
+				if ((Rnd[thid].next() % 100) < 80) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
 				break;
-			case 3:
-				if ((Rnd[thid].next() % 100) < RW_EVEN) {
+			case Workload::RW_EVEN:
+				if ((Rnd[thid].next() % 100) < 50) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
-			case 4:
+			case Workload::W_INTENS:
 				break;
-				if ((Rnd[thid].next() % 100) < W_INTENS) {
+				if ((Rnd[thid].next() % 100) < 20) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
 				break;
-			case 5:
+			case Workload::W_ONLY:
 				pro[i].ope = Ope::WRITE;
 				break;
 		}

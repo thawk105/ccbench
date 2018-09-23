@@ -31,7 +31,7 @@ GLOBAL std::atomic<uint64_t> *ThLocalEpoch;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int WORKLOAD;
+GLOBAL Workload WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
 GLOBAL int EXTIME;

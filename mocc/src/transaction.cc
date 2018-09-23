@@ -32,6 +32,7 @@ Transaction::searchWriteSet(unsigned int key)
 LockElement *
 Transaction::searchRLL(unsigned int key)
 {
+	//will do:  binary search
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key == key) return &(*itr);
 	}
@@ -63,7 +64,7 @@ Transaction::read(unsigned int key)
 	// tuple doesn't exist in read/write set.
 	LockElement *inRLL = searchRLL(key);
 	if (inRLL) {
-		lock(tuple, max(inRLL->mode, false));
+		lock(tuple, inRLL->mode);
 	} else if (tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
 		lock(tuple, false);
 	}
@@ -274,8 +275,6 @@ RETRY_MAINTE_TEMP:
 bool
 Transaction::commit()
 {
-	uint64_t lockBit = 0b100;
-
 	// phase 1 lock write set.
 	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -294,16 +293,10 @@ Transaction::commit()
 		}
 
 		// Silo プロトコル
-		// 現 reader-writer lock ではロックの獲得に失敗することでしか，並行ワーカーがロックを獲得していることを知る術がない．
-		// そこで，lockBitはここのためだけに採用する．
-		// 基本的には reader-writer-lock で運用する．
-		if (tmptidword & lockBit) {
-			auto includeW = writeSet.begin();
-			for (; includeW != writeSet.end(); ++includeW) {
-				if ((*includeW).key == (*itr).key) break;
-			}
+		if (Table[(*itr).key].lock.counter.load(memory_order_acquire) == -1) {
+			WriteElement *inW = searchWriteSet((*itr).key);
 			//ロックが取られていて，自分が持ち主でないのなら abort
-			if (includeW == writeSet.end()) {
+			if (inW == nullptr) {
 				this->status = TransactionStatus::aborted;
 				return false;
 			}

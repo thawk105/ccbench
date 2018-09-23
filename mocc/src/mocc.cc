@@ -42,11 +42,12 @@ chkArg(const int argc, char *argv[])
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "WORKLOAD: 1. read only (read 100%%)" << endl;
-		cout << "		   2. read intensive (read 80%%)" << endl;
-		cout << "		   3. read write even (read 50%%)" << endl;
-		cout << "		   4. write intensive (write 80%%)" << endl;
-		cout << "		   5. write only (write 100%%)" << endl;
+		cout << "WORKLOAD:" << endl;
+	    cout << "0. read only (read 100%%)" << endl;
+		cout << "1. read intensive (read 80%%)" << endl;
+		cout << "2. read write even (read 50%%)" << endl;
+		cout << "3. write intensive (write 80%%)" << endl;
+		cout << "4. write only (write 100%%)" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EPOCH_TIME(unsigned int)(ms): Ex. 40" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
@@ -70,7 +71,26 @@ chkArg(const int argc, char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
+
+	switch (atoi(argv[4])) {
+		case 0:
+			WORKLOAD = Workload::R_ONLY;
+			break;
+		case 1:
+			WORKLOAD = Workload::R_INTENS;
+			break;
+		case 2:
+			WORKLOAD = Workload::RW_EVEN;
+			break;
+		case 3:
+			WORKLOAD = Workload::W_INTENS;
+			break;
+		case 4:
+			WORKLOAD = Workload::W_ONLY;
+			break;
+		default:
+			ERR;
+	}
 
 	CLOCK_PER_US = atof(argv[5]);
 	if (CLOCK_PER_US < 100) {
