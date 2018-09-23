@@ -10,6 +10,7 @@ epoch=3
 result=result_silo_r5_tuple200.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
+echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
 for ((thread = 2; thread <= 24; thread+=2))
 do
     sum=0
@@ -49,6 +50,7 @@ tuple=10000
 result=result_silo_r5_tuple10000.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
+echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
 for ((thread = 2; thread <= 24; thread+=2))
 do
     sum=0

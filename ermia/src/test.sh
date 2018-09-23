@@ -9,6 +9,7 @@ epoch=3
 result=result_ermia_r5_tuple200.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
+echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
 for ((thread=2; thread<=24; thread+=2))
 do
 	sum=0
@@ -48,6 +49,7 @@ tuple=10000
 result=result_ermia_r5_tuple10000.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
+echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
 for ((thread=2; thread<=24; thread+=2))
 do
 	sum=0

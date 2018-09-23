@@ -41,11 +41,12 @@ example:./main 1000000 20 15 3 2400 3\n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of thread.\n\
-WORKLOAD: 1. read only (read 100%%)\n\
-		  2. read intensive (read 80%%)\n\
-		  3. read write even (read 50%%)\n\
-		  4. write intensive (write 80%%)\n\
-		  5. write only (write 100%%)\n\
+WORKLOAD:\n\
+0. read only (read 100%%)\n\
+1. read intensive (read 80%%)\n\
+2. read write even (read 50%%)\n\
+3. write intensive (write 80%%)\n\
+4. write only (write 100%%)\n\
 CLOCK_PER_US: CPU_MHZ\n\
 EXTIME: execution time.\n\
 \n\n");
@@ -63,11 +64,27 @@ EXTIME: execution time.\n\
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
-	if (WORKLOAD < 1 || WORKLOAD > 5) {
-		cout << "workload is irregular" << endl;
-		ERR;
+	
+	switch (atoi(argv[4])) {
+		case 0:
+			WORKLOAD = Workload::R_ONLY;
+			break;
+		case 1:
+			WORKLOAD = Workload::R_INTENS;
+			break;
+		case 2:
+			WORKLOAD = Workload::RW_EVEN;
+			break;
+		case 3:
+			WORKLOAD = Workload::W_INTENS;
+			break;
+		case 4:
+			WORKLOAD = Workload::W_ONLY;
+			break;
+		default:
+			ERR;
 	}
+
 	CLOCK_PER_US = atof(argv[5]);
 	EXTIME = atoi(argv[6]);
 
