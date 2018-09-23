@@ -36,7 +36,7 @@ GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int WORKLOAD;
+GLOBAL Workload WORKLOAD;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
 GLOBAL bool ELR;	//early lock release
@@ -47,6 +47,7 @@ GLOBAL double IO_TIME_NS;	//nano second
 GLOBAL int GROUP_COMMIT_TIMEOUT_US;	//micro seconds
 GLOBAL int GARBAGE_COLLECTION_INTERVAL_US;	//micro seconds
 GLOBAL uint64_t EXTIME;
+GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
 GLOBAL TimeStamp *ThreadWts;
 GLOBAL TimeStamp *ThreadRts;

@@ -15,6 +15,7 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/int64byte.hpp"
+#include "include/procedure.hpp"
 #include "include/random.hpp"
 #include "include/transaction.hpp"
 
@@ -35,31 +36,39 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 12) {
+	if (argc != 13) {
 		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD(1~5) \n\
-             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
+             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME UNSTABLE_WORKLOAD\n\
 \n\
-example:./main 1000000 20 15 3 OFF OFF 2400 5 2 E 3\n\
+example:./main 1000000 20 15 3 OFF OFF 2400 5 2 E 3 0\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of worker thread.\n\
-WORKLOAD: 1. read only (read 100%%)\n\
-		  2. read intensive (read 80%%)\n\
-		  3. read write even (read 50%%)\n\
-		  4. write intensive (write 80%%)\n\
-		  5. write only (write 100%%)\n\
+WORKLOAD:\n\
+0. read only (read 100%%)\n\
+1. read intensive (read 80%%)\n\
+2. read write even (read 50%%)\n\
+3. write intensive (write 80%%)\n\
+4. write only (write 100%%)\n\
 WAL: P or S or OFF.\n\
 GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
 CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
 IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds).\n\
 GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds).\n\
-LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release.\n\n");
+LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release.\n\
+UNSTABLE_WORKLOAD: \n\
+0. stable workload\n\
+1. switch read-mostly and write-mostly every one second\n\n");
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "Version " << sizeof(Version) << endl;
 		cout << "TimeStamp " << sizeof(TimeStamp) << endl;
 		cout << "Procedure" << sizeof(Procedure) << endl;
+		Workload wl = Workload::R_ONLY;
+		printf("Workload::RONLY %d\n", (int)wl);
+		wl = Workload::RW_EVEN;
+		printf("Workload::RWEVEN %d\n", (int)wl);
 
 		exit(0);
 	}
@@ -70,7 +79,25 @@ LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
+	switch (atoi(argv[4])) {
+		case 0:
+			WORKLOAD = Workload::R_ONLY;
+			break;
+		case 1:
+			WORKLOAD = Workload::R_INTENS;
+			break;
+		case 2:
+			WORKLOAD = Workload::RW_EVEN;
+			break;
+		case 3:
+			WORKLOAD = Workload::W_INTENS;
+			break;
+		case 4:
+			WORKLOAD = Workload::W_ONLY;
+			break;
+		default:
+			ERR;
+	}
 	
 	string tmp = argv[5];
 	if (tmp == "P")  {
@@ -135,6 +162,7 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 
 	chkInt(argv[11]);
 	EXTIME = atoi(argv[11]);
+	UNSTABLE_WORKLOAD = atoi(argv[12]);
 	
 	try {
 
@@ -180,19 +208,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 static void 
 prtRslt(uint64_t &bgn, uint64_t &end)
 {
-	/*long usec;
-	double sec;
-
-	usec = (end.tv_sec - bgn.tv_sec) * 1000 * 1000 + (end.tv_usec - bgn.tv_usec);
-	sec = (double) usec / 1000.0 / 1000.0;
-
-	double result = (double)sumTrans / sec;
-	//cout << (int)sumTrans << endl;
-	//cout << (int)sec << endl;
-	cout << (int)result << endl;
-	fflush(stdout);
-	*/
-
 	uint64_t diff = end - bgn;
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
@@ -461,7 +476,7 @@ main(int argc, char *argv[]) {
 	//displayAbortCounts();
 	//displayTransactionRange();
 	
-	prtRslt(Bgn, End);
+	if (UNSTABLE_WORKLOAD == 0) prtRslt(Bgn, End);
 
 	return 0;
 }

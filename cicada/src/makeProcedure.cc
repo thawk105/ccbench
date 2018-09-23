@@ -14,34 +14,34 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
 	bool ronly = true;
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
 		switch (WORKLOAD) {
-			case 1:
+			case Workload::R_ONLY:
 				pro[i].ope = Ope::READ;
 				break;
-			case 2:
-				if ((rnd.next() % 100) < R_INTENS) {
+			case Workload::R_INTENS:
+				if ((rnd.next() % 100) < 80) {
 					pro[i].ope = Ope::READ;
 				} else {
 					ronly = false;
 					pro[i].ope = Ope::WRITE;
 				}
 				break;
-			case 3:
-				if ((rnd.next() % 100) < RW_EVEN) {
+			case Workload::RW_EVEN:
+				if ((rnd.next() % 100) < 50) {
 					pro[i].ope = Ope::READ;
 				} else {
 					ronly = false;
 					pro[i].ope = Ope::WRITE;
 				}
 				break;
-			case 4:
-				if ((rnd.next() % 100) < W_INTENS) {
+			case Workload::W_INTENS:
+				if ((rnd.next() % 100) < 20) {
 					pro[i].ope = Ope::READ;
 				} else {
 					ronly = false;
 					pro[i].ope = Ope::WRITE;
 				}
 				break;
-			case 5:
+			case Workload::W_ONLY:
 				ronly = false;
 				pro[i].ope = Ope::WRITE;
 				break;

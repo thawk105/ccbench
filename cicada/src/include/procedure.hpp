@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdint>
 
-#define R_INTENS 80
-#define RW_EVEN 50
-#define W_INTENS 20 
+enum class Workload {
+	R_ONLY, R_INTENS, RW_EVEN, W_INTENS, W_ONLY
+};
 
 enum class Ope {
 	READ, 
