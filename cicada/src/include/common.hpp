@@ -30,13 +30,15 @@ GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> MinRts;
 GLOBAL std::atomic<uint64_t> MinWts;
 GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
+GLOBAL std::atomic<unsigned int> UN_WL;	// unstable workload
+GLOBAL std::atomic<unsigned int> UNSTA_INDEX;
 
 #endif
 
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL Workload WORKLOAD;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
 GLOBAL bool ELR;	//early lock release
@@ -45,7 +47,6 @@ GLOBAL uint64_t GROUP_COMMIT;
 GLOBAL uint64_t CLOCK_PER_US;	//US = micro(µ) seconds 
 GLOBAL double IO_TIME_NS;	//nano second
 GLOBAL int GROUP_COMMIT_TIMEOUT_US;	//micro seconds
-GLOBAL int GARBAGE_COLLECTION_INTERVAL_US;	//micro seconds
 GLOBAL uint64_t EXTIME;
 GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
@@ -62,9 +63,11 @@ GLOBAL TimeStamp *ThreadFlushedWts;
 GLOBAL Version ***PLogSet;	//[thID][index] pointer array
 GLOBAL Version **SLogSet;	//[index] pointer array
 GLOBAL RWLock SwalLock;
+GLOBAL RWLock CtrLock;
 
-GLOBAL uint64_t_64byte *FinishTransactions;
-GLOBAL uint64_t_64byte *AbortCounts;
+GLOBAL uint64_t *FinishTransactions;
+GLOBAL uint64_t *UnstaFinishTransactions;	// use for unstable workload
+GLOBAL uint64_t *AbortCounts;
 
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;

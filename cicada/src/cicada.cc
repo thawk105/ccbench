@@ -65,11 +65,6 @@ UNSTABLE_WORKLOAD: \n\
 		cout << "Version " << sizeof(Version) << endl;
 		cout << "TimeStamp " << sizeof(TimeStamp) << endl;
 		cout << "Procedure" << sizeof(Procedure) << endl;
-		Workload wl = Workload::R_ONLY;
-		printf("Workload::RONLY %d\n", (int)wl);
-		wl = Workload::RW_EVEN;
-		printf("Workload::RWEVEN %d\n", (int)wl);
-
 		exit(0);
 	}
 	chkInt(argv[1]);
@@ -79,24 +74,9 @@ UNSTABLE_WORKLOAD: \n\
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	switch (atoi(argv[4])) {
-		case 0:
-			WORKLOAD = Workload::R_ONLY;
-			break;
-		case 1:
-			WORKLOAD = Workload::R_INTENS;
-			break;
-		case 2:
-			WORKLOAD = Workload::RW_EVEN;
-			break;
-		case 3:
-			WORKLOAD = Workload::W_INTENS;
-			break;
-		case 4:
-			WORKLOAD = Workload::W_ONLY;
-			break;
-		default:
-			ERR;
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD > 4) {
+		cout << "workload must be 0 ~ 4" << endl;
 	}
 	
 	string tmp = argv[5];
@@ -163,6 +143,10 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	chkInt(argv[11]);
 	EXTIME = atoi(argv[11]);
 	UNSTABLE_WORKLOAD = atoi(argv[12]);
+	if (UNSTABLE_WORKLOAD > 1) {
+		cout << "UNSTABLE_WORKLOAD must be 0 or 1" << endl;
+		ERR;
+	}
 	
 	try {
 
@@ -177,12 +161,13 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCommitStart, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCommitStop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		
 		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	//実装の簡単のため、どちらもメモリを確保してしまう。
 		PLogSet = new Version**[THREAD_NUM];
+		FinishTransactions = new uint64_t[THREAD_NUM];
+		AbortCounts = new uint64_t[THREAD_NUM];
+		UnstaFinishTransactions = new uint64_t[EXTIME * 10 + 1]; // unstable workload change by 0.1 sec
 
 		for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 			PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
@@ -192,8 +177,9 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		AbortCounts[i].num = 0;
-		FinishTransactions[i].num = 0;
+		FinishTransactions[i] = 0;
+		AbortCounts[i] = 0;
+		UnstaFinishTransactions[i] = 0;
 		GCFlag[i].num = 0;
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
@@ -214,11 +200,19 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		//cout << "FinishTransactions[" << i << "]: " << FinishTransactions[i] << endl;
-		sumTrans += FinishTransactions[i].num;
+		sumTrans += FinishTransactions[i];
 	}
 	
-	uint64_t result = (double)sumTrans / (double)sec;
-	cout << (int)result << endl;
+	if (UNSTABLE_WORKLOAD == 0) {
+		uint64_t result = (double)sumTrans / (double)sec;
+		cout << (int)result << endl;
+	} else {
+		if (UNSTABLE_WORKLOAD) {
+			for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i) {
+				cout << 0.1 * i << " " << UnstaFinishTransactions[i] << endl;
+			}
+		}
+	}
 }
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
@@ -250,8 +244,22 @@ maneger_worker(void *arg)
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
 	while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
+	uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
+	
+
+	Bgn = rdtsc();
 	// leader work
-	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
+	for(;;) {
+		if (UNSTABLE_WORKLOAD == 0) {
+			End = rdtsc();
+			if (chkClkSpan(Bgn, End, finish_time)) {
+				Finish.store(true, std::memory_order_release);
+				return nullptr;
+			}
+		} else if (UNSTABLE_WORKLOAD == 1) {
+			if (Ending.load(memory_order_acquire) == THREAD_NUM - 1) return nullptr;
+		}
+
 		bool gc_update = true;
 		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		//check all thread's flag raising
@@ -295,7 +303,7 @@ maneger_worker(void *arg)
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL);
 
 static void *
 worker(void *arg)
@@ -304,6 +312,8 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
+	uint64_t localBgn, localEnd;
+	unsigned int local_unsta_index(1), local_un_wl(1);
 
 	//----------
 	pid_t pid;
@@ -332,37 +342,63 @@ worker(void *arg)
 		desired = expected + 1;
 	} while (!Running.compare_exchange_weak(expected, desired));
 	
+	uint64_t totalFinishTransactions(0);
+	uint64_t localUnstaTrans[EXTIME * 10 + 1] = {};
+	uint64_t totalAbortCounts(0);
+	Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
+
 	//spin wait
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
 	//----------
 	
-	//start work(transaction)
-	if (*myid == 1) Bgn = rdtsc();
-
+	localBgn = rdtsc();
 	try {
-		Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
+		//start work(transaction)
 		for (;;) {
-			if (*myid == 1) {
-				End = rdtsc();
-				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
-					do {
-						expected = Ending.load(memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
-					Finish.store(true, std::memory_order_release);
+			if (UNSTABLE_WORKLOAD == 0) {
+				if (Finish.load(std::memory_order_acquire)) {
+					CtrLock.w_lock();
+					FinishTransactions[*myid] = totalFinishTransactions;
+					AbortCounts[*myid] = totalAbortCounts;
+					for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i)
+						UnstaFinishTransactions[i] = localUnstaTrans[i];
+					CtrLock.w_unlock();
 					return nullptr;
 				}
 			} else {
-				if (Finish.load(std::memory_order_acquire)) {
-					do {
-						expected = Ending.load(memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_strong(expected, desired, memory_order_acq_rel));
-					return nullptr;
+				localEnd = rdtsc();
+				if (chkClkSpan(localBgn, localEnd, CLOCK_PER_US * 1000 * 100)) {
+					// elapsed 0.1 sec
+					if (local_unsta_index == EXTIME * 10) {
+						do {
+							expected = Ending;
+							desired = expected + 1;
+						} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+						CtrLock.w_lock();
+						FinishTransactions[*myid] = totalFinishTransactions;
+						AbortCounts[*myid] = totalAbortCounts;
+						for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i)
+							UnstaFinishTransactions[i] = localUnstaTrans[i];
+						CtrLock.w_unlock();
+						return nullptr;
+					}
+
+					//change workload
+					if (local_un_wl == 1)
+						local_un_wl = 3;
+					else 
+						local_un_wl = 1;
+
+					local_unsta_index++;
+					localBgn = localEnd;
 				}
 			}
 
-			makeProcedure(pro, rnd);
+			if (UNSTABLE_WORKLOAD == 0) {
+				makeProcedure(pro, rnd, WORKLOAD);
+			} else {
+				makeProcedure(pro, rnd, local_un_wl);
+			}
 			asm volatile ("" ::: "memory");
 RETRY:
 			trans.tbegin(pro[0].ronly);
@@ -378,6 +414,7 @@ RETRY:
 
 				if (trans.status == TransactionStatus::abort) {
 					trans.earlyAbort();
+					totalAbortCounts++;
 					goto RETRY;
 				}
 			}
@@ -385,18 +422,22 @@ RETRY:
 			//read onlyトランザクションはread setを集めず、validationもしない。
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
-				FinishTransactions[*myid].num++;
+				totalFinishTransactions++;
+				if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 				continue;
 			}
 
 			//Validation phase
 			if (!trans.validation()) {
 				trans.abort();
+				totalAbortCounts++;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
+			totalFinishTransactions++;
+			if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 
 			//Maintenance
 			//Schedule garbage collection
@@ -476,7 +517,7 @@ main(int argc, char *argv[]) {
 	//displayAbortCounts();
 	//displayTransactionRange();
 	
-	if (UNSTABLE_WORKLOAD == 0) prtRslt(Bgn, End);
+	prtRslt(Bgn, End);
 
 	return 0;
 }

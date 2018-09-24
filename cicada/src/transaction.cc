@@ -442,8 +442,6 @@ Transaction::earlyAbort()
 		chkGcpvTimeout();
 	}
 
-	AbortCounts[thid].num++;
-
 	this->wts->set_clockBoost(CLOCK_PER_US);
 	this->status = TransactionStatus::abort;
 }
@@ -462,8 +460,6 @@ Transaction::abort()
 
 	readSet.clear();
 	writeSet.clear();
-
-	AbortCounts[thid].num++;
 
 	this->wts->set_clockBoost(CLOCK_PER_US);
 }
@@ -588,6 +584,5 @@ Transaction::writePhase()
 	readSet.clear();
 	writeSet.clear();
 
-	FinishTransactions[thid].num++;
 }
 

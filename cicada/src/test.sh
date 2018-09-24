@@ -1,7 +1,7 @@
 #test.sh(cicada)
 tuple=200
 maxope=10
-workload=3
+workload=4
 wal=OFF
 group_commit=OFF
 cpu_mhz=2400
@@ -12,7 +12,7 @@ extime=3
 uw=0
 epoch=3
 
-result=result_cicada_r2_tuple200.dat
+result=result_cicada_r0_tuple200.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
 echo "#./cicada.exe $tuple $maxope thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime $uw" >> $result
@@ -53,7 +53,7 @@ do
 done
 
 tuple=10000
-result=result_cicada_r2_tuple10000.dat
+result=result_cicada_r0_tuple10000.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
 echo "#./cicada.exe $tuple $maxope thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime $uw" >> $result
