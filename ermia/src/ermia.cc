@@ -35,10 +35,10 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, const char *argv[])
 {
-	if (argc != 7) {
+	if (argc != 8) {
 	//if (argc != 1) {
-		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CPU_MHZ EXTIME" << endl;
-		cout << "example: ./ermia.exe 200 10 24 3 2400 3" << endl;
+		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CPU_MHZ EXTIME UNSTABLE_WORKLOAD" << endl;
+		cout << "example: ./ermia.exe 200 10 24 3 2400 3 0" << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
@@ -50,6 +50,9 @@ chkArg(const int argc, const char *argv[])
 		cout << "4. write only (write 100%%)" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
+		cout << "UNSTABLE_WORKLOAD: " << endl;
+		cout << "0. stable workload" << endl;
+		cout << "1. change between read-mostly and write-mostly every one second" << endl;
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "Version " << sizeof(Version) << endl;
@@ -78,25 +81,12 @@ chkArg(const int argc, const char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	switch (atoi(argv[4])) {
-		case 0:
-			WORKLOAD = Workload::R_ONLY;
-			break;
-		case 1:
-			WORKLOAD = Workload::R_INTENS;
-			break;
-		case 2:
-			WORKLOAD = Workload::RW_EVEN;
-			break;
-		case 3:
-			WORKLOAD = Workload::W_INTENS;
-			break;
-		case 4:
-			WORKLOAD = Workload::W_ONLY;
-			break;
-		default:
-			ERR;
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD > 4) {
+		cout << "workload must be 0 ~ 4" << endl;
+		ERR;
 	}
+
 	CLOCK_PER_US = atof(argv[5]);
 	if (CLOCK_PER_US < 100) {
 		cout << "CPU_MHZ is less than 100. are your really?" << endl;
@@ -104,20 +94,27 @@ chkArg(const int argc, const char *argv[])
 	}
 
 	EXTIME = atoi(argv[6]);
+	UNSTABLE_WORKLOAD = atoi(argv[7]);
+	if (UNSTABLE_WORKLOAD > 2) {
+		cout << "UNSTABLE_WORKLOAD must be 0 ~ 1" << endl;
+		ERR;
+	}
 
 	try {
 		if (posix_memalign((void**)&ThtxID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&TMT, 64, THREAD_NUM * sizeof(TransactionTable)) != 0) ERR;
+		FinishTransactions = new uint64_t[THREAD_NUM];
+		AbortCounts = new uint64_t[THREAD_NUM];
+		UnstaFinishTransactions = new uint64_t[THREAD_NUM];
 	} catch (bad_alloc) {
 		ERR;
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		ThtxID[i].num = 0;
-		AbortCounts[i].num = 0;
-		FinishTransactions[i].num = 0;
+		FinishTransactions[i] = 0;
+		AbortCounts[i] = 0;
+		UnstaFinishTransactions[i] = 0;
 
 		TMT[i].cstamp.store(0, memory_order_release);
 		TMT[i].sstamp.store(UINT64_MAX, memory_order_release);
@@ -136,7 +133,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i].num;
+		sumTrans += FinishTransactions[i];
 	}
 
 	uint64_t result = (double)sumTrans / (double)sec;
@@ -166,8 +163,19 @@ manager_worker(void *arg)
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
 	//-----
 	
+	Bgn = rdtsc();
 	//garbage collector
-	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
+	for (;;) {
+		if (UNSTABLE_WORKLOAD == 0) {
+			End = rdtsc();
+			if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+				Finish.store(true, std::memory_order_release);
+				return nullptr;
+			}
+		} else if (UNSTABLE_WORKLOAD == 1) {
+			if (Ending.load(memory_order_acquire) == THREAD_NUM - 1) return nullptr;
+		}
+
 		uint64_t mintxID = UINT64_MAX;
 		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 			mintxID = min(mintxID, ThtxID[i].num.load(memory_order_acquire));
@@ -215,7 +223,7 @@ manager_worker(void *arg)
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL);
 
 static void *
 worker(void *arg)
@@ -224,6 +232,10 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	Xoroshiro128Plus rnd;
 	rnd.init();
+	uint64_t localFinishTransactions(0), localAbortCounts(0);
+	uint64_t localUnstaTrans[EXTIME * 10 + 1] = {};
+	uint64_t localBgn, localEnd;
+	unsigned int local_unsta_index(1), local_un_wl(1);
 
 	//----------
 	pid_t pid;
@@ -253,44 +265,59 @@ worker(void *arg)
 	//-----
 	
 	//start work (transaction)
-	if (*myid == 1) Bgn = rdtsc();
-
 	try {
 		Transaction trans(*myid, MAX_OPE);
 		for(;;) {
-			//End judgment
-			if (*myid == 1) {
-				End = rdtsc();
-				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
-					do {
-						expected = Ending.load(memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-					Finish.store(true, std::memory_order_release);
-
+			if (UNSTABLE_WORKLOAD == 0) {
+				if (Finish.load(std::memory_order_acquire)) {
+					CtrLock.w_lock();
+					FinishTransactions[*myid] = localFinishTransactions;
+					AbortCounts[*myid] = localAbortCounts;
+					CtrLock.w_unlock();
 					return nullptr;
 				}
 			} else {
-				if (Finish.load(std::memory_order_acquire)) {
-					do {
-						expected = Ending.load(std::memory_order_acquire);
-						desired = expected + 1;
-						//printf("expected %d\n", expected);
-					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+				localEnd = rdtsc();
+				if (chkClkSpan(localBgn, localEnd, CLOCK_PER_US * 1000 * 100)) {
+					//elapsed 0.1 sec
+					if (local_unsta_index == EXTIME * 10) {
+						do {
+							expected = Ending;
+							desired = expected  + 1;
+						} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+						CtrLock.w_lock();
+						FinishTransactions[*myid] = localFinishTransactions;
+						AbortCounts[*myid] = localAbortCounts;
+						for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i)
+							UnstaFinishTransactions[i] = localUnstaTrans[i];
+						CtrLock.w_unlock();
+						return nullptr;
+					}
 
-					return nullptr;
+					//change workload
+					if (local_un_wl == 1)
+						local_un_wl = 3;
+					else 
+						local_un_wl = 1;
+					
+					local_unsta_index++;
+					localBgn = localEnd;
 				}
 			}
+
 			//-----
 			//transaction begin
-			makeProcedure(pro, rnd);
+			if (UNSTABLE_WORKLOAD == 0) {
+				makeProcedure(pro, rnd, WORKLOAD);
+			} else {
+				makeProcedure(pro, rnd, local_un_wl);
+			}
 			asm volatile ("" ::: "memory");
 RETRY:
 			trans.tbegin();
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
-				unsigned int value_read;
 				if (pro[i].ope == Ope::READ) {
-					value_read = trans.ssn_tread(pro[i].key);
+					trans.ssn_tread(pro[i].key);
 				} else if (pro[i].ope == Ope::WRITE) {
 					trans.ssn_twrite(pro[i].key, pro[i].val);
 				} else {
@@ -299,6 +326,7 @@ RETRY:
 
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
+					localAbortCounts++;
 					goto RETRY;
 				}
 			}
@@ -307,8 +335,11 @@ RETRY:
 			trans.ssn_parallel_commit();
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
+				localAbortCounts++;
 				goto RETRY;
 			}
+			localFinishTransactions++;
+			if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 		}
 	} catch (bad_alloc) {
 		ERR;

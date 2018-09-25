@@ -2,6 +2,7 @@
 #define COMMON_HPP
 
 #include "int64byte.hpp"
+#include "lock.hpp"
 #include "procedure.hpp"
 #include "transaction.hpp"
 #include "tuple.hpp"
@@ -29,17 +30,20 @@ GLOBAL std::atomic<bool> Finish;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL Workload WORKLOAD;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
-GLOBAL int EXTIME;
+GLOBAL unsigned int EXTIME;
+GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
 GLOBAL uint64_t_64byte *ThtxID;
-GLOBAL uint64_t_64byte *AbortCounts;
-GLOBAL uint64_t_64byte *FinishTransactions;
+GLOBAL uint64_t *AbortCounts;
+GLOBAL uint64_t *FinishTransactions;
+GLOBAL uint64_t *UnstaFinishTransactions;
 
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
+GLOBAL RWLock CtrLock;
 GLOBAL Tuple *Table;
 GLOBAL TransactionTable *TMT;	// Transaction Mapping Table
 

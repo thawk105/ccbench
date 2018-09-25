@@ -1,12 +1,12 @@
 #test.sh(ermia)
 tuple=200
 maxope=10
-workload=3
+workload=4
 cpu_mhz=2400
 extime=3
 epoch=3
 
-result=result_ermia_r5_tuple200.dat
+result=result_ermia_r0_tuple200.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
@@ -46,7 +46,7 @@ do
 done
 
 tuple=10000
-result=result_ermia_r5_tuple10000.dat
+result=result_ermia_r0_tuple10000.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result

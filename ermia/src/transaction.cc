@@ -256,7 +256,6 @@ RETRY_SSN_COMMIT:
 
 	SsnLock.unlock();
 
-	FinishTransactions[thid].num++;
 	readSet.clear();
 	writeSet.clear();
 	return;
@@ -411,7 +410,6 @@ Transaction::ssn_parallel_commit()
 		(*itr).ver->status.store(VersionStatus::committed, memory_order_release);
 
 	safeRetry = false;
-	FinishTransactions[thid].num++;
 	TMT[thid].prev_cstamp.store(this->cstamp, memory_order_release);
 	readSet.clear();
 	writeSet.clear();
@@ -421,8 +419,6 @@ Transaction::ssn_parallel_commit()
 void
 Transaction::abort()
 {
-	AbortCounts[thid].num++;
-
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		(*itr).ver->committed_prev->sstamp.store(UINT64_MAX & ~(1), memory_order_release);
 		(*itr).ver->status.store(VersionStatus::aborted, memory_order_release);

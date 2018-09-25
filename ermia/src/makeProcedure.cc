@@ -7,35 +7,35 @@
 using namespace std;
 
 void
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL)
 {
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		switch (WORKLOAD) {
-			case Workload::R_ONLY:
+		switch (localWL) {
+			case 0:
 				pro[i].ope = Ope::READ;
 				break;
-			case Workload::R_INTENS:
+			case 1:
 				if ((rnd.next() % 100) < 80) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				}
 				break;
-			case Workload::RW_EVEN:
+			case 2:
 				if ((rnd.next() % 100) < 50) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				}
 				break;
-			case Workload::W_INTENS:
+			case 3:
 				if ((rnd.next() % 100) < 20) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				}
 				break;
-			case Workload::W_ONLY:
+			case 4:
 				pro[i].ope = Ope::WRITE;
 				break;
 		}

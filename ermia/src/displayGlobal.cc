@@ -73,8 +73,8 @@ displayAbortRate()
 	long double rate[THREAD_NUM] = {};
 
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i].num;
-		sumA += AbortCounts[i].num;
+		sumT += FinishTransactions[i];
+		sumA += AbortCounts[i];
 		rate[i] = sumA / (sumT + sumA);
 	}
 
@@ -93,7 +93,7 @@ displayAbortCounts()
 {
 	uint64_t sum = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sum += AbortCounts[i].num;
+		sum += AbortCounts[i];
 	}
 
 	cout << "Abort counts : " << sum << endl;

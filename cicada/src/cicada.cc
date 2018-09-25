@@ -342,9 +342,8 @@ worker(void *arg)
 		desired = expected + 1;
 	} while (!Running.compare_exchange_weak(expected, desired));
 	
-	uint64_t totalFinishTransactions(0);
+	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 	uint64_t localUnstaTrans[EXTIME * 10 + 1] = {};
-	uint64_t totalAbortCounts(0);
 	Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
 
 	//spin wait
@@ -360,8 +359,6 @@ worker(void *arg)
 					CtrLock.w_lock();
 					FinishTransactions[*myid] = totalFinishTransactions;
 					AbortCounts[*myid] = totalAbortCounts;
-					for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i)
-						UnstaFinishTransactions[i] = localUnstaTrans[i];
 					CtrLock.w_unlock();
 					return nullptr;
 				}
