@@ -367,7 +367,7 @@ Transaction::writePhase()
 	tid_b = ThRecentTID[thid].num + 0b1000;
 
 	// calculates (c)
-	tid_c = ThLocalEpoch[thid] << 32;
+	tid_c = __atomic_load_n(&(ThLocalEpoch[thid].num), __ATOMIC_ACQUIRE) << 32;
 
 	// compare a, b, c
 	ThRecentTID[thid].num = max({tid_a, tid_b, tid_c});

@@ -55,6 +55,7 @@ chkArg(const int argc, char *argv[])
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "RWLock " << sizeof(RWLock) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+		cout << "Xoroshiro128Plus " << sizeof(Xoroshiro128Plus) << endl;
 
 		exit(0);
 	}
@@ -106,7 +107,7 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(std::atomic<uint64_t>)) != 0) ERR;
+		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Rnd, 64, THREAD_NUM * sizeof(Xoroshiro128Plus)) != 0) ERR;
 	} catch (bad_alloc) {
@@ -117,7 +118,7 @@ chkArg(const int argc, char *argv[])
 		FinishTransactions[i].num = 0;
 		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
-		ThLocalEpoch[i] = 0;
+		ThLocalEpoch[i].num = 0;
 		Rnd[i].init();
 	}
 }
@@ -144,7 +145,7 @@ bool
 chkEpochLoaded()
 {
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (ThLocalEpoch[i].load(memory_order_acquire) != GlobalEpoch) return false;
+		if (__atomic_load_n(&(ThLocalEpoch[i].num), __ATOMIC_ACQUIRE) != GlobalEpoch.load(memory_order_acquire)) return false;
 	}
 
 	return true;

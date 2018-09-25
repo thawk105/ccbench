@@ -25,7 +25,7 @@ GLOBAL std::atomic<bool> Finish;
 
 #endif
 
-GLOBAL std::atomic<uint64_t> *ThLocalEpoch;
+GLOBAL uint64_t_64byte *ThLocalEpoch;
 
 // run-time args
 GLOBAL unsigned int TUPLE_NUM;
