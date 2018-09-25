@@ -1,13 +1,13 @@
 #test.sh(silo)
 tuple=200
 maxope=10
-workload=3
+workload=0
 cpumhz=2400
 epochtime=40
 extime=3
 epoch=3
 
-result=result_silo_r5_tuple200.dat
+result=result_silo_r10_tuple200.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
@@ -47,7 +47,7 @@ do
 done
 
 tuple=10000
-result=result_silo_r5_tuple10000.dat
+result=result_silo_r10_tuple10000.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result

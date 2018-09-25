@@ -100,7 +100,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
-		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(std::atomic<uint64_t>)) != 0) ERR;	//[0]は使わない
+		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//[0]は使わない
 		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 	} catch (bad_alloc) {
@@ -111,7 +111,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
 		FinishTransactions[i].num = 0;
-		ThLocalEpoch[i] = 0;
+		ThLocalEpoch[i].num = 0;
 	}
 }
 
@@ -150,7 +150,7 @@ chkEpochLoaded()
 {
 //全てのワーカースレッドが最新エポックを読み込んだか確認する．
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (ThLocalEpoch[i].load(std::memory_order_acquire) != GlobalEpoch) return false;
+		if (__atomic_load_n(&(ThLocalEpoch[i].num), __ATOMIC_ACQUIRE) != GlobalEpoch) return false;
 	}
 
 	return true;
@@ -204,8 +204,6 @@ epoch_worker(void *arg)
 		EpochTimerStop = rdtsc();
 		//chkEpochLoaded は最新のグローバルエポックを
 		//全てのワーカースレッドが読み込んだか確認する．
-		//if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME)) printf("passed epoch time\n");
-		//if (chkEpochLoaded()) printf("all worker read global epoch\n");
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
 			GlobalEpoch++;
 			EpochTimerStart = rdtsc();
@@ -299,6 +297,7 @@ RETRY:
 						trans.tread(pro[i].key);
 						break;
 					case(Ope::WRITE):
+						NNN;
 						trans.twrite(pro[i].key, pro[i].val);
 						break;
 					default:

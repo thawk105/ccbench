@@ -87,7 +87,7 @@ bool Transaction::validationPhase()
 	lockWriteSet();
 
 	asm volatile("" ::: "memory");
-	ThLocalEpoch[thid].store(GlobalEpoch.load(memory_order_acquire), memory_order_release);
+	__atomic_store_n(&(ThLocalEpoch[thid].num), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
 	asm volatile("" ::: "memory");
 
 	//Phase 2 下記条件を一つでも満たしたらアボート．
@@ -160,7 +160,7 @@ void Transaction::writePhase()
 	//下位3ビットは予約されている．
 
 	//calculates (c)
-	tid_c = ThLocalEpoch[thid] << 32;
+	tid_c = __atomic_load_n(&(ThLocalEpoch[thid].num), __ATOMIC_ACQUIRE) << 32;
 
 	//compare a, b, c
 	ThRecentTID[thid].num = max({tid_a, tid_b, tid_c});
