@@ -103,8 +103,8 @@ chkArg(const int argc, char *argv[])
 	EXTIME = atoi(argv[7]);
 
 	try {
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
+		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -115,8 +115,8 @@ chkArg(const int argc, char *argv[])
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		FinishTransactions[i].num = 0;
-		AbortCounts[i].num = 0;
+		FinishTransactions[i] = 0;
+		AbortCounts[i] = 0;
 		ThRecentTID[i].num = 0;
 		ThLocalEpoch[i].num = 0;
 		Rnd[i].init();
@@ -131,7 +131,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i].num;
+		sumTrans += FinishTransactions[i];
 	}
 
 	uint64_t result = (double) sumTrans / (double) sec;
@@ -187,8 +187,17 @@ epoch_worker(void *arg)
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {};
 	//----------
 
+	uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
+	Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
-	while (Ending.load(memory_order_acquire) != THREAD_NUM - 1) {
+	for (;;) {
+
+		End = rdtsc();
+		if (chkClkSpan(Bgn, End, finish_time)) {
+			Finish.store(true, memory_order_release);
+			return nullptr;
+		}
+
 		//Epoch Control
 		EpochTimerStop = rdtsc();
 		//chkEpochLoaded は最新のグローバルエポックを
@@ -216,6 +225,9 @@ worker(void *arg)
 {
 	int *myid = (int *) arg;
 	Procedure pro[MAX_OPE];
+	unsigned int expected;
+	unsigned int desired;
+	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 
 	//----------
 	pid_t pid = gettid();
@@ -231,8 +243,6 @@ worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	unsigned int expected;
-	unsigned int desired;
 	do {
 		expected = Running.load(memory_order_acquire);
 		desired = expected + 1;
@@ -243,31 +253,15 @@ worker(void *arg)
 	//----------
 	
 	//start work (transaction)
-	if (*myid == 1) Bgn = rdtsc();
-
 	Transaction trans(*myid);
 	try {
 		for (;;) {
-			if (*myid == 1) {
-				//if (FinishTransactions[*myid].num % 1000 == 0) {
-					End = rdtsc();
-					if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
-						Finish.store(true, memory_order_release);
-						do {
-							expected = Ending.load(memory_order_acquire);
-							desired = expected + 1;
-						} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-						return nullptr;
-					}
-				//}
-			} else {
-				if (Finish.load(memory_order_acquire)) {
-					do {
-						expected = Ending.load(memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-					return nullptr;
-				}
+			if (Finish.load(memory_order_acquire)) {
+				CtrLock.w_lock();
+				FinishTransactions[*myid] = totalFinishTransactions;
+				AbortCounts[*myid] = totalAbortCounts;
+				CtrLock.w_unlock();
+				return nullptr;
 			}
 
 			makeProcedure(pro, *myid);
@@ -282,16 +276,19 @@ RETRY:
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
+					totalAbortCounts++;
 					goto RETRY;
 				}
 			}
 
 			if (!(trans.commit())) {
 				trans.abort();
+				totalAbortCounts++;
 				goto RETRY;
 			}
 
 			trans.writePhase();
+			totalFinishTransactions++;
 
 		}
 	} catch (bad_alloc) {

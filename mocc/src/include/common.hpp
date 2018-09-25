@@ -37,8 +37,10 @@ GLOBAL uint64_t EPOCH_TIME;
 GLOBAL int EXTIME;
 
 GLOBAL uint64_t_64byte *ThRecentTID;
-GLOBAL uint64_t_64byte *FinishTransactions;
-GLOBAL uint64_t_64byte *AbortCounts;
+GLOBAL uint64_t *FinishTransactions;
+GLOBAL uint64_t *AbortCounts;
+
+GLOBAL RWLock CtrLock;
 
 // ログ永続化エミュレーション用
 GLOBAL uint64_t_64byte *Start;	

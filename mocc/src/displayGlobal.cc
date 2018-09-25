@@ -49,8 +49,8 @@ displayAbortRate()
 	long double sumT(0), sumA(0);
 	long double rate[THREAD_NUM] = {};
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i].num;
-		sumA += AbortCounts[i].num;
+		sumT += FinishTransactions[i];
+		sumA += AbortCounts[i];
 		rate[i] = sumA / (sumT + sumA);
 	}
 

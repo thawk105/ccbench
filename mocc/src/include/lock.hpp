@@ -22,26 +22,30 @@ public:
 
 	// Read lock
 	void r_lock() {
-		int expected;
-		do {
+		int expected, desired;
+		for (;;) {
 			expected = counter.load(memory_order_acquire);
-			while (expected == -1) {
-				expected = counter.load(memory_order_acquire);
+RETRY_R_LOCK:
+			if (expected != -1) desired = expected + 1;
+			else {
+				continue;
 			}
-		} while (!counter.compare_exchange_weak(expected, expected + 1, memory_order_acq_rel));
-		return;
+			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+			else goto RETRY_R_LOCK;
+		}
 	}
 
 	bool r_trylock() {
-		// success return true;
-		// fail	   return false;
-		int expected;
-		do {
+		int expected, desired;
+		for (;;) {
 			expected = counter.load(memory_order_acquire);
-			if (expected == -1) return false;
-		} while (!counter.compare_exchange_weak(expected, expected + 1, memory_order_acq_rel));
+RETRY_R_TRYLOCK:
+			if (expected != -1) desired = expected + 1;
+			else return false;
 
-		return true;
+			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) return true;
+			else goto RETRY_R_TRYLOCK;
+		}
 	}
 
 	void r_unlock() {
@@ -51,18 +55,26 @@ public:
 	// Write lock
 	void w_lock() {
 		int expected, desired(-1);
-		do {
+		for (;;) {
 			expected = counter.load(memory_order_acquire);
-			while (expected != 0) {
-				expected = counter.load(memory_order_acquire);
-			}
-		} while (!counter.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-		return;
+RETRY_W_LOCK:
+			if (expected != 0) continue;
+
+			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+			else goto RETRY_W_LOCK;
+		}
 	}
 
 	bool w_trylock() {
-		int zero = 0;
-		return counter.compare_exchange_weak(zero, -1, memory_order_acq_rel);
+		int expected, desired(-1);
+		for (;;) {
+			expected = counter.load(memory_order_acquire);
+RETRY_W_TRYLOCK:
+			if (expected != 0) return false;
+
+			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) return true;
+			else goto RETRY_W_TRYLOCK;
+		}
 	}
 
 	void w_unlock() {

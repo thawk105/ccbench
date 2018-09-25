@@ -313,7 +313,6 @@ Transaction::abort()
 	unlockCLL();
 	
 	construct_rll();
-	AbortCounts[thid].num++;
 
 	readSet.clear();
 	writeSet.clear();
@@ -385,7 +384,6 @@ Transaction::writePhase()
 	RLL.clear();
 	readSet.clear();
 	writeSet.clear();
-	FinishTransactions[thid].num++;
 }
 
 void
