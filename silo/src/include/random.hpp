@@ -15,6 +15,7 @@ class Xoroshiro128Plus
 {
 public:
 	uint64_t s[2];
+	uint64_t pad[48];
 
 	inline void init() {
 		std::random_device rnd;
