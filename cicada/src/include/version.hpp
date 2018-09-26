@@ -1,5 +1,4 @@
-#ifndef VERSION_HPP
-#define VERSION_HPP
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -92,4 +91,3 @@ public:
 		this->wts = wts;
 	}
 };
-#endif	//	VERSION_HPP

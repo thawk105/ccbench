@@ -1,6 +1,4 @@
-#ifndef DEBUG_HPP
-#define DEBUG_HPP
-
+#pragma once
 #include <iostream>
 
 #define CCC(val)  do {fprintf(stderr, "%ld %16s %4d %16s %16s: %c\n", (long int)pthread_self(), __FILE__, __LINE__, __func__, #val, val); fflush(stderr);} while (0)
@@ -15,4 +13,3 @@
 #define ERR2    do {perror("ERROR"); NNN; pthread_exit(NULL);} while (0)
 
 #define FCN	cout << "file can't open.\n"
-#endif	//	DEBUG_HPP

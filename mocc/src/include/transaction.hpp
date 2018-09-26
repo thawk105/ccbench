@@ -1,5 +1,4 @@
-#ifndef TRANSACTION_HPP
-#define TRANSACTION_HPP
+#pragma once
 
 #include "lock.hpp"
 #include "tuple.hpp"
@@ -23,8 +22,9 @@ public:
 	TransactionStatus status;
 
 	int thid;
+	Xoroshiro128Plus *rnd;
 
-	Transaction(int thid) {
+	Transaction(int thid, Xoroshiro128Plus *rnd) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
 		RLL.reserve(MAX_OPE);
@@ -32,6 +32,7 @@ public:
 
 		this->thid = thid;
 		this->status = TransactionStatus::inFlight;
+		this->rnd = rnd;
 	}
 
 	ReadElement *searchReadSet(unsigned int key);
@@ -51,5 +52,3 @@ public:
 	void dispWS();
 };
 
-
-#endif // TRANSACTION_HPP

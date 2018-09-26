@@ -1,5 +1,4 @@
-#ifndef INT64BYTE_HPP
-#define INT64BYTE_HPP
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -9,5 +8,3 @@ public:
 	std::atomic<uint64_t> num;
 	int8_t padding[56];
 };
-
-#endif	//	INT64BYTE

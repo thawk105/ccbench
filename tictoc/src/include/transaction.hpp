@@ -1,5 +1,4 @@
-#ifndef TRANSACTION_HPP
-#define	TRANSACTION_HPP
+#pragma once
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
@@ -49,5 +48,3 @@ public:
 	SetElement *searchReadSet(unsigned int key);
 	void dispWS();
 };
-
-#endif	//	TRANSACTION_HPP

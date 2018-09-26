@@ -1,5 +1,4 @@
-#ifndef DEBUG_HPP
-#define DEBUG_HPP
+#pragma once
 
 #include <iostream>
 
@@ -15,4 +14,3 @@
 #define ERR2    do {perror("ERROR"); NNN; pthread_exit(NULL);} while (0)
 
 #define FCN	cout << "file can't open.\n"
-#endif	//	DEBUG_HPP

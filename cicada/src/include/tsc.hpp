@@ -1,5 +1,4 @@
-#ifndef TSC_HPP
-#define TSC_HPP 
+#pragma once
 
 #include <stdint.h>
 
@@ -9,5 +8,3 @@ static uint64_t rdtsc() {
 	asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
 	return (rdx << 32) | rax;
 }
-
-#endif // TSC_HPP

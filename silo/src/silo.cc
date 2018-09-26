@@ -66,25 +66,9 @@ EXTIME: execution time.\n\
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-
-	switch (atoi(argv[4])) {
-		case 0:
-			WORKLOAD = Workload::R_ONLY;
-			break;
-		case 1:
-			WORKLOAD = Workload::R_INTENS;
-			break;
-		case 2:
-			WORKLOAD = Workload::RW_EVEN;
-			break;
-		case 3:
-			WORKLOAD = Workload::W_INTENS;
-			break;
-		case 4:
-			WORKLOAD = Workload::W_ONLY;
-			break;
-		default:
-			ERR;
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD > 4) {
+		ERR;
 	}
 
 	CLOCK_PER_US = atof(argv[5]);
@@ -97,20 +81,20 @@ So you have to set THREAD_NUM >= 2.\n\n");
 	}
 
 	try {
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//[0]は使わない
 		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
+		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		AbortCounts[i].num = 0;
 		ThRecentTID[i].num = 0;
-		FinishTransactions[i].num = 0;
+		FinishTransactions[i] = 0;
+		AbortCounts[i] = 0;
 		ThLocalEpoch[i].num = 0;
 	}
 }
@@ -118,24 +102,12 @@ So you have to set THREAD_NUM >= 2.\n\n");
 static void 
 prtRslt(uint64_t &bgn, uint64_t &end)
 {
-	/*
-	long usec;
-	double sec;
-
-	usec = (end.tv_sec - bgn.tv_sec) * 1000 * 1000 + (end.tv_usec - bgn.tv_usec);
-	sec = (double) usec / 1000.0 / 1000.0;
-
-	double result = (double)sumTrans / sec;
-	//cout << Finish_transactions.load(std::memory_order_acquire) << endl;
-	cout << (int)result << endl;
-	*/
-
 	uint64_t diff = end - bgn;
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i].num;
+		sumTrans += FinishTransactions[i];
 	}
 
 	uint64_t result = (double)sumTrans / (double)sec;
@@ -168,11 +140,10 @@ epoch_worker(void *arg)
 //2. 十分条件
 //	全ての worker が最新の epoch を読み込んでいる。
 //
-	int *myid = (int *)arg;
+	const int *myid = (int *)arg;
 	pid_t pid = gettid();
 	cpu_set_t cpu_set;
-	uint64_t EpochTimerStart;
-	uint64_t EpochTimerStop;
+	uint64_t EpochTimerStart, EpochTimerStop;
 
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
@@ -184,34 +155,42 @@ epoch_worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	unsigned int expected;
-	unsigned int desired;
-	do {
+	unsigned int expected, desired;
+	for (;;) {
 		expected = Running.load(std::memory_order_acquire);
+RETRY_WAIT_L:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+		if (Running.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT_L;
+	}
 	
 	//spin wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {
-	}
+	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
 	//----------
 
+	const uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
+
 	//----------
-	//Epoch Control
-	//
+	Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
-	while (Ending.load(std::memory_order_acquire) != THREAD_NUM - 1) {
+	for (;;) {
+		End = rdtsc();
+		if (chkClkSpan(Bgn, End, finish_time)) {
+			Finish.store(true, std::memory_order_release);
+			return nullptr;
+		}
+
 		EpochTimerStop = rdtsc();
 		//chkEpochLoaded は最新のグローバルエポックを
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
 			GlobalEpoch++;
-			EpochTimerStart = rdtsc();
+			EpochTimerStart = EpochTimerStop;
 		}
 	}
 	//----------
 
-	return NULL;
+	return nullptr;
 }
 
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
@@ -219,10 +198,12 @@ extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 static void *
 worker(void *arg)
 {
-	int *myid = (int *)arg;
-	Procedure pro[MAX_OPE];
+	const int *myid = (int *)arg;
 	Xoroshiro128Plus rnd;
 	rnd.init();
+	Procedure pro[MAX_OPE];
+	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
+	Transaction trans(*myid);
 
 	//----------
 	pid_t pid = gettid();
@@ -244,45 +225,28 @@ worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	unsigned int expected;
-	unsigned int desired;
-	do {
+	unsigned int expected, desired;
+	for (;;) {
 		expected = Running.load(std::memory_order_acquire);
+RETRY_WAIT_W:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT_W;
+	}
 	
 	//spin wait
-	while (Running != THREAD_NUM) {
-	}
+	while (Running != THREAD_NUM) {}
 	//----------
 	
-	//start work(transaction)
-	if (*myid == 1) Bgn = rdtsc();
-
 	try {
-		Transaction trans(*myid);
+		//start work(transaction)
 		for (;;) {
-			if (*myid == 1) {
-				if (FinishTransactions[*myid].num % 1000 == 0) {
-					End = rdtsc();
-					if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
-						Finish.store(true, std::memory_order_release);
-
-						do {
-							expected = Ending.load(std::memory_order_acquire);
-							desired = expected + 1;
-						} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-						return NULL;
-					}
-				}
-			} else {
-				if (Finish.load(std::memory_order_acquire)) {
-					do {
-						expected = Ending.load(std::memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-					return NULL;
-				}
+			if (Finish.load(memory_order_acquire)) {
+				CtrLock.w_lock();
+				FinishTransactions[*myid] = totalFinishTransactions;
+				AbortCounts[*myid] = totalAbortCounts;
+				CtrLock.w_unlock();
+				return nullptr;
 			}
 
 			//transaction begin
@@ -297,22 +261,23 @@ RETRY:
 						trans.tread(pro[i].key);
 						break;
 					case(Ope::WRITE):
-						NNN;
 						trans.twrite(pro[i].key, pro[i].val);
 						break;
 					default:
-						break;
+						ERR;
 				}
 			}
 			
 			//Validation phase
 			if (!(trans.validationPhase())) {
 				trans.abort();
+				totalAbortCounts++;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
+			totalFinishTransactions++;
 		}
 	} catch (bad_alloc) {
 		ERR;

@@ -1,5 +1,5 @@
-#ifndef TUPLE_HPP
-#define TUPLE_HPP
+#pragma once
+
 #include <atomic>
 #include <cstdint>
 #include "version.hpp"
@@ -10,5 +10,3 @@ public:
 	unsigned int key;
 	int8_t padding[48];
 };
-
-#endif	//	TUPLE_HPP

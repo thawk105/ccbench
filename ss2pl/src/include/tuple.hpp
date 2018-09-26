@@ -1,5 +1,4 @@
-#ifndef TUPLE_HPP
-#define TUPLE_HPP
+#pragma once
 
 #include <atomic>
 #include <mutex>
@@ -27,6 +26,3 @@ public:
 		this->val = val;
 	}
 };
-
-#endif	//	TUPLE_HPP
-

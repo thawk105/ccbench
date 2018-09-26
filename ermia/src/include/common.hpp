@@ -1,5 +1,4 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
 #include "int64byte.hpp"
 #include "lock.hpp"
@@ -13,14 +12,12 @@
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL
 GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<uint64_t> Lsn(0);
 GLOBAL std::atomic<bool> Finish(false);
 
 #else
 	#define GLOBAL extern
 GLOBAL std::atomic<unsigned int> Running;
-GLOBAL std::atomic<unsigned int> Ending;
 GLOBAL std::atomic<uint64_t> Lsn;
 GLOBAL std::atomic<bool> Finish;
 
@@ -33,12 +30,10 @@ GLOBAL unsigned int THREAD_NUM;
 GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL unsigned int EXTIME;
-GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
 GLOBAL uint64_t_64byte *ThtxID;
 GLOBAL uint64_t *AbortCounts;
 GLOBAL uint64_t *FinishTransactions;
-GLOBAL uint64_t *UnstaFinishTransactions;
 
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
@@ -48,5 +43,3 @@ GLOBAL Tuple *Table;
 GLOBAL TransactionTable *TMT;	// Transaction Mapping Table
 
 GLOBAL std::mutex SsnLock;
-
-#endif	//	COMMON_HPP

@@ -1,5 +1,4 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
 #include <atomic>
 
@@ -11,13 +10,11 @@
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL
 GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<bool> Finish(false);
 
 #else
 	#define GLOBAL extern
 GLOBAL std::atomic<unsigned int> Running;
-GLOBAL std::atomic<unsigned int> Ending;
 GLOBAL std::atomic<bool> Finish;
 
 #endif
@@ -26,18 +23,17 @@ GLOBAL std::atomic<bool> Finish;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL Workload WORKLOAD;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
-GLOBAL int EXTIME;
+GLOBAL unsigned int EXTIME;
 
-GLOBAL uint64_t_64byte *AbortCounts;
-GLOBAL uint64_t_64byte *AbortCounts2;	//ラップアラウンド記録
-GLOBAL uint64_t_64byte *FinishTransactions;
+GLOBAL uint64_t *FinishTransactions;
+GLOBAL uint64_t *AbortCounts;
 
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
+GLOBAL RWLock CtrLock;
+
 GLOBAL Procedure **Pro;
 GLOBAL Tuple *Table;
-
-#endif	//	COMMON_HPP

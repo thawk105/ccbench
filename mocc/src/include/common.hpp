@@ -1,5 +1,4 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
 #include "int64byte.hpp"
 #include "procedure.hpp"
@@ -11,7 +10,6 @@
 	#define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<uint64_t> GlobalEpoch(1);
 GLOBAL std::atomic<bool> Finish(false);
 
@@ -19,7 +17,6 @@ GLOBAL std::atomic<bool> Finish(false);
 	#define GLOBAL extern
 
 GLOBAL std::atomic<int> Running;
-GLOBAL std::atomic<int> Ending;
 GLOBAL std::atomic<uint64_t> GlobalEpoch;
 GLOBAL std::atomic<bool> Finish;
 
@@ -31,13 +28,15 @@ GLOBAL uint64_t_64byte *ThLocalEpoch;
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL Workload WORKLOAD;
+GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
-GLOBAL int EXTIME;
+GLOBAL unsigned int EXTIME;
+GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
 GLOBAL uint64_t_64byte *ThRecentTID;
 GLOBAL uint64_t *FinishTransactions;
+GLOBAL uint64_t *UnstaFinishTransactions;	// use for unstable workload
 GLOBAL uint64_t *AbortCounts;
 
 GLOBAL RWLock CtrLock;
@@ -46,12 +45,7 @@ GLOBAL RWLock CtrLock;
 GLOBAL uint64_t_64byte *Start;	
 GLOBAL uint64_t_64byte *Stop;
 
-// random generator for each worker thread
-GLOBAL Xoroshiro128Plus *Rnd;
-
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
 GLOBAL Tuple *Table;
-
-#endif	//	COMMON_HPP

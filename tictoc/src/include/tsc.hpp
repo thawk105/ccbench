@@ -1,5 +1,4 @@
-#ifndef TSC_HPP
-#define TSC_HPP 
+#pragma once
 
 #include <stdint.h>
 
@@ -13,5 +12,3 @@ static uint64_t rdtsc() {
 
 	return (rdx << 32) | rax;
 }
-
-#endif // TSC_HPP

@@ -1,9 +1,5 @@
 #pragma once
 
-enum class Workload {
-	R_ONLY, R_INTENS, RW_EVEN, W_INTENS, W_ONLY
-};
-
 enum class Ope {
 	READ, 
 	WRITE
@@ -14,5 +10,9 @@ public:
 	Ope ope = Ope::READ;
 	unsigned int key = 0;
 	unsigned int val = 0;
+
+	bool operator<(const Procedure& right) const {
+		return this->key < right.key;
+	}
 };
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <stdio.h>
@@ -9,38 +10,41 @@
 
 using namespace std;
 
-void makeProcedure(Procedure *pro, unsigned int thid) {
+void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL) {
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		switch (WORKLOAD) {
-			case Workload::R_ONLY:
+		switch (localWL) {
+			case 0:
 				pro[i].ope = Ope::READ;
 				break;
-			case Workload::R_INTENS:
-				if ((Rnd[thid].next() % 100) < 80) {
+			case 1:
+				if ((rnd.next() % 100) < 80) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
 				break;
-			case Workload::RW_EVEN:
-				if ((Rnd[thid].next() % 100) < 50) {
-					pro[i].ope = Ope::READ;
-				} else {
-					pro[i].ope = Ope::WRITE;
-				} 
-			case Workload::W_INTENS:
-				break;
-				if ((Rnd[thid].next() % 100) < 20) {
+			case 2:
+				if ((rnd.next() % 100) < 50) {
 					pro[i].ope = Ope::READ;
 				} else {
 					pro[i].ope = Ope::WRITE;
 				} 
 				break;
-			case Workload::W_ONLY:
+			case 3:
+				if ((rnd.next() % 100) < 20) {
+					pro[i].ope = Ope::READ;
+				} else {
+					pro[i].ope = Ope::WRITE;
+				} 
+				break;
+			case 4:
 				pro[i].ope = Ope::WRITE;
 				break;
+			default :
+				ERR;
+				break;
 		}
-		pro[i].key = Rnd[thid].next() % TUPLE_NUM;
-		pro[i].val = Rnd[thid].next() % TUPLE_NUM;
+		pro[i].key = rnd.next() % TUPLE_NUM;
+		pro[i].val = rnd.next() % TUPLE_NUM;
 	}
 }

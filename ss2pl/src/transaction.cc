@@ -1,7 +1,6 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/transaction.hpp"
-#include "include/tsc.hpp"
 
 #include <atomic>
 #include <stdio.h>
@@ -12,11 +11,7 @@ void
 Transaction::abort()
 {
 	unlock_list();
-	AbortCounts[thid].num++;
-	if (AbortCounts[thid].num == UINT64_MAX) {
-		AbortCounts[thid].num = 0;
-		AbortCounts2[thid].num++;
-	}
+	AbortCounts[thid]++;
 
 	readSet.clear();
 	writeSet.clear();
@@ -30,7 +25,7 @@ Transaction::commit()
 	}
 
 	unlock_list();
-	FinishTransactions[thid].num++;
+	FinishTransactions[thid]++;
 
 	readSet.clear();
 	writeSet.clear();
@@ -53,7 +48,7 @@ Transaction::tread(unsigned int key)
 		if ((*itr).key == key) return (*itr).val;
 	}
 
-	if (Table[key].lock.r_lock()) {
+	if (Table[key].lock.r_trylock()) {
 		r_lockList.push_back(&Table[key].lock);
 		unsigned int val = Table[key].val;
 		readSet.push_back(SetElement(key, val));
@@ -93,7 +88,7 @@ Transaction::twrite(unsigned int key, unsigned int val)
 	}
 
 	// trylock
-	if (!Table[key % TUPLE_NUM].lock.w_lock()) {
+	if (!Table[key % TUPLE_NUM].lock.w_trylock()) {
 		this->status = TransactionStatus::aborted;
 		return;
 	}

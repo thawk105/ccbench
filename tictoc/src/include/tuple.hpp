@@ -1,5 +1,4 @@
-#ifndef TUPLE_HPP
-#define TUPLE_HPP
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -72,5 +71,3 @@ public:
 		this->key = key;
 	}
 };
-	
-#endif	//	TUPLE_HPP

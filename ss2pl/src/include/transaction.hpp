@@ -1,5 +1,4 @@
-#ifndef TRANSACTION_HPP
-#define TRANSACTION_HPP
+#pragma once
 
 #include <vector>
 
@@ -39,5 +38,3 @@ public:
 	void twrite(unsigned int key, unsigned int val);
 	void unlock_list();
 };
-
-#endif	//	TRANSACTION_HPP

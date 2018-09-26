@@ -1,6 +1,4 @@
-#ifndef TUPLE_HPP
-#define TUPLE_HPP
-
+#pragma once
 #include <atomic>
 #include <cstdint>
 
@@ -21,5 +19,3 @@ public:
 		gClock.store(0, memory_order_release);
 	}
 };
-
-#endif	//	TUPLE_HPP

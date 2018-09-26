@@ -1,12 +1,12 @@
 #test.sh(ss2pl)
 tuple=200
 maxope=10
-workload=3
+workload=4
 cpu_mhz=2400
 extime=3
 epoch=3
 
-result=result_ss2pl_r5_tuple200.dat
+result=result_ss2pl_r0_tuple200.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 for ((thread=1; thread<=24; thread+=1))
@@ -46,7 +46,7 @@ do
 done
 
 tuple=10000
-result=result_ss2pl_r5_tuple10000.dat
+result=result_ss2pl_r0_tuple10000.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 for ((thread=1; thread<=24; thread+=1))

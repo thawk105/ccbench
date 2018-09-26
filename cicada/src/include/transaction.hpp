@@ -1,5 +1,4 @@
-#ifndef TRANSACTION_HPP
-#define	TRANSACTION_HPP
+#pragma once
 
 #include "tuple.hpp"
 #include "procedure.hpp"
@@ -74,5 +73,3 @@ public:
 	void displayWset();
 	void mainte();	//maintenance
 };
-
-#endif	//	TRANSACTION_HPP

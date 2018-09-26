@@ -1,6 +1,5 @@
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
-#include "include/tsc.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include <algorithm>
@@ -179,7 +178,6 @@ void
 Transaction::abort() 
 {
 	unlockCLL();
-	AbortCounts[thid].num++;
 
 	readSet.clear();
 	writeSet.clear();
@@ -199,8 +197,6 @@ Transaction::writePhase()
 		__atomic_store_n(&(Table[(*itr).key].tsw.obj), result.obj, __ATOMIC_RELEASE);
 
 	}
-
-	FinishTransactions[thid].num++;
 
 	readSet.clear();
 	writeSet.clear();

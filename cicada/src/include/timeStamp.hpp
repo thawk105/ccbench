@@ -1,6 +1,4 @@
-#ifndef TIMESTAMP_HPP
-#define TIMESTAMP_HPP
-
+#pragma once
 #include "tsc.hpp"
 #include "barrier.h"
 
@@ -52,4 +50,3 @@ public:
 		ts = (localClock << 8) | tid;
 	}
 };
-#endif	//	TIMESTAMP_HPP

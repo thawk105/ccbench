@@ -258,7 +258,7 @@ Transaction::construct_rll()
 				expected = Table[(*itr).key].temp.load(memory_order_acquire);
 RETRY_MAINTE_TEMP:
 				if (expected == TEMP_MAX) break;
-				if (Rnd[thid].next() % (1 << expected) == 0) {
+				if (rnd->next() % (1 << expected) == 0) {
 					desired = expected + 1;
 				} else break;
 				if (Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;

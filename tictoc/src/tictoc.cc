@@ -64,64 +64,34 @@ EXTIME: execution time.\n\
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	
-	switch (atoi(argv[4])) {
-		case 0:
-			WORKLOAD = Workload::R_ONLY;
-			break;
-		case 1:
-			WORKLOAD = Workload::R_INTENS;
-			break;
-		case 2:
-			WORKLOAD = Workload::RW_EVEN;
-			break;
-		case 3:
-			WORKLOAD = Workload::W_INTENS;
-			break;
-		case 4:
-			WORKLOAD = Workload::W_ONLY;
-			break;
-		default:
-			ERR;
-	}
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD > 4) ERR;
 
 	CLOCK_PER_US = atof(argv[5]);
 	EXTIME = atoi(argv[6]);
 
 	try {
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
+		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		AbortCounts[i].num = 0;
-		FinishTransactions[i].num = 0;
+		FinishTransactions[i] = 0;
+		AbortCounts[i] = 0;
 	}
 }
 
 static void 
 prtRslt(uint64_t &bgn, uint64_t &end)
 {
-	/*
-	long usec;
-	double sec;
-
-	usec = (end.tv_sec - bgn.tv_sec) * 1000 * 1000 + (end.tv_usec - bgn.tv_usec);
-	sec = (double) usec / 1000.0 / 1000.0;
-
-	double result = (double)sumTrans / sec;
-	//cout << Finish_transactions.load(std::memory_order_acquire) << endl;
-	cout << (int)result << endl;
-	*/
-
 	uint64_t diff = end - bgn;
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i].num;
+		sumTrans += FinishTransactions[i];
 	}
 
 	uint64_t result = (double)sumTrans / (double)sec;
@@ -134,10 +104,12 @@ extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 static void *
 worker(void *arg)
 {
-	int *myid = (int *)arg;
-	Procedure pro[MAX_OPE];
+	const int *myid = (int *)arg;
 	Xoroshiro128Plus rnd;
 	rnd.init();
+	Procedure pro[MAX_OPE];
+	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
+	Transaction trans(*myid);
 
 	//----------
 	pid_t pid = syscall(SYS_gettid);
@@ -159,42 +131,40 @@ worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	unsigned int expected;
-	unsigned int desired;
-	do {
-		expected = Running.load(std::memory_order_acquire);
+	unsigned int expected, desired;
+	for (;;) {
+		expected = Running.load(memory_order_acquire);
+RETRY_WAIT:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT;
+	}
 	
 	//spin wait
-	while (Running != THREAD_NUM) {
-	}
+	while (Running != THREAD_NUM) {}
 	//----------
 	
-	//start work(transaction)
 	if (*myid == 0) Bgn = rdtsc();
 
 	try {
-
-		Transaction trans(*myid);
+		//start work(transaction)
 		for (;;) {
 			if (*myid == 0) {
 				End = rdtsc();
 				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
 					Finish.store(true, std::memory_order_release);
-
-					do {
-						expected = Ending.load(std::memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+					CtrLock.w_lock();
+					FinishTransactions[*myid] = totalFinishTransactions;
+					AbortCounts[*myid] = totalAbortCounts;
+					CtrLock.w_unlock();
 					return nullptr;
 				}
 			} else {
 				if (Finish.load(std::memory_order_acquire)) {
-					do {
-						expected = Ending.load(std::memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+					CtrLock.w_lock();
+					FinishTransactions[*myid] = totalFinishTransactions;
+					AbortCounts[*myid] = totalAbortCounts;
+					CtrLock.w_unlock();
 					return nullptr;
 				}
 			}
@@ -212,6 +182,7 @@ RETRY:
 					trans.tread(pro[i].key);
 					if (trans.status == TransactionStatus::aborted) {
 						trans.abort();
+						totalAbortCounts++;
 						goto RETRY;
 					}
 				} else if (pro[i].ope == Ope::WRITE) {
@@ -223,11 +194,11 @@ RETRY:
 			
 			//Validation phase
 			if (trans.validationPhase()) {
-				//Write phase
 				trans.writePhase();
-				//cout << "commit" << endl;
+				totalFinishTransactions++;
 			} else {
 				trans.abort();
+				totalAbortCounts++;
 				goto RETRY;
 			}
 		}

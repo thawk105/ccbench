@@ -66,25 +66,9 @@ chkArg(const int argc, const char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-
-	switch (atoi(argv[4])) {
-		case 0:
-			WORKLOAD = Workload::R_ONLY;
-			break;
-		case 1:
-			WORKLOAD = Workload::R_INTENS;
-			break;
-		case 2:
-			WORKLOAD = Workload::RW_EVEN;
-			break;
-		case 3:
-			WORKLOAD = Workload::W_INTENS;
-			break;
-		case 4:
-			WORKLOAD = Workload::W_ONLY;
-			break;
-		default:
-			ERR;
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD > 4) {
+		ERR;
 	}
 
 	CLOCK_PER_US = atof(argv[5]);
@@ -96,17 +80,15 @@ chkArg(const int argc, const char *argv[])
 	EXTIME = atoi(argv[6]);
 
 	try {
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts2, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
+		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		AbortCounts[i].num = 0;
-		AbortCounts2[i].num = 0;
-		FinishTransactions[i].num = 0;
+		FinishTransactions[i] = 0;
+		AbortCounts[i] = 0;
 	}
 }
 
@@ -118,7 +100,7 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		sumTrans += FinishTransactions[i].num;
+		sumTrans += FinishTransactions[i];
 	}
 
 	uint64_t result = (double)sumTrans / (double)sec;
@@ -131,10 +113,12 @@ static void *
 worker(void *arg)
 {
 
-	int *myid = (int *)arg;
-	Procedure pro[MAX_OPE];
+	const int *myid = (int *)arg;
 	Xoroshiro128Plus rnd;
 	rnd.init();
+	Procedure pro[MAX_OPE];
+	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
+	Transaction trans(*myid);
 
 	//----------
 	pid_t pid;
@@ -154,37 +138,41 @@ worker(void *arg)
 	
 	//-----
 	unsigned int expected, desired;
-	do {
+	for (;;) {
 		expected = Running.load();
+RETRY_WAIT:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT;
+	}
 	
 	//spin wait
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
 	//-----
 	
-	//start work (transaction)
 	if (*myid == 0) Bgn = rdtsc();
 
 	try {
-		Transaction trans(*myid);
+		//start work (transaction)
 		for (;;) {
 			//End judgment
 			if (*myid == 0) {
-				if (FinishTransactions[*myid].num % 1000 == 0 || AbortCounts[*myid].num % 1000 == 0) {
-					End = rdtsc();
-					if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
-						Finish.store(true, std::memory_order_release);
-						return NULL;
-					}
+				End = rdtsc();
+				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+					Finish.store(true, std::memory_order_release);
+					CtrLock.w_lock();
+					FinishTransactions[*myid] = totalFinishTransactions;
+					AbortCounts[*myid] = totalAbortCounts;
+					CtrLock.w_unlock();
+					return nullptr;
 				}
 			} else {
 				if (Finish.load(std::memory_order_acquire)) {
-					do {
-						expected = Ending.load(std::memory_order_acquire);
-						desired = expected + 1;
-					} while (!Ending.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-					return NULL;
+					CtrLock.w_lock();
+					FinishTransactions[*myid] = totalFinishTransactions;
+					AbortCounts[*myid] = totalAbortCounts;
+					CtrLock.w_unlock();
+					return nullptr;
 				}
 			}
 			//-----
@@ -202,18 +190,20 @@ RETRY:
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
+					totalAbortCounts++;
 					goto RETRY;
 				}
 			}
 
 			//commit - write phase
 			trans.commit();
+			totalFinishTransactions++;
 		}
 	} catch (bad_alloc) {
 		ERR;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 static pthread_t
@@ -229,7 +219,7 @@ threadCreate(int id)
 	}
 	*myid = id;
 
-	if (pthread_create(&t, NULL, worker, (void *)myid)) ERR;
+	if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
 
 	return t;
 }
@@ -255,7 +245,7 @@ main(const int argc, const char *argv[])
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		pthread_join(thread[i], NULL);
+		pthread_join(thread[i], nullptr);
 	}
 
 	prtRslt(Bgn, End);

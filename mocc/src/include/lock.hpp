@@ -1,5 +1,4 @@
-#ifndef LOCK_HPP
-#define LOCK_HPP
+#pragma once
 
 #include <atomic>
 #include <utility>
@@ -128,5 +127,3 @@ public:
 		return *this;
 	}
 };
-		
-#endif	// LOCK_HPP

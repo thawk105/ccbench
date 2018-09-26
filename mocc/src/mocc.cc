@@ -72,25 +72,10 @@ chkArg(const int argc, char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-
-	switch (atoi(argv[4])) {
-		case 0:
-			WORKLOAD = Workload::R_ONLY;
-			break;
-		case 1:
-			WORKLOAD = Workload::R_INTENS;
-			break;
-		case 2:
-			WORKLOAD = Workload::RW_EVEN;
-			break;
-		case 3:
-			WORKLOAD = Workload::W_INTENS;
-			break;
-		case 4:
-			WORKLOAD = Workload::W_ONLY;
-			break;
-		default:
-			ERR;
+	WORKLOAD = atoi(argv[4]);
+	if (WORKLOAD > 4) {
+		cout << "workload must be 0 ~ 4" << endl;
+		ERR;
 	}
 
 	CLOCK_PER_US = atof(argv[5]);
@@ -109,7 +94,6 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&Rnd, 64, THREAD_NUM * sizeof(Xoroshiro128Plus)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
@@ -119,7 +103,6 @@ chkArg(const int argc, char *argv[])
 		AbortCounts[i] = 0;
 		ThRecentTID[i].num = 0;
 		ThLocalEpoch[i].num = 0;
-		Rnd[i].init();
 	}
 }
 
@@ -163,8 +146,6 @@ epoch_worker(void *arg)
 	pid_t pid = gettid();
 	cpu_set_t cpu_set;
 	uint64_t EpochTimerStart, EpochTimerStop;
-	//uint64_t TempTimerStart, TempTimerStop;
-	// temprature reset timer
 
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
@@ -191,7 +172,6 @@ epoch_worker(void *arg)
 	Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
 	for (;;) {
-
 		End = rdtsc();
 		if (chkClkSpan(Bgn, End, finish_time)) {
 			Finish.store(true, memory_order_release);
@@ -218,16 +198,18 @@ epoch_worker(void *arg)
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, unsigned int thid);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL);
 
 static void *
 worker(void *arg)
 {
 	int *myid = (int *) arg;
+	Xoroshiro128Plus rnd;
+	rnd.init();
 	Procedure pro[MAX_OPE];
-	unsigned int expected;
-	unsigned int desired;
+	unsigned int expected, desired;
 	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
+	Transaction trans(*myid, &rnd);
 
 	//----------
 	pid_t pid = gettid();
@@ -236,11 +218,7 @@ worker(void *arg)
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
 
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
-
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) ERR;
 	//----------
 	//wait for all threads start. CAS.
 	do {
@@ -249,12 +227,11 @@ worker(void *arg)
 	} while (!Running.compare_exchange_weak(expected, desired, memory_order_acq_rel));
 	
 	//spin wait
-	while (Running != THREAD_NUM) {}
+	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
 	//----------
 	
-	//start work (transaction)
-	Transaction trans(*myid);
 	try {
+		//start work (transaction)
 		for (;;) {
 			if (Finish.load(memory_order_acquire)) {
 				CtrLock.w_lock();
@@ -264,7 +241,7 @@ worker(void *arg)
 				return nullptr;
 			}
 
-			makeProcedure(pro, *myid);
+			makeProcedure(pro, rnd, WORKLOAD);
 			asm volatile ("" ::: "memory");
 RETRY:
 			trans.begin();

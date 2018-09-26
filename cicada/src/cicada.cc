@@ -36,11 +36,11 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 13) {
+	if (argc != 12) {
 		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD(1~5) \n\
-             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME UNSTABLE_WORKLOAD\n\
+             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
 \n\
-example:./main 1000000 20 15 3 OFF OFF 2400 5 2 E 3 0\n\
+example:./main 1000000 20 15 3 OFF OFF 2400 5 2 E 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
@@ -57,9 +57,7 @@ CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
 IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds).\n\
 GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds).\n\
 LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release.\n\
-UNSTABLE_WORKLOAD: \n\
-0. stable workload\n\
-1. switch read-mostly and write-mostly every one second\n\n");
+EXTIME: execution time [sec]\n\n");
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "Version " << sizeof(Version) << endl;
@@ -143,16 +141,10 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 
 	chkInt(argv[11]);
 	EXTIME = atoi(argv[11]);
-	UNSTABLE_WORKLOAD = atoi(argv[12]);
-	if (UNSTABLE_WORKLOAD > 1) {
-		cout << "UNSTABLE_WORKLOAD must be 0 or 1" << endl;
-		ERR;
-	}
 	
 	try {
 
 		ThreadWtsArray = new TimeStamp*[THREAD_NUM];
-		//allo = posix_memalign((void**)ThreadWtsArray, 64, THREAD_NUM * sizeof(TimeStamp*));
 		ThreadRtsArray = new TimeStamp*[THREAD_NUM];
 		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
@@ -168,7 +160,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		PLogSet = new Version**[THREAD_NUM];
 		FinishTransactions = new uint64_t[THREAD_NUM];
 		AbortCounts = new uint64_t[THREAD_NUM];
-		UnstaFinishTransactions = new uint64_t[EXTIME * 10 + 1]; // unstable workload change by 0.1 sec
 
 		for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 			PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
@@ -180,7 +171,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-		UnstaFinishTransactions[i] = 0;
 		GCFlag[i].num = 0;
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
@@ -200,20 +190,11 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 
 	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		//cout << "FinishTransactions[" << i << "]: " << FinishTransactions[i] << endl;
 		sumTrans += FinishTransactions[i];
 	}
 	
-	if (UNSTABLE_WORKLOAD == 0) {
-		uint64_t result = (double)sumTrans / (double)sec;
-		cout << (int)result << endl;
-	} else {
-		if (UNSTABLE_WORKLOAD) {
-			for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i) {
-				cout << 0.1 * i << " " << UnstaFinishTransactions[i] << endl;
-			}
-		}
-	}
+	uint64_t result = (double)sumTrans / (double)sec;
+	cout << (int)result << endl;
 }
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
@@ -251,14 +232,10 @@ maneger_worker(void *arg)
 	Bgn = rdtsc();
 	// leader work
 	for(;;) {
-		if (UNSTABLE_WORKLOAD == 0) {
-			End = rdtsc();
-			if (chkClkSpan(Bgn, End, finish_time)) {
-				Finish.store(true, std::memory_order_release);
-				return nullptr;
-			}
-		} else if (UNSTABLE_WORKLOAD == 1) {
-			if (Ending.load(memory_order_acquire) == THREAD_NUM - 1) return nullptr;
+		End = rdtsc();
+		if (chkClkSpan(Bgn, End, finish_time)) {
+			Finish.store(true, std::memory_order_release);
+			return nullptr;
 		}
 
 		bool gc_update = true;
@@ -313,9 +290,6 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	uint64_t localBgn, localEnd;
-	unsigned int local_unsta_index(1), local_un_wl(1);
-	uint64_t localUnstaTrans[EXTIME * 10 + 1] = {};
 	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 	Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
 
@@ -348,52 +322,16 @@ worker(void *arg)
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
 	//----------
 	
-	localBgn = rdtsc();
 	try {
 		//start work(transaction)
 		for (;;) {
-			//if (UNSTABLE_WORKLOAD == 0) {
-				if (Finish.load(std::memory_order_acquire)) {
-					CtrLock.w_lock();
-					FinishTransactions[*myid] = totalFinishTransactions;
-					AbortCounts[*myid] = totalAbortCounts;
-					CtrLock.w_unlock();
-					return nullptr;
-				}
-			/*} else {
-				localEnd = rdtsc();
-				if (chkClkSpan(localBgn, localEnd, CLOCK_PER_US * 1000 * 100)) {
-					// elapsed 0.1 sec
-					if (local_unsta_index == EXTIME * 10) {
-						do {
-							expected = Ending;
-							desired = expected + 1;
-						} while (!Ending.compare_exchange_weak(expected, desired, memory_order_acq_rel));
-						CtrLock.w_lock();
-						FinishTransactions[*myid] = totalFinishTransactions;
-						AbortCounts[*myid] = totalAbortCounts;
-						for (unsigned int i = 1; i < EXTIME * 10 + 1; ++i)
-							UnstaFinishTransactions[i] = localUnstaTrans[i];
-						CtrLock.w_unlock();
-						return nullptr;
-					}
-
-					//change workload
-					if (local_un_wl == 1)
-						local_un_wl = 3;
-					else 
-						local_un_wl = 1;
-
-					local_unsta_index++;
-					localBgn = localEnd;
-				}
-			}*/
-
-			/*if (UNSTABLE_WORKLOAD == 0) {
-				makeProcedure(pro, rnd, WORKLOAD);
-			} else {
-				makeProcedure(pro, rnd, local_un_wl);
-			}*/
+			if (Finish.load(std::memory_order_acquire)) {
+				CtrLock.w_lock();
+				FinishTransactions[*myid] = totalFinishTransactions;
+				AbortCounts[*myid] = totalAbortCounts;
+				CtrLock.w_unlock();
+				return nullptr;
+			}
 
 			makeProcedure(pro, rnd, WORKLOAD);
 			asm volatile ("" ::: "memory");
@@ -420,7 +358,6 @@ RETRY:
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
 				totalFinishTransactions++;
-				//if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 				continue;
 			}
 
@@ -434,7 +371,6 @@ RETRY:
 			//Write phase
 			trans.writePhase();
 			totalFinishTransactions++;
-			//if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 
 			//Maintenance
 			//Schedule garbage collection

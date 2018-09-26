@@ -123,7 +123,6 @@ bool Transaction::validationPhase()
 void Transaction::abort() 
 {
 	unlockWriteSet();
-	AbortCounts[thid].num++;
 
 	readSet.clear();
 	writeSet.clear();
@@ -175,7 +174,6 @@ void Transaction::writePhase()
 
 	readSet.clear();
 	writeSet.clear();
-	FinishTransactions[thid].num++;
 }
 
 void Transaction::lockWriteSet()

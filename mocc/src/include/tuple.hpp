@@ -1,12 +1,11 @@
-#ifndef TUPLE_HPP
-#define TUPLE_HPP
+#pragma once
 
 #include <atomic>
 #include <cstdint>
 
 #include "lock.hpp"
 
-#define TEMP_THRESHOLD 10
+#define TEMP_THRESHOLD 5
 #define TEMP_MAX 20
 #define TEMP_RESET_US 100
 
@@ -54,5 +53,3 @@ public:
 		return this->key < right.key;
 	}
 };
-
-#endif	//	TUPLE_HPP

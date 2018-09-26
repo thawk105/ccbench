@@ -1,5 +1,4 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
 #include "int64byte.hpp"
 #include "lock.hpp"
@@ -15,7 +14,6 @@
 	#define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<unsigned int> Ending(0);
 GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> MinRts(0);
 GLOBAL std::atomic<uint64_t> MinWts(0);
@@ -25,7 +23,6 @@ GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp(0);
 	#define GLOBAL extern
 
 GLOBAL std::atomic<unsigned int> Running;
-GLOBAL std::atomic<unsigned int> Ending;
 GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> MinRts;
 GLOBAL std::atomic<uint64_t> MinWts;
@@ -46,7 +43,6 @@ GLOBAL uint64_t CLOCK_PER_US;	//US = micro(µ) seconds
 GLOBAL double IO_TIME_NS;	//nano second
 GLOBAL int GROUP_COMMIT_TIMEOUT_US;	//micro seconds
 GLOBAL uint64_t EXTIME;
-GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
 GLOBAL TimeStamp *ThreadWts;
 GLOBAL TimeStamp *ThreadRts;
@@ -64,7 +60,6 @@ GLOBAL RWLock SwalLock;
 GLOBAL RWLock CtrLock;
 
 GLOBAL uint64_t *FinishTransactions;
-GLOBAL uint64_t *UnstaFinishTransactions;	// use for unstable workload
 GLOBAL uint64_t *AbortCounts;
 
 GLOBAL uint64_t Bgn;
@@ -78,5 +73,3 @@ GLOBAL uint64_t InitialWts;
 
 #define SPIN_WAIT_TIMEOUT_US 2
 #define GC_INTER_US 10 
-
-#endif	//	COMMON_HPP

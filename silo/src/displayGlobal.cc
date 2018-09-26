@@ -47,7 +47,7 @@ displayFinishTransactions()
 {
 	cout << "display FinishTransactions" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << FinishTransactions[i].num << endl;
+		cout << "th #" << i << ": " << FinishTransactions[i] << endl;
 	}
 	cout << endl;
 }
@@ -57,7 +57,7 @@ displayAbortCounts()
 {
 	cout << "display AbortCounts()" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << AbortCounts[i].num << endl;
+		cout << "th #" << i << ": " << AbortCounts[i] << endl;
 	}
 	cout << endl;
 }
@@ -68,8 +68,8 @@ displayAbortRate()
 	long double sumT(0), sumA(0);
 	long double rate[THREAD_NUM] = {};
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i].num;
-		sumA += AbortCounts[i].num;
+		sumT += FinishTransactions[i];
+		sumA += AbortCounts[i];
 		rate[i] = sumA / (sumT + sumA);
 	}
 

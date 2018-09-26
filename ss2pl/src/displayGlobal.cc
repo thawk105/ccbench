@@ -47,18 +47,13 @@ displayAbortRate()
 	long double sumT(0), sumA(0);
 	long double rate[THREAD_NUM] = {};
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumT = FinishTransactions[i].num;
-		sumA = AbortCounts[i].num;
-		//cout << AbortCounts2[i].num << endl;
+		sumT = FinishTransactions[i];
+		sumA = AbortCounts[i];
 		rate[i] = sumA / (sumT + sumA);
-		//cout << "sumT : " << sumT << endl;
-		//cout << "sumA : " << sumA << endl;
-		//cout << "ratio[" << i << "] : " << ratio[i] << endl;
 	}
 
 	double ave_rate(0);
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		//cout << ratio[i] << endl;
 		ave_rate += rate[i];
 	}
 	ave_rate /= (long double)THREAD_NUM;
