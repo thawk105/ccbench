@@ -82,12 +82,15 @@ Transaction::ssn_tread(unsigned int key)
 		this->sstamp = min(this->sstamp, (ver->sstamp.load(memory_order_acquire) >> 1));
 
 	uint64_t expected, desired;
-	do {
+	for (;;) {
 		expected = ver->readers.load(memory_order_acquire);
+RETRY_TREAD:
 		if (expected & (1<<thid)) break;	// ビットが立ってたら抜ける
 		// reader ビットを立てる
 		desired = expected | (1<<thid);
-	} while (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+		if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_TREAD;
+	}
 
 	verify_exclusion_or_abort();
 
@@ -117,11 +120,9 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
 	desired->cstamp.store(tmptid, memory_order_release);	// read operation, write operation, ガベコレからアクセスされるので， CAS 前に格納
 
 	Version *vertmp;
-	do {
+	for (;;) {
 		expected = Table[key].latest.load(std::memory_order_acquire);
-		//if (expected == nullptr) {
-		//	ERR;
-		//}
+RETRY_TWRITE:
 
 		// w-w conflict
 		// first updater wins rule
@@ -152,8 +153,9 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
 
 		desired->prev = expected;
 		desired->committed_prev = vertmp;
-
-	} while (!Table[key].latest.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+		if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_TWRITE;
+	}
 	desired->val = val;
 
 	//ver->committed_prev->sstamp に TID を入れる

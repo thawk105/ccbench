@@ -185,8 +185,10 @@ void Transaction::lockWriteSet()
 		//lock
 		for (;;) {
 			expected = Table[(*itr).key].tidword.load(memory_order_acquire);
+RETRY_LWS:
 			if (!(expected & lockBit)) {
-				if (Table[(*itr).key].tidword.compare_exchange_strong(expected, expected | lockBit, memory_order_acq_rel)) break;
+				if (Table[(*itr).key].tidword.compare_exchange_strong(expected, expected | lockBit, memory_order_acq_rel, memory_order_acquire)) break;
+				else goto RETRY_LWS;
 			}
 		}
 	}

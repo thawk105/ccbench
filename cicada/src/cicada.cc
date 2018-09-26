@@ -156,7 +156,7 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&GCommitStop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		
-		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	//実装の簡単のため、どちらもメモリを確保してしまう。
+		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	
 		PLogSet = new Version**[THREAD_NUM];
 		FinishTransactions = new uint64_t[THREAD_NUM];
 		AbortCounts = new uint64_t[THREAD_NUM];
@@ -204,6 +204,10 @@ static void *
 maneger_worker(void *arg)
 {
 	int *myid = (int *)arg;
+	const uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
+	MinWts.store(InitialWts + 2, memory_order_release);
+
+	//-----
 	pid_t pid = syscall(SYS_gettid);
 	cpu_set_t cpu_set;
 
@@ -214,20 +218,19 @@ maneger_worker(void *arg)
 		ERR;
 	}
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-
-	MinWts.store(InitialWts + 2, memory_order_release);
+	//-----
 
 	unsigned int expected, desired;
-	do {
+	for (;;) {
 		expected = Running.load(memory_order_acquire);
+RETRY_WAIT_L:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT_L;
+	}
 
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
 	while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
-
-	uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
-	
 
 	Bgn = rdtsc();
 	// leader work
@@ -281,7 +284,7 @@ maneger_worker(void *arg)
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
@@ -313,10 +316,13 @@ worker(void *arg)
 	
 	//wait for all threads start. CAS.
 	unsigned int expected, desired;
-	do {
+	for (;;) {
 		expected = Running.load();
+RETRY_WAIT_W:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT_W;
+	}
 	
 	//spin wait
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
@@ -333,7 +339,7 @@ worker(void *arg)
 				return nullptr;
 			}
 
-			makeProcedure(pro, rnd, WORKLOAD);
+			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
 RETRY:
 			trans.tbegin(pro[0].ronly);

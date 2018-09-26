@@ -10,11 +10,11 @@
 using namespace std;
 
 void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL) {
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
 	bool ronly = true;
 
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		switch (localWL) {
+		switch (WORKLOAD) {
 			case 0:
 				pro[i].ope = Ope::READ;
 				break;

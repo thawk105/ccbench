@@ -211,7 +211,6 @@ worker(void *arg)
 
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-	//epoch_worker が存在するので， + 1 をする．
 
 	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
 		printf("thread affinity setting is error.\n");

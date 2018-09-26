@@ -1,10 +1,3 @@
-#include "include/transaction.hpp"
-#include "include/common.hpp"
-#include "include/timeStamp.hpp"
-#include "include/debug.hpp"
-#include "include/version.hpp"
-#include "include/tsc.hpp"
-
 #include <algorithm>
 #include <sys/time.h>
 #include <stdio.h>
@@ -12,6 +5,13 @@
 #include <string>
 #include <vector>
 #include <xmmintrin.h>
+
+#include "include/transaction.hpp"
+#include "include/common.hpp"
+#include "include/timeStamp.hpp"
+#include "include/debug.hpp"
+#include "include/version.hpp"
+#include "include/tsc.hpp"
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
@@ -69,10 +69,10 @@ Transaction::tread(unsigned int key)
 		trts = this->rts->ts;
 	}
 	else	trts = this->wts->ts;
-	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+	//-----
 
 	//Search version
-	//ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+	//-----
 	//簡単にスキップできるもの(先頭の方にある使えないバージョンの固まり等)は先にスキップする．
 	Version *version = Table[key].latest;
 	while ((version->wts.load(memory_order_acquire) > trts) || (version->status.load(std::memory_order_acquire) == VersionStatus::aborted)) {
@@ -88,7 +88,6 @@ Transaction::tread(unsigned int key)
 		//タイムスタンプ的には適用可能なので，あとはステータスが重要．
 		if (version->status.load(std::memory_order_acquire) != VersionStatus::aborted) {
 			if (NLR) {
-				NNN;
 				//pendingへの対応
 				//spin wait
 				if (GROUP_COMMIT) {
@@ -174,7 +173,6 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	}
 
 	if (NLR) {
-		NNN;
 		while (version->status.load(std::memory_order_acquire) != VersionStatus::committed) {
 			while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
 				//spin-wait
@@ -233,8 +231,9 @@ Transaction::validation()
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		
 		Version *expected;
-		do {
+		for (;;) {
 			expected = Table[(*itr).key].latest.load();
+RETRY_VALI:
 			Version *version = expected;
 
 			while (version->status.load(std::memory_order_acquire) != VersionStatus::committed 
@@ -273,16 +272,21 @@ Transaction::validation()
 
 			(*itr).newObject->status.store(VersionStatus::pending, memory_order_release);
 			(*itr).newObject->next.store(Table[(*itr).key].latest.load(), memory_order_release);
-		} while (!Table[(*itr).key].latest.compare_exchange_weak(expected, (*itr).newObject));
+			if (Table[(*itr).key].latest.compare_exchange_strong(expected, (*itr).newObject, memory_order_acq_rel, memory_order_acquire)) break;
+			else goto RETRY_VALI;
+		}
 	}
 
 	//Read timestamp update
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		uint64_t expected;
-		do {
+		for (;;) {
 			expected = (*itr).ver->rts.load(memory_order_acquire);
+RETRY_UPDATE:
 			if (expected >= this->wts->ts) break;
-		} while (!(*itr).ver->rts.compare_exchange_weak(expected, this->wts->ts));
+			if ((*itr).ver->rts.compare_exchange_strong(expected, this->wts->ts, memory_order_acq_rel, memory_order_acquire)) break;
+			else goto RETRY_UPDATE;
+		}
 	}
 
 	//validation consistency check
@@ -583,6 +587,5 @@ Transaction::writePhase()
 	this->wts->set_clockBoost(0);
 	readSet.clear();
 	writeSet.clear();
-
 }
 
