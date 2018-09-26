@@ -171,6 +171,11 @@ manager_worker(void *arg)
 			//mintxIDから到達不能なバージョンを削除する
 			Version *verTmp, *delTarget;
 			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+				End = rdtsc();
+				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+					Finish.store(true, std::memory_order_release);
+					return nullptr;
+				}
 
 				verTmp = Table[i].latest.load(memory_order_acquire);
 				if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
@@ -251,6 +256,10 @@ worker(void *arg)
 	try {
 		Transaction trans(*myid, MAX_OPE);
 		for(;;) {
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
+
 			if (Finish.load(std::memory_order_acquire)) {
 				CtrLock.w_lock();
 				FinishTransactions[*myid] = localFinishTransactions;
@@ -261,9 +270,6 @@ worker(void *arg)
 
 			//-----
 			//transaction begin
-			makeProcedure(pro, rnd);
-			asm volatile ("" ::: "memory");
-RETRY:
 			trans.tbegin();
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				if (pro[i].ope == Ope::READ) {
