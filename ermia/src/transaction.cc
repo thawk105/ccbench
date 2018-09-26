@@ -130,6 +130,7 @@ RETRY_TWRITE:
 			this->status = TransactionStatus::aborted;
 			TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
 			delete desired;
+			NNN;
 			return;
 		}
 		

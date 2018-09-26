@@ -34,7 +34,7 @@ makeDB()
 		verTmp->sstamp = UINT64_MAX & ~(1);
 		// cstamp, sstamp の最下位ビットは TID フラグ
 		// 1の時はTID, 0の時はstamp
-		verTmp->val = rnd.next() % (TUPLE_NUM * 10);
+		verTmp->val = rnd.next() % TUPLE_NUM;
 		verTmp->prev = nullptr;
 		verTmp->committed_prev = nullptr;
 		verTmp->status.store(VersionStatus::committed, std::memory_order_release);

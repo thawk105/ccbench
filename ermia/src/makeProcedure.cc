@@ -7,10 +7,10 @@
 using namespace std;
 
 void
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL)
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
 {
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		switch (localWL) {
+		switch (WORKLOAD) {
 			case 0:
 				pro[i].ope = Ope::READ;
 				break;
@@ -39,7 +39,7 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL)
 				pro[i].ope = Ope::WRITE;
 				break;
 		}
-		pro[i].key = rnd.next() % TUPLE_NUM;	// range of key 1 ~ TUPLE_NUM
+		pro[i].key = rnd.next() % TUPLE_NUM;
 		pro[i].val = rnd.next() % TUPLE_NUM;
 	}
 }

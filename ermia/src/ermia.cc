@@ -209,7 +209,7 @@ manager_worker(void *arg)
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
@@ -261,7 +261,7 @@ worker(void *arg)
 
 			//-----
 			//transaction begin
-			makeProcedure(pro, rnd, WORKLOAD);
+			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
 RETRY:
 			trans.tbegin();
