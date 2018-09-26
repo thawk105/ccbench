@@ -77,6 +77,7 @@ UNSTABLE_WORKLOAD: \n\
 	WORKLOAD = atoi(argv[4]);
 	if (WORKLOAD > 4) {
 		cout << "workload must be 0 ~ 4" << endl;
+		ERR;
 	}
 	
 	string tmp = argv[5];
@@ -314,6 +315,9 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	uint64_t localBgn, localEnd;
 	unsigned int local_unsta_index(1), local_un_wl(1);
+	uint64_t localUnstaTrans[EXTIME * 10 + 1] = {};
+	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
+	Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
 
 	//----------
 	pid_t pid;
@@ -326,10 +330,8 @@ worker(void *arg)
 	int core_num = *myid % sysconf(_SC_NPROCESSORS_CONF);
 	CPU_SET(core_num, &cpu_set);
 
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) ERR;
+
 	//check-test
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
@@ -342,10 +344,6 @@ worker(void *arg)
 		desired = expected + 1;
 	} while (!Running.compare_exchange_weak(expected, desired));
 	
-	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
-	uint64_t localUnstaTrans[EXTIME * 10 + 1] = {};
-	Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
-
 	//spin wait
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
 	//----------
@@ -354,7 +352,7 @@ worker(void *arg)
 	try {
 		//start work(transaction)
 		for (;;) {
-			if (UNSTABLE_WORKLOAD == 0) {
+			//if (UNSTABLE_WORKLOAD == 0) {
 				if (Finish.load(std::memory_order_acquire)) {
 					CtrLock.w_lock();
 					FinishTransactions[*myid] = totalFinishTransactions;
@@ -362,7 +360,7 @@ worker(void *arg)
 					CtrLock.w_unlock();
 					return nullptr;
 				}
-			} else {
+			/*} else {
 				localEnd = rdtsc();
 				if (chkClkSpan(localBgn, localEnd, CLOCK_PER_US * 1000 * 100)) {
 					// elapsed 0.1 sec
@@ -389,13 +387,15 @@ worker(void *arg)
 					local_unsta_index++;
 					localBgn = localEnd;
 				}
-			}
+			}*/
 
-			if (UNSTABLE_WORKLOAD == 0) {
+			/*if (UNSTABLE_WORKLOAD == 0) {
 				makeProcedure(pro, rnd, WORKLOAD);
 			} else {
 				makeProcedure(pro, rnd, local_un_wl);
-			}
+			}*/
+
+			makeProcedure(pro, rnd, WORKLOAD);
 			asm volatile ("" ::: "memory");
 RETRY:
 			trans.tbegin(pro[0].ronly);
@@ -420,7 +420,7 @@ RETRY:
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
 				totalFinishTransactions++;
-				if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
+				//if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 				continue;
 			}
 
@@ -434,7 +434,7 @@ RETRY:
 			//Write phase
 			trans.writePhase();
 			totalFinishTransactions++;
-			if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
+			//if (UNSTABLE_WORKLOAD) localUnstaTrans[local_unsta_index]++;
 
 			//Maintenance
 			//Schedule garbage collection

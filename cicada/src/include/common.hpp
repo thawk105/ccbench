@@ -30,8 +30,6 @@ GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> MinRts;
 GLOBAL std::atomic<uint64_t> MinWts;
 GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
-GLOBAL std::atomic<unsigned int> UN_WL;	// unstable workload
-GLOBAL std::atomic<unsigned int> UNSTA_INDEX;
 
 #endif
 
