@@ -40,7 +40,7 @@ chkArg(const int argc, char *argv[])
 		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD(1~5) \n\
              WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
 \n\
-example:./main 1000000 20 15 3 OFF OFF 2400 5 2 E 3\n\
+example:./main 200 10 24 2 OFF OFF 2400 5 2 E 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
