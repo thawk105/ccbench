@@ -10,8 +10,6 @@
 #include <string>
 #include <sys/time.h>
 
-#define LOCK_BIT 1
-
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void displayDB();
 
@@ -61,7 +59,7 @@ Transaction::tread(unsigned int key)
 	for (;;) {
 		v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 TREAD_RETRY:
-		if (v1.lock & 1) {
+		if (v1.lock) {
 			if ((v1.rts()) < this->appro_commit_ts) {
 				// it must check whether this write set include the tuple,
 				// but it already checked L31 - L33.
@@ -72,7 +70,7 @@ TREAD_RETRY:
 		}
 		return_val = Table[key].val;
 		v2.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
-		if (v1 == v2 && v1.lock != LOCK_BIT) break;
+		if (v1 == v2 && !v1.lock) break;
 		else {
 			v1 = v2;
 			goto TREAD_RETRY;

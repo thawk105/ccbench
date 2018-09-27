@@ -70,7 +70,7 @@ RETRY:
 	read_value = tuple->val;
 
 	//(d) performs a memory fence
-	//x
+	// don't need.
 	
 	//(e) checks the TID word again
 	expected_check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
@@ -100,7 +100,7 @@ bool Transaction::validationPhase()
 
 
 	//Phase 1 
-	//ソートされた writeSet をロックする．
+	// lock writeSet sorted.
 	sort(writeSet.begin(), writeSet.end());
 	lockWriteSet();
 
@@ -116,15 +116,13 @@ bool Transaction::validationPhase()
 	Tidword tmptidword;
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		//1
-		//readPhaseではロックビットが下がっている（ロックされていない）物を読み込んでいるので，
-		//in readSet かつ in writeSet の時は一致しようがない．よって3ビットシフト
-
 		tmptidword.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
 		if ((*itr).tidword.epoch != tmptidword.epoch || (*itr).tidword.tid != tmptidword.tid) {
 			return false;
 		}
 		//2
-		//今回は無し
+		if (!tmptidword.latest) return false;
+
 		//3
 		if (tmptidword.lock) {	//ロックされていて
 			if (searchWriteSet((*itr).key)) return true;
