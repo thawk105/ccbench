@@ -24,6 +24,7 @@ public:
 	}
 
 	int thid;
+	Tidword mrctid;
 
 	int tread(unsigned int key);
 	void twrite(unsigned int key, unsigned int val);
@@ -32,4 +33,6 @@ public:
 	void writePhase();
 	void lockWriteSet();
 	void unlockWriteSet();
+	ReadElement *searchReadSet(unsigned int key);
+	WriteElement *searchWriteSet(unsigned int key);
 };

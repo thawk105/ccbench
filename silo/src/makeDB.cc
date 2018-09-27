@@ -16,13 +16,12 @@ void makeDB() {
 		ERR;
 	}
 
-	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
+	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 		tmp = &Table[i];
-		tmp->tidword = 1;
-		tmp->tidword = tmp->tidword << 32;
-		tmp->tidword = tmp->tidword | 0b010;
+		tmp->tidword.epoch = 1;
+		tmp->tidword.latest = 1;
 		tmp->key = i;
-		tmp->val.store(rnd.next() % (TUPLE_NUM * 10), memory_order_release);
+		tmp->val = rnd.next() % TUPLE_NUM;
 	}
 
 }

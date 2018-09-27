@@ -23,8 +23,6 @@ GLOBAL std::atomic<bool> Finish;
 
 #endif
 
-GLOBAL std::atomic<uint64_t> *ThLocalEpoch;
-
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;

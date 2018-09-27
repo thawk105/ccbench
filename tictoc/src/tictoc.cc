@@ -255,9 +255,9 @@ main(int argc, char *argv[]) {
 	//displayDB();
 	//displayAbortRate();
 	//displayFinishTransactions();
-	//displayAbortCounts();
 
 	prtRslt(Bgn, End);
+	//displayAbortCounts();
 
 	return 0;
 }

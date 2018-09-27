@@ -62,7 +62,7 @@ Transaction::tread(unsigned int key)
 		v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 TREAD_RETRY:
 		if (v1.lock & 1) {
-			if ((v1.wts + v1.delta) < this->appro_commit_ts) {
+			if ((v1.rts()) < this->appro_commit_ts) {
 				// it must check whether this write set include the tuple,
 				// but it already checked L31 - L33.
 				// so it must abort.
@@ -98,7 +98,7 @@ Transaction::twrite(unsigned int key, unsigned int val)
 
 	TsWord tsword;
 	tsword.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
-	this->appro_commit_ts = max(this->appro_commit_ts, tsword.wts + tsword.delta + 1);
+	this->appro_commit_ts = max(this->appro_commit_ts, tsword.rts() + 1);
 	writeSet.push_back(SetElement(key, val, tsword));
 }
 
@@ -117,11 +117,9 @@ Transaction::validationPhase()
 
 	// step2, compute the commit timestamp
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		uint64_t e_tuple_rts;
 		TsWord loadtsw;
 	    loadtsw.obj	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
-		e_tuple_rts = loadtsw.rts() + 1;
-		commit_ts = max(commit_ts, e_tuple_rts);
+		commit_ts = max(commit_ts, loadtsw.rts() + 1);
 	}	
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -146,15 +144,13 @@ VALI_RETRY:
 				}
 			}
 
-			if ((v1.wts + v1.delta) < commit_ts && v1.lock) {
+			if ((v1.rts()) < commit_ts && v1.lock) {
 				if (inW == nullptr) return false;
-				// 関数化する ( ex. rts(), )
 			}
 
 			if (inW != nullptr) break;
-
 			//extend the rts of the tuple
-			if ((v1.wts + v1.delta) < commit_ts) {
+			if ((v1.rts()) < commit_ts) {
 				// Handle delta overflow
 				uint64_t delta = commit_ts - v1.wts;
 				uint64_t shift = delta - (delta & 0x7fff);
@@ -212,7 +208,7 @@ Transaction::lockWriteSet()
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//lock
 		expected.obj = __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
-		do {
+		for (;;) {
 			//no-wait locking in validation
 			//ロックオブジェクトを作ってデストラクタで解放
 			//オブジェクトの中身はtsw へのポインタ
@@ -223,7 +219,8 @@ Transaction::lockWriteSet()
 			}
 			desired = expected;
 			desired.lock = 1;
-		} while (!__atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+			if (__atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
+		}
 		cll.push_back((*itr).key);
 	}
 }

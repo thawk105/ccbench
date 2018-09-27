@@ -25,8 +25,6 @@ GLOBAL std::atomic<bool> Finish;
 
 #endif
 
-GLOBAL uint64_t_64byte *ThLocalEpoch;
-
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
@@ -35,13 +33,10 @@ GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
 GLOBAL unsigned int EXTIME;
 
-//GLOBAL uint64_t *ThLocalEpoch;
-GLOBAL uint64_t_64byte *ThRecentTID;
+GLOBAL uint64_t_64byte *ThLocalEpoch;
 GLOBAL uint64_t *FinishTransactions;
 GLOBAL uint64_t *AbortCounts;
 
-GLOBAL uint64_t_64byte *Start;
-GLOBAL uint64_t_64byte *Stop;
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 

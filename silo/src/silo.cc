@@ -50,7 +50,7 @@ WORKLOAD:\n\
 CLOCK_PER_US: CPU_MHZ\n\
 EPOCH_TIME(int)(ms): Ex. 40\n\
 EXTIME: execution time.\n\
-\n\n");
+\n");
 	    cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 		exit(0);
@@ -81,10 +81,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 	}
 
 	try {
-		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
-		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//	use for logging
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//[0]は使わない
-		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 	} catch (bad_alloc) {
@@ -92,7 +89,6 @@ So you have to set THREAD_NUM >= 2.\n\n");
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		ThRecentTID[i].num = 0;
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
 		ThLocalEpoch[i].num = 0;
@@ -268,15 +264,15 @@ RETRY:
 			}
 			
 			//Validation phase
-			if (!(trans.validationPhase())) {
+			if (trans.validationPhase()) {
+				trans.writePhase();
+				totalFinishTransactions++;
+			} else {
 				trans.abort();
 				totalAbortCounts++;
 				goto RETRY;
 			}
 
-			//Write phase
-			trans.writePhase();
-			totalFinishTransactions++;
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -311,6 +307,7 @@ extern void displayDB();
 extern void displayPRO();
 extern void displayFinishTransactions();
 extern void displayAbortCounts();
+extern void displayTotalAbortCounts();
 extern void displayAbortRate();
 extern void makeDB();
 
@@ -335,9 +332,9 @@ main(int argc, char *argv[]) {
 	//displayDB();
 	//displayAbortRate();
 	//displayFinishTransactions();
-	//displayAbortCounts();
 
 	prtRslt(Bgn, End);
+	//displayTotalAbortCounts();
 
 	return 0;
 }

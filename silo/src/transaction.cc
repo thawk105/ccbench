@@ -15,31 +15,51 @@ extern void displayDB();
 
 using namespace std;
 
-int Transaction::tread(unsigned int key)
+WriteElement *
+Transaction::searchWriteSet(unsigned int key)
+{
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
+ReadElement *
+Transaction::searchReadSet(unsigned int key)
+{
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+		if ((*itr).key == key) return &(*itr);
+	}
+
+	return nullptr;
+}
+
+int 
+Transaction::tread(unsigned int key)
 {
 	int read_value;
+	Tuple *tuple = &Table[key];
 
 	//w
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).key == key) return (*itr).val;
-	}
+	WriteElement *inW = searchWriteSet(key);
+	if (inW) return inW->val;
 
 	//r
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		if ((*itr).key == key) return (*itr).val;
-	}
+	ReadElement *inR = searchReadSet(key);
+	if (inR) return inR->val;
+
 	
 	//(a) reads the TID word, spinning until the lock is clear
-	uint64_t expected;
-	uint64_t expected_check;
-	uint64_t lockBit = 0b100;
+	Tidword expected;
+	Tidword expected_check;
 
-	expected = Table[key].tidword.load(memory_order_acquire);
+	expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 	//check if it is locked.
 	//spinning until the lock is clear
 RETRY:
-	while (expected & lockBit) {
-		expected = Table[key].tidword.load(memory_order_acquire);
+	while (expected.lock) {
+		expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 	}
 	
 	//(b) checks whether the record is the latest version
@@ -47,13 +67,13 @@ RETRY:
 	
 	
 	//(c) reads the data
-	read_value = Table[key].val.load(memory_order_acquire);
+	read_value = tuple->val;
 
 	//(d) performs a memory fence
 	//x
 	
 	//(e) checks the TID word again
-	expected_check = Table[key].tidword.load(memory_order_acquire);
+	expected_check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 	if (expected != expected_check) {
 		expected = expected_check;
 		goto RETRY;
@@ -65,11 +85,10 @@ RETRY:
 
 void Transaction::twrite(unsigned int key, unsigned int val)
 {
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).key == key) {
-			(*itr).val = val;
-			return;
-		}
+	WriteElement *inW = searchWriteSet(key);
+	if (inW) {
+		inW->val = val;
+		return;
 	}
 
 	writeSet.push_back(WriteElement(key, val));
@@ -79,7 +98,6 @@ void Transaction::twrite(unsigned int key, unsigned int val)
 bool Transaction::validationPhase()
 {
 
-	uint64_t lockBit = 0b100;
 
 	//Phase 1 
 	//ソートされた writeSet をロックする．
@@ -94,25 +112,23 @@ bool Transaction::validationPhase()
 	//1. readSetのtidにreadPhaseでのアクセスから変更がある
 	//2. または　最新バージョンではない
 	//3. または　ロックされていて，このタプルがwriteSetに含まれていない（concurrent transaction が更新中であると考えられる．）
+	
+	Tidword tmptidword;
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		//1
-		//3bit シフトの理由：もしwriteSetに含まれるのであれば，ロックビットが上がっている(lockWriteSet() を行なっているので）．
 		//readPhaseではロックビットが下がっている（ロックされていない）物を読み込んでいるので，
 		//in readSet かつ in writeSet の時は一致しようがない．よって3ビットシフト
 
-		uint64_t tmptidword = Table[(*itr).key].tidword.load(memory_order_acquire);
-		if (((*itr).tidword >> 3) != (tmptidword) >> 3) {
+		tmptidword.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		if ((*itr).tidword.epoch != tmptidword.epoch || (*itr).tidword.tid != tmptidword.tid) {
 			return false;
 		}
 		//2
 		//今回は無し
 		//3
-		if (tmptidword & lockBit) {	//ロックされていて
-			auto include = writeSet.begin();
-			for (; include != writeSet.end(); ++include) {
-				if ((*include).key == (*itr).key) return true;
-			}
-			return false;	//writeSetに含まれていない
+		if (tmptidword.lock) {	//ロックされていて
+			if (searchWriteSet((*itr).key)) return true;
+			else return false;
 		}
 	}
 
@@ -135,10 +151,7 @@ void Transaction::writePhase()
 	//(b) larger than the worker's most recently chosen TID,
 	//and (C) in the current global epoch.
 	
-	uint64_t tid_a = 0;
-	uint64_t tid_b = 0;
-	uint64_t tid_c = 0;
-	uint64_t lockBit = 0b100;
+	Tidword tid_a, tid_b, tid_c;
 
 	//calculates (a)
 	//about readSet
@@ -146,30 +159,33 @@ void Transaction::writePhase()
 		if (tid_a < (*itr).tidword) tid_a = (*itr).tidword;
 	}
 	//about writeSet
+	Tidword tmp;
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		uint64_t tmp = Table[(*itr).key].tidword.load(memory_order_acquire);
+		tmp.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
 		tid_a = max(tid_a, tmp);
 	}
 	//下位3ビットは予約されている．
-	tid_a += 0b1000;
+	tid_a.tid++;
 	
 	//calculates (b)
 	//larger than the worker's most recently chosen TID,
-	tid_b = ThRecentTID[thid].num + 0b1000;	
+	tid_b = mrctid;
+	tid_b.tid++;
 	//下位3ビットは予約されている．
 
 	//calculates (c)
-	tid_c = __atomic_load_n(&(ThLocalEpoch[thid].num), __ATOMIC_ACQUIRE) << 32;
+	tid_c.epoch = ThLocalEpoch[thid].num;
 
 	//compare a, b, c
-	ThRecentTID[thid].num = max({tid_a, tid_b, tid_c});
-	ThRecentTID[thid].num = ThRecentTID[thid].num & (~lockBit);
+	Tidword maxtid =  max({tid_a, tid_b, tid_c});
+	maxtid.lock = 0;
+	mrctid = maxtid;
 
 	//write(record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//update and unlock
-		Table[(*itr).key].val.store((*itr).val, memory_order_release);
-		Table[(*itr).key].tidword.store(ThRecentTID[thid].num, memory_order_release);
+		Table[(*itr).key].val = (*itr).val;
+		__atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
 	}
 
 	readSet.clear();
@@ -178,17 +194,18 @@ void Transaction::writePhase()
 
 void Transaction::lockWriteSet()
 {
-	uint64_t expected;
-	uint64_t lockBit = 0b100;
+	Tidword expected, desired;
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//lock
+		expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
 		for (;;) {
-			expected = Table[(*itr).key].tidword.load(memory_order_acquire);
-RETRY_LWS:
-			if (!(expected & lockBit)) {
-				if (Table[(*itr).key].tidword.compare_exchange_strong(expected, expected | lockBit, memory_order_acq_rel, memory_order_acquire)) break;
-				else goto RETRY_LWS;
+			if (expected.lock) {
+				expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+			} else {
+				desired = expected;
+				desired.lock = 1;
+				if (__atomic_compare_exchange_n(&(Table[(*itr).key].tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
 			}
 		}
 	}
@@ -196,12 +213,13 @@ RETRY_LWS:
 
 void Transaction::unlockWriteSet()
 {
-	uint64_t expected;
-	uint64_t lockBit = 0b100;
+	Tidword expected, desired;
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//unlock
-		expected = Table[(*itr).key].tidword.load(memory_order_acquire);
-		Table[(*itr).key].tidword.store(expected & (~lockBit), memory_order_release);
+		expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		desired = expected;
+		desired.lock = 0;
+		__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
 	}
 }

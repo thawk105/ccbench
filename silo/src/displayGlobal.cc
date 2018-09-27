@@ -16,8 +16,8 @@ displayDB()
 		cout << "------------------------------" << endl;	//-は30個
 		cout << "key: " << tuple->key << endl;
 		cout << "val: " << tuple->val << endl;
-		cout << "TIDword: " << tuple->tidword.load() << endl;
-		cout << "bit: " << static_cast<bitset<64>>(tuple->tidword.load()) << endl;
+		cout << "TIDword: " << tuple->tidword.obj << endl;
+		cout << "bit: " << tuple->tidword.obj << endl;
 		cout << endl;
 	}
 }
@@ -60,6 +60,17 @@ displayAbortCounts()
 		cout << "th #" << i << ": " << AbortCounts[i] << endl;
 	}
 	cout << endl;
+}
+
+void
+displayTotalAbortCounts()
+{
+	uint64_t sum(0);
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		sum += AbortCounts[i];
+	}
+
+	cout << sum << endl;
 }
 
 void 
