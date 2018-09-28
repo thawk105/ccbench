@@ -66,7 +66,7 @@ TREAD_RETRY:
 				// so it must abort.
 				this->status = TransactionStatus::aborted;
 				return 0;
-			}
+			} else continue;
 		}
 		return_val = Table[key].val;
 		v2.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);

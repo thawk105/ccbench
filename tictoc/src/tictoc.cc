@@ -257,7 +257,7 @@ main(int argc, char *argv[]) {
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
-	//displayAbortCounts();
+	displayAbortCounts();
 
 	return 0;
 }

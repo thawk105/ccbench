@@ -63,14 +63,14 @@ RETRY:
 	}
 	
 	//(b) checks whether the record is the latest version
-	//今回は無し
-	
+	// omit. because this is implemented by single version
 	
 	//(c) reads the data
 	read_value = tuple->val;
 
 	//(d) performs a memory fence
 	// don't need.
+	// order of load don't exchange.
 	
 	//(e) checks the TID word again
 	expected_check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
@@ -97,8 +97,6 @@ void Transaction::twrite(unsigned int key, unsigned int val)
 
 bool Transaction::validationPhase()
 {
-
-
 	//Phase 1 
 	// lock writeSet sorted.
 	sort(writeSet.begin(), writeSet.end());
@@ -108,29 +106,26 @@ bool Transaction::validationPhase()
 	__atomic_store_n(&(ThLocalEpoch[thid].num), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
 	asm volatile("" ::: "memory");
 
-	//Phase 2 下記条件を一つでも満たしたらアボート．
-	//1. readSetのtidにreadPhaseでのアクセスから変更がある
-	//2. または　最新バージョンではない
-	//3. または　ロックされていて，このタプルがwriteSetに含まれていない（concurrent transaction が更新中であると考えられる．）
+	//Phase 2 abort if any condition of below is satisfied. 
+	//1. tid of readSet changed from it that was got in Read Phase.
+	//2. not latest version
+	//3. the tuple is locked and it isn't included by its write set.
 	
-	Tidword tmptidword;
+	Tidword check;
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		//1
-		tmptidword.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-		if ((*itr).tidword.epoch != tmptidword.epoch || (*itr).tidword.tid != tmptidword.tid) {
+		check.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
 			return false;
 		}
 		//2
-		if (!tmptidword.latest) return false;
+		if (!check.latest) return false;
 
 		//3
-		if (tmptidword.lock) {	//ロックされていて
-			if (searchWriteSet((*itr).key)) return true;
-			else return false;
-		}
+		if (check.lock && !searchWriteSet((*itr).key)) return false;
 	}
 
-	//Phase 3 writePhase()へ
+	//goto Phase 3
 	return true;
 }
 
@@ -162,14 +157,12 @@ void Transaction::writePhase()
 		tmp.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
 		tid_a = max(tid_a, tmp);
 	}
-	//下位3ビットは予約されている．
 	tid_a.tid++;
 	
 	//calculates (b)
 	//larger than the worker's most recently chosen TID,
 	tid_b = mrctid;
 	tid_b.tid++;
-	//下位3ビットは予約されている．
 
 	//calculates (c)
 	tid_c.epoch = ThLocalEpoch[thid].num;
@@ -177,6 +170,7 @@ void Transaction::writePhase()
 	//compare a, b, c
 	Tidword maxtid =  max({tid_a, tid_b, tid_c});
 	maxtid.lock = 0;
+	maxtid.latest = 1;
 	mrctid = maxtid;
 
 	//write(record, commit-tid)
@@ -195,7 +189,6 @@ void Transaction::lockWriteSet()
 	Tidword expected, desired;
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		//lock
 		expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
 		for (;;) {
 			if (expected.lock) {
@@ -214,7 +207,6 @@ void Transaction::unlockWriteSet()
 	Tidword expected, desired;
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		//unlock
 		expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
 		desired = expected;
 		desired.lock = 0;

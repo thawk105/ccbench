@@ -20,6 +20,7 @@ void makeDB() {
 		tmp = &Table[i];
 		tmp->tidword.epoch = 1;
 		tmp->tidword.latest = 1;
+		tmp->tidword.lock = 0;
 		tmp->key = i;
 		tmp->val = rnd.next() % TUPLE_NUM;
 	}

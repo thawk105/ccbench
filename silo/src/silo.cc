@@ -236,6 +236,9 @@ RETRY_WAIT_W:
 	try {
 		//start work(transaction)
 		for (;;) {
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
 			if (Finish.load(memory_order_acquire)) {
 				CtrLock.w_lock();
 				FinishTransactions[*myid] = totalFinishTransactions;
@@ -244,12 +247,7 @@ RETRY_WAIT_W:
 				return nullptr;
 			}
 
-			//transaction begin
-			makeProcedure(pro, rnd);
-			asm volatile ("" ::: "memory");
-RETRY:
 			//Read phase
-			//Search versions
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				switch(pro[i].ope) {
 					case(Ope::READ):
@@ -334,7 +332,7 @@ main(int argc, char *argv[]) {
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
-	//displayTotalAbortCounts();
+	displayTotalAbortCounts();
 
 	return 0;
 }
