@@ -88,12 +88,11 @@ chkArg(const int argc, char *argv[])
 	EXTIME = atoi(argv[7]);
 
 	try {
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
+		FinishTransactions = new uint64_t[THREAD_NUM];
+		AbortCounts = new uint64_t[THREAD_NUM];
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&ThRecentTID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
@@ -101,7 +100,6 @@ chkArg(const int argc, char *argv[])
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-		ThRecentTID[i].num = 0;
 		ThLocalEpoch[i].num = 0;
 	}
 }
@@ -157,12 +155,14 @@ epoch_worker(void *arg)
 
 	//----------
 	//wait for all threads start. CAS.
-	unsigned int expected;
-	unsigned int desired;
-	do {
+	unsigned int expected, desired;
+	for (;;) {
 		expected = Running.load(memory_order_acquire);
+RETRY_WAIT_L:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT_L;
+	}
 
 	//spin wait
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {};
@@ -184,7 +184,6 @@ epoch_worker(void *arg)
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
 			GlobalEpoch++;
-		
 			//Reset temprature
 			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 				Table[i].temp.store(0, memory_order_release);
@@ -198,7 +197,7 @@ epoch_worker(void *arg)
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
@@ -221,10 +220,13 @@ worker(void *arg)
 	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) ERR;
 	//----------
 	//wait for all threads start. CAS.
-	do {
+	for (;;) {
 		expected = Running.load(memory_order_acquire);
+RETRY_WAIT_W:
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_WAIT_W;
+	}
 	
 	//spin wait
 	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
@@ -233,6 +235,9 @@ worker(void *arg)
 	try {
 		//start work (transaction)
 		for (;;) {
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
 			if (Finish.load(memory_order_acquire)) {
 				CtrLock.w_lock();
 				FinishTransactions[*myid] = totalFinishTransactions;
@@ -241,9 +246,6 @@ worker(void *arg)
 				return nullptr;
 			}
 
-			makeProcedure(pro, rnd, WORKLOAD);
-			asm volatile ("" ::: "memory");
-RETRY:
 			trans.begin();
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				if (pro[i].ope == Ope::READ) {
@@ -321,6 +323,7 @@ main(int argc, char *argv[])
 	}
 
 	prtRslt(Bgn, End);
+	//displayAbortRate();
 
 	return 0;
 }

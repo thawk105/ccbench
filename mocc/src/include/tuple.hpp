@@ -11,24 +11,51 @@
 
 using namespace std;
 
+struct Tidword {
+	union {
+		uint64_t obj;
+		struct {
+			bool lock:1;
+			uint64_t tid:31;
+			uint64_t epoch:32;
+		};
+	};
+
+	Tidword() {
+		obj = 0;
+	}
+
+	bool operator==(const Tidword& right) const {
+		return obj == right.obj;
+	}
+
+	bool operator!=(const Tidword& right) const {
+		return !operator==(right);
+	}
+
+	bool operator<(const Tidword& right) const {
+		return this->obj < right.obj;
+	}
+};
+
 class Tuple	{
 public:
-	RWLock lock;	// 4byte
 	unsigned int key = 0;
-	atomic<uint64_t> tidword;
+	unsigned int val;
+	Tidword tidword;
 	atomic<uint64_t> temp;	//	temprature, min 0, max 20
-	atomic<unsigned int> val;
 	uint8_t padding[4];
+	RWLock lock;	// 4byte
 };
 
 // use for read-write set
 class ReadElement {
 public:
-	uint64_t tidword;
+	Tidword tidword;
 	unsigned int key, val;
 	bool failed_verification;
 
-	ReadElement (uint64_t tidword, unsigned int key, unsigned int val) {
+	ReadElement (Tidword tidword, unsigned int key, unsigned int val) {
 		this->tidword = tidword;
 		this->key = key;
 		this->val = val;

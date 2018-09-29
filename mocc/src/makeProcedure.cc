@@ -10,9 +10,9 @@
 
 using namespace std;
 
-void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, unsigned int localWL) {
+void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		switch (localWL) {
+		switch (WORKLOAD) {
 			case 0:
 				pro[i].ope = Ope::READ;
 				break;

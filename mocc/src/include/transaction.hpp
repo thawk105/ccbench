@@ -22,6 +22,7 @@ public:
 	TransactionStatus status;
 
 	int thid;
+	Tidword mrctid;
 	Xoroshiro128Plus *rnd;
 
 	Transaction(int thid, Xoroshiro128Plus *rnd) {
@@ -42,7 +43,7 @@ public:
 	unsigned int read(unsigned int key);
 	void write(unsigned int key, unsigned int val);
 	void lock(Tuple *tuple, bool mode);
-	void construct_rll();	// invoked on abort;
+	void construct_RLL();	// invoked on abort;
 	void unlockCLL();
 	bool commit();
 	void abort();

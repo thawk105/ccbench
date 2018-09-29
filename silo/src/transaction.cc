@@ -51,8 +51,7 @@ Transaction::tread(unsigned int key)
 
 	
 	//(a) reads the TID word, spinning until the lock is clear
-	Tidword expected;
-	Tidword expected_check;
+	Tidword expected, check;
 
 	expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 	//check if it is locked.
@@ -73,9 +72,9 @@ RETRY:
 	// order of load don't exchange.
 	
 	//(e) checks the TID word again
-	expected_check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-	if (expected != expected_check) {
-		expected = expected_check;
+	check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+	if (expected != check) {
+		expected = check;
 		goto RETRY;
 	}
 	

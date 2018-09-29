@@ -32,11 +32,8 @@ GLOBAL unsigned int WORKLOAD;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
 GLOBAL unsigned int EXTIME;
-GLOBAL unsigned int UNSTABLE_WORKLOAD;
 
-GLOBAL uint64_t_64byte *ThRecentTID;
 GLOBAL uint64_t *FinishTransactions;
-GLOBAL uint64_t *UnstaFinishTransactions;	// use for unstable workload
 GLOBAL uint64_t *AbortCounts;
 
 GLOBAL RWLock CtrLock;

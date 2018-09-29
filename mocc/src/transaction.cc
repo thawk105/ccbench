@@ -2,7 +2,6 @@
 #include <cmath>
 #include <random>
 #include <stdio.h>
-
 #include "include/debug.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
@@ -51,6 +50,7 @@ Transaction::begin()
 unsigned int
 Transaction::read(unsigned int key)
 {
+	unsigned int return_val;
 	Tuple *tuple = &Table[key];
 
 	// tuple exists in write set.
@@ -63,7 +63,7 @@ Transaction::read(unsigned int key)
 
 	// tuple doesn't exist in read/write set.
 	LockElement *inRLL = searchRLL(key);
-	if (inRLL) {
+	if (inRLL != nullptr) {
 		lock(tuple, inRLL->mode);
 	} else if (tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
 		lock(tuple, false);
@@ -73,17 +73,20 @@ Transaction::read(unsigned int key)
 		return -1;
 	}
 	
-	readSet.push_back(ReadElement(tuple->tidword.load(memory_order_acquire), key, tuple->val.load(memory_order_acquire)));
-	return tuple->val.load(memory_order_acquire);
+	Tidword expected;
+	expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+	return_val = tuple->val;
+	readSet.push_back(ReadElement(expected, key, return_val));
+	return return_val;
 }
 
 void
 Transaction::write(unsigned int key, unsigned int val)
 {
 	// tuple exists in write set.
-	WriteElement *inW = searchWriteSet(key);
-	if (inW) {
-		inW->val = val;
+	WriteElement *inw = searchWriteSet(key);
+	if (inw) {
+		inw->val = val;
 		return;
 	}
 
@@ -105,7 +108,7 @@ Transaction::write(unsigned int key, unsigned int val)
 void
 Transaction::lock(Tuple *tuple, bool mode)
 {
-	// lock exists in CLL (Current Lock List)
+	// lock exists in CLL (current lock list)
 	sort(CLL.begin(), CLL.end());
 	unsigned int vioctr = 0;
 	unsigned int threshold;
@@ -132,10 +135,9 @@ Transaction::lock(Tuple *tuple, bool mode)
 
 	if (vioctr == 0) threshold = -1;
 
-	uint64_t expected;
-	uint64_t lockBit = 0b100;
 	// if too many violations
-	// paper に too many の条件が無いので，自分で設定
+	// i set my condition of too many because the original paper of mocc didn't show
+	// the condition of too many.
 	if ((CLL.size() / 2) < vioctr && CLL.size() >= (MAX_OPE / 2)) {
 		if (mode) {
 			if (upgrade) {
@@ -153,9 +155,18 @@ Transaction::lock(Tuple *tuple, bool mode)
 				}
 			}
 			if (tuple->lock.w_trylock()) {
-				//ロックを取ってからビットを上げる
-				expected = Table[tuple->key].tidword.load(memory_order_acquire);
-				Table[tuple->key].tidword.store(expected | lockBit, memory_order_release);
+				// raise lock bit after acquiring lock
+				Tidword expected, desired;
+				expected.obj = __atomic_load_n(&(Table[tuple->key].tidword.obj), __ATOMIC_ACQUIRE);
+				for (;;) {
+					if (expected.lock) {
+						expected.obj = __atomic_load_n(&(Table[tuple->key].tidword.obj), __ATOMIC_ACQUIRE);
+					} else {
+						desired = expected;
+						desired.lock = 1;
+						if (__atomic_compare_exchange_n(&(Table[tuple->key].tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+					}
+				}
 				//-----
 				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
 
@@ -178,12 +189,16 @@ Transaction::lock(Tuple *tuple, bool mode)
 	}
 	
 	if (vioctr != 0) {
-		// Not in canonical mode. Restore.
+		// not in canonical mode. restore.
 		for (auto itr = CLL.begin() + (CLL.size() - vioctr); itr != CLL.end(); ++itr) {
 			if ((*itr).mode) {
-				//ビットを落としてからロックを解放する
-				expected = Table[(*itr).key].tidword.load(memory_order_acquire);
-				Table[(*itr).key].tidword.store(expected &(~lockBit), memory_order_release);
+				// release lock after down the lock bit.
+				Tidword expected, desired;
+				expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+				desired = expected;
+				desired.lock = 0;
+				__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
+
 				//-----
 				(*itr).lock->w_unlock();
 			} else {
@@ -203,9 +218,18 @@ Transaction::lock(Tuple *tuple, bool mode)
 		if ((*itr).key < tuple->key) {
 			if ((*itr).mode) {
 				(*itr).lock->w_lock();
-				//ロックを取ってからビットを上げる
-				expected = Table[(*itr).key].tidword.load(memory_order_acquire);
-				Table[(*itr).key].tidword.store(expected | lockBit, memory_order_release);
+				// raise the lock bit after acquiring lock.
+				Tidword expected, desired;
+				expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+				for (;;) {
+					if (expected.lock) {
+						expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+					} else {
+						desired = expected;
+						desired.lock = 1;
+						if (__atomic_compare_exchange_n(&(Table[(*itr).key].tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+					}
+				}
 				//-----
 			} else {
 				(*itr).lock->r_lock();
@@ -218,9 +242,18 @@ Transaction::lock(Tuple *tuple, bool mode)
 
 	if (mode) {
 		tuple->lock.w_lock();	
-		//ロックを取ってからビットを上げる
-		expected = Table[tuple->key].tidword.load(memory_order_acquire);
-		Table[tuple->key].tidword.store(expected | lockBit, memory_order_release);
+		// raise the lock bit after acquiring the lock.
+			Tidword expected, desired;
+			expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+			for (;;) {
+				if (expected.lock) {
+					expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+				} else {
+					desired = expected;
+					desired.lock = 1;
+					if (__atomic_compare_exchange_n(&(tuple->tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+				}
+			}
 	}
 	else {
 		tuple->lock.r_lock();
@@ -231,7 +264,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 }
 
 void
-Transaction::construct_rll()
+Transaction::construct_RLL()
 {
 	RLL.clear();
 	
@@ -284,18 +317,23 @@ Transaction::commit()
 		}
 	}
 
+	asm volatile ("" ::: "memory");
+	__atomic_store_n(&(ThLocalEpoch[thid].num), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
+	asm volatile ("" ::: "memory");
+
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		uint64_t tmptidword = Table[(*itr).key].tidword.load(memory_order_acquire);
-		if (((*itr).tidword >> 3) != tmptidword >> 3) {
+		Tidword check;
+		check.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
 			(*itr).failed_verification = true;
 			this->status = TransactionStatus::aborted;
 			return false;
 		}
 
-		// Silo プロトコル
+		// Silo protocol
 		if (Table[(*itr).key].lock.counter.load(memory_order_acquire) == -1) {
 			WriteElement *inW = searchWriteSet((*itr).key);
-			//ロックが取られていて，自分が持ち主でないのなら abort
+			//if the lock is already acquired and the owner isn't me, abort.
 			if (inW == nullptr) {
 				this->status = TransactionStatus::aborted;
 				return false;
@@ -312,7 +350,7 @@ Transaction::abort()
 	//unlock CLL
 	unlockCLL();
 	
-	construct_rll();
+	construct_RLL();
 
 	readSet.clear();
 	writeSet.clear();
@@ -322,14 +360,17 @@ Transaction::abort()
 void
 Transaction::unlockCLL()
 {
-	uint64_t expected;
-	uint64_t lockBit = 0b100;
+	Tidword expected, desired;
 
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		if ((*itr).mode) {
-			// ビットを下げてからロックを解放する
-			expected = Table[(*itr).key].tidword.load(memory_order_acquire);
-			Table[(*itr).key].tidword.store(expected & (~lockBit), memory_order_release);
+			// release lock after down the lock bit.
+			expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+			desired = expected;
+			desired.lock = 0;
+			__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
+
+			//-----
 			(*itr).lock->w_unlock();
 		}
 		else {
@@ -342,10 +383,7 @@ Transaction::unlockCLL()
 void
 Transaction::writePhase()
 {
-	uint64_t tid_a = 0;
-	uint64_t tid_b = 0;
-	uint64_t tid_c = 0;
-	uint64_t lockBit = 0b100;
+	Tidword tid_a, tid_b, tid_c;
 
 	// calculates (a)
 	// about readSet
@@ -353,31 +391,32 @@ Transaction::writePhase()
 		tid_a = max(tid_a, (*itr).tidword);
 	}
 	// about writeSet
+	Tidword tmp;
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		tid_a = max(tid_a, Table[(*itr).key].tidword.load(memory_order_acquire));
+		tmp.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		tid_a = max(tid_a, tmp);
 	}
 
-	//下位 3ビットは予約されている
-	tid_a += 0b1000;
+	tid_a.tid++;
 
 	//calculates (b)
 	//larger than the worker's most recently chosen TID,
-	//下位 3ビットは予約されている
-	tid_b = ThRecentTID[thid].num + 0b1000;
+	tid_b = mrctid;
+	tid_b.tid++;
 
 	// calculates (c)
-	tid_c = __atomic_load_n(&(ThLocalEpoch[thid].num), __ATOMIC_ACQUIRE) << 32;
+	tid_c.epoch = ThLocalEpoch[thid].num;
 
 	// compare a, b, c
-	ThRecentTID[thid].num = max({tid_a, tid_b, tid_c});
-	//更新用にロックビットを落としておく
-	ThRecentTID[thid].num = ThRecentTID[thid].num & (~lockBit);
+	Tidword maxtid = max({tid_a, tid_b, tid_c});
+	maxtid.lock = 0;
+	mrctid = maxtid;
 
 	//write (record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//update nad down lockBit
-		Table[(*itr).key].val.store((*itr).val, memory_order_release);
-		Table[(*itr).key].tidword.store(ThRecentTID[thid].num, memory_order_release);
+		Table[(*itr).key].val = (*itr).val;
+		__atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
 	}
 
 	unlockCLL();
