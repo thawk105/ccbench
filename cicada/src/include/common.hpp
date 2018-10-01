@@ -50,7 +50,6 @@ GLOBAL uint64_t_64byte *ThreadRtsArrayForGroup;	//グループコミットをす
 
 GLOBAL uint64_t_64byte *GROUP_COMMIT_INDEX;
 GLOBAL uint64_t_64byte *GROUP_COMMIT_COUNTER;	//s-walの時は[0]のみ使用。全スレッドで共有。
-GLOBAL TimeStamp *ThreadFlushedWts;
 
 GLOBAL Version ***PLogSet;	//[thID][index] pointer array
 GLOBAL Version **SLogSet;	//[index] pointer array
@@ -63,8 +62,6 @@ GLOBAL uint64_t *AbortCounts;
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 GLOBAL uint64_t_64byte *GCFlag;
-GLOBAL uint64_t_64byte *GCommitStart;
-GLOBAL uint64_t_64byte *GCommitStop;
 
 GLOBAL Tuple *Table;
 GLOBAL uint64_t InitialWts;

@@ -146,11 +146,8 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadWtsArray, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadRtsArray, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&ThreadFlushedWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_INDEX, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&GCommitStart, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&GCommitStop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		
 		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	
@@ -328,6 +325,9 @@ RETRY_WAIT_W:
 	try {
 		//start work(transaction)
 		for (;;) {
+			makeProcedure(pro, rnd);
+			asm volatile ("" ::: "memory");
+RETRY:
 			if (Finish.load(std::memory_order_acquire)) {
 				CtrLock.w_lock();
 				FinishTransactions[*myid] = totalFinishTransactions;
@@ -336,9 +336,6 @@ RETRY_WAIT_W:
 				return nullptr;
 			}
 
-			makeProcedure(pro, rnd);
-			asm volatile ("" ::: "memory");
-RETRY:
 			trans.tbegin(pro[0].ronly);
 
 			//Read phase

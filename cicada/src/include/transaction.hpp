@@ -31,6 +31,7 @@ public:
 	queue<GCElement> gcq;
 
 	uint64_t start, stop;	// for one-sided synchronization
+	uint64_t grpcmt_start, grpcmt_stop;	// for group commit
 	uint64_t GCstart, GCstop; // for garbage collection
 	uint8_t thid;
 

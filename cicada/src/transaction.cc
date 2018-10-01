@@ -331,7 +331,6 @@ Transaction::swal()
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 		uint64_t start = rdtsc();
 		while ((rdtsc() - start) < threshold) {}	//spin-wait
-		ThreadFlushedWts[this->thid].ts = this->wts.ts;
 
 		SwalLock.w_unlock();
 	}
@@ -343,7 +342,7 @@ Transaction::swal()
 		}
 
 		if (GROUP_COMMIT_COUNTER[0].num == 0) {
-			GCommitStart[0].num = rdtsc();	//最初の初期化もここで代用している
+			grpcmt_start = rdtsc();	// it can also initialize.
 		}
 
 		GROUP_COMMIT_COUNTER[0].num++;
@@ -352,7 +351,6 @@ Transaction::swal()
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 			uint64_t start = rdtsc();
 			while ((rdtsc() - start) < threshold) {}	//spin-wait
-			ThreadFlushedWts[this->thid].ts = this->wts.ts;
 
 			//group commit pending version.
 			gcpv();
@@ -371,11 +369,10 @@ Transaction::pwal()
 			i++;
 		}
 
-		//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
+		// it gives lat ency instead of flush.
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 		uint64_t start = rdtsc();
 		while ((rdtsc() - start) < threshold) {}	//spin-wait
-		ThreadFlushedWts[this->thid].ts = this->wts.ts;
 	} 
 	else {
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -384,18 +381,17 @@ Transaction::pwal()
 		}
 
 		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
-			GCommitStart[this->thid].num = rdtsc();	//最初の初期化もここで代用している
+			grpcmt_start = rdtsc();	// it can also initialize.
 			ThreadRtsArrayForGroup[this->thid].num = this->rts;
 		}
 
 		GROUP_COMMIT_COUNTER[this->thid].num++;
 
 		if (GROUP_COMMIT_COUNTER[this->thid].num == GROUP_COMMIT) {
-			//以下、将来のIO速度を考慮し、flushの代用として遅延を加える。
+			// it gives latency instead of flush.
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 			uint64_t start = rdtsc();
 			while ((rdtsc() - start) < threshold) {}	//spin-wait	
-			ThreadFlushedWts[this->thid].ts = this->wts.ts;
 
 			gcpv();
 		} 
@@ -484,21 +480,22 @@ bool
 Transaction::chkGcpvTimeout()
 {
 	if (P_WAL) {
-		GCommitStop[this->thid].num = rdtsc();
-		if (chkClkSpan(GCommitStart[this->thid].num, GCommitStop[this->thid].num, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
+		grpcmt_stop = rdtsc();
+		if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
 			gcpv();
 			return true;
 		}
+		grpcmt_start = grpcmt_stop;
 	}
 	else if (S_WAL) {
-		GCommitStop[0].num = rdtsc();
-		if (chkClkSpan(GCommitStart[0].num, GCommitStop[0].num, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
+		grpcmt_stop = rdtsc();
+		if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
 			SwalLock.w_lock();
 			gcpv();
 			SwalLock.w_unlock();
-
 			return true;
 		}
+		grpcmt_start = grpcmt_stop;
 	}
 
 	return false;
