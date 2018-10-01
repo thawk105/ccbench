@@ -33,14 +33,14 @@ void Transaction::tbegin(bool ronly)
 	stop = rdtsc();
 	if (chkClkSpan(start, stop, 10 * CLOCK_PER_US)) {
 		unsigned int maxwIndex = 1;
-		//最速のものを記録し、それに合わせる
+		//record the fastest one, and adjust it.
 		//one-sided synchronization
 		for (unsigned int i = 2; i < THREAD_NUM; ++i) {
 			if (ThreadWtsArray[maxwIndex]->ts < ThreadWtsArray[i]->ts) maxwIndex = i;
 		}
 		this->wts->ts = ThreadWtsArray[maxwIndex]->ts;
 
-		//stopwatchの起点修正
+		//modify the start position of stopwatch.
 		start = rdtsc();
 	}
 
@@ -72,10 +72,8 @@ Transaction::tread(unsigned int key)
 	//-----
 
 	//Search version
-	//-----
-	//簡単にスキップできるもの(先頭の方にある使えないバージョンの固まり等)は先にスキップする．
 	Version *version = Table[key].latest;
-	while ((version->wts.load(memory_order_acquire) > trts) || (version->status.load(std::memory_order_acquire) == VersionStatus::aborted)) {
+	while (version->wts.load(memory_order_acquire) > trts) {
 		version = version->next.load(std::memory_order_acquire);
 		//if version is not found.
 		if (version == nullptr) {
@@ -83,12 +81,11 @@ Transaction::tread(unsigned int key)
 		} 
 	}
 	
-	//ここからは簡単にスキップできない．
-	while (version->status.load(std::memory_order_acquire) != VersionStatus::committed && version->status.load(std::memory_order_acquire) != VersionStatus::precommitted) {
-		//タイムスタンプ的には適用可能なので，あとはステータスが重要．
-		if (version->status.load(std::memory_order_acquire) != VersionStatus::aborted) {
+	//timestamp condition is ok. and check status
+	VersionStatus loadst = version->status.load(memory_order_acquire);
+	while (loadst != VersionStatus::committed && loadst != VersionStatus::precommitted) {
+		if (loadst != VersionStatus::aborted) {
 			if (NLR) {
-				//pendingへの対応
 				//spin wait
 				if (GROUP_COMMIT) {
 				this->start = rdtsc();
@@ -100,24 +97,19 @@ Transaction::tread(unsigned int key)
 						}
 					}
 				} else {
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) { 
-						_mm_pause();
-					}
+					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
 				}
 				if (version->status.load(std::memory_order_acquire) == VersionStatus::committed) break;
 			} else if (ELR) {
-				//プレコミットを利用．
-				while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) { 
-					_mm_pause();
+				while (loadst == VersionStatus::pending) {
+					loadst = version->status.load(memory_order_acquire);		
 				}
-				if (version->status.load(std::memory_order_acquire) == VersionStatus::committed || version->status.load(std::memory_order_acquire) == VersionStatus::precommitted) break;
-				// もし committed または precommitted ならば，利用したいので
-				// break する． break しないと， version = version->next 
-				// となってしまう
+				if (loadst == VersionStatus::committed || loadst == VersionStatus::precommitted) break;
 			}
 		}
 
-		version = version->next.load(std::memory_order_acquire);
+		version = version->next.load(memory_order_acquire);
+		loadst = version->status.load(memory_order_acquire);
 		//if version is not found.
 		if (version == nullptr) {
 			ERR;
@@ -125,7 +117,7 @@ Transaction::tread(unsigned int key)
 	}
 
 	//hit version
-	//read-onlyならnot track or validate readSet
+	//if read-only, not track or validate readSet
 	if (this->ronly) {
 		return version->val;
 	}
@@ -148,72 +140,74 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	Version *version = Table[key].latest.load();
 
 	//Search version (for early abort check)
-	//(committed or pending)の最新versionを探して、early abort check(EAC)
-	//pendingはcommitされる可能性が高いので、EACに利用。
-	while (version->status.load(std::memory_order_acquire) == VersionStatus::aborted) {
+	//search latest (committed or pending) version and use for early abort check
+	//pending version may be committed, so use for early abort check.
+	VersionStatus loadst = version->status.load(memory_order_acquire);
+	// it uses loadst for reducing a number of atomic-load.
+	while (loadst == VersionStatus::aborted) {
 		version = version->next.load(std::memory_order_acquire);
+		loadst = version->status.load(memory_order_acquire);
+
 		//if version is not found.
-		//ここに来るのはありえない．deleteオペを実装していないから．
 		if (version == nullptr) ERR;
 	}
 	//hit version
 
 	//early abort check(EAC)
-	//ここまで来てるということはversion->statusはcommit or pending
-	if ((version->rts.load(memory_order_acquire) > this->wts->ts) && (version->status.load(std::memory_order_acquire) == VersionStatus::committed)) {
-		//validation phaseにて必ずabortされてしまうので、early abort.
+	//here, version->status is commit or pending.
+	if ((version->rts.load(memory_order_acquire) > this->wts->ts) && (loadst == VersionStatus::committed)) {
+		//it must be aborted in validation phase, so early abort.
 		this->status = TransactionStatus::abort;
-		return;	//early abort
+		return;	
 	}
 	else if (version->wts.load(memory_order_acquire) > this->wts->ts) {
-		//pendingならばこのトランザクションがabortされることは確定していないが、その可能性が高いためabort.
-		//committedならば，Cicadaのバージョンリストはnewest to oldestと決まっているのでアボートが確定している．
+		//if pending, it don't have to be aborted.
+		//But it may be aborted, so early abort.
+		//if committed, it must be aborted in validaiton phase due to order of newest to oldest.
 		this->status = TransactionStatus::abort;
-		return;	//early abort
+		return;	
 	}
 
 	if (NLR) {
-		while (version->status.load(std::memory_order_acquire) != VersionStatus::committed) {
-			while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
+		while (loadst != VersionStatus::committed) {
+			while (loadst == VersionStatus::pending) {
 				//spin-wait
-				//グループコミットの時はタイムアウトを利用しないとデッドロックが起きる．
+				//if nlr & group commit, it happens dead lock.
+				//dead lock prevention is time out.
 				if (GROUP_COMMIT) {
 					uint64_t spinstart = rdtsc();
 					uint64_t spinstop;
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending){
+					while (loadst == VersionStatus::pending){
 						spinstop = rdtsc();
 						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
 							earlyAbort();
 							return;
 						}
+						loadst = version->status.load(memory_order_acquire);
 					}
 				}	
-				_mm_pause();
+				loadst = version->status.load(memory_order_acquire);
 			}
-			if (version->status.load(std::memory_order_acquire) == VersionStatus::committed) break;
+			if (loadst == VersionStatus::committed) break;
 		
 			//status == aborted
 			version = version->next.load(std::memory_order_acquire);
+			loadst = version->status.load(memory_order_acquire);
 			if (version == nullptr) {
-				//デリートオペレーションを実装していないので，ここに到達はありえない．
-				//到達したらガーベッジコレクションで消してはいけないものを消している．
 				ERR;
 			}
 		}
 	} 
 	else if (ELR) {
-		//ここにきてる時点でステータスはpending or committed or precomitted.
-		while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
-			_mm_pause();
-		}
-		while (version->status.load(std::memory_order_acquire) != VersionStatus::precommitted && version->status.load(std::memory_order_acquire) != VersionStatus::committed) {
+		//here, the status is pending or committed or precomitted.
+		while (loadst == VersionStatus::pending) 
+			loadst = version->status.load(std::memory_order_acquire);
+
+		while (loadst != VersionStatus::precommitted && loadst != VersionStatus::committed) {
 			//status == aborted
 			version = version->next.load(std::memory_order_acquire);
-			if (version == nullptr) {
-				//デリートオペレーションを実装していないので，ここに到達はありえない．
-				//到達したらガーベッジコレクションで消してはいけないものを消している．
-				ERR;
-			}
+			if (version == nullptr) ERR;
+			loadst = version->status.load(memory_order_acquire);
 		}
 	}
 
@@ -236,30 +230,29 @@ Transaction::validation()
 RETRY_VALI:
 			Version *version = expected;
 
-			while (version->status.load(std::memory_order_acquire) != VersionStatus::committed 
-			&& version->status.load(std::memory_order_acquire) != VersionStatus::precommitted) {
+			VersionStatus loadst = version->status.load(memory_order_acquire);
+			while (loadst != VersionStatus::committed && loadst != VersionStatus::precommitted) {
 
-				while (version->status.load(std::memory_order_acquire) == VersionStatus::aborted) {
+				while (loadst == VersionStatus::aborted) {
 					version = version->next.load(std::memory_order_acquire);
+					loadst = version->status.load(memory_order_acquire);
 				}
 
 				//to avoid cascading aborts.
 				//install pending version step blocks concurrent transactions that share the same visible version and have higher timestamp than (tx.ts).
 				if (NLR && GROUP_COMMIT) {
-					NNN;
 					uint64_t spinstart = rdtsc();
 					uint64_t spinstop;
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
+					while (loadst == VersionStatus::pending) {
 						spinstop = rdtsc();
 						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
 							return false;
 						}
-						_mm_pause();
+						loadst = version->status.load(memory_order_acquire);
 					}
 				} else {
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {
-						_mm_pause();
-					}
+					while (loadst == VersionStatus::pending) 
+						loadst = version->status.load(memory_order_acquire);
 				}
 				//now, version->status is not pending.
 			}	
