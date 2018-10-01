@@ -23,7 +23,7 @@ void makeDB() {
 	}
 
 	TimeStamp tstmp;
-	tstmp.generateTimeStamp(0);
+	tstmp.generateTimeStampFirst(0);
 	InitialWts = tstmp.ts;
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 		tmp = &Table[i];

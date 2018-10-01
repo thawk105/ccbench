@@ -93,7 +93,7 @@ displayThreadWtsArray()
 {
 	cout << "ThreadWtsArray:" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		cout << "thid " << i << ": " << ThreadWtsArray[i]->ts << endl;
+		cout << "thid " << i << ": " << ThreadWtsArray[i].num << endl;
 	}
 	cout << endl << endl;
 }
@@ -103,7 +103,7 @@ displayThreadRtsArray()
 {
 	cout << "ThreadRtsArray:" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		cout << "thid " << i << ": " << ThreadRtsArray[i]->ts << endl;
+		cout << "thid " << i << ": " << ThreadRtsArray[i].num << endl;
     }
     cout << endl << endl;
 }

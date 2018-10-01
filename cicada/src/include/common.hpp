@@ -44,10 +44,8 @@ GLOBAL double IO_TIME_NS;	//nano second
 GLOBAL int GROUP_COMMIT_TIMEOUT_US;	//micro seconds
 GLOBAL uint64_t EXTIME;
 
-GLOBAL TimeStamp *ThreadWts;
-GLOBAL TimeStamp *ThreadRts;
-GLOBAL TimeStamp **ThreadWtsArray;
-GLOBAL TimeStamp **ThreadRtsArray;
+GLOBAL uint64_t_64byte *ThreadWtsArray;
+GLOBAL uint64_t_64byte *ThreadRtsArray;
 GLOBAL uint64_t_64byte *ThreadRtsArrayForGroup;	//グループコミットをする時，これが必要である．
 
 GLOBAL uint64_t_64byte *GROUP_COMMIT_INDEX;

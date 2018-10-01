@@ -23,8 +23,8 @@ enum class TransactionStatus : uint8_t {
 class Transaction {
 public:
 	TransactionStatus status = TransactionStatus::invalid;
-	TimeStamp *rts;
-	TimeStamp *wts;
+	uint64_t rts;
+	TimeStamp wts;
 	bool ronly;
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
@@ -34,14 +34,14 @@ public:
 	uint64_t GCstart, GCstop; // for garbage collection
 	uint8_t thid;
 
-	Transaction(TimeStamp *thrts, TimeStamp *thwts, unsigned int thid) {
-		this->rts = thrts;
-		this->wts = thwts;
-		this->wts->generateTimeStampFirst(thid);
-		this->wts->ts = InitialWts + 2;
+	Transaction(unsigned int thid) {
+		this->rts = MinWts.load(memory_order_acquire) - 1;
+		this->wts.generateTimeStampFirst(thid);
+		this->wts.ts = (MinWts.load(memory_order_acquire) << 8) | thid;
 		this->thid = thid;
 		this->ronly = false;
 
+		__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
 		unsigned int expected, desired;
 		do {
 			expected = FirstAllocateTimestamp.load(memory_order_acquire);

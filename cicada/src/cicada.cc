@@ -143,12 +143,9 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	EXTIME = atoi(argv[11]);
 	
 	try {
-
-		ThreadWtsArray = new TimeStamp*[THREAD_NUM];
-		ThreadRtsArray = new TimeStamp*[THREAD_NUM];
 		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&ThreadWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
-		if (posix_memalign((void**)&ThreadRts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
+		if (posix_memalign((void**)&ThreadWtsArray, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&ThreadRtsArray, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadFlushedWts, 64, THREAD_NUM * sizeof(TimeStamp)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_INDEX, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -174,11 +171,9 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		GCFlag[i].num = 0;
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
-		ThreadRtsArray[i] = &ThreadRts[i];
-		ThreadWtsArray[i] = &ThreadWts[i];
+		ThreadRtsArray[i].num = 0;
+		ThreadWtsArray[i].num = 0;
 		ThreadRtsArrayForGroup[i].num = 0;
-		ThreadRts[i].ts = 0;
-		ThreadWts[i].ts = 0;
 	}
 }
 
@@ -205,6 +200,7 @@ maneger_worker(void *arg)
 {
 	int *myid = (int *)arg;
 	const uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
+	TimeStamp tmp;
 	MinWts.store(InitialWts + 2, memory_order_release);
 
 	//-----
@@ -250,24 +246,24 @@ RETRY_WAIT_L:
 			}
 		}
 		if (gc_update) {
-			uint64_t minw = ThreadWtsArray[1]->ts;
+			uint64_t minw = __atomic_load_n(&(ThreadWtsArray[1].num), __ATOMIC_ACQUIRE);
 			uint64_t minr;
 			if (GROUP_COMMIT == 0) {
-				minr = ThreadRtsArray[1]->ts;
+				minr = __atomic_load_n(&(ThreadRtsArray[1].num), __ATOMIC_ACQUIRE);
 			}
 			else {
-				minr = ThreadRtsArrayForGroup[1].num;
+				minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].num), __ATOMIC_ACQUIRE);
 			}
 
 			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-				uint64_t tmp = ThreadWtsArray[i]->ts;
+				uint64_t tmp = __atomic_load_n(&(ThreadWtsArray[i].num), __ATOMIC_ACQUIRE);
 				if (minw > tmp) minw = tmp;
 				if (GROUP_COMMIT == 0) {
-					tmp = ThreadRtsArray[i]->ts;
+					tmp = __atomic_load_n(&(ThreadRtsArray[i].num), __ATOMIC_ACQUIRE);
 					if (minr > tmp) minr = tmp;
 				}
 				else {
-					tmp = ThreadRtsArrayForGroup[i].num;
+					tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].num), __ATOMIC_ACQUIRE);
 					if (minr > tmp) minr = tmp;
 				}
 			}
@@ -277,6 +273,7 @@ RETRY_WAIT_L:
 			// downgrade gc flag
 			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 				GCFlag[i].num = 0;
+				__atomic_store_n(&(GCFlag[i].num), 0, __ATOMIC_RELEASE);
 			}
 		}
 	}
@@ -294,7 +291,7 @@ worker(void *arg)
 	rnd.init();
 	Procedure pro[MAX_OPE];
 	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
-	Transaction trans(&ThreadRts[*myid], &ThreadWts[*myid], *myid);
+	Transaction trans(*myid);
 
 	//----------
 	pid_t pid;

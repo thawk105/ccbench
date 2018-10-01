@@ -20,25 +20,35 @@ extern void displayDB();
 
 using namespace std;
 
+#define MSK_TID 0b11111111
+
 void Transaction::tbegin(bool ronly)
 {
 	if (ronly) this->ronly = true;
 	else this->ronly = false;
 
 	this->status = TransactionStatus::inflight;
-	this->wts->generateTimeStamp(thid);
-	this->rts->ts = MinWts.load(std::memory_order_acquire) - 1;
+	this->wts.generateTimeStamp(thid);
+	__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
+	this->rts = MinWts.load(std::memory_order_acquire) - 1;
+	__atomic_store_n(&(ThreadRtsArray[thid].num), this->rts, __ATOMIC_RELEASE);
 
 	//one-sided synchronization
 	stop = rdtsc();
 	if (chkClkSpan(start, stop, 10 * CLOCK_PER_US)) {
-		unsigned int maxwIndex = 1;
+		uint64_t maxwts;
+	   	maxwts = __atomic_load_n(&(ThreadWtsArray[1].num), __ATOMIC_ACQUIRE);
 		//record the fastest one, and adjust it.
 		//one-sided synchronization
+		uint64_t check;
 		for (unsigned int i = 2; i < THREAD_NUM; ++i) {
-			if (ThreadWtsArray[maxwIndex]->ts < ThreadWtsArray[i]->ts) maxwIndex = i;
+			check = __atomic_load_n(&(ThreadWtsArray[i].num), __ATOMIC_ACQUIRE);
+			if (maxwts < check) maxwts = check;
 		}
-		this->wts->ts = ThreadWtsArray[maxwIndex]->ts;
+		maxwts = maxwts & (~MSK_TID);
+		maxwts = maxwts | thid;
+		this->wts.ts = maxwts;
+		__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
 
 		//modify the start position of stopwatch.
 		start = rdtsc();
@@ -66,9 +76,9 @@ Transaction::tread(unsigned int key)
 	//else
 	uint64_t trts;
 	if (this->ronly) {
-		trts = this->rts->ts;
+		trts = this->rts;
 	}
-	else	trts = this->wts->ts;
+	else	trts = this->wts.ts;
 	//-----
 
 	//Search version
@@ -155,12 +165,12 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 
 	//early abort check(EAC)
 	//here, version->status is commit or pending.
-	if ((version->rts.load(memory_order_acquire) > this->wts->ts) && (loadst == VersionStatus::committed)) {
+	if ((version->rts.load(memory_order_acquire) > this->wts.ts) && (loadst == VersionStatus::committed)) {
 		//it must be aborted in validation phase, so early abort.
 		this->status = TransactionStatus::abort;
 		return;	
 	}
-	else if (version->wts.load(memory_order_acquire) > this->wts->ts) {
+	else if (version->wts.load(memory_order_acquire) > this->wts.ts) {
 		//if pending, it don't have to be aborted.
 		//But it may be aborted, so early abort.
 		//if committed, it must be aborted in validaiton phase due to order of newest to oldest.
@@ -212,7 +222,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	}
 
 	Version *newObject;
-   	newObject = new Version(0, this->wts->ts, key, val);
+   	newObject = new Version(0, this->wts.ts, key, val);
 	writeSet.push_back(WriteElement(key, version, newObject));
 	return;
 }
@@ -259,7 +269,7 @@ RETRY_VALI:
 
 			//to keep versions ordered by wts in the version list
 			//if version is pending version, concurrent transaction that has lower timestamp is aborted.
-			if (this->wts->ts < version->wts.load(memory_order_acquire)) {
+			if (this->wts.ts < version->wts.load(memory_order_acquire)) {
 				return false;
 			}
 
@@ -276,8 +286,8 @@ RETRY_VALI:
 		for (;;) {
 			expected = (*itr).ver->rts.load(memory_order_acquire);
 RETRY_UPDATE:
-			if (expected >= this->wts->ts) break;
-			if ((*itr).ver->rts.compare_exchange_strong(expected, this->wts->ts, memory_order_acq_rel, memory_order_acquire)) break;
+			if (expected >= this->wts.ts) break;
+			if ((*itr).ver->rts.compare_exchange_strong(expected, this->wts.ts, memory_order_acq_rel, memory_order_acquire)) break;
 			else goto RETRY_UPDATE;
 		}
 	}
@@ -298,7 +308,7 @@ RETRY_UPDATE:
 
 	//(b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts->ts) {
+		if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts.ts) {
 			return false;
 		}
 	}
@@ -321,7 +331,7 @@ Transaction::swal()
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 		uint64_t start = rdtsc();
 		while ((rdtsc() - start) < threshold) {}	//spin-wait
-		ThreadFlushedWts[this->thid].ts = this->wts->ts;
+		ThreadFlushedWts[this->thid].ts = this->wts.ts;
 
 		SwalLock.w_unlock();
 	}
@@ -342,7 +352,7 @@ Transaction::swal()
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 			uint64_t start = rdtsc();
 			while ((rdtsc() - start) < threshold) {}	//spin-wait
-			ThreadFlushedWts[this->thid].ts = this->wts->ts;
+			ThreadFlushedWts[this->thid].ts = this->wts.ts;
 
 			//group commit pending version.
 			gcpv();
@@ -365,7 +375,7 @@ Transaction::pwal()
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 		uint64_t start = rdtsc();
 		while ((rdtsc() - start) < threshold) {}	//spin-wait
-		ThreadFlushedWts[this->thid].ts = this->wts->ts;
+		ThreadFlushedWts[this->thid].ts = this->wts.ts;
 	} 
 	else {
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -375,7 +385,7 @@ Transaction::pwal()
 
 		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
 			GCommitStart[this->thid].num = rdtsc();	//最初の初期化もここで代用している
-			ThreadRtsArrayForGroup[this->thid].num = this->rts->ts;
+			ThreadRtsArrayForGroup[this->thid].num = this->rts;
 		}
 
 		GROUP_COMMIT_COUNTER[this->thid].num++;
@@ -385,7 +395,7 @@ Transaction::pwal()
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 			uint64_t start = rdtsc();
 			while ((rdtsc() - start) < threshold) {}	//spin-wait	
-			ThreadFlushedWts[this->thid].ts = this->wts->ts;
+			ThreadFlushedWts[this->thid].ts = this->wts.ts;
 
 			gcpv();
 		} 
@@ -439,7 +449,7 @@ Transaction::earlyAbort()
 		chkGcpvTimeout();
 	}
 
-	this->wts->set_clockBoost(CLOCK_PER_US);
+	this->wts.set_clockBoost(CLOCK_PER_US);
 	this->status = TransactionStatus::abort;
 }
 
@@ -458,7 +468,7 @@ Transaction::abort()
 	readSet.clear();
 	writeSet.clear();
 
-	this->wts->set_clockBoost(CLOCK_PER_US);
+	this->wts.set_clockBoost(CLOCK_PER_US);
 }
 
 void
@@ -577,7 +587,7 @@ Transaction::writePhase()
 	}
 
 	//ここまで来たらコミットしている
-	this->wts->set_clockBoost(0);
+	this->wts.set_clockBoost(0);
 	readSet.clear();
 	writeSet.clear();
 }
