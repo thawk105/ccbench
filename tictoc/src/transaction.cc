@@ -2,6 +2,7 @@
 #include "include/tuple.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
+#include "../../include/inline.hpp"
 #include <algorithm>
 #include <bitset>
 #include <fstream>
@@ -43,7 +44,7 @@ Transaction::tbegin()
 	this->appro_commit_ts = 0;
 }
 
-int 
+int
 Transaction::tread(unsigned int key)
 {
 	SetElement *result;

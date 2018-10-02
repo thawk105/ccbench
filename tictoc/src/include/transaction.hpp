@@ -5,6 +5,7 @@
 #include "tuple.hpp"
 #include "procedure.hpp"
 #include "common.hpp"
+#include "../../../include/inline.hpp"
 #include <iostream>
 #include <set>
 #include <vector>
