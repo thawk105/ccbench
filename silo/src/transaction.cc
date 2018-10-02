@@ -56,26 +56,26 @@ Transaction::tread(unsigned int key)
 	expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 	//check if it is locked.
 	//spinning until the lock is clear
-RETRY:
-	while (expected.lock) {
-		expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-	}
 	
-	//(b) checks whether the record is the latest version
-	// omit. because this is implemented by single version
-	
-	//(c) reads the data
-	read_value = tuple->val;
+	for (;;) {
+		while (expected.lock) {
+			expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+		}
+		
+		//(b) checks whether the record is the latest version
+		// omit. because this is implemented by single version
+		
+		//(c) reads the data
+		read_value = tuple->val;
 
-	//(d) performs a memory fence
-	// don't need.
-	// order of load don't exchange.
-	
-	//(e) checks the TID word again
-	check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-	if (expected != check) {
-		expected = check;
-		goto RETRY;
+		//(d) performs a memory fence
+		// don't need.
+		// order of load don't exchange.
+		
+		//(e) checks the TID word again
+		check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+		if (expected == check) break;
+		else expected = check;
 	}
 	
 	readSet.push_back(ReadElement(key, read_value, expected));

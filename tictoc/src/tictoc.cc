@@ -36,7 +36,7 @@ chkArg(const int argc, char *argv[])
 	if (argc != 7) {
 		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CLOCK_PER_US EXTIME\n\
 \n\
-example:./main 1000000 20 15 3 2400 3\n\
+example:./main 200 20 15 3 2400 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
@@ -257,7 +257,7 @@ main(int argc, char *argv[]) {
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
-	displayAbortCounts();
+	//displayAbortCounts();
 
 	return 0;
 }

@@ -56,9 +56,9 @@ Transaction::tread(unsigned int key)
 
 	TsWord v1, v2;
 	unsigned int return_val;
+
+	v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 	for (;;) {
-		v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
-TREAD_RETRY:
 		if (v1.lock) {
 			if ((v1.rts()) < this->appro_commit_ts) {
 				// it must check whether this write set include the tuple,
@@ -66,15 +66,17 @@ TREAD_RETRY:
 				// so it must abort.
 				this->status = TransactionStatus::aborted;
 				return 0;
-			} else continue;
+			} else {
+				v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
+				continue;
+			}
 		}
+
 		return_val = Table[key].val;
+
 		v2.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 		if (v1 == v2 && !v1.lock) break;
-		else {
-			v1 = v2;
-			goto TREAD_RETRY;
-		}
+		else v1 = v2;
 	} 
 
 	this->appro_commit_ts = max(this->appro_commit_ts, v1.wts);
@@ -131,15 +133,13 @@ Transaction::validationPhase()
 		TsWord v1, v2;
 		SetElement *inW = searchWriteSet((*itr).key);
 
+	    v1.obj 	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
 		for (;;) {
-		    v1.obj 	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
-VALI_RETRY:
 			if ((*itr).tsw.wts != v1.wts) {
 				TsWord pre_v1;
 				pre_v1.obj = __atomic_load_n(&(Table[(*itr).key].pre_tsw.obj), __ATOMIC_ACQUIRE);
-				if (!(pre_v1.wts <= commit_ts && commit_ts < v1.wts)) {
-					return false;
-				}
+				if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) break;
+				else return false;
 			}
 
 			if ((v1.rts()) < commit_ts && v1.lock) {
@@ -157,11 +157,10 @@ VALI_RETRY:
 				v2.delta = delta - shift;
 				if (__atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
 					break;
-				else goto VALI_RETRY;
+				else continue;
 
 			}
 			else break;
-
 		}
 	}
 
