@@ -6,11 +6,11 @@ cpu_mhz=2400
 io_time_ns=50000
 group_commit_timeout_us=250
 extime=3
-epoch=5
+epoch=3
 
 tuple=1000
-group_commit=5
 lock_release=E
+group_commit=5
 result=result_cicada_r5_pwal_ElrGrp_tuple1k.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -87,8 +87,8 @@ do
 	echo "$thout $avg $min $max" >> $result
 done
 
-group_commit=5
 lock_release=N
+group_commit=5
 result=result_cicada_r5_pwal_NlrGrp_tuple1k.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -165,8 +165,8 @@ do
 	echo "$thout $avg $min $max" >> $result
 done
 
-group_commit=OFF
 lock_release=E
+group_commit=OFF
 result=result_cicada_r5_pwal_ElrNgrp_tuple1k.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -243,8 +243,8 @@ do
 	echo "$thout $avg $min $max" >> $result
 done
 
-group_commit=OFF
 lock_release=N
+group_commit=OFF
 result=result_cicada_r5_pwal_NlrNgrp_tuple1k.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -322,8 +322,8 @@ do
 done
 
 tuple=1000000
+lock_release=E
 group_commit=5
-lock_release=N
 result=result_cicada_r5_pwal_ElrGrp_tuple1m.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -400,8 +400,8 @@ do
 	echo "$thout $avg $min $max" >> $result
 done
 
-group_commit=5
 lock_release=N
+group_commit=5
 result=result_cicada_r5_pwal_NlrGrp_tuple1m.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -478,8 +478,8 @@ do
 	echo "$thout $avg $min $max" >> $result
 done
 
-group_commit=OFF
 lock_release=E
+group_commit=OFF
 result=result_cicada_r5_pwal_ElrNgrp_tuple1m.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
@@ -556,8 +556,8 @@ do
 	echo "$thout $avg $min $max" >> $result
 done
 
-group_commit=OFF
 lock_release=N
+group_commit=OFF
 result=result_cicada_r5_pwal_NlrNgrp_tuple1m.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
