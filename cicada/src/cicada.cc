@@ -447,10 +447,10 @@ main(int argc, char *argv[]) {
 	//displayThreadRtsArray();
 	//displayAbortRate();
 	//displayFinishTransactions();
-	//displayAbortCounts();
 	//displayTransactionRange();
 	
 	prtRslt(Bgn, End);
+	//displayAbortCounts();
 
 	return 0;
 }

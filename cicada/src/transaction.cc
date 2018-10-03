@@ -51,7 +51,7 @@ void Transaction::tbegin(bool ronly)
 		__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
 
 		//modify the start position of stopwatch.
-		start = rdtsc();
+		start = stop;
 	}
 
 }
@@ -98,18 +98,21 @@ Transaction::tread(unsigned int key)
 			if (NLR) {
 				//spin wait
 				if (GROUP_COMMIT) {
-				this->start = rdtsc();
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending){
-						this->stop = rdtsc();
-						if (chkClkSpan(this->start, this->stop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
+					spinstart = rdtsc();
+					while (loadst == VersionStatus::pending){
+						spinstop = rdtsc();
+						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
 							earlyAbort();
-							return false;
+							return -1;
 						}
+						loadst = version->status.load(memory_order_acquire);
 					}
 				} else {
-					while (version->status.load(std::memory_order_acquire) == VersionStatus::pending) {}
+					while (loadst == VersionStatus::pending) {
+						loadst = version->status.load(memory_order_acquire);
+					}
 				}
-				if (version->status.load(std::memory_order_acquire) == VersionStatus::committed) break;
+				if (loadst == VersionStatus::committed) break;
 			} else if (ELR) {
 				while (loadst == VersionStatus::pending) {
 					loadst = version->status.load(memory_order_acquire);		
@@ -185,8 +188,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 				//if nlr & group commit, it happens dead lock.
 				//dead lock prevention is time out.
 				if (GROUP_COMMIT) {
-					uint64_t spinstart = rdtsc();
-					uint64_t spinstop;
+					spinstart = rdtsc();
 					while (loadst == VersionStatus::pending){
 						spinstop = rdtsc();
 						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
@@ -216,8 +218,8 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 		while (loadst != VersionStatus::precommitted && loadst != VersionStatus::committed) {
 			//status == aborted
 			version = version->next.load(std::memory_order_acquire);
-			if (version == nullptr) ERR;
 			loadst = version->status.load(memory_order_acquire);
+			if (version == nullptr) ERR;
 		}
 	}
 
@@ -251,8 +253,7 @@ RETRY_VALI:
 				//to avoid cascading aborts.
 				//install pending version step blocks concurrent transactions that share the same visible version and have higher timestamp than (tx.ts).
 				if (NLR && GROUP_COMMIT) {
-					uint64_t spinstart = rdtsc();
-					uint64_t spinstop;
+					spinstart = rdtsc();
 					while (loadst == VersionStatus::pending) {
 						spinstop = rdtsc();
 						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
@@ -329,8 +330,8 @@ Transaction::swal()
 		}
 
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-		uint64_t start = rdtsc();
-		while ((rdtsc() - start) < threshold) {}	//spin-wait
+		spinstart = rdtsc();
+		while ((rdtsc() - spinstart) < threshold) {}	//spin-wait
 
 		SwalLock.w_unlock();
 	}
@@ -349,8 +350,8 @@ Transaction::swal()
 
 		if (GROUP_COMMIT_COUNTER[0].num == GROUP_COMMIT) {
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-			uint64_t start = rdtsc();
-			while ((rdtsc() - start) < threshold) {}	//spin-wait
+			spinstart = rdtsc();
+			while ((rdtsc() - spinstart) < threshold) {}	//spin-wait
 
 			//group commit pending version.
 			gcpv();
@@ -371,8 +372,8 @@ Transaction::pwal()
 
 		// it gives lat ency instead of flush.
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-		uint64_t start = rdtsc();
-		while ((rdtsc() - start) < threshold) {}	//spin-wait
+		spinstart = rdtsc();
+		while ((rdtsc() - spinstart) < threshold) {}	//spin-wait
 	} 
 	else {
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -390,8 +391,8 @@ Transaction::pwal()
 		if (GROUP_COMMIT_COUNTER[this->thid].num == GROUP_COMMIT) {
 			// it gives latency instead of flush.
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
-			uint64_t start = rdtsc();
-			while ((rdtsc() - start) < threshold) {}	//spin-wait	
+			spinstart = rdtsc();
+			while ((rdtsc() - spinstart) < threshold) {}	//spin-wait	
 
 			gcpv();
 		} 
@@ -485,7 +486,6 @@ Transaction::chkGcpvTimeout()
 			gcpv();
 			return true;
 		}
-		grpcmt_start = grpcmt_stop;
 	}
 	else if (S_WAL) {
 		grpcmt_stop = rdtsc();
@@ -495,7 +495,6 @@ Transaction::chkGcpvTimeout()
 			SwalLock.w_unlock();
 			return true;
 		}
-		grpcmt_start = grpcmt_stop;
 	}
 
 	return false;

@@ -1,3 +1,4 @@
+#include "../../include/inline.hpp"
 #include <sys/time.h>
 #include <cstdint>
 
