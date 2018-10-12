@@ -184,12 +184,7 @@ RETRY_WAIT_L:
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
 			GlobalEpoch++;
-			//Reset temprature
-			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-				Table[i].temp.store(0, memory_order_release);
-			}
-			
-			EpochTimerStart = rdtsc();
+			EpochTimerStart = EpochTimerStop;
 		}
 		//----------
 	}

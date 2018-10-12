@@ -63,19 +63,27 @@ Transaction::read(unsigned int key)
 
 	// tuple doesn't exist in read/write set.
 	LockElement *inRLL = searchRLL(key);
-	if (inRLL != nullptr) {
-		lock(tuple, inRLL->mode);
-	} else if (tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
-		lock(tuple, false);
-	}
+	Epotemp loadepot;
+	loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+
+	if (inRLL != nullptr) lock(tuple, inRLL->mode);
+	else if (loadepot.temp >= TEMP_THRESHOLD) lock(tuple, false);
 	
-	if (this->status == TransactionStatus::aborted) {
-		return -1;
-	}
+	if (this->status == TransactionStatus::aborted) return -1;
 	
-	Tidword expected;
-	expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-	return_val = tuple->val;
+	Tidword expected, desired;
+	for (;;) {
+		expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+
+		while (expected.lock) {
+			expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+		}
+
+		return_val = tuple->val;
+		desired.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+		if (expected == desired) break;
+	}
+
 	readSet.push_back(ReadElement(expected, key, return_val));
 	return return_val;
 }
@@ -93,13 +101,11 @@ Transaction::write(unsigned int key, unsigned int val)
 	Tuple *tuple = &Table[key];
 
 	LockElement *inRLL = searchRLL(key);
-	if (inRLL || tuple->temp.load(memory_order_acquire) >= TEMP_THRESHOLD) {
-		lock(tuple, true);
-	}
+	Epotemp loadepot;
+	loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
 
-	if (this->status == TransactionStatus::aborted) {
-		return;
-	}
+	if (inRLL || loadepot.temp >= TEMP_THRESHOLD) lock(tuple, true);
+	if (this->status == TransactionStatus::aborted) return;
 	
 	writeSet.push_back(WriteElement(key, val));
 	return;
@@ -117,17 +123,14 @@ Transaction::lock(Tuple *tuple, bool mode)
 		// lock already exists in CLL 
 		// 		&& its lock mode is equal to needed mode or it is stronger than needed mode.
 		if ((*itr).key == tuple->key) {
-			if (mode == (*itr).mode || mode < (*itr).mode) {
-				return;
-			}
-			else {
-				upgrade = true;
-			}
+		   if (mode == (*itr).mode || mode < (*itr).mode) return;
+			else upgrade = true;
 		}
 
 		// collect violation
 		if ((*itr).key >= tuple->key) {
 			if (vioctr == 0) threshold = (*itr).key;
+			
 			vioctr++;
 		}
 
@@ -154,34 +157,20 @@ Transaction::lock(Tuple *tuple, bool mode)
 					return;
 				}
 			}
-			if (tuple->lock.w_trylock()) {
-				// raise lock bit after acquiring lock
-				Tidword expected, desired;
-				expected.obj = __atomic_load_n(&(Table[tuple->key].tidword.obj), __ATOMIC_ACQUIRE);
-				for (;;) {
-					if (expected.lock) {
-						expected.obj = __atomic_load_n(&(Table[tuple->key].tidword.obj), __ATOMIC_ACQUIRE);
-					} else {
-						desired = expected;
-						desired.lock = 1;
-						if (__atomic_compare_exchange_n(&(Table[tuple->key].tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-					}
-				}
-				//-----
-				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
 
+			if (tuple->lock.w_trylock()) {
+				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
 				return;
-			}
-			else {
+			} else {
 				this->status = TransactionStatus::aborted;
 				return;
 			}
+
 		} else {
 			if (tuple->lock.r_trylock()) {
 				CLL.push_back(LockElement(tuple->key, &(tuple->lock), false));
 				return;
-			}
-			else {
+			} else {
 				this->status = TransactionStatus::aborted;
 				return;
 			}
@@ -191,73 +180,26 @@ Transaction::lock(Tuple *tuple, bool mode)
 	if (vioctr != 0) {
 		// not in canonical mode. restore.
 		for (auto itr = CLL.begin() + (CLL.size() - vioctr); itr != CLL.end(); ++itr) {
-			if ((*itr).mode) {
-				// release lock after down the lock bit.
-				Tidword expected, desired;
-				expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-				desired = expected;
-				desired.lock = 0;
-				__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
-
-				//-----
-				(*itr).lock->w_unlock();
-			} else {
-				(*itr).lock->r_unlock();
-			}
+			if ((*itr).mode) (*itr).lock->w_unlock();
+			else (*itr).lock->r_unlock();
 		}
 		//delete from CLL
 		if (CLL.size() == vioctr) CLL.clear();
-		else {
-			CLL.erase(CLL.begin() + (CLL.size() - vioctr), CLL.end());
-		}
+		else CLL.erase(CLL.begin() + (CLL.size() - vioctr), CLL.end());
 	}
 
 	// unconditional lock in canonical mode.
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key <= threshold) continue;
 		if ((*itr).key < tuple->key) {
-			if ((*itr).mode) {
-				(*itr).lock->w_lock();
-				// raise the lock bit after acquiring lock.
-				Tidword expected, desired;
-				expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-				for (;;) {
-					if (expected.lock) {
-						expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-					} else {
-						desired = expected;
-						desired.lock = 1;
-						if (__atomic_compare_exchange_n(&(Table[(*itr).key].tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-					}
-				}
-				//-----
-			} else {
-				(*itr).lock->r_lock();
-			}
+			if ((*itr).mode) (*itr).lock->w_lock();
+			else (*itr).lock->r_lock();
 			CLL.push_back(*itr);
-		} else {
-			break;
-		}
+		} else break;
 	}
 
-	if (mode) {
-		tuple->lock.w_lock();	
-		// raise the lock bit after acquiring the lock.
-			Tidword expected, desired;
-			expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-			for (;;) {
-				if (expected.lock) {
-					expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-				} else {
-					desired = expected;
-					desired.lock = 1;
-					if (__atomic_compare_exchange_n(&(tuple->tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-				}
-			}
-	}
-	else {
-		tuple->lock.r_lock();
-	}
+	if (mode) tuple->lock.w_lock();	
+	else tuple->lock.r_lock();
 
 	CLL.push_back(LockElement(tuple->key, &(tuple->lock), mode));
 	return;
@@ -266,6 +208,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 void
 Transaction::construct_RLL()
 {
+	Tuple *tuple;
 	RLL.clear();
 	
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -279,23 +222,34 @@ Transaction::construct_RLL()
 		// r not in RLL
 		// if temprature >= threshold
 		// 	|| r failed verification
-		if (Table[(*itr).key].temp.load(memory_order_acquire) >= TEMP_THRESHOLD 
+		Epotemp loadepot;
+		tuple = &Table[(*itr).key];
+		loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+		if (loadepot.temp >= TEMP_THRESHOLD 
 				|| (*itr).failed_verification) {
-			RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key].lock), false));
+			RLL.push_back(LockElement((*itr).key, &(tuple->lock), false));
 		}
 
 		// maintain temprature p
 		if ((*itr).failed_verification) {
-			uint64_t expected, desired;
+			Epotemp expected, desired;
+			uint64_t nowepo;
+			expected.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+			nowepo = GlobalEpoch.load(memory_order_acquire);
+
+			if (expected.epoch != nowepo) {
+				desired.epoch = nowepo;
+				desired.temp = 0;
+				__atomic_store_n(&(tuple->epotemp.obj), desired.obj, __ATOMIC_RELEASE);
+			}
+
 			for (;;) {
-				expected = Table[(*itr).key].temp.load(memory_order_acquire);
-RETRY_MAINTE_TEMP:
-				if (expected == TEMP_MAX) break;
-				if (rnd->next() % (1 << expected) == 0) {
-					desired = expected + 1;
+				if (expected.temp == TEMP_MAX) break;
+				else if (rnd->next() % (1 << expected.temp) == 0) {
+					desired = expected;
+					desired.temp = expected.temp + 1;
 				} else break;
-				if (Table[(*itr).key].temp.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-				else goto RETRY_MAINTE_TEMP;
+				if (__atomic_compare_exchange_n(&(tuple->epotemp.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
 			}
 		}
 	}
@@ -363,19 +317,8 @@ Transaction::unlockCLL()
 	Tidword expected, desired;
 
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
-		if ((*itr).mode) {
-			// release lock after down the lock bit.
-			expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-			desired = expected;
-			desired.lock = 0;
-			__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
-
-			//-----
-			(*itr).lock->w_unlock();
-		}
-		else {
-			(*itr).lock->r_unlock();
-		}
+		if ((*itr).mode) (*itr).lock->w_unlock();
+		else (*itr).lock->r_unlock();
 	}
 	CLL.clear();
 }
@@ -387,14 +330,20 @@ Transaction::writePhase()
 
 	// calculates (a)
 	// about readSet
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) 
 		tid_a = max(tid_a, (*itr).tidword);
-	}
+
 	// about writeSet
-	Tidword tmp;
+	Tidword expected, desired;
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		tmp.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-		tid_a = max(tid_a, tmp);
+		expected.obj = Table[(*itr).key].tidword.obj;
+		tid_a = max(tid_a, expected);
+
+		// raise lock bit
+		// due to optimization, this work is done here.
+		desired = expected;
+		desired.lock = 1;
+		__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
 	}
 
 	tid_a.tid++;

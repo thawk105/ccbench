@@ -19,9 +19,14 @@ void makeDB() {
 
 	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 		tmp = &Table[i];
+
 		tmp->tidword.epoch = 1;
 		tmp->tidword.lock = 0;
 		tmp->tidword.tid = 0;
+
+		tmp->epotemp.epoch = 1;
+		tmp->epotemp.temp = 0;
+
 		tmp->key = i;
 		tmp->val = rnd.next() % TUPLE_NUM;
 	}
