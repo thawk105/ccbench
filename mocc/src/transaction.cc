@@ -78,7 +78,11 @@ Transaction::read(unsigned int key)
 	for (;;) {
 		expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 
-		while (tuple->lock.counter.load(memory_order_acquire) == -1) {
+		while (expected.lock) {
+			// if you wait due to being write-locked, it may occur dead lock.
+			// it need to guarantee that this parts definitely progress.
+			// So it sholud wait expected.lock because it will be released definitely.
+			//
 			expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 		}
 
@@ -122,12 +126,16 @@ Transaction::lock(Tuple *tuple, bool mode)
 	unsigned int vioctr = 0;
 	unsigned int threshold;
 	bool upgrade = false;
+	LockElement *le = nullptr;
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		// lock already exists in CLL 
 		// 		&& its lock mode is equal to needed mode or it is stronger than needed mode.
 		if ((*itr).key == tuple->key) {
 		  if (mode == (*itr).mode || mode < (*itr).mode) return;
-			else upgrade = true;
+			else {
+				le = &(*itr);
+				upgrade = true;
+			}
 		}
 
 		// collect violation
@@ -148,20 +156,13 @@ Transaction::lock(Tuple *tuple, bool mode)
 		if (mode) {
 			if (upgrade) {
 				if (tuple->lock.upgrade()) {
-					for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
-						if ((*itr).key == tuple->key) {
-							(*itr).mode = true;
-							break;
-						}
-					}
+					if (le) le->mode = true;
 					return;
 				} else {
 					this->status = TransactionStatus::aborted;
 					return;
 				}
-			}
-
-			if (tuple->lock.w_trylock()) {
+			} else if (tuple->lock.w_trylock()) {
 				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
 				return;
 			} else {
@@ -306,6 +307,14 @@ Transaction::commit()
 		this->max_rset = max(this->max_rset, tuple->tidword);
 	}
 
+	// pre-commit
+	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+		expected = Table[(*itr).key].tidword;
+		desired = expected;
+		desired.lock = 1;
+		__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
+	}
+
 	return true;
 }
 
@@ -353,11 +362,12 @@ Transaction::writePhase()
 
 	// compare a, b, c
 	Tidword maxtid = max({tid_a, tid_b, tid_c});
+	maxtid.lock = 0;
 	mrctid = maxtid;
 
 	//write (record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		//update nad down lockBit
+		//update and down lockBit
 		Table[(*itr).key].val = (*itr).val;
 		__atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
 	}
