@@ -9,6 +9,7 @@
 #include <unistd.h>	// syscall(SYS_gettid),
 
 #define GLOBAL_VALUE_DEFINE
+#include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/int64byte.hpp"
@@ -100,7 +101,7 @@ chkArg(const int argc, char *argv[])
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-		ThLocalEpoch[i].num = 0;
+		ThLocalEpoch[i].obj = 0;
 	}
 }
 
@@ -125,8 +126,9 @@ void threadEndProcess(int *myid);
 bool
 chkEpochLoaded()
 {
+	uint64_t_64byte nowepo = loadAcquireGE();
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (__atomic_load_n(&(ThLocalEpoch[i].num), __ATOMIC_ACQUIRE) != GlobalEpoch.load(memory_order_acquire)) return false;
+		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo.obj) return false;
 	}
 
 	return true;
@@ -183,7 +185,7 @@ RETRY_WAIT_L:
 		//chkEpochLoaded は最新のグローバルエポックを
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
-			GlobalEpoch++;
+			atomicAddGE();
 			EpochTimerStart = EpochTimerStop;
 		}
 		//----------

@@ -43,6 +43,8 @@ void
 Transaction::begin()
 {
 	this->status = TransactionStatus::inFlight;
+	this->max_rset.obj = 0;
+	this->max_wset.obj = 0;
 
 	return;
 }
@@ -123,7 +125,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 		// lock already exists in CLL 
 		// 		&& its lock mode is equal to needed mode or it is stronger than needed mode.
 		if ((*itr).key == tuple->key) {
-		   if (mode == (*itr).mode || mode < (*itr).mode) return;
+		  if (mode == (*itr).mode || mode < (*itr).mode) return;
 			else upgrade = true;
 		}
 
@@ -262,22 +264,29 @@ Transaction::construct_RLL()
 bool
 Transaction::commit()
 {
+	Tuple *tuple;
+	Tidword expected, desired;
+
 	// phase 1 lock write set.
 	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		lock(&Table[(*itr).key], true);
+		tuple = &Table[(*itr).key];
+		lock(tuple, true);
 		if (this->status == TransactionStatus::aborted) {
 			return false;
 		}
+
+		this->max_wset = max(this->max_wset, tuple->tidword);
 	}
 
 	asm volatile ("" ::: "memory");
-	__atomic_store_n(&(ThLocalEpoch[thid].num), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
+	__atomic_store_n(&(ThLocalEpoch[thid].obj), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
 	asm volatile ("" ::: "memory");
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		Tidword check;
-		check.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		tuple = &Table[(*itr).key];
+		check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 		if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
 			(*itr).failed_verification = true;
 			this->status = TransactionStatus::aborted;
@@ -285,7 +294,7 @@ Transaction::commit()
 		}
 
 		// Silo protocol
-		if (Table[(*itr).key].lock.counter.load(memory_order_acquire) == -1) {
+		if (tuple->lock.counter.load(memory_order_acquire) == -1) {
 			WriteElement *inW = searchWriteSet((*itr).key);
 			//if the lock is already acquired and the owner isn't me, abort.
 			if (inW == nullptr) {
@@ -293,6 +302,7 @@ Transaction::commit()
 				return false;
 			}
 		}
+		this->max_rset = max(this->max_rset, tuple->tidword);
 	}
 
 	return true;
@@ -314,11 +324,21 @@ Transaction::abort()
 void
 Transaction::unlockCLL()
 {
+	Tuple *tuple;
 	Tidword expected, desired;
 
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
-		if ((*itr).mode) (*itr).lock->w_unlock();
-		else (*itr).lock->r_unlock();
+		if ((*itr).mode) {
+			tuple = &Table[(*itr).key];
+
+			// unconditional down lock bit
+			expected.obj = tuple->tidword.obj;
+			desired = expected;
+			desired.lock = 0;
+			__atomic_store_n(&(tuple->tidword.obj), desired.obj, __ATOMIC_RELEASE);
+
+			(*itr).lock->w_unlock();
+		} else (*itr).lock->r_unlock();
 	}
 	CLL.clear();
 }
@@ -329,23 +349,7 @@ Transaction::writePhase()
 	Tidword tid_a, tid_b, tid_c;
 
 	// calculates (a)
-	// about readSet
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) 
-		tid_a = max(tid_a, (*itr).tidword);
-
-	// about writeSet
-	Tidword expected, desired;
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		expected.obj = Table[(*itr).key].tidword.obj;
-		tid_a = max(tid_a, expected);
-
-		// raise lock bit
-		// due to optimization, this work is done here.
-		desired = expected;
-		desired.lock = 1;
-		__atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
-	}
-
+	tid_a = max(this->max_rset, this->max_wset);
 	tid_a.tid++;
 
 	//calculates (b)
@@ -354,7 +358,7 @@ Transaction::writePhase()
 	tid_b.tid++;
 
 	// calculates (c)
-	tid_c.epoch = ThLocalEpoch[thid].num;
+	tid_c.epoch = ThLocalEpoch[thid].obj;
 
 	// compare a, b, c
 	Tidword maxtid = max({tid_a, tid_b, tid_c});
