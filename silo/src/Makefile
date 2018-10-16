@@ -15,7 +15,7 @@ O6 = displayGlobal.o
 
 all: $(PROG)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5) $(O6)
+$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5) $(O6) 
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 .cc.o:
 	$(CC) $(CFLAGS) $<

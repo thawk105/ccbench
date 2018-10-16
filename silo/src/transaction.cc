@@ -1,3 +1,4 @@
+#include "include/atomic_tool.hpp"
 #include "include/transaction.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
@@ -102,7 +103,7 @@ bool Transaction::validationPhase()
 	lockWriteSet();
 
 	asm volatile("" ::: "memory");
-	__atomic_store_n(&(ThLocalEpoch[thid].num), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
+	__atomic_store_n(&(ThLocalEpoch[thid].obj), (loadAcquireGE()).obj, __ATOMIC_RELEASE);
 	asm volatile("" ::: "memory");
 
 	//Phase 2 abort if any condition of below is satisfied. 
@@ -164,7 +165,7 @@ void Transaction::writePhase()
 	tid_b.tid++;
 
 	//calculates (c)
-	tid_c.epoch = ThLocalEpoch[thid].num;
+	tid_c.epoch = ThLocalEpoch[thid].obj;
 
 	//compare a, b, c
 	Tidword maxtid =  max({tid_a, tid_b, tid_c});
