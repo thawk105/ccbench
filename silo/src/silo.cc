@@ -246,8 +246,8 @@ RETRY_WAIT_W:
 		//start work(transaction)
 		for (;;) {
 			makeProcedure(pro, rnd);
-			asm volatile ("" ::: "memory");
 RETRY:
+			trans.tbegin();
 			if (Finish.load(memory_order_acquire)) {
 				CtrLock.w_lock();
 				FinishTransactions[*myid] = totalFinishTransactions;

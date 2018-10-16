@@ -16,16 +16,20 @@ public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 
+	int thid;
+	Tidword mrctid;
+	Tidword max_rset, max_wset;
+
 	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
 
 		this->thid = thid;
+		max_rset.obj = 0;
+		max_wset.obj = 0;
 	}
 
-	int thid;
-	Tidword mrctid;
-
+	void tbegin();
 	int tread(unsigned int key);
 	void twrite(unsigned int key, unsigned int val);
 	bool validationPhase();
