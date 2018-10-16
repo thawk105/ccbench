@@ -2,6 +2,7 @@
 #include <cmath>
 #include <random>
 #include <stdio.h>
+#include "include/atomic_tool.hpp"
 #include "include/debug.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
@@ -77,7 +78,7 @@ Transaction::read(unsigned int key)
 	for (;;) {
 		expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 
-		while (expected.lock) {
+		while (tuple->lock.counter.load(memory_order_acquire) == -1) {
 			expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 		}
 
@@ -237,7 +238,7 @@ Transaction::construct_RLL()
 			Epotemp expected, desired;
 			uint64_t nowepo;
 			expected.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
-			nowepo = GlobalEpoch.load(memory_order_acquire);
+			nowepo = (loadAcquireGE()).obj;
 
 			if (expected.epoch != nowepo) {
 				desired.epoch = nowepo;
@@ -280,7 +281,7 @@ Transaction::commit()
 	}
 
 	asm volatile ("" ::: "memory");
-	__atomic_store_n(&(ThLocalEpoch[thid].obj), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
+	__atomic_store_n(&(ThLocalEpoch[thid].obj), (loadAcquireGE()).obj, __ATOMIC_RELEASE);
 	asm volatile ("" ::: "memory");
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -324,21 +325,11 @@ Transaction::abort()
 void
 Transaction::unlockCLL()
 {
-	Tuple *tuple;
 	Tidword expected, desired;
 
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
-		if ((*itr).mode) {
-			tuple = &Table[(*itr).key];
-
-			// unconditional down lock bit
-			expected.obj = tuple->tidword.obj;
-			desired = expected;
-			desired.lock = 0;
-			__atomic_store_n(&(tuple->tidword.obj), desired.obj, __ATOMIC_RELEASE);
-
-			(*itr).lock->w_unlock();
-		} else (*itr).lock->r_unlock();
+		if ((*itr).mode) (*itr).lock->w_unlock();
+		else (*itr).lock->r_unlock();
 	}
 	CLL.clear();
 }
@@ -362,7 +353,6 @@ Transaction::writePhase()
 
 	// compare a, b, c
 	Tidword maxtid = max({tid_a, tid_b, tid_c});
-	maxtid.lock = 0;
 	mrctid = maxtid;
 
 	//write (record, commit-tid)

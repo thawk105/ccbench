@@ -9,10 +9,10 @@
 #include <unistd.h>	// syscall(SYS_gettid),
 
 #define GLOBAL_VALUE_DEFINE
+#include "../../include/int64byte.hpp"
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
-#include "include/int64byte.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
