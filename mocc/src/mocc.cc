@@ -55,6 +55,7 @@ chkArg(const int argc, char *argv[])
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "RWLock " << sizeof(RWLock) << endl;
+		cout << "MQLock " << sizeof(MQLock) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 		cout << "Xoroshiro128Plus " << sizeof(Xoroshiro128Plus) << endl;
 

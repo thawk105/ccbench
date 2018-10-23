@@ -72,7 +72,7 @@ public:
 	unsigned int val;
 	Tidword tidword;
 	Epotemp epotemp;	//	temprature, min 0, max 20
-	uint8_t padding[4];
+	MQLock lock2;
 	RWLock lock;	// 4byte
 };
 
