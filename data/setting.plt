@@ -44,13 +44,13 @@ set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple200_r5.eps"
 plot "result_cicada_r5_tuple200.dat" w errorlines title "Cicada", "result_silo_r5_tuple200.dat" w errorlines title "Silo", "result_ermia_r5_tuple200.dat" w errorlines title "ERMIA", "result_ss2pl_r5_tuple200.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple200.dat" w errorlines title "MOCC", "result_tictoc_r5_tuple200.dat" w errorlines title "TicToc",
 
-set title "tuple 10k, read 50%"
+set notitle
 set xlabel "Number of threads"
 set ylabel "Throughput (Trans/Sec)"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple10000_r5.eps"
-plot "result_cicada_r5_tuple10000.dat" w errorlines title "Cicada", "result_silo_r5_tuple10000.dat" w errorlines title "Silo", "result_ermia_r5_tuple10000.dat" w errorlines title "ERMIA", "result_ss2pl_r5_tuple10000.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple10000.dat" w errorlines title "MOCC", "result_tictoc_r5_tuple10000.dat" w errorlines title "TicToc",
+plot "result_cicada_r5_tuple10000.dat" w errorlines title "Cicada (SIGMOD'17)", "result_silo_r5_tuple10000.dat" w errorlines title "Silo (SOSP'13)", "result_ermia_r5_tuple10000.dat" w errorlines title "ERMIA (SIGMOD'16)", "result_ss2pl_r5_tuple10000.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple10000.dat" w errorlines title "MOCC (VLDB'17)", "result_tictoc_r5_tuple10000.dat" w errorlines title "TicToc (SIGMOD'16)",
 
 set title "tuple 200, read 80%"
 set xlabel "Number of threads"
