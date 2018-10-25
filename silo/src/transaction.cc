@@ -1,3 +1,4 @@
+#include "include/atomic_tool.hpp"
 #include "include/transaction.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
@@ -14,6 +15,13 @@ extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold)
 extern void displayDB();
 
 using namespace std;
+
+void
+Transaction::tbegin()
+{
+	max_wset.obj = 0;
+	max_rset.obj = 0;
+}
 
 WriteElement *
 Transaction::searchWriteSet(unsigned int key)
@@ -102,7 +110,7 @@ bool Transaction::validationPhase()
 	lockWriteSet();
 
 	asm volatile("" ::: "memory");
-	__atomic_store_n(&(ThLocalEpoch[thid].num), GlobalEpoch.load(memory_order_acquire), __ATOMIC_RELEASE);
+	__atomic_store_n(&(ThLocalEpoch[thid].obj), (loadAcquireGE()).obj, __ATOMIC_RELEASE);
 	asm volatile("" ::: "memory");
 
 	//Phase 2 abort if any condition of below is satisfied. 
@@ -122,6 +130,7 @@ bool Transaction::validationPhase()
 
 		//3
 		if (check.lock && !searchWriteSet((*itr).key)) return false;
+		max_rset = max(max_rset, check);
 	}
 
 	//goto Phase 3
@@ -147,15 +156,7 @@ void Transaction::writePhase()
 
 	//calculates (a)
 	//about readSet
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		if (tid_a < (*itr).tidword) tid_a = (*itr).tidword;
-	}
-	//about writeSet
-	Tidword tmp;
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		tmp.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
-		tid_a = max(tid_a, tmp);
-	}
+	tid_a = max(max_wset, max_rset);
 	tid_a.tid++;
 	
 	//calculates (b)
@@ -164,7 +165,7 @@ void Transaction::writePhase()
 	tid_b.tid++;
 
 	//calculates (c)
-	tid_c.epoch = ThLocalEpoch[thid].num;
+	tid_c.epoch = ThLocalEpoch[thid].obj;
 
 	//compare a, b, c
 	Tidword maxtid =  max({tid_a, tid_b, tid_c});
@@ -185,19 +186,23 @@ void Transaction::writePhase()
 
 void Transaction::lockWriteSet()
 {
+	Tuple *tuple;
 	Tidword expected, desired;
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+		tuple = &Table[(*itr).key];
+		expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 		for (;;) {
 			if (expected.lock) {
-				expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+				expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 			} else {
 				desired = expected;
 				desired.lock = 1;
-				if (__atomic_compare_exchange_n(&(Table[(*itr).key].tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+				if (__atomic_compare_exchange_n(&(tuple->tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
 			}
 		}
+
+		max_wset = max(max_wset, expected);
 	}
 }
 

@@ -9,9 +9,10 @@
 #include <unistd.h>	// syscall(SYS_gettid),
 
 #define GLOBAL_VALUE_DEFINE
+#include "../../include/int64byte.hpp"
+#include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
-#include "include/int64byte.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
@@ -54,6 +55,7 @@ chkArg(const int argc, char *argv[])
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "RWLock " << sizeof(RWLock) << endl;
+		cout << "MQLock " << sizeof(MQLock) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 		cout << "Xoroshiro128Plus " << sizeof(Xoroshiro128Plus) << endl;
 
@@ -100,7 +102,7 @@ chkArg(const int argc, char *argv[])
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-		ThLocalEpoch[i].num = 0;
+		ThLocalEpoch[i].obj = 0;
 	}
 }
 
@@ -125,8 +127,9 @@ void threadEndProcess(int *myid);
 bool
 chkEpochLoaded()
 {
+	uint64_t_64byte nowepo = loadAcquireGE();
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (__atomic_load_n(&(ThLocalEpoch[i].num), __ATOMIC_ACQUIRE) != GlobalEpoch.load(memory_order_acquire)) return false;
+		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo.obj) return false;
 	}
 
 	return true;
@@ -183,13 +186,8 @@ RETRY_WAIT_L:
 		//chkEpochLoaded は最新のグローバルエポックを
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
-			GlobalEpoch++;
-			//Reset temprature
-			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-				Table[i].temp.store(0, memory_order_release);
-			}
-			
-			EpochTimerStart = rdtsc();
+			atomicAddGE();
+			EpochTimerStart = EpochTimerStop;
 		}
 		//----------
 	}

@@ -23,6 +23,8 @@ public:
 
 	int thid;
 	Tidword mrctid;
+	Tidword max_rset;
+	Tidword max_wset;
 	Xoroshiro128Plus *rnd;
 
 	Transaction(int thid, Xoroshiro128Plus *rnd) {
@@ -34,6 +36,8 @@ public:
 		this->thid = thid;
 		this->status = TransactionStatus::inFlight;
 		this->rnd = rnd;
+		max_rset.obj = 0;
+		max_wset.obj = 0;
 	}
 
 	ReadElement *searchReadSet(unsigned int key);

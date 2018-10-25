@@ -1,6 +1,6 @@
 #pragma once
 
-#include "int64byte.hpp"
+#include "../../../include/int64byte.hpp"
 #include "procedure.hpp"
 #include "random.hpp"
 #include "tuple.hpp"
@@ -10,14 +10,14 @@
 	#define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<uint64_t> GlobalEpoch(1);
+alignas(64) GLOBAL uint64_t_64byte GlobalEpoch(1);
 GLOBAL std::atomic<bool> Finish(false);
 
 #else
 	#define GLOBAL extern
 
 GLOBAL std::atomic<int> Running;
-GLOBAL std::atomic<uint64_t> GlobalEpoch;
+GLOBAL uint64_t_64byte GlobalEpoch;
 GLOBAL std::atomic<bool> Finish;
 
 #endif

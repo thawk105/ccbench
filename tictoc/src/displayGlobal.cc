@@ -47,40 +47,30 @@ displayPRO(Procedure *pro)
 void
 displayFinishTransactions()
 {
-	cout << "display FinishTransactions" << endl;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << FinishTransactions[i] << endl;
-	}
-	cout << endl;
+	cout << "FinishTransactions: ";
+	cout << FinishTransactions << endl;
 }
 
 void
 displayAbortCounts()
 {
-	cout << "display AbortCounts()" << endl;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << AbortCounts[i] << endl;
-	}
-	cout << endl;
+	cout << "AbortCounts: ";
+	cout << AbortCounts << endl;
+}
+
+void
+displayRtsudRate()
+{
+	// read timestamp update rate
+	long double sum(Rtsudctr + Rts_non_udctr), ud(Rtsudctr);
+	cout << "Read timestamp update rate: ";
+	cout << ud / sum << endl;
 }
 
 void 
 displayAbortRate() 
 {
-	long double sumT(0), sumA(0);
-	long double rate[THREAD_NUM] = {};
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i];
-		sumA += AbortCounts[i];
-		rate[i] = sumA / (sumT + sumA);
-	}
-
-	long double ave_rate(0);
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		ave_rate += rate[i];
-	}
-	ave_rate /= (long double) THREAD_NUM;
-
-	cout << ave_rate << endl;
+	long double sum(FinishTransactions + AbortCounts), ab(AbortCounts);
+	cout << "Abort rate: " << ab / sum << endl;
 }
 

@@ -1,3 +1,3 @@
 #pragma once
 
-#define INLINE __atribute__((always_inline)) inline
+#define INLINE __attribute__((always_inline)) inline

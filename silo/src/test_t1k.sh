@@ -3,8 +3,8 @@ tuple=1000
 maxope=10
 cpumhz=2400
 epochtime=40
-extime=1
-epoch=1
+extime=3
+epoch=3
 
 workload=0
 result=result_silo_r10_tuple1k.dat

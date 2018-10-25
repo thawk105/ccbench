@@ -150,6 +150,7 @@ Transaction::validationPhase()
 			if (inW != nullptr) break;
 			//extend the rts of the tuple
 			if ((v1.rts()) < commit_ts) {
+				rtsudctr++;
 				// Handle delta overflow
 				uint64_t delta = commit_ts - v1.wts;
 				uint64_t shift = delta - (delta & 0x7fff);
@@ -159,9 +160,10 @@ Transaction::validationPhase()
 				if (__atomic_compare_exchange_n(&(Table[(*itr).key].tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
 					break;
 				else continue;
-
+			} else {
+				rts_non_udctr++;
+				break;
 			}
-			else break;
 		}
 	}
 
@@ -176,6 +178,8 @@ Transaction::abort()
 	readSet.clear();
 	writeSet.clear();
 	cll.clear();
+
+	abortCounts++;
 }
 
 void 
@@ -195,6 +199,8 @@ Transaction::writePhase()
 	readSet.clear();
 	writeSet.clear();
 	cll.clear();
+
+	finishTransactions++;
 }
 
 void 

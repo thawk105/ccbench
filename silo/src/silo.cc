@@ -10,6 +10,7 @@
 #include <sys/time.h>
 
 #define GLOBAL_VALUE_DEFINE
+#include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/random.hpp"
@@ -17,6 +18,17 @@
 #include "include/tsc.hpp"
 
 using namespace std;
+
+extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+void threadEndProcess(int *myid);
+extern void makeDB();
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void displayDB();
+extern void displayPRO();
+extern void displayFinishTransactions();
+extern void displayAbortCounts();
+extern void displayTotalAbortCounts();
+extern void displayAbortRate();
 
 static bool
 chkInt(char *arg)
@@ -91,7 +103,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-		ThLocalEpoch[i].num = 0;
+		ThLocalEpoch[i].obj = 0;
 	}
 }
 
@@ -110,15 +122,13 @@ prtRslt(uint64_t &bgn, uint64_t &end)
 	cout << (int)result << endl;
 }
 
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-void threadEndProcess(int *myid);
-
 bool
 chkEpochLoaded()
 {
+	uint64_t_64byte nowepo = loadAcquireGE();
 //全てのワーカースレッドが最新エポックを読み込んだか確認する．
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (__atomic_load_n(&(ThLocalEpoch[i].num), __ATOMIC_ACQUIRE) != GlobalEpoch) return false;
+		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo.obj) return false;
 	}
 
 	return true;
@@ -180,7 +190,7 @@ RETRY_WAIT_L:
 		//chkEpochLoaded は最新のグローバルエポックを
 		//全てのワーカースレッドが読み込んだか確認する．
 		if (chkClkSpan(EpochTimerStart, EpochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
-			GlobalEpoch++;
+			atomicAddGE();
 			EpochTimerStart = EpochTimerStop;
 		}
 	}
@@ -189,7 +199,6 @@ RETRY_WAIT_L:
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
@@ -237,8 +246,8 @@ RETRY_WAIT_W:
 		//start work(transaction)
 		for (;;) {
 			makeProcedure(pro, rnd);
-			asm volatile ("" ::: "memory");
 RETRY:
+			trans.tbegin();
 			if (Finish.load(memory_order_acquire)) {
 				CtrLock.w_lock();
 				FinishTransactions[*myid] = totalFinishTransactions;
@@ -300,14 +309,6 @@ threadCreate(int id)
 
 	return t;
 }
-
-extern void displayDB();
-extern void displayPRO();
-extern void displayFinishTransactions();
-extern void displayAbortCounts();
-extern void displayTotalAbortCounts();
-extern void displayAbortRate();
-extern void makeDB();
 
 int 
 main(int argc, char *argv[]) {

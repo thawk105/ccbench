@@ -69,37 +69,11 @@ EXTIME: execution time.\n\
 
 	CLOCK_PER_US = atof(argv[5]);
 	EXTIME = atoi(argv[6]);
-
-	try {
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
-	} catch (bad_alloc) {
-		ERR;
-	}
-	//init
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		FinishTransactions[i] = 0;
-		AbortCounts[i] = 0;
-	}
-}
-
-static void 
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i];
-	}
-
-	uint64_t result = (double)sumTrans / (double)sec;
-	cout << (int)result << endl;
 }
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void sumTrans(Transaction *trans);
 
 static void *
 worker(void *arg)
@@ -108,7 +82,6 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 	Transaction trans(*myid);
 
 	//----------
@@ -141,7 +114,7 @@ RETRY_WAIT:
 	}
 	
 	//spin wait
-	while (Running != THREAD_NUM) {}
+	while (Running != THREAD_NUM);
 	//----------
 	
 	if (*myid == 0) Bgn = rdtsc();
@@ -153,26 +126,18 @@ RETRY_WAIT:
 				End = rdtsc();
 				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
 					Finish.store(true, std::memory_order_release);
-					CtrLock.w_lock();
-					FinishTransactions[*myid] = totalFinishTransactions;
-					AbortCounts[*myid] = totalAbortCounts;
-					CtrLock.w_unlock();
+					sumTrans(&trans);
 					return nullptr;
 				}
 			} else {
 				if (Finish.load(std::memory_order_acquire)) {
-					CtrLock.w_lock();
-					FinishTransactions[*myid] = totalFinishTransactions;
-					AbortCounts[*myid] = totalAbortCounts;
-					CtrLock.w_unlock();
+					sumTrans(&trans);
 					return nullptr;
 				}
 			}
 
 			//transaction begin
-
 			//Read phase
-			//Search versions
 			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
 RETRY:
@@ -182,7 +147,6 @@ RETRY:
 					trans.tread(pro[i].key);
 					if (trans.status == TransactionStatus::aborted) {
 						trans.abort();
-						totalAbortCounts++;
 						goto RETRY;
 					}
 				} else if (pro[i].ope == Ope::WRITE) {
@@ -195,10 +159,8 @@ RETRY:
 			//Validation phase
 			if (trans.validationPhase()) {
 				trans.writePhase();
-				totalFinishTransactions++;
 			} else {
 				trans.abort();
-				totalAbortCounts++;
 				goto RETRY;
 			}
 		}
@@ -232,7 +194,9 @@ extern void displayPRO();
 extern void displayFinishTransactions();
 extern void displayAbortCounts();
 extern void displayAbortRate();
+extern void displayRtsudRate();
 extern void makeDB();
+extern void prtRslt(uint64_t &bgn, uint64_t &end);
 
 int 
 main(int argc, char *argv[]) {
@@ -253,11 +217,12 @@ main(int argc, char *argv[]) {
 	}
 
 	//displayDB();
-	//displayAbortRate();
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
-	//displayAbortCounts();
+	displayRtsudRate();
+	displayAbortRate();
+	displayAbortCounts();
 
 	return 0;
 }

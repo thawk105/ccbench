@@ -38,13 +38,41 @@ struct Tidword {
 	}
 };
 
+// 32bit temprature, 32bit epoch
+struct Epotemp {
+	union {
+		uint64_t obj;
+		struct {
+			uint64_t temp:32;
+			uint64_t epoch:32;
+		};
+	};
+
+	Epotemp() {
+		obj = 0;
+	}
+
+	bool operator==(const Epotemp& right) const {
+		return obj == right.obj;
+	}
+
+	bool operator!=(const Epotemp& right) const {
+		return !operator==(right);
+	}
+
+	bool eqEpoch(uint64_t epo) {
+		if (epoch == epo) return true;
+		else return false;
+	}
+};
+
 class Tuple	{
 public:
 	unsigned int key = 0;
 	unsigned int val;
 	Tidword tidword;
-	atomic<uint64_t> temp;	//	temprature, min 0, max 20
-	uint8_t padding[4];
+	Epotemp epotemp;	//	temprature, min 0, max 20
+	MQLock lock2;
 	RWLock lock;	// 4byte
 };
 

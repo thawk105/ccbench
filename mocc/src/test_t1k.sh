@@ -43,7 +43,8 @@ echo "sum: $sum, epoch: $epoch"
 echo "avg $avg"
 echo "max: $max"
 echo "min: $min"
-echo "$thread $avg $min $max" >> $result
+thout=`echo "$thread - 1" | bc`
+echo "$thout $avg $min $max" >> $result
 
 for ((thread = 4; thread <= 24; thread+=4))
 do
@@ -77,7 +78,8 @@ do
 	echo "avg $avg"
 	echo "max: $max"
 	echo "min: $min"
-	echo "$thread $avg $min $max" >> $result
+	thout=`echo "$thread - 1" | bc`
+	echo "$thout $avg $min $max" >> $result
 done
 
 workload=1
@@ -117,7 +119,8 @@ echo "sum: $sum, epoch: $epoch"
 echo "avg $avg"
 echo "max: $max"
 echo "min: $min"
-echo "$thread $avg $min $max" >> $result
+thout=`echo "$thread - 1" | bc`
+echo "$thout $avg $min $max" >> $result
 
 for ((thread = 4; thread <= 24; thread+=4))
 do
@@ -151,7 +154,8 @@ do
 	echo "avg $avg"
 	echo "max: $max"
 	echo "min: $min"
-	echo "$thread $avg $min $max" >> $result
+	thout=`echo "$thread - 1" | bc`
+	echo "$thout $avg $min $max" >> $result
 done
 
 workload=2
@@ -191,7 +195,8 @@ echo "sum: $sum, epoch: $epoch"
 echo "avg $avg"
 echo "max: $max"
 echo "min: $min"
-echo "$thread $avg $min $max" >> $result
+thout=`echo "$thread - 1" | bc`
+echo "$thout $avg $min $max" >> $result
 
 for ((thread = 4; thread <= 24; thread+=4))
 do
@@ -225,7 +230,8 @@ do
 	echo "avg $avg"
 	echo "max: $max"
 	echo "min: $min"
-	echo "$thread $avg $min $max" >> $result
+	thout=`echo "$thread - 1" | bc`
+	echo "$thout $avg $min $max" >> $result
 done
 
 workload=3
@@ -265,7 +271,8 @@ echo "sum: $sum, epoch: $epoch"
 echo "avg $avg"
 echo "max: $max"
 echo "min: $min"
-echo "$thread $avg $min $max" >> $result
+thout=`echo "$thread - 1" | bc`
+echo "$thout $avg $min $max" >> $result
 
 for ((thread = 4; thread <= 24; thread+=4))
 do
@@ -299,7 +306,8 @@ do
 	echo "avg $avg"
 	echo "max: $max"
 	echo "min: $min"
-	echo "$thread $avg $min $max" >> $result
+	thout=`echo "$thread - 1" | bc`
+	echo "$thout $avg $min $max" >> $result
 done
 
 workload=4
@@ -339,7 +347,8 @@ echo "sum: $sum, epoch: $epoch"
 echo "avg $avg"
 echo "max: $max"
 echo "min: $min"
-echo "$thread $avg $min $max" >> $result
+thout=`echo "$thread - 1" | bc`
+echo "$thout $avg $min $max" >> $result
 
 for ((thread = 4; thread <= 24; thread+=4))
 do
@@ -373,6 +382,7 @@ do
 	echo "avg $avg"
 	echo "max: $max"
 	echo "min: $min"
-	echo "$thread $avg $min $max" >> $result
+	thout=`echo "$thread - 1" | bc`
+	echo "$thout $avg $min $max" >> $result
 done
 
