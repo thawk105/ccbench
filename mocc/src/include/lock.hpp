@@ -7,10 +7,9 @@
 
 #include "debug.hpp"
 
-using namespace std;
+extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
 enum class LMode : uint8_t {
-	none,
 	reader, 
 	writer
 };
@@ -21,37 +20,57 @@ enum class LStatus : uint8_t {
 	leaving
 };
 
-class MQLock {
+enum class MQL_RESULT : uint8_t {
+	LockAquired,
+	LockCancelled
+};
+
+class MQLnode {
 public:
 	// interact with predecessor
-	LMode lmode;
-	bool granted;
+	LMode type;
+	MQLnode *prev;
+	std::atomic<bool> granted;
 	// -----
 	// interact with successor
-	bool busy;
-	LMode stype;
-	LStatus status;
+	struct MQL_sucInfo {
+		MQLnode *next;
+		bool busy;
+		LMode stype;
+		LStatus status;
+	} sucInfo;
 	// -----
-	MQLock *prev;
-	MQLock *next;
-
-	// return bool show whether lock operation success or fail
-	void r_lock();
-	bool r_trylock();
-	void r_unlock();
-	void w_lock();
-	bool w_trylock();
-	void w_unlock();
 };
 	
+class MQLock {
+public:
+	std::atomic<unsigned int> nreaders;
+	MQLnode *tail;
+	MQLnode *next_writer;
+
+	MQLock() {
+		nreaders = 0;
+		tail = nullptr;
+		next_writer = nullptr;
+	}
+
+	MQL_RESULT reader_acquire(MQLnode *qnode, bool trylock);
+	MQL_RESULT finish_reader_acquire(MQLnode *qnode);
+	MQL_RESULT reader_cancel(MQLnode *qnode);
+
+	MQL_RESULT writer_acquire(MQLnode *qnode, bool trylock);
+	MQL_RESULT finish_writer_acquire(MQLnode *qnode);
+	MQL_RESULT writer_cancel(MQLnode *qnode);
+};
+
 class RWLock {
 public:
-	atomic<int> counter;
+	std::atomic<int> counter;
 	// counter == -1, write locked;
 	// counter == 0, not locked;
 	// counter > 0, there are $counter readers who acquires read-lock.
 	
-	RWLock() { counter.store(0, memory_order_release);}
+	RWLock() { counter.store(0, std::memory_order_release);}
 	void r_lock(); // read lock
 	bool r_trylock();	// read try lock
 	void r_unlock();	// read unlock

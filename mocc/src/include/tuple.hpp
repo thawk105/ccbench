@@ -9,8 +9,6 @@
 #define TEMP_MAX 20
 #define TEMP_RESET_US 100
 
-using namespace std;
-
 struct Tidword {
 	union {
 		uint64_t obj;

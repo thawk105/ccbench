@@ -19,6 +19,6 @@ all : $(PROG)
 $(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5) $(O6) $(O7)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 .cc.o:
-	$(CC) $(CFLAGS) $<
+	$(CC) $(CFLAGS) $< 
 clean:
-	rm -f *~ *.o *.exe *.stackdump
+	rm -f *~ *.o *.exe *.stackdump *.log

@@ -38,7 +38,7 @@ GLOBAL uint64_t *AbortCounts;
 
 GLOBAL RWLock CtrLock;
 
-// ログ永続化エミュレーション用
+// for logging emulation
 GLOBAL uint64_t_64byte *Start;	
 GLOBAL uint64_t_64byte *Stop;
 
@@ -46,3 +46,8 @@ GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
 GLOBAL Tuple *Table;
+
+// for MQL sentinel value
+GLOBAL MQLnode SuccessorLeaving;
+GLOBAL MQLnode NoSuccessor;
+
