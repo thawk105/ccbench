@@ -205,7 +205,7 @@ static void *
 worker(void *arg)
 {
 	const int *myid = (int *)arg;
-	const int thid = *myid;
+	//const int thid = *myid;
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
