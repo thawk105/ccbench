@@ -1,4 +1,4 @@
-# 並行性制御ベンチマーク
+# Redesign and Implement Many Concurrency Control
 ## Cicada
 SIGMOD 2017
 ## Silo
