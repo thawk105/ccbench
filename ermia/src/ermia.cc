@@ -156,6 +156,7 @@ manager_worker(void *arg)
 	Bgn = rdtsc();
 	//garbage collector
 	for (;;) {
+		usleep(1);
 		End = rdtsc();
 		if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
 			Finish.store(true, std::memory_order_release);

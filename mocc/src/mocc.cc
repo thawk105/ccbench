@@ -175,6 +175,7 @@ RETRY_WAIT_L:
 	Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
 	for (;;) {
+		usleep(1);
 		End = rdtsc();
 		if (chkClkSpan(Bgn, End, finish_time)) {
 			Finish.store(true, memory_order_release);
