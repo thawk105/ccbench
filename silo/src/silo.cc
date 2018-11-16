@@ -180,6 +180,7 @@ RETRY_WAIT_L:
 	Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
 	for (;;) {
+		usleep(1);
 		End = rdtsc();
 		if (chkClkSpan(Bgn, End, finish_time)) {
 			Finish.store(true, std::memory_order_release);
@@ -204,6 +205,7 @@ static void *
 worker(void *arg)
 {
 	const int *myid = (int *)arg;
+	//const int thid = *myid;
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];

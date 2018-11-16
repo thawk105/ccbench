@@ -9,6 +9,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
 
 #define GLOBAL_VALUE_DEFINE
@@ -238,6 +239,8 @@ RETRY_WAIT_L:
 		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		//check all thread's flag raising
 			if (GCFlag[i].num == 0) {
+				//std::this_thread::yield();
+				usleep(1);
 				gc_update = false;
 				break;
 			}

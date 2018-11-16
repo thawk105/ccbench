@@ -20,6 +20,8 @@ MQLock::reader_acquire(MQLnode *qnode, bool trylock)
 		qnode->granted.store(true, std::memory_order_release);
 		return finish_reader_acquire(qnode);
 	}
+
+	return MQL_RESULT::LockAquired;
 }
 
 MQL_RESULT
@@ -27,17 +29,18 @@ MQLock::finish_reader_acquire(MQLnode *qnode)
 {
 	__atomic_store_n(&(qnode->sucInfo.busy), true, __ATOMIC_RELEASE);
 	__atomic_store_n(&(qnode->sucInfo.status), LStatus::granted, __ATOMIC_RELEASE);
-	while (__atomic_load_n(&(qnode->sucInfo.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
+//	while (__atomic_load_n(&(qnode->sucInfo.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
 	
-	if (__atomic_load_n(&tail, __ATOMIC_ACQUIRE) == qnode) {
+	//if (__atomic_load_n(&tail, __ATOMIC_ACQUIRE) == qnode) {}
 
 
-
+	return MQL_RESULT::LockAquired;
 }
 
 MQL_RESULT
 MQLock::reader_cancel(MQLnode *qnode)
 {
+	return MQL_RESULT::LockAquired;
 }
 
 MQL_RESULT
@@ -49,6 +52,7 @@ MQLock::writer_acquire(MQLnode *qnode, bool trylock)
 		qnode->granted.store(true, std::memory_order_release);
 		return finish_writer_acquire(qnode);
 	}
+	return MQL_RESULT::LockAquired;
 }
 
 MQL_RESULT
@@ -56,13 +60,15 @@ MQLock::finish_writer_acquire(MQLnode *qnode)
 {
 	__atomic_store_n(&(qnode->sucInfo.busy), true, __ATOMIC_RELEASE);
 	__atomic_store_n(&(qnode->sucInfo.status), LStatus::granted, __ATOMIC_RELEASE);
-	while (__atomic_load_n(&(qnode->sucInfo.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
+	//while (__atomic_load_n(&(qnode->sucInfo.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
 
+	return MQL_RESULT::LockAquired;
 }
 
 MQL_RESULT
 MQLock::writer_cancel(MQLnode *qnode)
 {
+	return MQL_RESULT::LockAquired;
 }
 
 void

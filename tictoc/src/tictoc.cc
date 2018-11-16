@@ -220,9 +220,9 @@ main(int argc, char *argv[]) {
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
-	displayRtsudRate();
-	displayAbortRate();
-	displayAbortCounts();
+	//displayRtsudRate();
+	//displayAbortRate();
+	//displayAbortCounts();
 
 	return 0;
 }
