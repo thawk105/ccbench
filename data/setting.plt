@@ -4,6 +4,14 @@ set ylabel "Throughput (Trans/Sec)"
 set format y "%10.5f"
 set format y "%2.2t{/Symbol \264}10^{%T}"
 
+set notitle
+set xlabel "Number of threads"
+set ylabel "Count / Seconds"
+set key left top
+set terminal postscript eps enhanced color size 9cm,7cm
+set output "fetch_add.eps"
+plot "fetch_add.dat" w lp title "C++ : fetch-add"
+
 set title "tuple 200, write only"
 set xlabel "Number of threads"
 set ylabel "Throughput (Trans/Sec)"
