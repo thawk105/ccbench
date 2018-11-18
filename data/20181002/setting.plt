@@ -131,114 +131,97 @@ set terminal postscript eps enhanced color size 9cm,7cm
 set output "cicada_tuple1m_log_validation_4pair.eps"
 plot "result_cicada_r5_pwal_ElrGrp_tuple1m.dat" w errorlines title "ELR + Group", "result_cicada_r5_pwal_ElrNgrp_tuple1m.dat" w errorlines title "ELR + No group", "result_cicada_r5_pwal_NlrGrp_tuple1m.dat" w errorlines title "CLR + Group", "result_cicada_r5_pwal_NlrNgrp_tuple1m.dat" w errorlines title "CLR + No group", 
 
-set logscale x
 set autoscale y
-set format y "%10.0f"
+set format y "%10.3f"
+set yrange [0:1]
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple200_r0_ar.eps"
 plot "result_cicada_r0_tuple200_ar.dat" w errorlines title "Cicada", "result_silo_r0_tuple200_ar.dat" w errorlines title "Silo", "result_ermia_r0_tuple200_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r0_tuple200_ar.dat" w errorlines title "SS2PL", "result_mocc_r0_tuple200_ar.dat" w errorlines title "MOCC", "result_tictoc_r0_tuple200_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1k_r0_ar.eps"
 plot "result_cicada_r0_tuple1k_ar.dat" w errorlines title "Cicada", "result_silo_r0_tuple1k_ar.dat" w errorlines title "Silo", "result_ermia_r0_tuple1k_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r0_tuple1k_ar.dat" w errorlines title "SS2PL", "result_mocc_r0_tuple1k_ar.dat" w errorlines title "MOCC", "result_tictoc_r0_tuple1k_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1m_r0_ar.eps"
 plot "result_cicada_r0_tuple1m_ar.dat" w errorlines title "Cicada", "result_silo_r0_tuple1m_ar.dat" w errorlines title "Silo", "result_ermia_r0_tuple1m_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r0_tuple1m_ar.dat" w errorlines title "SS2PL", "result_mocc_r0_tuple1m_ar.dat" w errorlines title "MOCC", "result_tictoc_r0_tuple1m_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple200_r2_ar.eps"
 plot "result_cicada_r2_tuple200_ar.dat" w errorlines title "Cicada", "result_silo_r2_tuple200_ar.dat" w errorlines title "Silo", "result_ermia_r2_tuple200_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r2_tuple200_ar.dat" w errorlines title "SS2PL", "result_mocc_r2_tuple200_ar.dat" w errorlines title "MOCC", "result_tictoc_r2_tuple200_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1k_r2_ar.eps"
 plot "result_cicada_r2_tuple1k_ar.dat" w errorlines title "Cicada", "result_silo_r2_tuple1k_ar.dat" w errorlines title "Silo", "result_ermia_r2_tuple1k_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r2_tuple1k_ar.dat" w errorlines title "SS2PL", "result_mocc_r2_tuple1k_ar.dat" w errorlines title "MOCC", "result_tictoc_r2_tuple1k_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1m_r2_ar.eps"
 plot "result_cicada_r2_tuple1m_ar.dat" w errorlines title "Cicada", "result_silo_r2_tuple1m_ar.dat" w errorlines title "Silo", "result_ermia_r2_tuple1m_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r2_tuple1m_ar.dat" w errorlines title "SS2PL", "result_mocc_r2_tuple1m_ar.dat" w errorlines title "MOCC", "result_tictoc_r2_tuple1m_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple200_r5_ar.eps"
 plot "result_cicada_r5_tuple200_ar.dat" w errorlines title "Cicada", "result_silo_r5_tuple200_ar.dat" w errorlines title "Silo", "result_ermia_r5_tuple200_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r5_tuple200_ar.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple200_ar.dat" w errorlines title "MOCC", "result_tictoc_r5_tuple200_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1k_r5_ar.eps"
 plot "result_cicada_r5_tuple1k_ar.dat" w errorlines title "Cicada", "result_silo_r5_tuple1k_ar.dat" w errorlines title "Silo", "result_ermia_r5_tuple1k_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r5_tuple1k_ar.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple1k_ar.dat" w errorlines title "MOCC", "result_tictoc_r5_tuple1k_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1m_r5_ar.eps"
 plot "result_cicada_r5_tuple1m_ar.dat" w errorlines title "Cicada", "result_silo_r5_tuple1m_ar.dat" w errorlines title "Silo", "result_ermia_r5_tuple1m_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r5_tuple1m_ar.dat" w errorlines title "SS2PL", "result_mocc_r5_tuple1m_ar.dat" w errorlines title "MOCC", "result_tictoc_r5_tuple1m_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple200_r8_ar.eps"
 plot "result_cicada_r8_tuple200_ar.dat" w errorlines title "Cicada", "result_silo_r8_tuple200_ar.dat" w errorlines title "Silo", "result_ermia_r8_tuple200_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r8_tuple200_ar.dat" w errorlines title "SS2PL", "result_mocc_r8_tuple200_ar.dat" w errorlines title "MOCC", "result_tictoc_r8_tuple200_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1k_r8_ar.eps"
 plot "result_cicada_r8_tuple1k_ar.dat" w errorlines title "Cicada", "result_silo_r8_tuple1k_ar.dat" w errorlines title "Silo", "result_ermia_r8_tuple1k_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r8_tuple1k_ar.dat" w errorlines title "SS2PL", "result_mocc_r8_tuple1k_ar.dat" w errorlines title "MOCC", "result_tictoc_r8_tuple1k_ar.dat" w errorlines title "TicToc",
 
 set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
+set ylabel "Abort Rate"
 set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1m_r8_ar.eps"
 plot "result_cicada_r8_tuple1m_ar.dat" w errorlines title "Cicada", "result_silo_r8_tuple1m_ar.dat" w errorlines title "Silo", "result_ermia_r8_tuple1m_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r8_tuple1m_ar.dat" w errorlines title "SS2PL", "result_mocc_r8_tuple1m_ar.dat" w errorlines title "MOCC", "result_tictoc_r8_tuple1m_ar.dat" w errorlines title "TicToc",
 
-set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
-set key left top
-set terminal postscript eps enhanced color size 9cm,7cm
-set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple200_r10_ar.eps"
-plot "result_cicada_r10_tuple200_ar.dat" w errorlines title "Cicada", "result_silo_r10_tuple200_ar.dat" w errorlines title "Silo", "result_ermia_r10_tuple200_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r10_tuple200_ar.dat" w errorlines title "SS2PL", "result_mocc_r10_tuple200_ar.dat" w errorlines title "MOCC", "result_tictoc_r10_tuple200_ar.dat" w errorlines title "TicToc",
-
-set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
-set key left top
-set terminal postscript eps enhanced color size 9cm,7cm
-set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1k_r10_ar.eps"
-plot "result_cicada_r10_tuple1k_ar.dat" w errorlines title "Cicada", "result_silo_r10_tuple1k_ar.dat" w errorlines title "Silo", "result_ermia_r10_tuple1k_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r10_tuple1k_ar.dat" w errorlines title "SS2PL", "result_mocc_r10_tuple1k_ar.dat" w errorlines title "MOCC", "result_tictoc_r10_tuple1k_ar.dat" w errorlines title "TicToc",
-
-set xlabel "Number of threads"
-set ylabel "Abort Rate [%]"
-set key left top
-set terminal postscript eps enhanced color size 9cm,7cm
-set output "comp_cicada_silo_ermia_ss2pl_mocc_tictoc_tuple1m_r10_ar.eps"
-plot "result_cicada_r10_tuple1m_ar.dat" w errorlines title "Cicada", "result_silo_r10_tuple1m_ar.dat" w errorlines title "Silo", "result_ermia_r10_tuple1m_ar.dat" w errorlines title "ERMIA", "result_ss2pl_r10_tuple1m_ar.dat" w errorlines title "SS2PL", "result_mocc_r10_tuple1m_ar.dat" w errorlines title "MOCC", "result_tictoc_r10_tuple1m_ar.dat" w errorlines title "TicToc",
+set logscale x
+set format y "%10.0f"
+set yrange [0:100]
 
 set xlabel "Number of Tuples"
 set ylabel "Cache Miss Ratio [\%]"
@@ -246,20 +229,6 @@ set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "cicada_cache.eps"
 plot "result_cicada_r10_cache.dat" w errorlines title "read only", "result_cicada_r8_cache.dat" w errorlines title "read 80\%", "result_cicada_r5_cache.dat" w errorlines title "read 50\%", "result_cicada_r2_cache.dat" w errorlines title "read 20\%", "result_cicada_r0_cache.dat" w errorlines title "write only", 
-
-set xlabel "Number of Tuples"
-set ylabel "Cache Miss Ratio [\%]"
-set key left top
-set terminal postscript eps enhanced color size 9cm,7cm
-set output "cicada_cache_r5.eps"
-plot "result_cicada_r5_cache.dat" w errorlines title "read 50 \%"
-
-set xlabel "Number of Tuples"
-set ylabel "Cache Miss Ratio [\%]"
-set key left top
-set terminal postscript eps enhanced color size 9cm,7cm
-set output "mocc_cache.eps"
-plot "result_mocc_r10_cache.dat" w errorlines title "read only", "result_mocc_r8_cache.dat" w errorlines title "read 80\%", "result_mocc_r5_cache.dat" w errorlines title "read 50\%", "result_mocc_r2_cache.dat" w errorlines title "read 20\%", "result_mocc_r0_cache.dat" w errorlines title "write only", 
 
 set xlabel "Number of Tuples"
 set ylabel "Cache Miss Ratio [\%]"
@@ -274,13 +243,6 @@ set key left top
 set terminal postscript eps enhanced color size 9cm,7cm
 set output "silo_cache.eps"
 plot "result_silo_r10_cache.dat" w errorlines title "read only", "result_silo_r8_cache.dat" w errorlines title "read 80\%", "result_silo_r5_cache.dat" w errorlines title "read 50\%", "result_silo_r2_cache.dat" w errorlines title "read 20\%", "result_silo_r0_cache.dat" w errorlines title "write only", 
-
-set xlabel "Number of Tuples"
-set ylabel "Cache Miss Ratio [\%]"
-set key left top
-set terminal postscript eps enhanced color size 9cm,7cm
-set output "silo_cache_r5.eps"
-plot "result_silo_r5_cache.dat" w errorlines title "read 50 \%"
 
 set xlabel "Number of Tuples"
 set ylabel "Cache Miss Ratio [\%]"
