@@ -29,6 +29,9 @@ extern void displayFinishTransactions();
 extern void displayAbortCounts();
 extern void displayTotalAbortCounts();
 extern void displayAbortRate();
+extern bool chkEpochLoaded();
+extern void sumTrans(Transaction *trans);
+extern void prtRslt(uint64_t &bgn, uint64_t &end);
 
 static bool
 chkInt(char *arg)
@@ -94,49 +97,13 @@ So you have to set THREAD_NUM >= 2.\n\n");
 
 	try {
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//[0]は使わない
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		FinishTransactions[i] = 0;
-		AbortCounts[i] = 0;
 		ThLocalEpoch[i].obj = 0;
 	}
-}
-
-static void 
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i];
-	}
-
-	uint64_t result = (double)sumTrans / (double)sec;
-	cout << (int)result << endl;
-}
-
-bool
-chkEpochLoaded()
-{
-	uint64_t_64byte nowepo = loadAcquireGE();
-//全てのワーカースレッドが最新エポックを読み込んだか確認する．
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo.obj) return false;
-	}
-
-	return true;
-}
-
-pid_t gettid(void)
-{
-	return syscall(SYS_gettid);
 }
 
 static void *
@@ -147,7 +114,7 @@ epoch_worker(void *arg)
 //	全ての worker が最新の epoch を読み込んでいる。
 //
 	const int *myid = (int *)arg;
-	pid_t pid = gettid();
+	pid_t pid = syscall(SYS_gettid);
 	cpu_set_t cpu_set;
 	uint64_t EpochTimerStart, EpochTimerStop;
 
@@ -200,7 +167,6 @@ RETRY_WAIT_L:
 	return nullptr;
 }
 
-
 static void *
 worker(void *arg)
 {
@@ -209,11 +175,10 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 	Transaction trans(*myid);
 
 	//----------
-	pid_t pid = gettid();
+	pid_t pid = syscall(SYS_gettid);
 	cpu_set_t cpu_set;
 
 	CPU_ZERO(&cpu_set);
@@ -251,10 +216,7 @@ RETRY_WAIT_W:
 RETRY:
 			trans.tbegin();
 			if (Finish.load(memory_order_acquire)) {
-				CtrLock.w_lock();
-				FinishTransactions[*myid] = totalFinishTransactions;
-				AbortCounts[*myid] = totalAbortCounts;
-				CtrLock.w_unlock();
+				sumTrans(&trans);
 				return nullptr;
 			}
 
@@ -275,10 +237,8 @@ RETRY:
 			//Validation phase
 			if (trans.validationPhase()) {
 				trans.writePhase();
-				totalFinishTransactions++;
 			} else {
 				trans.abort();
-				totalAbortCounts++;
 				goto RETRY;
 			}
 
@@ -290,7 +250,7 @@ RETRY:
 	return NULL;
 }
 
-static pthread_t
+pthread_t
 threadCreate(int id)
 {
 	pthread_t t;
@@ -331,10 +291,10 @@ main(int argc, char *argv[]) {
 	}
 
 	//displayDB();
-	//displayAbortRate();
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
+	displayAbortRate();
 	//displayTotalAbortCounts();
 
 	return 0;

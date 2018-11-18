@@ -20,6 +20,9 @@ public:
 	Tidword mrctid;
 	Tidword max_rset, max_wset;
 
+	uint64_t finishTransactions;
+	uint64_t abortCounts;
+
 	Transaction(int thid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
@@ -27,6 +30,8 @@ public:
 		this->thid = thid;
 		max_rset.obj = 0;
 		max_wset.obj = 0;
+		finishTransactions = 0;
+		abortCounts = 0;
 	}
 
 	void tbegin();

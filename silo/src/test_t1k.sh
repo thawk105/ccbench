@@ -7,7 +7,7 @@ extime=3
 epoch=5
 
 workload=0
-result=result_silo_r10_tuple1k.dat
+result=result_silo_r10_tuple1k_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
@@ -83,7 +83,7 @@ do
 done
 
 workload=1
-result=result_silo_r8_tuple1k.dat
+result=result_silo_r8_tuple1k_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
@@ -159,7 +159,7 @@ do
 done
 
 workload=2
-result=result_silo_r5_tuple1k.dat
+result=result_silo_r5_tuple1k_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
@@ -235,7 +235,7 @@ do
 done
 
 workload=3
-result=result_silo_r2_tuple1k.dat
+result=result_silo_r2_tuple1k_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
@@ -311,7 +311,7 @@ do
 done
 
 workload=4
-result=result_silo_r0_tuple1k.dat
+result=result_silo_r0_tuple1k_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $workload $cpumhz $epochtime $extime" >> $result
