@@ -22,6 +22,20 @@
 
 using namespace std;
 
+extern void displayDB();
+extern void displayMinRts();
+extern void displayMinWts();
+extern void displayThreadWtsArray();
+extern void displayThreadRtsArray();
+extern void displayPRO();
+extern void displayAbortRate();
+extern void displayFinishTransactions();
+extern void displayAbortCounts();
+extern void displayTransactionRange();
+extern void makeDB(uint64_t *initial_wts);
+extern void prtRslt(uint64_t &bgn, uint64_t &end);
+extern void sumTrans(Transaction *trans);
+
 static bool
 chkInt(char *arg)
 {
@@ -38,7 +52,7 @@ static void
 chkArg(const int argc, char *argv[])
 {
 	if (argc != 12) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD(1~5) \n\
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO \n\
              WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
 \n\
 example:./main 200 10 24 2 OFF OFF 2400 5 2 E 3\n\
@@ -46,12 +60,7 @@ example:./main 200 10 24 2 OFF OFF 2400 5 2 E 3\n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of worker thread.\n\
-WORKLOAD:\n\
-0. read only (read 100%%)\n\
-1. read intensive (read 80%%)\n\
-2. read write even (read 50%%)\n\
-3. write intensive (write 80%%)\n\
-4. write only (write 100%%)\n\
+RRATIO: read ratio (* 10 %%)\n\
 WAL: P or S or OFF.\n\
 GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
 CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
@@ -73,9 +82,9 @@ EXTIME: execution time [sec]\n\n");
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
-	if (WORKLOAD > 4) {
-		cout << "workload must be 0 ~ 4" << endl;
+	RRATIO = atoi(argv[4]);
+	if (RRATIO > 10) {
+		cout << "rratio (* 10 %%) must be 0 ~ 10)" << endl;
 		ERR;
 	}
 	
@@ -153,8 +162,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		
 		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	
 		PLogSet = new Version**[THREAD_NUM];
-		FinishTransactions = new uint64_t[THREAD_NUM];
-		AbortCounts = new uint64_t[THREAD_NUM];
 
 		for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 			PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
@@ -164,8 +171,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		FinishTransactions[i] = 0;
-		AbortCounts[i] = 0;
 		GCFlag[i].num = 0;
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
@@ -175,31 +180,19 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	}
 }
 
-static void 
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i];
-	}
-	
-	uint64_t result = (double)sumTrans / (double)sec;
-	cout << (int)result << endl;
-}
-
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
 static void *
-maneger_worker(void *arg)
+manager_worker(void *arg)
 {
 	int *myid = (int *)arg;
 	const uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
 	TimeStamp tmp;
-	MinWts.store(InitialWts + 2, memory_order_release);
+
+	uint64_t initial_wts;
+	makeDB(&initial_wts);
+	MinWts.store(initial_wts + 2, memory_order_release);
 
 	//-----
 	pid_t pid = syscall(SYS_gettid);
@@ -239,7 +232,6 @@ RETRY_WAIT_L:
 		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		//check all thread's flag raising
 			if (GCFlag[i].num == 0) {
-				//std::this_thread::yield();
 				usleep(1);
 				gc_update = false;
 				break;
@@ -290,7 +282,6 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 	Transaction trans(*myid);
 
 	//----------
@@ -332,10 +323,7 @@ RETRY_WAIT_W:
 			asm volatile ("" ::: "memory");
 RETRY:
 			if (Finish.load(std::memory_order_acquire)) {
-				CtrLock.w_lock();
-				FinishTransactions[*myid] = totalFinishTransactions;
-				AbortCounts[*myid] = totalAbortCounts;
-				CtrLock.w_unlock();
+				sumTrans(&trans);
 				return nullptr;
 			}
 
@@ -352,7 +340,7 @@ RETRY:
 
 				if (trans.status == TransactionStatus::abort) {
 					trans.earlyAbort();
-					totalAbortCounts++;
+					trans.abort_counts++;
 					goto RETRY;
 				}
 			}
@@ -360,20 +348,20 @@ RETRY:
 			//read onlyトランザクションはread setを集めず、validationもしない。
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
-				totalFinishTransactions++;
+				trans.finish_transactions++;
 				continue;
 			}
 
 			//Validation phase
 			if (!trans.validation()) {
 				trans.abort();
-				totalAbortCounts++;
+				trans.abort_counts++;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
-			totalFinishTransactions++;
+			trans.finish_transactions++;
 
 			//Maintenance
 			//Schedule garbage collection
@@ -402,7 +390,7 @@ threadCreate(int id)
 	*myid = id;
 
 	if (id == 0) {
-		if (pthread_create(&t, nullptr, maneger_worker, (void *)myid)) ERR;
+		if (pthread_create(&t, nullptr, manager_worker, (void *)myid)) ERR;
 		return t;
 	}
 	else {
@@ -411,27 +399,10 @@ threadCreate(int id)
 	}
 }
 
-extern void displayMinRts();
-extern void displayMinWts();
-extern void displayThreadWtsArray();
-extern void displayThreadRtsArray();
-extern void displayDB();
-extern void displayPRO();
-extern void displayAbortRate();
-extern void displayFinishTransactions();
-extern void displayAbortCounts();
-extern void displayTransactionRange();
-extern void makeDB();
-
 int 
 main(int argc, char *argv[]) {
 
 	chkArg(argc, argv);
-
-	makeDB();
-
-	//displayDB();
-	//displayPRO();
 
 	pthread_t thread[THREAD_NUM];
 
@@ -448,11 +419,11 @@ main(int argc, char *argv[]) {
 	//displayMinWts();
 	//displayThreadWtsArray();
 	//displayThreadRtsArray();
-	//displayAbortRate();
 	//displayFinishTransactions();
 	//displayTransactionRange();
 	
 	prtRslt(Bgn, End);
+	//displayAbortRate();
 	//displayAbortCounts();
 
 	return 0;

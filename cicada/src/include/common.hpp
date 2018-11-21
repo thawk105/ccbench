@@ -18,6 +18,8 @@ GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> MinRts(0);
 GLOBAL std::atomic<uint64_t> MinWts(0);
 GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp(0);
+GLOBAL std::atomic<uint64_t> Finish_transactions(0);
+GLOBAL std::atomic<uint64_t> Abort_counts(0);
 
 #else
 	#define GLOBAL extern
@@ -27,13 +29,15 @@ GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> MinRts;
 GLOBAL std::atomic<uint64_t> MinWts;
 GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
+GLOBAL std::atomic<uint64_t> Finish_transactions;
+GLOBAL std::atomic<uint64_t> Abort_counts;
 
 #endif
 
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int WORKLOAD;
+GLOBAL unsigned int RRATIO;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
 GLOBAL bool ELR;	//early lock release
@@ -55,9 +59,6 @@ GLOBAL Version ***PLogSet;	//[thID][index] pointer array
 GLOBAL Version **SLogSet;	//[index] pointer array
 GLOBAL RWLock SwalLock;
 GLOBAL RWLock CtrLock;
-
-GLOBAL uint64_t *FinishTransactions;
-GLOBAL uint64_t *AbortCounts;
 
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;

@@ -36,6 +36,9 @@ public:
 	uint64_t GCstart, GCstop; // for garbage collection
 	uint8_t thid;
 
+	uint64_t finish_transactions;
+	uint64_t abort_counts;
+
 	Transaction(unsigned int thid) {
 		this->rts = MinWts.load(memory_order_acquire) - 1;
 		this->wts.generateTimeStampFirst(thid);
@@ -56,6 +59,9 @@ public:
 		readSet.reserve(MAX_OPE);
 		writeSet.clear();
 		writeSet.reserve(MAX_OPE);
+
+		finish_transactions = 0;
+		abort_counts = 0;
 	}
 
 	void tbegin(bool ronly);

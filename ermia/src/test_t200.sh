@@ -6,7 +6,7 @@ extime=3
 epoch=5
 
 workload=0
-result=result_ermia_r10_tuple200.dat
+result=result_ermia_r10_tuple200_ar.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
@@ -82,7 +82,7 @@ do
 done
 
 workload=1
-result=result_ermia_r8_tuple200.dat
+result=result_ermia_r8_tuple200_ar.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
@@ -158,7 +158,7 @@ do
 done
 
 workload=2
-result=result_ermia_r5_tuple200.dat
+result=result_ermia_r5_tuple200_ar.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
@@ -234,7 +234,7 @@ do
 done
 
 workload=3
-result=result_ermia_r2_tuple200.dat
+result=result_ermia_r2_tuple200_ar.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result
@@ -310,7 +310,7 @@ do
 done
 
 workload=4
-result=result_ermia_r0_tuple200.dat
+result=result_ermia_r0_tuple200_ar.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
 echo "#./ermia.exe $tuple $maxope thread $workload $cpu_mhz $extime" >> $result

@@ -111,41 +111,23 @@ displayThreadRtsArray()
 void
 displayFinishTransactions()
 {
-	cout << "display FinishTransactions" << endl;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << FinishTransactions[i] << endl;
-	}
-	cout << endl;
+	cout << Finish_transactions << endl;
 }
 
 void
 displayAbortCounts()
 {
-	cout << "display AbortCounts()" << endl;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		cout << "th #" << i << ": " << AbortCounts[i] << endl;
-	}
-	cout << endl;
+	cout << Abort_counts << endl;
 }
 
 void 
 displayAbortRate() 
 {
-	long double sumT(0), sumA(0);
-	long double rate[THREAD_NUM] = {};
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i];
-		sumA += AbortCounts[i];
-		rate[i] = sumA / (sumT + sumA);
-	}
+	long double sumT(Finish_transactions), sumA(Abort_counts);
+	long double rate;
 
-	long double ave_rate(0);
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		ave_rate += rate[i];
-	}
-	ave_rate /= (long double) THREAD_NUM;
-
-	cout << ave_rate << endl;
+	rate = sumA / (sumT + sumA);
+	cout << rate << endl;
 }
 
 void 
