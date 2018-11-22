@@ -7,7 +7,7 @@
 
 using namespace std;
 
-void makeDB() {
+void makeDB(uint64_t *initial_wts) {
 	Tuple *tmp;
 	Version *verTmp;
 	Xoroshiro128Plus rnd;
@@ -24,7 +24,7 @@ void makeDB() {
 
 	TimeStamp tstmp;
 	tstmp.generateTimeStampFirst(0);
-	InitialWts = tstmp.ts;
+	*initial_wts = tstmp.ts;
 	for (unsigned int i = 0; i < TUPLE_NUM; i++) {
 		tmp = &Table[i];
 		tmp->min_wts = tstmp.ts;

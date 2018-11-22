@@ -1,8 +1,9 @@
 #pragma once
 
-#include "tuple.hpp"
-#include "procedure.hpp"
 #include "common.hpp"
+#include "debug.hpp"
+#include "procedure.hpp"
+#include "tuple.hpp"
 #include "timeStamp.hpp"
 #include "version.hpp"
 
@@ -36,10 +37,14 @@ public:
 	uint64_t GCstart, GCstop; // for garbage collection
 	uint8_t thid;
 
+	uint64_t finish_transactions;
+	uint64_t abort_counts;
+
 	Transaction(unsigned int thid) {
+		// wait to initialize MinWts
+		while(MinWts.load(memory_order_acquire) == 0);
 		this->rts = MinWts.load(memory_order_acquire) - 1;
 		this->wts.generateTimeStampFirst(thid);
-		this->wts.ts = (MinWts.load(memory_order_acquire) << 8) | thid;
 		this->thid = thid;
 		this->ronly = false;
 
@@ -56,6 +61,9 @@ public:
 		readSet.reserve(MAX_OPE);
 		writeSet.clear();
 		writeSet.reserve(MAX_OPE);
+
+		finish_transactions = 0;
+		abort_counts = 0;
 	}
 
 	void tbegin(bool ronly);

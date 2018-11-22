@@ -37,17 +37,12 @@ chkArg(const int argc, const char *argv[])
 {
 	if (argc != 7) {
 	//if (argc != 1) {
-		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CPU_MHZ EXTIME UNSTABLE_WORKLOAD" << endl;
+		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO CPU_MHZ EXTIME" << endl;
 		cout << "example: ./ermia.exe 200 10 24 3 2400 3" << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "WORKLOAD:" << endl;
-		cout << "0. read only (read 100%%)" << endl;
-		cout << "1. read intensive (read 80%%)" << endl;
-		cout << "2. read write even (read 50%%)" << endl;
-		cout << "3. write intensive (write 80%%)" << endl;
-		cout << "4. write only (write 100%%)" << endl;
+		cout << "RRATIO: read ratio (* 10%%)" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
 
@@ -78,9 +73,9 @@ chkArg(const int argc, const char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
-	if (WORKLOAD > 4) {
-		cout << "workload must be 0 ~ 4" << endl;
+	RRATIO = atoi(argv[4]);
+	if (RRATIO > 10) {
+		cout << "rratio (* 10 %%) must be 0 ~ 10" << endl;
 		ERR;
 	}
 
@@ -353,9 +348,9 @@ main(const int argc, const char *argv[])
 
 	//displayDB();
 
-	prtRslt(Bgn, End);
+	//prtRslt(Bgn, End);
 	//displayAbortCounts();
-	//displayAbortRate();
+	displayAbortRate();
 
 	return 0;
 }

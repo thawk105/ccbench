@@ -71,6 +71,6 @@ void
 displayAbortRate() 
 {
 	long double sum(FinishTransactions + AbortCounts), ab(AbortCounts);
-	cout << "Abort rate: " << ab / sum << endl;
+	cout << ab / sum << endl;
 }
 

@@ -18,6 +18,18 @@
 
 using namespace std;
 
+extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern void displayDB();
+extern void displayPRO();
+extern void displayFinishTransactions();
+extern void displayAbortCounts();
+extern void displayAbortRate();
+extern void displayRtsudRate();
+extern void makeDB();
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void prtRslt(uint64_t &bgn, uint64_t &end);
+extern void sumTrans(Transaction *trans);
+
 static bool
 chkInt(char *arg)
 {
@@ -34,19 +46,14 @@ static void
 chkArg(const int argc, char *argv[])
 {
 	if (argc != 7) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CLOCK_PER_US EXTIME\n\
+		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO CLOCK_PER_US EXTIME\n\
 \n\
 example:./main 200 20 15 3 2400 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of thread.\n\
-WORKLOAD:\n\
-0. read only (read 100%%)\n\
-1. read intensive (read 80%%)\n\
-2. read write even (read 50%%)\n\
-3. write intensive (write 80%%)\n\
-4. write only (write 100%%)\n\
+RRATIO : read ratio (* 10%%)\n\
 CLOCK_PER_US: CPU_MHZ\n\
 EXTIME: execution time.\n\
 \n\n");
@@ -64,16 +71,15 @@ EXTIME: execution time.\n\
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
-	if (WORKLOAD > 4) ERR;
+	RRATIO = atoi(argv[4]);
+	if (RRATIO > 10) {
+		cout << "rratio must be 0 ~ 10" << endl;
+		ERR;
+	}
 
 	CLOCK_PER_US = atof(argv[5]);
 	EXTIME = atoi(argv[6]);
 }
-
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void sumTrans(Transaction *trans);
 
 static void *
 worker(void *arg)
@@ -189,15 +195,6 @@ threadCreate(int id)
 	return t;
 }
 
-extern void displayDB();
-extern void displayPRO();
-extern void displayFinishTransactions();
-extern void displayAbortCounts();
-extern void displayAbortRate();
-extern void displayRtsudRate();
-extern void makeDB();
-extern void prtRslt(uint64_t &bgn, uint64_t &end);
-
 int 
 main(int argc, char *argv[]) {
 	chkArg(argc, argv);
@@ -220,7 +217,7 @@ main(int argc, char *argv[]) {
 	//displayFinishTransactions();
 
 	prtRslt(Bgn, End);
-	//displayRtsudRate();
+	displayRtsudRate();
 	//displayAbortRate();
 	//displayAbortCounts();
 
