@@ -423,8 +423,8 @@ main(int argc, char *argv[]) {
 	//displayTransactionRange();
 	
 	prtRslt(Bgn, End);
-	//displayAbortRate();
 	//displayAbortCounts();
+	displayAbortRate();
 
 	return 0;
 }
