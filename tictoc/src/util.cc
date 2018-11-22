@@ -5,7 +5,11 @@
 
 #include "../../include/inline.hpp"
 #include "include/common.hpp"
+#include "include/debug.hpp"
+#include "include/procedure.hpp"
+#include "include/random.hpp"
 #include "include/transaction.hpp"
+#include "include/tuple.hpp"
 
 using namespace std;
 
@@ -25,6 +29,40 @@ chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 	diff = stop - start;
 	if (diff > threshold) return true;
 	else return false;
+}
+
+void makeDB() {
+	Tuple *tmp;
+	Xoroshiro128Plus rnd;
+	rnd.init();
+
+	try {
+		if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+	} catch (bad_alloc) {
+		ERR;
+	}
+
+	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+		tmp = &Table[i];
+		tmp->tsw.obj = 0;
+		tmp->pre_tsw.obj = 0;
+		tmp->key = i;
+		tmp->val = rnd.next() % TUPLE_NUM;
+	}
+
+}
+
+void 
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
+	for (unsigned int i = 0; i < MAX_OPE; ++i) {
+		if ((rnd.next() % 10) < RRATIO) {
+			pro[i].ope = Ope::READ;
+		} else {
+			pro[i].ope = Ope::WRITE;
+		}
+		pro[i].key = rnd.next() % TUPLE_NUM;
+		pro[i].val = rnd.next() % TUPLE_NUM;
+	}
 }
 
 void 
