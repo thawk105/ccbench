@@ -1,7 +1,6 @@
 #include <atomic>
 
 #include "include/lock.hpp"
-#include "include/tsc.hpp"
 
 #define xchg(...) __atomic_exchange_n(__VA_ARGS__)
 #define cas(...) __atomic_compare_exchange_n(__VA_ARGS__)
@@ -21,15 +20,31 @@ MQLock::reader_acquire(MQLnode *qnode, bool trylock)
 		return finish_reader_acquire(qnode);
 	}
 
+handle_pred:
+	// Make sure the previous cancelling requester has left
+	MQL_suc_info load_suc_info;
+	load_suc_info.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
+	while (load_suc_info.next == 0 && load_suc_info.stype == LMode::none) {
+		load_suc_info.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
+	}
+
+	if (__atomic_load_n(&(p->type), __ATOMIC_ACQUIRE) == LMode::reader) {
+	}
 	return MQL_RESULT::LockAquired;
 }
 
 MQL_RESULT
 MQLock::finish_reader_acquire(MQLnode *qnode)
 {
-	__atomic_store_n(&(qnode->sucInfo.busy), true, __ATOMIC_RELEASE);
-	__atomic_store_n(&(qnode->sucInfo.status), LStatus::granted, __ATOMIC_RELEASE);
-//	while (__atomic_load_n(&(qnode->sucInfo.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
+	MQL_suc_info expected_suc_info, desired_suc_info;
+	expected_suc_info.obj = __atomic_load_n(&(qnode->suc_info.obj), __ATOMIC_ACQUIRE);
+	for (;;) {
+		desired_suc_info.obj = expected_suc_info.obj;
+		desired_suc_info.busy = true;
+		desired_suc_info.status = LStatus::granted;
+		if (__atomic_compare_exchange_n(&(qnode->suc_info.obj), &(expected_suc_info.obj), desired_suc_info.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
+//	while (__atomic_load_n(&(qnode->suc_info.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
 	
 	//if (__atomic_load_n(&tail, __ATOMIC_ACQUIRE) == qnode) {}
 
@@ -58,9 +73,15 @@ MQLock::writer_acquire(MQLnode *qnode, bool trylock)
 MQL_RESULT
 MQLock::finish_writer_acquire(MQLnode *qnode)
 {
-	__atomic_store_n(&(qnode->sucInfo.busy), true, __ATOMIC_RELEASE);
-	__atomic_store_n(&(qnode->sucInfo.status), LStatus::granted, __ATOMIC_RELEASE);
-	//while (__atomic_load_n(&(qnode->sucInfo.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
+	MQL_suc_info expected_suc_info, desired_suc_info;
+	expected_suc_info.obj = __atomic_load_n(&(qnode->suc_info.obj), __ATOMIC_ACQUIRE);
+	for (;;) {
+		desired_suc_info.obj = expected_suc_info.obj;
+		desired_suc_info.busy = true;
+		desired_suc_info.status = LStatus::granted;
+		if (__atomic_compare_exchange_n(&(qnode->suc_info.obj), &(expected_suc_info.obj), desired_suc_info.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
+	//while (__atomic_load_n(&(qnode->suc_info.next), __ATOMIC_ACQUIRE) == &SuccessorLeaving);
 
 	return MQL_RESULT::LockAquired;
 }

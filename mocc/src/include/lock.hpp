@@ -10,6 +10,7 @@
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
 enum class LMode : uint8_t {
+	none,
 	reader, 
 	writer
 };
@@ -25,33 +26,40 @@ enum class MQL_RESULT : uint8_t {
 	LockCancelled
 };
 
+struct MQL_suc_info {
+	union {
+		uint64_t obj;
+		struct {
+			uint16_t next:16; // store a thrad id. and you know where the qnode;
+			bool busy:1; // 0 == not busy, 1 == busy;
+			LMode stype:8; // 0 == none, 1 == reader, 2 == writer
+			LStatus status:8; // 0 == waiting, 1 == granted, 2 == leaving
+			};
+	};
+};
+
 class MQLnode {
 public:
 	// interact with predecessor
 	LMode type;
-	MQLnode *prev;
+	uint16_t prev;
 	std::atomic<bool> granted;
 	// -----
 	// interact with successor
-	struct MQL_sucInfo {
-		MQLnode *next;
-		bool busy;
-		LMode stype;
-		LStatus status;
-	} sucInfo;
+	MQL_suc_info suc_info;
 	// -----
 };
 	
 class MQLock {
 public:
 	std::atomic<unsigned int> nreaders;
-	MQLnode *tail;
-	MQLnode *next_writer;
+	std::atomic<uint16_t> tail;
+	std::atomic<uint16_t> next_writer;
 
 	MQLock() {
 		nreaders = 0;
-		tail = nullptr;
-		next_writer = nullptr;
+		tail = 0;
+		next_writer = 0;
 	}
 
 	MQL_RESULT reader_acquire(MQLnode *qnode, bool trylock);
