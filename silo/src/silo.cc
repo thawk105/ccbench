@@ -20,18 +20,19 @@
 using namespace std;
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-void threadEndProcess(int *myid);
-extern void makeDB();
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern bool chkEpochLoaded();
 extern void displayDB();
 extern void displayPRO();
 extern void displayFinishTransactions();
 extern void displayAbortCounts();
 extern void displayTotalAbortCounts();
 extern void displayAbortRate();
-extern bool chkEpochLoaded();
-extern void sumTrans(Transaction *trans);
+extern void makeDB();
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void prtRslt(uint64_t &bgn, uint64_t &end);
+extern void sumTrans(Transaction *trans);
+
+void threadEndProcess(int *myid);
 
 static bool
 chkInt(char *arg)

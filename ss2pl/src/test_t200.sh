@@ -6,7 +6,7 @@ extime=3
 epoch=5
 
 workload=0
-result=result_ss2pl_r10_tuple200.dat
+result=result_ss2pl_r10_tuple200_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 
@@ -81,7 +81,7 @@ do
 done
 
 workload=1
-result=result_ss2pl_r8_tuple200.dat
+result=result_ss2pl_r8_tuple200_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 
@@ -156,7 +156,7 @@ do
 done
 
 workload=2
-result=result_ss2pl_r5_tuple200.dat
+result=result_ss2pl_r5_tuple200_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 
@@ -231,7 +231,7 @@ do
 done
 
 workload=3
-result=result_ss2pl_r2_tuple200.dat
+result=result_ss2pl_r2_tuple200_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 
@@ -306,7 +306,7 @@ do
 done
 
 workload=4
-result=result_ss2pl_r0_tuple200.dat
+result=result_ss2pl_r0_tuple200_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 

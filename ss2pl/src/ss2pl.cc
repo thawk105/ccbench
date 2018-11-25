@@ -248,8 +248,8 @@ main(const int argc, const char *argv[])
 		pthread_join(thread[i], nullptr);
 	}
 
-	prtRslt(Bgn, End);
-	//displayAbortRate();
+	//prtRslt(Bgn, End);
+	displayAbortRate();
 
 	return 0;
 }
