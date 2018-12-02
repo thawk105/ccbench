@@ -512,7 +512,7 @@ Transaction::mainte()
 	//以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
 	//
 
-	if (GCFlag[thid].num == 0) {
+	if (__atomic_load_n(&(GCFlag[thid].num), __ATOMIC_ACQUIRE)) {
 		while (gcq.size() > 0) {
 			if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
 		
@@ -554,7 +554,7 @@ Transaction::mainte()
 
 	this->GCstop = rdtsc();
 	if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US)) {
-		GCFlag[thid].num = 1;
+		__atomic_store_n(&(GCFlag[thid].num),  1, __ATOMIC_RELEASE);
 		this->GCstart = rdtsc();
 	}
 }

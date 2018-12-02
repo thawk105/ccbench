@@ -231,7 +231,7 @@ RETRY_WAIT_L:
 		bool gc_update = true;
 		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		//check all thread's flag raising
-			if (GCFlag[i].num == 0) {
+			if (__atomic_load_n(&(GCFlag[i].num), __ATOMIC_ACQUIRE) == 0) {
 				usleep(1);
 				gc_update = false;
 				break;
@@ -264,7 +264,6 @@ RETRY_WAIT_L:
 
 			// downgrade gc flag
 			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-				GCFlag[i].num = 0;
 				__atomic_store_n(&(GCFlag[i].num), 0, __ATOMIC_RELEASE);
 			}
 		}
