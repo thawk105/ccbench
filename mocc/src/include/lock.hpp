@@ -7,6 +7,8 @@
 
 #include "debug.hpp"
 
+#define LOCK_TIMEOUT_US 5
+// 5 us.
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
 enum class LMode : uint8_t {
@@ -22,7 +24,7 @@ enum class LStatus : uint8_t {
 };
 
 enum class MQL_RESULT : uint8_t {
-	LockAquired,
+	LockAcquired,
 	LockCancelled
 };
 
@@ -42,7 +44,7 @@ class MQLnode {
 public:
 	// interact with predecessor
 	LMode type;
-	uint16_t prev;
+	std::atomic<uint16_t> prev;
 	std::atomic<bool> granted;
 	// -----
 	// interact with successor
@@ -62,13 +64,13 @@ public:
 		next_writer = 0;
 	}
 
-	MQL_RESULT reader_acquire(MQLnode *qnode, bool trylock);
-	MQL_RESULT finish_reader_acquire(MQLnode *qnode);
-	MQL_RESULT reader_cancel(MQLnode *qnode);
+	MQL_RESULT reader_acquire(uint16_t nodenum, bool trylock);
+	MQL_RESULT finish_reader_acquire(uint16_t nodenum);
+	MQL_RESULT cancel_reader_lock(uint16_t nodenum);
 
-	MQL_RESULT writer_acquire(MQLnode *qnode, bool trylock);
-	MQL_RESULT finish_writer_acquire(MQLnode *qnode);
-	MQL_RESULT writer_cancel(MQLnode *qnode);
+	MQL_RESULT writer_acquire(uint16_t nodenum, bool trylock);
+	MQL_RESULT finish_writer_acquire(uint16_t nodenum);
+	MQL_RESULT cancel_writer_lock(uint16_t nodenum);
 };
 
 class RWLock {
