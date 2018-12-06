@@ -24,15 +24,15 @@ enum class LStatus : uint8_t {
 };
 
 enum class MQL_RESULT : uint8_t {
-	LockAcquired,
-	LockCancelled
+	acquired,
+	cancelled
 };
 
 struct MQL_suc_info {
 	union {
 		uint64_t obj;
 		struct {
-			uint16_t next:16; // store a thrad id. and you know where the qnode;
+			uint32_t next:32; // store a thrad id. and you know where the qnode;
 			bool busy:1; // 0 == not busy, 1 == busy;
 			LMode stype:8; // 0 == none, 1 == reader, 2 == writer
 			LStatus status:8; // 0 == waiting, 1 == granted, 2 == leaving
@@ -43,8 +43,8 @@ struct MQL_suc_info {
 class MQLnode {
 public:
 	// interact with predecessor
-	LMode type;
-	std::atomic<uint16_t> prev;
+	std::atomic<LMode> type;
+	std::atomic<uint32_t> prev;
 	std::atomic<bool> granted;
 	// -----
 	// interact with successor
@@ -55,8 +55,8 @@ public:
 class MQLock {
 public:
 	std::atomic<unsigned int> nreaders;
-	std::atomic<uint16_t> tail;
-	std::atomic<uint16_t> next_writer;
+	std::atomic<uint32_t> tail;
+	std::atomic<uint32_t> next_writer;
 
 	MQLock() {
 		nreaders = 0;
