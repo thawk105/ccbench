@@ -11,45 +11,67 @@
 // 5 us.
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
-enum class LMode : uint8_t {
-	none,
-	reader, 
-	writer
+enum class SentinelValue : uint32_t {
+	NoSuccessor = 0,
+	Acquired,	// 1
+	SuccessorLeaving, // 2
 };
 
-enum class LStatus : uint8_t {
-	waiting,
-	granted,
-	leaving
+enum class LockMode : uint8_t {
+	None,
+	Reader, 
+	Writer
+};
+
+enum class LockStatus : uint8_t {
+	Waiting,
+	Granted,
+	Leaving
 };
 
 enum class MQL_RESULT : uint8_t {
-	acquired,
-	cancelled
+	Acquired,
+	Cancelled
 };
 
-struct MQL_suc_info {
+struct MQLMetaInfo {
 	union {
 		uint64_t obj;
 		struct {
-			uint32_t next:32; // store a thrad id. and you know where the qnode;
 			bool busy:1; // 0 == not busy, 1 == busy;
-			LMode stype:8; // 0 == none, 1 == reader, 2 == writer
-			LStatus status:8; // 0 == waiting, 1 == granted, 2 == leaving
+			LockMode stype:8; // 0 == none, 1 == reader, 2 == writer
+			LockStatus status:8; // 0 == waiting, 1 == granted, 2 == leaving
+			uint32_t next:32; // store a thrad id. and you know where the qnode;
 			};
 	};
+
+	void init(bool busy, LockMode stype, LockStatus status, uint32_t next);
+	bool atomicLoadBusy();
+	LockMode atomicLoadStype();
+	LockStatus atomicLoadStatus();
+	uint32_t atomicLoadNext();
+	void atomicStoreBusy(bool newbusy);
+	void atomicStoreStatus(LockStatus newstatus);
+	void atomicStoreNext(uint32_t newnext);
+	bool atomicCASNext(uint32_t oldnext, uint32_t newnext);
 };
 
-class MQLnode {
+class MQLNode {
 public:
 	// interact with predecessor
-	std::atomic<LMode> type;
+	std::atomic<LockMode> type;
 	std::atomic<uint32_t> prev;
 	std::atomic<bool> granted;
 	// -----
 	// interact with successor
-	MQL_suc_info suc_info;
+	MQLMetaInfo sucInfo;
 	// -----
+	//
+	void init(LockMode type, uint32_t prev, bool granted) {
+		this->type = type;
+		this->prev = prev;
+		this->granted = granted;
+	}
 };
 	
 class MQLock {
@@ -64,13 +86,14 @@ public:
 		next_writer = 0;
 	}
 
-	MQL_RESULT reader_acquire(uint16_t nodenum, bool trylock);
-	MQL_RESULT finish_reader_acquire(uint16_t nodenum);
-	MQL_RESULT cancel_reader_lock(uint16_t nodenum);
+	MQL_RESULT acquire_reader_lock(uint32_t me, bool trylock);
+	MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me, uint32_t pred, bool trylock);
+	MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool trylock);
+	MQL_RESULT finish_acquire_reader_lock(uint32_t me);
+	MQL_RESULT cancel_reader_lock(uint32_t me);
 
-	MQL_RESULT writer_acquire(uint16_t nodenum, bool trylock);
-	MQL_RESULT finish_writer_acquire(uint16_t nodenum);
-	MQL_RESULT cancel_writer_lock(uint16_t nodenum);
+	MQL_RESULT acquire_writer_lock(uint32_t me, bool trylock);
+	MQL_RESULT cancel_writer_lock(uint32_t me);
 };
 
 class RWLock {

@@ -11,50 +11,201 @@
 
 #define SPIN 2400
 
-MQL_RESULT
-MQLock::reader_acquire(uint16_t nodenum, bool trylock)
+void 
+MQLMetaInfo::init(bool busy, LockMode stype, LockStatus status, uint32_t next)
 {
-	uint64_t spinstart, spinstop;
-	MQLnode *qnode = &MQL_node_list[nodenum];
-	qnode->type = LMode::reader;
+	this->busy = busy;
+	this->stype = stype;
+	this->status = status;
+	this->next = next;
+}
+
+bool
+MQLMetaInfo::atomicLoadBusy()
+{
+	MQLMetaInfo expected;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	return expected.busy;
+}
+
+void
+MQLMetaInfo::atomicStoreBusy(bool newbusy)
+{
+	MQLMetaInfo expected, desired;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	for (;;) {
+		desired = expected;
+		desired.busy = tf;
+		if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
+}
+
+uint32_t 
+LockMode 
+MQLMetaInfo::atomicLoadStype()
+{
+	MQLMetaInfo expected;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	return expected.stype;
+}
+
+LockStatus
+MQLMetaInfo::atomicLoadStatus()
+{
+	MQLMetaInfo expected;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	return expected.status;
+}
+
+void
+MQLMetaInfo::atomicStoreStatus(LockStatus newstatus)
+{
+	MQLMetaInfo expected, desired;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	for (;;) {
+		desired = expected;
+		desired.status = newstatus;
+		if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
+}
+
+uint32_t 
+MQLMetaInfo::atomicLoadNext()
+{
+	MQLMetaInfo expected;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	return expected.next;
+}
+
+void
+MQLMetaInfo::atomicStoreNext(uint32_t newnext)
+{
+	MQLMetaInfo expected, desired;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	for (;;) {
+		desired = expected;
+		desired.next = newnext;
+		if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
+}
+
+bool
+MQLMetaInfo::atomicCASNext(uint32_t oldnext, uint32_t newnext)
+{
+	MQLMetaInfo expected, desired;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	expected.next = oldnext;
+	desired = expected;
+	desired.next = newnext;
+	return __atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+}
+
+MQL_RESULT
+MQLock::acquire_reader_lock(uint32_t me, bool trylock)
+{
+	MQLnode *qnode = &MQLNodeList[me];
+	qnode->init(LockMode::Reader, SentinelValue::NoSuccessor, false);
 	// initialize
-	qnode->suc_info.next = 0;
-	qnode->suc_info.busy = false;
-	qnode->suc_info.stype = LMode::reader;
-	qnode->suc_info.status = LStatus::waiting;
+	qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, 0);
 
-	uint16_t pretail = tail.exchange(nodenum);
-	MQLnode *p = &MQL_node_list[pretail];
-
-	if (pretail == 0) {
+	uint32_t p = tail.exchange(me);
+	if (p == SentinelValue::NoSuccessor) {
 		nreaders++;
 		qnode->granted.store(true, std::memory_order_release);
-		return finish_reader_acquire(nodenum);
+		return finish_acquire_reader_lock(me);
 	}
 
-handle_pred:
-	// Make sure the previous cancelling requester has left
-	MQL_suc_info load_suc_info;
-	load_suc_info.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
-	while (!(load_suc_info.next == 0 && load_suc_info.stype == LMode::none)) {
-		load_suc_info.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
+	MQLnode *pred = &MQLNodeList[p];
+	// haven't set pred.next.id yet, safe to dereference pred
+	if (pred->type.load(std::memory_order_acquire) == LockMode::Reader)
+		return acquire_reader_lock_check_reader_pred(me, p, trylock);
+	return acquire_reader_lock_check_writer_pred(me, p, trylock);
+}
+
+MQL_RESULT
+MQLock::finish_acquire_reader_lock(uint32_t me)
+{
+	MQLnode *qnode = &MQLNodeList[me];
+	qnode->sucInfo.atomicStoreBusy(true);
+	qnode->sucInfo.atomicStoreStatus(LockStatus::granted);
+
+	// spin until me.next is not SuccessorLeaving
+	while (qnode->sucInfo.atomicLoadNext() == SentinelValue::SuccessorLeaving);
+
+	// if the lock tail now still points to me, truly no one is there, we're done
+	if (tail.load(std::memory_order_acquire) == nodenum) {
+		// no successor if tail still points to me
+		qnode->sucInfo.atomicStoreBusy(false);
+		return MQL_RESULT::Acquired;
 	}
 
-	if (p->type.load(std::memory_order_acquire) == LMode::reader) {
-		// predecessor is reader
-		MQL_suc_info expected, desired, latest;
-		expected.next = 0;
-		expected.busy = false;
-		expected.stype = LMode::none;
-		expected.status = LStatus::waiting;
-		desired.next = nodenum;
-		desired.busy = false;
-		desired.stype = LMode::reader;
-		desired.status = LStatus::waiting;
-		__atomic_compare_exchange_n(&(p->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+	// note that the successor can't cancel now, ie me.next pointer is stable
+	while (qnode->sucInfo.atomicLoadNext() == SentinelValue::NoSuccessor);
+
+	uint32_t sucnum = qnode->sucInfo.atomicLoadNext();
+	MQLnode *suc = &MQLNodeList[sucnum];
+	if (sucnum == SentinelValue::NoSuccessor || suc->type.load(std::memory_order_acquire) == LockMode::Writer) { 
+		qnode->sucInfo.atomicStoreBusy(false);
+		return MQL_RESULT::Acquired;
+	}
+
+	// successor might be cancelling, in which case it'd xchg xchg me.next.id to NoSuccessor
+	// it's also possible that my cancelling writer successor is about to give me a new 
+	// reader successor, in this case my cancelling successor will realize that I already
+	// have the lock and try to wake up the new successor directly also by trying to change
+	// me.next.id to NoSuccessor (the new successor might spin forever if its timeout is 
+	// Never and the cancelling successor didn't wake it up).
+	//
+	// if not CAS(me.next, successor, NoSuccessor)
+	if (!qnode->sucInfo.atomicCASNext(sucnum, SentinelValue::NoSuccessor)) {
+		qnode->sucInfo.atomicStoreBusy(false);
+		return MQL_RESULT::Acquired;
+	}
+	
+	// if me.status is Granted and me.stype is NoSuccessor:
+	// successor might have seen me in leaving state, it'll wait for me in that case
+	// in this case, the successor saw me in leaving state and didn't register as a reader.
+	// ie successor was acquiring
+	while (suc->prev.load(std::memory_order_acquire) != me);
+	if (suc->prev.compare_exchange_strong(me, SentinelValue::Acquired, std::memory_order_acq_rel, std::memory_order_acquire)) {
+		nreaders++;
+		suc->granted.store(true, std::memory_order_release);
+		// make sure I know when releasing no need to wait
+		qnode->sucInfo.atomicStoreNext(SentinelValue::NoSuccessor);
+	} 
+	else if (qnode->sucInfo.atomicLoadStype() == LockMode::Reader) {
+		for (;;) {
+			while (suc->prev.load(std::memory_order_acquire) == me);
+			if (suc->prev.compare_exchange_strong(me, SentinelValue::Acquired, std::memory_order_acq_rel, std::memory_order_acquire)) {
+				nreaders++;
+				suc->granted.store(true, std::memory_order_release);
+				qnode->sucInfo.atomicStoreNext(SentinelValue::NoSuccessor);
+				break;
+			}
+		}
+	}
+
+	qnode->sucInfo.atomicStoreBusy(false);
+	return MQL_RESULT::Acquired;
+}
+
+MQL_RESULT
+MQLock::acquire_reader_lock_check_reader_pred(uint32_t me, uint32_t pred, bool trylock) 
+{
+	MQLnode *qnode = &MQLNodeList[me];
+	MQLnode *p = &MQLnodeList[pred];
+check_pred:
+	// wait for the previous canceling dude to leave
+	while (!(p->sucInfo.atomicLoadNext() == SentinelValue::NoSuccessor && p->sucInfo.atomicLoadStype() == LockMode::none));
+
+	MQLMetaInfo expected, desired;
+	expected.init(false, LockMode::none, LockStatus::waiting, SentinelValue::NoSuccessor);
+	desired.init(false, LockMode::reader, LockStatus::waiting, me);
+	__atomic_compare_exchange_n(&(p->sucInfo.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
 		
-		latest.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
-		if (latest.busy == false && latest.stype == LMode::none && latest.status == LStatus::waiting) {
+	if (p->sucInfo.atomicLoadBusy() == false 
+				&& p->sucInfo.atomicLoadStype() == LockMode::none 
+				&& p->sucInfo.atomicLoadStatus() == LockStatus::waiting) {
 			// if me.granted becomes True before timing out
 			// 		return finish_reader_acquire
 			// return cancel_reader_lock
@@ -74,14 +225,8 @@ handle_pred:
 
 		}
 
-		if (latest.status == LStatus::leaving) {
-			MQL_suc_info expected, desired;
-			expected.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
-			for (;;) {
-				desired = expected;
-				desired.next = nodenum;
-				if (__atomic_compare_exchange_n(&(p->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-			}
+		if (p->sucInfo.atomicLoadStatus() == LockStatus::leaving) {
+			p->sucInfo.atomicStoreNext(nodenum);
 
 			qnode->prev.store(pretail, std::memory_order_acquire);
 			while (qnode->prev.load(std::memory_order_acquire) != pretail);
@@ -93,12 +238,12 @@ handle_pred:
 			goto handle_pred; // p must point to a valid predecessor;
 		}
 		else {
-			MQL_suc_info expected, desired;
-			expected.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
+			MQLMetaInfo expected, desired;
+			expected.obj = __atomic_load_n(&(p->sucInfo.obj), __ATOMIC_ACQUIRE);
 			for (;;) {
 				desired = expected;
 				desired.next = 3; // index 3 mean NoSuccessor
-				if (__atomic_compare_exchange_n(&(p->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+				if (__atomic_compare_exchange_n(&(p->sucInfo.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
 			}
 			nreaders++;
 			qnode->granted.store(true, std::memory_order_release);
@@ -106,13 +251,13 @@ handle_pred:
 		}
 	}
 	else {	// predecessor is a writer, spin-wait with timeout
-			MQL_suc_info expected, desired;
-			expected.obj = __atomic_load_n(&(p->suc_info.obj), __ATOMIC_ACQUIRE);
+			MQLMetaInfo expected, desired;
+			expected.obj = __atomic_load_n(&(p->sucInfo.obj), __ATOMIC_ACQUIRE);
 			for (;;) {
 				desired = expected;
-				desired.stype = LMode::reader;
+				desired.stype = LockMode::reader;
 				desired.next = nodenum;
-				if (__atomic_compare_exchange_n(&(p->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+				if (__atomic_compare_exchange_n(&(p->sucInfo.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
 			}
 
 			if (qnode->prev.exchange(pretail) == 1) { // index 1 mean Acquired
@@ -138,102 +283,69 @@ handle_pred:
 }
 
 MQL_RESULT
-MQLock::finish_reader_acquire(uint16_t nodenum)
+MQLock::cancel_reader_lock(uint32_t me)
 {
-	MQLnode *me = &MQL_node_list[nodenum];
-	MQL_suc_info expected, desired;
-	expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-	for (;;) {
-		desired = expected;
-		desired.busy = true;
-		desired.status = LStatus::granted;
-		if (__atomic_compare_exchange_n(&(me->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-	}
-
-	// spin until me.next is not SuccessorLeaving
-	expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-	while (expected.next == 2) { // 2 mean SuccessorLeaving
-		expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-	}
-
-	// if the lock tail now still points to me, truly no one is there, we're done
-	if (tail.load(std::memory_order_acquire) == nodenum) {
-		// no successor if tail still points to me
-		expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-		for (;;) {
-			desired = expected;
-			desired.busy = false;
-			if (__atomic_compare_exchange_n(&(me->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-		}
-		return MQL_RESULT::acquired;
-	}
-
-	// note that the successor can't cancel now, ie me.next pointer is stable
-	expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-	// spin until me.next is not NULL
-	while (expected.next == 0) { // 0 mean null
-		expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-	}
-
-	uint32_t sucnum = expected.next;
-	MQLnode *suc = &MQL_node_list[sucnum];
-	expected.obj = __atomic_load_n(&(suc->suc_info.obj), __ATOMIC_ACQUIRE);
-	if (expected.next == 3 || suc->type.load(std::memory_order_acquire) == LMode::writer) { // 3 mean NoSuccessor
-		expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-		for (;;) {
-			desired = expected;
-			desired.busy = false;
-			if (__atomic_compare_exchange_n(&(me->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-		}
-		return MQL_RESULT::acquired;
-	}
-
-	// successor might be cancelling, in which case it'd xchg xchg me.next.id to NoSuccessor
-	// it's also possible that my cancelling writer successor is about to give me a new 
-	// reader successor, in this case my cancelling successor will realize that I already
-	// have the lock and try to wake up the new successor directly also by trying to change
-	// me.next.id to NoSuccessor (the new successor might spin forever if its timeout is 
-	// Never and the cancelling successor didn't wake it up).
-	//
-	// if not CAS(me.next, successor, NoSuccessor)
-	desired = expected;
-	desired.next = 3;
-	if (!__atomic_compare_exchange_n(&(me->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
-		expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-		for (;;) {
-			desired = expected;
-			desired.busy = false;
-			if (__atomic_compare_exchange_n(&(me->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-		}
-		return MQL_RESULT::acquired;
-	}
-
-	// if me.status is Granted and me.stype is None:
-	// successor might have seen me in leaving state, it'll wait for me in that case
-	// in this case, the successor sawa me in leaving state and didn't register as a reader.
-	// ie successor was acquiring
-	while (suc->prev.load(std::memory_order_acquire) != nodenum);
-	if (suc->prev.compare_exchange_strong(nodenum, 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
-		nreaders++;
-		suc->granted.store(true, std::memory_order_release);
-		// make sure I know when releasing no need to wait
-		expected.obj = __atomic_load_n(&(me->suc_info.obj), __ATOMIC_ACQUIRE);
-		for (;;) {
-			desired = expected;
-			desired.next = 3;
-			if (__atomic_compare_exchange_n(&(me->suc_info.obj), &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-		}
-		
-	
-
-
-	return MQL_RESULT::acquired;
+	return MQL_RESULT::Canceled;
 }
 
 MQL_RESULT
-MQLock::cancel_reader_lock(uint16_t nodenum)
+MQLock::cancel_reader_lock_with_writer_pred(uint32_t me, uint32_t pred)
 {
-	return MQL_RESULT::cancelled;
+	return MQL_RESULT::Canceled;
+}
+
+MQL_RESULT
+MQLock::cancel_reader_lock_with_reader_pred(uint32_t me, uint32_t pred)
+{
+	return MQL_RESULT::Canceled;
+}
+
+MQL_RESULT
+MQLock::cancel_reader_lock_relink(uint32_t pred, uint32_t me)
+{
+	return MQL_RESULT::Canceled;
+}
+
+MQL_RESULT
+MQLock::acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool trylock) 
+{
+	return MQL_RESULT::Acquired;
+}
+
+MQL_RESULT
+MQLock::release_reader_lock(uint32_t me)
+{
+	return MQL_RESULT::Acquired;
+}
+
+MQL_RESULT
+MQLock::finish_release_reader_lock()
+{
+	return MQL_RESULT::Acquired;
+}
+
+MQL_RESULT
+MQLock::acquire_writer_lock(uint32_t me, bool trylock)
+{
+	return MQL_RESULT::Acquired;
+}
+
+MQL_RESULT
+MQLock::release_writer_lock(uint32_t me)
+{
+	return MQL_RESULT::Acquired;
+}
+
+MQL_RESULT
+MQLock::cancel_writer_lock(uint32_t me)
+{
+	return MQL_RESULT::Canceled;
+}
+
+MQL_RESULT
+MQLock::cancel_writer_lock_no_pred(uint32_t me)
+{
+	return MQL_RESULT::Canceled;
 }
 
 void

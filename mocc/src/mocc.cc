@@ -95,7 +95,7 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		//if (posix_memalign((void**)MQL_node_list, 64, THREAD_NUM * sizeof(MQLnode)) != 0) ERR;
+		//if (posix_memalign((void**)MQLNodeList, 64, THREAD_NUM * sizeof(MQLnode)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}

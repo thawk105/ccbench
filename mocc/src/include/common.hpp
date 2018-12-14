@@ -46,11 +46,11 @@ GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
 GLOBAL Tuple *Table;
-alignas(64) GLOBAL MQLnode *MQL_node_list;
+alignas(64) GLOBAL MQLnode *MQLNodeList;
 // an index number corresponds to the thread number.
 // the element mean MQLnode whihch is owned by the thread which has the thread number corresponding to index number.
 // for MQL sentinel value
-// index 0 mean null.
+// index 0 mean None.
 // index 1 mean Acquired.
 // index 2 mean SuccessorLeaving.
 // index 3 mean NoSuccessor.
