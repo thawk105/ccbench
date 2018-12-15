@@ -103,7 +103,7 @@ MQLMetaInfo::atomicCASNext(uint32_t oldnext, uint32_t newnext)
 MQL_RESULT
 MQLock::acquire_reader_lock(uint32_t me, bool trylock)
 {
-	MQLnode *qnode = &MQLNodeList[me];
+	MQLNode *qnode = &MQLNodeList[me];
 	qnode->init(LockMode::Reader, SentinelValue::NoSuccessor, false);
 	// initialize
 	qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, 0);
@@ -115,7 +115,7 @@ MQLock::acquire_reader_lock(uint32_t me, bool trylock)
 		return finish_acquire_reader_lock(me);
 	}
 
-	MQLnode *pred = &MQLNodeList[p];
+	MQLNode *pred = &MQLNodeList[p];
 	// haven't set pred.next.id yet, safe to dereference pred
 	if (pred->type.load(std::memory_order_acquire) == LockMode::Reader)
 		return acquire_reader_lock_check_reader_pred(me, p, trylock);
@@ -125,7 +125,7 @@ MQLock::acquire_reader_lock(uint32_t me, bool trylock)
 MQL_RESULT
 MQLock::finish_acquire_reader_lock(uint32_t me)
 {
-	MQLnode *qnode = &MQLNodeList[me];
+	MQLNode *qnode = &MQLNodeList[me];
 	qnode->sucInfo.atomicStoreBusy(true);
 	qnode->sucInfo.atomicStoreStatus(LockStatus::granted);
 
@@ -143,7 +143,7 @@ MQLock::finish_acquire_reader_lock(uint32_t me)
 	while (qnode->sucInfo.atomicLoadNext() == SentinelValue::NoSuccessor);
 
 	uint32_t sucnum = qnode->sucInfo.atomicLoadNext();
-	MQLnode *suc = &MQLNodeList[sucnum];
+	MQLNode *suc = &MQLNodeList[sucnum];
 	if (sucnum == SentinelValue::NoSuccessor || suc->type.load(std::memory_order_acquire) == LockMode::Writer) { 
 		qnode->sucInfo.atomicStoreBusy(false);
 		return MQL_RESULT::Acquired;
@@ -192,8 +192,10 @@ MQLock::finish_acquire_reader_lock(uint32_t me)
 MQL_RESULT
 MQLock::acquire_reader_lock_check_reader_pred(uint32_t me, uint32_t pred, bool trylock) 
 {
-	MQLnode *qnode = &MQLNodeList[me];
-	MQLnode *p = &MQLnodeList[pred];
+	uint64_t spinstart, spinstop;
+	uint32_t pretail;
+	MQLNode *qnode = &MQLNodeList[me];
+	MQLNode *p = &MQLNodeList[pred];
 check_pred:
 	// wait for the previous canceling dude to leave
 	while (!(p->sucInfo.atomicLoadNext() == SentinelValue::NoSuccessor && p->sucInfo.atomicLoadStype() == LockMode::none));
@@ -206,6 +208,8 @@ check_pred:
 	if (p->sucInfo.atomicLoadBusy() == false 
 				&& p->sucInfo.atomicLoadStype() == LockMode::none 
 				&& p->sucInfo.atomicLoadStatus() == LockStatus::waiting) {
+		// link_pred(pred, me)
+		p->sucInfo.atomicStoreNext(me);
 			// if me.granted becomes True before timing out
 			// 		return finish_reader_acquire
 			// return cancel_reader_lock
@@ -214,30 +218,45 @@ check_pred:
 				while(qnode->granted.load(std::memory_order_acquire) != true) {
 					spinstop = rdtsc();
 					if (chkClkSpan(spinstart, spinstop, LOCK_TIMEOUT_US * CLOCK_PER_US))
-						return cancel_reader_lock(nodenum);
+						return cancel_reader_lock(me);
 				}
-				return finish_reader_acquire(nodenum);
+				return finish_acquire_reader_lock(me);
 			}
 			else {
 				while (qnode->granted.load(std::memory_order_acquire) != true);
-				return finish_reader_acquire(nodenum);
+				return finish_acquire_reader_lock(me);
 			}
 
 		}
 
-		if (p->sucInfo.atomicLoadStatus() == LockStatus::leaving) {
-			p->sucInfo.atomicStoreNext(nodenum);
+	// Failed cases
+	if (p->sucInfo.atomicLoadStatus() == LockStatus::leaving) {
+		// don't set pred.next.successor_class here
+		p->sucInfo.atomicStoreNext(me);
 
-			qnode->prev.store(pretail, std::memory_order_acquire);
-			while (qnode->prev.load(std::memory_order_acquire) != pretail);
-			pretail = qnode->prev.exchange(0);
-			if (pretail == 1) {
+		// if pred did cancel, it will give me a new pred;
+		// if it got the lock it will wake me up
+			qnode->prev.store(pred, std::memory_order_release);
+			while (qnode->prev.load(std::memory_order_acquire) != pred);
+			// consume it and retry
+			pretail = qnode->prev.exchange(SentinelValue::None);
+			if (pretail == SentinelValue::Acquired) {
 				while (qnode->granted.load(std::memory_order_acquire) != true);
-				return finish_reader_acquire(nodenum);
+				return finish_acquire_reader_lock(me);
 			}
-			goto handle_pred; // p must point to a valid predecessor;
+			p = &MQLNodeList[pretail];
+			if (p->type.load(std::memory_order_acquire) == LockMode::Writer) 
+				return acquire_reader_lock_check_writer_pred(me, pretail, trylock);
+		goto check_pred; // p must point to a valid predecessor;
 		}
 		else {
+			// pred is granted - might be a direct grant or grant in the leaving process
+			// I didn't register, pred won't wake me up, but if pred is leaving_granted,
+			// we need to tell it not to poke me in its finish-acquire call.
+			// For direct_granted,
+			// also set its next.id to NoSuccessor so it knows that there's no need to wait and 
+			// examine successor upon release. This also covers the 
+			// case when pred.next.flags has Busy set.
 			MQLMetaInfo expected, desired;
 			expected.obj = __atomic_load_n(&(p->sucInfo.obj), __ATOMIC_ACQUIRE);
 			for (;;) {

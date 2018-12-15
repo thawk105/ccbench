@@ -12,9 +12,10 @@
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
 enum class SentinelValue : uint32_t {
-	NoSuccessor = 0,
+	None = 0,
 	Acquired,	// 1
 	SuccessorLeaving, // 2
+	NoSuccessor
 };
 
 enum class LockMode : uint8_t {
