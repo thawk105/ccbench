@@ -15,7 +15,7 @@ enum class SentinelValue : uint32_t {
 	None = 0,
 	Acquired,	// 1
 	SuccessorLeaving, // 2
-	NoSuccessor
+	//NoSuccessor
 };
 
 enum class LockMode : uint8_t {
@@ -88,13 +88,23 @@ public:
 	}
 
 	MQL_RESULT acquire_reader_lock(uint32_t me, bool trylock);
+	MQL_RESULT acquire_writer_lock(uint32_t me, bool trylock);
 	MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me, uint32_t pred, bool trylock);
 	MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool trylock);
-	MQL_RESULT finish_acquire_reader_lock(uint32_t me);
-	MQL_RESULT cancel_reader_lock(uint32_t me);
 
-	MQL_RESULT acquire_writer_lock(uint32_t me, bool trylock);
+	MQL_RESULT cancel_reader_lock(uint32_t me);
+	MQL_RESULT cancel_reader_lock_relink(uint32_t pred, uint32_t me);
+	MQL_RESULT cancel_reader_lock_with_reader_pred(uint32_t me, uint32_t pred);
+	MQL_RESULT cancel_reader_lock_with_writer_pred(uint32_t me, uint32_t pred);
 	MQL_RESULT cancel_writer_lock(uint32_t me);
+	MQL_RESULT cancel_writer_lock_no_pred(uint32_t me);
+
+	MQL_RESULT release_reader_lock(uint32_t me);
+	MQL_RESULT release_writer_lock(uint32_t me);
+
+	MQL_RESULT finish_acquire_reader_lock(uint32_t me);
+	MQL_RESULT finish_release_reader_lock(uint32_t me);
+
 };
 
 class RWLock {
