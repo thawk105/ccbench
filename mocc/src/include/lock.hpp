@@ -52,6 +52,7 @@ struct MQLMetaInfo {
 	LockStatus atomicLoadStatus();
 	uint32_t atomicLoadNext();
 	void atomicStoreBusy(bool newbusy);
+	void atomicStoreStype(LockMode newlockmode);
 	void atomicStoreStatus(LockStatus newstatus);
 	void atomicStoreNext(uint32_t newnext);
 	bool atomicCASNext(uint32_t oldnext, uint32_t newnext);
@@ -73,6 +74,9 @@ public:
 		this->prev = prev;
 		this->granted = granted;
 	}
+
+	MQLMetaInfo atomicLoadSucInfo();
+	bool atomicCASSucInfo(MQLMetaInfo expected, MQLMetaInfo desired);
 };
 	
 class MQLock {

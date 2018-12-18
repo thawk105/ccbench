@@ -11,6 +11,20 @@
 
 #define SPIN 2400
 
+MQLMetaInfo
+MQLNode::atomicLoadSucInfo()
+{
+	MQLMetaInfo load;
+ load.obj	= __atomic_load_n(&sucInfo.obj, __ATOMIC_ACQUIRE);
+ return load;
+}
+
+bool
+MQLNode::atomicCASSucInfo(MQLMetaInfo expected, MQLMetaInfo desired)
+{
+	return __atomic_compare_exchange_n(&sucInfo.obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+}
+
 void 
 MQLMetaInfo::init(bool busy, LockMode stype, LockStatus status, uint32_t next)
 {
@@ -46,6 +60,18 @@ MQLMetaInfo::atomicLoadStype()
 	MQLMetaInfo expected;
 	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
 	return expected.stype;
+}
+
+void
+MQLMetaInfo::atomicStoreStype(LockMode newlockmode)
+{
+	MQLMetaInfo expected, desired;
+	expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+	for (;;) {
+		desired = expected;
+		desired.stype = newlockmode;
+		if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
 }
 
 LockStatus
@@ -278,18 +304,86 @@ MQLock::cancel_reader_lock(uint32_t me)
 	qnode->sucInfo.atomicStoreStatus(LockStatus::Leaving);
 	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::SuccessorLeaving);
 
-	return MQL_RESULT::Cancelled;
+	if (MQLNodeList[qnode->prev.load(std::memory_order_acquire)].type.load(std::memory_order_acquire)
+			== LockMode::Reader) {
+		return cancel_reader_lock_with_reader_pred(me, pred);
+	}
+	return cancel_reader_lock_with_writer_pred(me, pred);
 }
 
 MQL_RESULT
 MQLock::cancel_reader_lock_with_writer_pred(uint32_t me, uint32_t pred)
 {
+retry:
+	MQLNode *qnode = &MQLNodeList[me];
+	MQLNode *p = &MQLNodeList[pred];
+	// wait for the cancelling pred to finish relink
+	// spin until pred.next is me and pred.stype is Reader
+	// pred is a writer, so I can go as long as it's not also leaving (cancelling or releasing)
+	for (;;) {
+		// must take a copy first
+		MQLMetaInfo eflags = p->atomicLoadSucInfo();
+		if (eflags.status == LockStatus::Leaving) {
+			// must wait for pred to give me a new pred (or wait to be waken up?)
+			// pred should give me a new pred, after its CAS trying to pass me the lock failed
+			qnode->prev.store(pred, std::memory_order_release);
+			pred = qnode->prev.exchange((uint32_t)SentinelValue::None);
+			if (pred == (uint32_t)SentinelValue::None 
+					|| pred == (uint32_t)SentinelValue::Acquired)  {
+				while (qnode->granted.load(std::memory_order_acquire) != true);
+				return finish_acquire_reader_lock(me);
+			}
+			else {
+				// make sure successor can't leave, unless it tried to leave first
+				qnode->sucInfo.atomicStoreStatus(LockStatus::Leaving);
+				while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::SuccessorLeaving);
+				// (tanabe) pred may be changed to new value at L:318, so not use p but use full path (MQLNodeList[pred]...)
+				if (MQLNodeList[pred].type.load(std::memory_order_acquire)
+						== LockMode::Reader) 
+					// (tanabe) if it gets new reader pred, it executes cancel for reader
+					return cancel_reader_lock_with_reader_pred(me, pred);
+				// (tanabe) get new pred because old pred left.
+				pred = qnode->prev.load(std::memory_order_acquire);
+				goto retry;
+			}	
+		}
+		else if (eflags.busy == true) {
+			qnode->prev.store(pred, std::memory_order_release);
+			while (qnode->granted.load(std::memory_order_acquire) != true);
+			return finish_acquire_reader_lock(me);
+		}
+		// try to tell pred I'm leaving
+		p = &MQLNodeList[pred];
+		MQLMetaInfo expected, desired;
+		expected = eflags;
+		expected.next = me;
+		desired = expected;
+		desired.next = (uint32_t)SentinelValue::SuccessorLeaving;
+		if (p->atomicCASSucInfo(expected, desired)) break;
+	}
+
+	// pred now has SuccessorLeaving on its next.id, it won't try to wake me up during release
+	// now link the new successor and pred
+	if (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None
+			&& tail.compare_exchange_strong(me, pred, std::memory_order_acq_rel, std::memory_order_acquire)) {
+		p = &MQLNodeList[pred];
+		p->sucInfo.atomicStoreStype(LockMode::None);
+		p->sucInfo.atomicStoreNext((uint32_t)SentinelValue::None);
+		return MQL_RESULT::Cancelled;
+	}
+
+	cancel_reader_lock_relink(pred, me);
 	return MQL_RESULT::Cancelled;
 }
 
 MQL_RESULT
 MQLock::cancel_reader_lock_with_reader_pred(uint32_t me, uint32_t pred)
 {
+	// now successor can't attach to me assuming I'm waiting or has already done so.
+	// CAS out of pred.next (including id and flags)
+	// wait for the canceling pred to finish the relink
+	// spin until pred.stype is Reader and (pred.next is me or pred.next is NoSuccessor
+	// only want to put SuccessorLeaving in the id field
 	return MQL_RESULT::Cancelled;
 }
 
