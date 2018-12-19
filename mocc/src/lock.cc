@@ -379,11 +379,58 @@ retry:
 MQL_RESULT
 MQLock::cancel_reader_lock_with_reader_pred(uint32_t me, uint32_t pred)
 {
+retry:
+	MQLNode *qnode = &MQLNodeList[me];
+	MQLNode *p = &MQLNodeList[pred];
 	// now successor can't attach to me assuming I'm waiting or has already done so.
 	// CAS out of pred.next (including id and flags)
 	// wait for the canceling pred to finish the relink
 	// spin until pred.stype is Reader and (pred.next is me or pred.next is NoSuccessor
 	// only want to put SuccessorLeaving in the id field
+	MQLMetaInfo expected, desired;
+	expected.init(false, LockMode::Reader, LockStatus::Waiting, me);
+	desired.init(false, LockMode::Reader, LockStatus::Waiting, (uint32_t)SentinelValue::SuccessorLeaving);
+ 	if (!p->atomicCASSucInfo(expected, desired)) {
+		// Note: we once registered after pred as a reader successor (still are), so if
+		// pred happens to get the lock, it will wake me up seeing its reader_successor set
+		if (p->sucInfo.atomicLoadStatus() == LockStatus::Granted) {
+			// pred will in its finish-acquire-reader() wake me up.
+			// pred already should alredy have me on its next.id and has reader successor class,
+			// (the CAS loop in the "acquire" block).
+			// this also covers the case when pred.next.flags has busy set.
+			qnode->prev.store(pred, std::memory_order_acquire);
+			while (qnode->granted.load(std::memory_order_acquire) != true);
+			return finish_acquire_reader_lock(me);
+		}
+		else {
+			// pred is trying to leave, wait for a new pred or being waken up
+			// pred has higher priority to leave, and it should already have me on its next.id
+			qnode->prev.store(pred, std::memory_order_acquire);
+			while (qnode->prev.load(std::memory_order_acquire) != pred);
+			// consume it and retry
+			pred = qnode->prev.exchange((uint32_t)SentinelValue::None);
+			if (pred == (uint32_t)SentinelValue::Acquired) {
+				while (qnode->granted.load(std::memory_order_acquire) != true);
+				return finish_acquire_reader_lock(me);
+			}
+			MQLNode *p = &MQLNodeList[pred];
+			if (p->type.load(std::memory_order_acquire) == LockMode::Writer)
+				return cancel_reader_lock_with_writer_pred(me, pred);
+			goto retry;
+		}
+	}
+	else {
+		// at this point pred will be waiting for a new successor if it decides
+		// to move and successor will be waiting for a new pred
+		if (qnode->sucInfo.atomicLoadStype() == LockMode::None && tail.compare_exchange_strong(me, pred, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			// newly arriving successor for this pred will wait
+			// for the SuccessorLeaving mark to go away before trying the CAS
+			p->sucInfo.atomicStoreStype(LockMode::None);
+			p->sucInfo.atomicStoreNext((uint32_t)SentinelValue::None);
+			return MQL_RESULT::Cancelled;
+		}
+		cancel_reader_lock_relink(pred, me);
+	}
 	return MQL_RESULT::Cancelled;
 }
 
@@ -439,15 +486,14 @@ void
 RWLock::r_lock()
 {
 	int expected, desired;
+	expected = counter.load(std::memory_order_acquire);
 	for (;;) {
-		expected = counter.load(std::memory_order_acquire);
-RETRY_R_LOCK:
 		if (expected != -1) desired = expected + 1;
 		else {
+			expected = counter.load(std::memory_order_acquire);
 			continue;
 		}
 		if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-		else goto RETRY_R_LOCK;
 	}
 }
 
@@ -455,14 +501,12 @@ bool
 RWLock::r_trylock()
 {
 	int expected, desired;
+	expected = counter.load(std::memory_order_acquire);
 	for (;;) {
-		expected = counter.load(std::memory_order_acquire);
-RETRY_R_TRYLOCK:
 		if (expected != -1) desired = expected + 1;
 		else return false;
 
 		if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
-		else goto RETRY_R_TRYLOCK;
 	}
 }
 
@@ -476,13 +520,13 @@ void
 RWLock::w_lock()
 {
 	int expected, desired(-1);
+	expected = counter.load(std::memory_order_acquire);
 	for (;;) {
-		expected = counter.load(std::memory_order_acquire);
-RETRY_W_LOCK:
-		if (expected != 0) continue;
-
+		if (expected != 0) {
+			expected = counter.load(std::memory_order_acquire);
+			continue;
+		}
 		if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-		else goto RETRY_W_LOCK;
 	}
 }
 
@@ -490,13 +534,10 @@ bool
 RWLock::w_trylock()
 {
 	int expected, desired(-1);
+	expected = counter.load(std::memory_order_acquire);
 	for (;;) {
-		expected = counter.load(std::memory_order_acquire);
-RETRY_W_TRYLOCK:
 		if (expected != 0) return false;
-
 		if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
-		else goto RETRY_W_TRYLOCK;
 	}
 }
 
