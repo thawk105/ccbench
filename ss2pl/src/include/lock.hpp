@@ -18,28 +18,25 @@ public:
 	// Read lock
 	void r_lock() {
 		int expected, desired;
+		expected = counter.load(memory_order_acquire);
 		for (;;) {
-			expected = counter.load(memory_order_acquire);
-RETRY_R_LOCK:
 			if (expected != -1) desired = expected + 1;
 			else {
+				expected = counter.load(memory_order_acquire);
 				continue;
 			}
 			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-			else goto RETRY_R_LOCK;
 		}
 	}
 
 	bool r_trylock() {
 		int expected, desired;
+		expected = counter.load(memory_order_acquire);
 		for (;;) {
-			expected = counter.load(memory_order_acquire);
-RETRY_R_TRYLOCK:
 			if (expected != -1) desired = expected + 1;
 			else return false;
 
 			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) return true;
-			else goto RETRY_R_TRYLOCK;
 		}
 	}
 
@@ -49,24 +46,23 @@ RETRY_R_TRYLOCK:
 
 	void w_lock() {
 		int expected, desired(-1);
+		expected = counter.load(memory_order_acquire);
 		for (;;) {
-			expected = counter.load(memory_order_acquire);
-RETRY_W_LOCK:
-			if (expected != 0) continue;
+			if (expected != 0) {
+				expected = counter.load(memory_order_acquire);
+				continue;
+			}
 			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-			else goto RETRY_W_LOCK;
 		}
 	}
 
 	bool w_trylock() {
 		int expected, desired(-1);
+		expected = counter.load(memory_order_acquire);
 		for (;;) {
-			expected = counter.load(memory_order_acquire);
-RETRY_W_TRYLOCK:
 			if (expected != 0) return false;
 
 			if (counter.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) return true;
-			else goto RETRY_W_TRYLOCK;
 		}
 	}
 
