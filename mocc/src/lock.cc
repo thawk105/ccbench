@@ -437,19 +437,82 @@ retry:
 MQL_RESULT
 MQLock::cancel_reader_lock_relink(uint32_t pred, uint32_t me)
 {
+	MQLNode *qnode = &MQLNodeList[me];
+	MQLNode *p = &MQLNodeList[pred];
+	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None);
+	for (;;) {	// preserve pred.flags
+		MQLMetaInfo expected, desired;
+		expected = p->atomicLoadSucInfo();
+		desired = expected;
+		desired.next = qnode->sucInfo.atomicLoadNext();
+		desired.stype = qnode->sucInfo.atomicLoadStype();
+		desired.busy = qnode->sucInfo.atomicLoadBusy();
+		if (p->atomicCASSucInfo(expected, desired)) break;
+	}
+
+	// I believe we should do this after setting pred.id, see the comment in cancel_writer_lock.
+	// retry untill CAS(me,next.prev, me, pred) is True
+	for (;;) {
+		MQLNode *suc = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
+		uint32_t expected = me;
+		if (suc->prev.compare_exchange_strong(expected, pred, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+	}
 	return MQL_RESULT::Cancelled;
 }
 
 MQL_RESULT
 MQLock::acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool trylock) 
 {
-	return MQL_RESULT::Acquired;
+	uint64_t spinstart, spinstop;
+	// wait for the previous canceling dude to leave spin
+	// until pred.next is NULL and pred.stype is None
+	// pred is a writer, we have to wait anyway, so register and wait with timeout
+	MQLNode *qnode = &MQLNodeList[me];
+	MQLNode *p = &MQLNodeList[pred];
+	p->sucInfo.atomicStoreStype(LockMode::Reader);
+	p->sucInfo.atomicStoreNext(me);
+	if (qnode->prev.exchange(pred) == (uint32_t)SentinelValue::Acquired) {
+		while (qnode->granted.load(std::memory_order_acquire) != true);
+		return finish_acquire_reader_lock(me);
+	}
+
+	spinstart = rdtsc();
+	while (qnode->granted.load(std::memory_order_acquire) != true) {
+		spinstop = rdtsc();
+		if (chkClkSpan(spinstart, spinstop, SPIN)) 
+			return cancel_reader_lock(me);
+	}
+	return finish_acquire_reader_lock(me);
 }
 
 MQL_RESULT
 MQLock::release_reader_lock(uint32_t me)
 {
-	return MQL_RESULT::Acquired;
+	uint32_t expected(me);
+	// make sure successor can't leave; readers, however, can still get the lock as usual
+	// by seeing me.next.flags.granted set
+	MQLNode *qnode = &MQLNodeList[me];
+	qnode->sucInfo.atomicStoreBusy(true);
+	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::SuccessorLeaving);
+
+	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None) {
+		if (tail.compare_exchange_strong(expected, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			return finish_release_reader_lock();
+		}
+	}
+
+	if (qnode->sucInfo.atomicLoadNext() != (uint32_t)SentinelValue::None
+			&& qnode->sucInfo.atomicLoadStype == LockMode::Writer) {
+		// put it in next_writer
+		next_writer = (uint32_t)qnode->sucInfo.atomicLoadNext();
+		// also tell successor it doesn't have pred any more
+		MQLNode *p = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
+		expected = me;
+		while (!p->prev.compare_exchange_strong(expected, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			expected = me;
+		}
+
+		finish_release_reader_lock();
 }
 
 MQL_RESULT
