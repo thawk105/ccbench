@@ -266,7 +266,7 @@ check_pred:
 			pretail = qnode->prev.exchange((uint32_t)SentinelValue::None);
 			if (pretail == (uint32_t)SentinelValue::Acquired) {
 				while (qnode->granted.load(std::memory_order_acquire) != true);
-				return finish_release_reader_lock(me);
+				return finish_acquire_reader_lock(me);
 			}
 			p = &MQLNodeList[pretail];
 			if (p->type.load(std::memory_order_acquire) == LockMode::Writer) 
@@ -284,7 +284,7 @@ check_pred:
 			p->sucInfo.atomicStoreNext((uint32_t)SentinelValue::None);
 			nreaders++;
 			qnode->granted.store(true, std::memory_order_release);
-			return finish_release_reader_lock(me);
+			return finish_acquire_reader_lock(me);
 		}
 }
 
@@ -485,7 +485,7 @@ MQLock::acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool t
 	return finish_acquire_reader_lock(me);
 }
 
-MQL_RESULT
+void
 MQLock::release_reader_lock(uint32_t me)
 {
 	uint32_t expected(me);
@@ -497,12 +497,12 @@ MQLock::release_reader_lock(uint32_t me)
 
 	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None) {
 		if (tail.compare_exchange_strong(expected, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire)) {
-			return finish_release_reader_lock();
+			return finish_release_reader_lock(me);
 		}
 	}
 
 	if (qnode->sucInfo.atomicLoadNext() != (uint32_t)SentinelValue::None
-			&& qnode->sucInfo.atomicLoadStype == LockMode::Writer) {
+			&& qnode->sucInfo.atomicLoadStype() == LockMode::Writer) {
 		// put it in next_writer
 		next_writer = (uint32_t)qnode->sucInfo.atomicLoadNext();
 		// also tell successor it doesn't have pred any more
@@ -511,20 +511,71 @@ MQLock::release_reader_lock(uint32_t me)
 		while (!p->prev.compare_exchange_strong(expected, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			expected = me;
 		}
+	}
 
-		finish_release_reader_lock();
+	return finish_release_reader_lock(me);
 }
 
-MQL_RESULT
+void
 MQLock::finish_release_reader_lock(uint32_t me)
 {
-	return MQL_RESULT::Acquired;
+	if (nreaders.fetch_sub(1) == 1) {
+		// I'm the last reader, must handle the next writer.
+		uint32_t nw = next_writer;
+		if (nw != (uint32_t)SentinelValue::None 
+				&& nreaders.load(std::memory_order_acquire) == 0
+				&& next_writer.compare_exchange_strong(nw, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			for (;;) {
+				uint32_t expected = (uint32_t)SentinelValue::None;
+				if (MQLNodeList[nw].prev.compare_exchange_strong(expected, (uint32_t)SentinelValue::Acquired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+			}
+			MQLNodeList[nw].granted.store(true, std::memory_order_release);
+		}
+	}
 }
 
 MQL_RESULT
 MQLock::acquire_writer_lock(uint32_t me, bool trylock)
 {
-	return MQL_RESULT::Acquired;
+	uint64_t spinstart, spinstop;
+	uint32_t pred = tail.exchange(me);
+	MQLNode *qnode = &MQLNodeList[me];
+	if (pred == (uint32_t)SentinelValue::None) {
+		next_writer.store(me, std::memory_order_release);
+		if (nreaders.load(std::memory_order_acquire) == 0
+				&& next_writer.exchange((uint32_t)SentinelValue::None) == me) {
+			MQLNodeList[me].granted.store(true, std::memory_order_release);
+			return MQL_RESULT::Acquired;
+		}
+	}
+	else {
+		MQLNode *p = &MQLNodeList[pred];
+		// spin until pred.stype is None and pred.next is NULL
+		while (!(p->sucInfo.atomicLoadStype() == (uint32_t)SentinelValue::None
+				&& p->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None));
+		// register on pred.flags as a writer successor,
+		// then fill in pred.next.id and wait
+		// must register on pred.flags first
+		p->sucInfo.atomicStoreStype(LockMode::Writer);
+		p->sucInfo.atomicStoreNext(me);
+	}
+
+	if (qnode->sucInfo.exchange(pred) == (uint32_t)SentinelValue::Acquired) {
+		while (qnode->granted.load(std::memory_order_acquire) != true);
+		qnode->sucInfo.atomicStoreStatus(LockStatus::Granted);
+		return MQL_RESULT::Acquired;
+	}
+
+	spinstart = rdtsc();
+	for (;;) {
+		spinstop = rdtsc();
+		if (chkClkSpan(spinstart, spinstop, SPIN))
+			return cancel_writer_lock(me);
+		if (qnode->granted.load(std::memory_order_acquire)) {
+			qnode->sucInfo.atomicStoreStatus(LockStatus::Granted);
+			return MQL_RESULT::Acquired;
+		}
+	}
 }
 
 MQL_RESULT
