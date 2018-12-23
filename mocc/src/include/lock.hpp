@@ -104,7 +104,7 @@ public:
 	MQL_RESULT cancel_writer_lock_no_pred(uint32_t me);
 
 	void release_reader_lock(uint32_t me);
-	MQL_RESULT release_writer_lock(uint32_t me);
+	void release_writer_lock(uint32_t me);
 
 	MQL_RESULT finish_acquire_reader_lock(uint32_t me);
 	void finish_release_reader_lock(uint32_t me);
