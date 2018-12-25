@@ -53,4 +53,3 @@ alignas(64) GLOBAL MQLNode *MQLNodeList;
 // index 0 mean None.
 // index 1 mean Acquired.
 // index 2 mean SuccessorLeaving.
-// index 3 mean NoSuccessor.

@@ -95,7 +95,7 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		//if (posix_memalign((void**)MQLNodeList, 64, THREAD_NUM * sizeof(MQLnode)) != 0) ERR;
+		if (posix_memalign((void**)MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
 	} catch (bad_alloc) {
 		ERR;
 	}
@@ -149,12 +149,18 @@ epoch_worker(void *arg)
 	cpu_set_t cpu_set;
 	uint64_t EpochTimerStart, EpochTimerStop;
 
+	//----------
+	// initial work
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
 
 	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
 		printf("thread affinity setting is error.\n");
 		exit(1);
+	}
+
+	for (unsigned int i = 0; i < THREAD_NUM + 3; ++i) {
+		MQLNodeList[i].init(LockMode::None, (uint32_t)SentinelValue::None, false);
 	}
 
 	//----------
@@ -208,7 +214,14 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	unsigned int expected, desired;
 	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
-	Transaction trans(*myid, &rnd);
+	int locknum = *myid + 2;
+	// 0 : None
+	// 1 : Acquired
+	// 2 : SuccessorLeaving
+	// 3 : th num 1
+	// 4 : th num 2
+	// ..., th num 0 is leader thread.
+	Transaction trans(*myid, &rnd, locknum);
 
 	//----------
 	pid_t pid = gettid();

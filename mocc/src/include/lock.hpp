@@ -15,7 +15,6 @@ enum class SentinelValue : uint32_t {
 	None = 0,
 	Acquired,	// 1
 	SuccessorLeaving, // 2
-	//NoSuccessor
 };
 
 enum class LockMode : uint8_t {

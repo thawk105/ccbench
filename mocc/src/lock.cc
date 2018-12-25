@@ -238,16 +238,18 @@ check_pred:
 			// 		return finish_reader_acquire
 			// return cancel_reader_lock
 			if (trylock) {
+				if (qnode->granted.load(std::memory_order_acquire))
+					return finish_acquire_reader_lock(me);
+				else
+					return cancel_reader_lock(me);
+			}
+			else {
 				spinstart = rdtsc();
 				while(qnode->granted.load(std::memory_order_acquire) != true) {
 					spinstop = rdtsc();
 					if (chkClkSpan(spinstart, spinstop, LOCK_TIMEOUT_US * CLOCK_PER_US))
 						return cancel_reader_lock(me);
 				}
-				return finish_acquire_reader_lock(me);
-			}
-			else {
-				while (qnode->granted.load(std::memory_order_acquire) != true);
 				return finish_acquire_reader_lock(me);
 			}
 
@@ -476,13 +478,21 @@ MQLock::acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool t
 		return finish_acquire_reader_lock(me);
 	}
 
-	spinstart = rdtsc();
-	while (qnode->granted.load(std::memory_order_acquire) != true) {
-		spinstop = rdtsc();
-		if (chkClkSpan(spinstart, spinstop, SPIN)) 
+	if (trylock) {
+		if (qnode->granted.load(std::memory_order_acquire))
+			return finish_acquire_reader_lock(me);
+		else
 			return cancel_reader_lock(me);
 	}
-	return finish_acquire_reader_lock(me);
+	else {
+		spinstart = rdtsc();
+		while (qnode->granted.load(std::memory_order_acquire) != true) {
+			spinstop = rdtsc();
+			if (chkClkSpan(spinstart, spinstop, SPIN)) 
+				return cancel_reader_lock(me);
+		}
+		return finish_acquire_reader_lock(me);
+	}
 }
 
 void
@@ -564,6 +574,16 @@ MQLock::acquire_writer_lock(uint32_t me, bool trylock)
 		while (qnode->granted.load(std::memory_order_acquire) != true);
 		qnode->sucInfo.atomicStoreStatus(LockStatus::Granted);
 		return MQL_RESULT::Acquired;
+	}
+
+	if (trylock) {
+		if (qnode->granted.load(std::memory_order_acquire)) {
+			qnode->sucInfo.atomicStoreStatus(LockStatus::Granted);
+			return MQL_RESULT::Acquired;
+		}
+		else {
+			return cancel_writer_lock(me);
+		}
 	}
 
 	spinstart = rdtsc();

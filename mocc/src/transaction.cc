@@ -41,6 +41,18 @@ Transaction::searchRLL(unsigned int key)
 }
 
 void
+Transaction::removeFromCLL(LockElement *re)
+{
+	int ctr = 0;
+	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
+		if ((*itr).key == re->key) break;
+		else ctr++;
+	}
+
+	CLL.erase(CLL.begin() + ctr);
+}
+
+void
 Transaction::begin()
 {
 	this->status = TransactionStatus::inFlight;
@@ -153,40 +165,88 @@ Transaction::lock(Tuple *tuple, bool mode)
 	// i set my condition of too many because the original paper of mocc didn't show
 	// the condition of too many.
 	if ((CLL.size() / 2) < vioctr && CLL.size() >= (MAX_OPE / 2)) {
+#ifdef RWLOCK
 		if (mode) {
 			if (upgrade) {
-				if (tuple->lock.upgrade()) {
+				if (tuple->rwlock.upgrade()) {
 					if (le) le->mode = true;
 					return;
-				} else {
+				} 
+				else {
 					this->status = TransactionStatus::aborted;
 					return;
 				}
-			} else if (tuple->lock.w_trylock()) {
-				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
+			} 
+			else if (tuple->rwlock.w_trylock()) {
+				CLL.push_back(LockElement(tuple->key, &(tuple->rwlock), true));
 				return;
-			} else {
+			} 
+			else {
 				this->status = TransactionStatus::aborted;
 				return;
 			}
-
-		} else {
-			if (tuple->lock.r_trylock()) {
-				CLL.push_back(LockElement(tuple->key, &(tuple->lock), false));
+		} 
+		else {
+			if (tuple->rwlock.r_trylock()) {
+				CLL.push_back(LockElement(tuple->key, &(tuple->rwlock), false));
 				return;
-			} else {
+			} 
+			else {
 				this->status = TransactionStatus::aborted;
 				return;
 			}
 		}
+#endif // RWLOCK
+#ifdef MQLOCK
+		if (mode) {
+			if (upgrade) {
+				release_reader_lock(this->locknum);
+				removeFromCLL(le);
+				if (tuple->mqlock.acquire_writer_lock(this->locknum, true) == MQL_RESULT::Acquired) {
+					CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
+					return;
+				}
+				else {
+					this->status = TransactionStatus::aborted;
+					return;
+				}
+			}
+			else if (tuple->mqlock.acquire_writer_lock(this->locknum, true) == MQL_RESULT::Acquired) {
+				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
+				return;
+			}
+			else {
+				this->status = TransactionStatus::aborted;
+				return;
+			}
+		}
+		else {
+			if (tuple->mqlock.acquire_reader_lock(this->locknum, true) == MQL_RESULT::Acquired) {
+				CLL>push_back(LockElement(tuple->key, &(tuple->lock), false));
+				return;
+			}
+			else {
+				this->status == TransactionStatus::aborted;
+				return;
+			}
+		}
+#endif // MQLOCK
 	}
 	
 	if (vioctr != 0) {
 		// not in canonical mode. restore.
 		for (auto itr = CLL.begin() + (CLL.size() - vioctr); itr != CLL.end(); ++itr) {
+#ifdef RWLOCK
 			if ((*itr).mode) (*itr).lock->w_unlock();
 			else (*itr).lock->r_unlock();
+#endif // RWLOCK
+
+#ifdef MQLOCK
+			if ((*itr).mode) Table[(*itr).key].mqlock->release_writer_lock(this->locknum);
+			else Table[(*itr).key].mqlock->release_reader_lock(this->locknum);
+#endif // MQLOCK
 		}
+			
 		//delete from CLL
 		if (CLL.size() == vioctr) CLL.clear();
 		else CLL.erase(CLL.begin() + (CLL.size() - vioctr), CLL.end());
@@ -196,16 +256,30 @@ Transaction::lock(Tuple *tuple, bool mode)
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key <= threshold) continue;
 		if ((*itr).key < tuple->key) {
+#ifdef RWLOCK
 			if ((*itr).mode) (*itr).lock->w_lock();
 			else (*itr).lock->r_lock();
+#endif // RWLOCK
+
+#ifdef MQLOCK
+			if ((*itr).mode) Table[(*itr).key].mqlock->release_writer_lock(this->locknum, false);
+			else Table[(*itr).key].mqlock->release_reader_lock(this->locknum, false);
+#endif // MQLOCK
 			CLL.push_back(*itr);
 		} else break;
 	}
 
-	if (mode) tuple->lock.w_lock();	
-	else tuple->lock.r_lock();
+#ifdef RWLOCK
+	if (mode) tuple->rwlock.w_lock();	
+	else tuple->rwlock.r_lock();
+#endif // RWLOCK
 
-	CLL.push_back(LockElement(tuple->key, &(tuple->lock), mode));
+#ifdef MQLOCK
+	if (mode) tuple->mqlock.acquire_writer_lock(this->locknum, false);
+	else tuple->mqlock.acquire_reader_lock(this->locknum, false);
+#endif // MQLOCK
+
+	CLL.push_back(LockElement(tuple->key, &(tuple->rwlock), mode));
 	return;
 }
 
@@ -216,7 +290,7 @@ Transaction::construct_RLL()
 	RLL.clear();
 	
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key].lock), true));
+		RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key].rwlock), true));
 	}
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -231,7 +305,7 @@ Transaction::construct_RLL()
 		loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
 		if (loadepot.temp >= TEMP_THRESHOLD 
 				|| (*itr).failed_verification) {
-			RLL.push_back(LockElement((*itr).key, &(tuple->lock), false));
+			RLL.push_back(LockElement((*itr).key, &(tuple->rwlock), false));
 		}
 
 		// maintain temprature p
@@ -272,8 +346,7 @@ Transaction::commit()
 	// phase 1 lock write set.
 	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		tuple = &Table[(*itr).key];
-		lock(tuple, true);
+		lock(&Table[(*itr).key], true);
 		if (this->status == TransactionStatus::aborted) {
 			return false;
 		}
@@ -296,9 +369,9 @@ Transaction::commit()
 		}
 
 		// Silo protocol
-		if (tuple->lock.counter.load(memory_order_acquire) == -1) {
+		if (tuple->rwlock.counter.load(memory_order_acquire) == -1) {
 			WriteElement *inW = searchWriteSet((*itr).key);
-			//if the lock is already acquired and the owner isn't me, abort.
+			//if the rwlock is already acquired and the owner isn't me, abort.
 			if (inW == nullptr) {
 				this->status = TransactionStatus::aborted;
 				return false;
@@ -337,8 +410,15 @@ Transaction::unlockCLL()
 	Tidword expected, desired;
 
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
+#ifdef RWLOCK
 		if ((*itr).mode) (*itr).lock->w_unlock();
 		else (*itr).lock->r_unlock();
+#endif // RWLOCK
+
+#ifdef MQLOCK
+		if ((*itr).mode) Table[(*itr).key].lock.release_writer_lock(this->locknum);
+		else Table[(*itr).key].lock.release_reader_lock(this->locknum);
+#endif
 	}
 	CLL.clear();
 }

@@ -26,8 +26,9 @@ public:
 	Tidword max_rset;
 	Tidword max_wset;
 	Xoroshiro128Plus *rnd;
+	int locknum; // corresponding to index of MQLNodeList.
 
-	Transaction(int thid, Xoroshiro128Plus *rnd) {
+	Transaction(int thid, Xoroshiro128Plus *rnd, int locknum) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
 		RLL.reserve(MAX_OPE);
@@ -38,11 +39,13 @@ public:
 		this->rnd = rnd;
 		max_rset.obj = 0;
 		max_wset.obj = 0;
+		this->locknum = locknum;
 	}
 
 	ReadElement *searchReadSet(unsigned int key);
 	WriteElement *searchWriteSet(unsigned int key);
 	LockElement *searchRLL(unsigned int key);
+	void removeFromCLL(LockElement *le);
 	void begin();
 	unsigned int read(unsigned int key);
 	void write(unsigned int key, unsigned int val);
