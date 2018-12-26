@@ -58,6 +58,7 @@ chkArg(const int argc, char *argv[])
 		cout << "MQLock " << sizeof(MQLock) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 		cout << "Xoroshiro128Plus " << sizeof(Xoroshiro128Plus) << endl;
+		cout << "pthread_mutex_t" << sizeof(pthread_mutex_t) << endl;
 
 		exit(0);
 	}
@@ -95,7 +96,9 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
+#ifdef MQLOCK
+		if (posix_memalign((void**)&MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
+#endif // MQLOCK
 	} catch (bad_alloc) {
 		ERR;
 	}
@@ -105,6 +108,12 @@ chkArg(const int argc, char *argv[])
 		AbortCounts[i] = 0;
 		ThLocalEpoch[i].obj = 0;
 	}
+
+#ifdef MQLOCK
+	for (unsigned int i = 0; i < THREAD_NUM + 3; ++i) {
+		MQLNodeList[i].init(LockMode::None, (uint32_t)SentinelValue::None, false);
+	}
+#endif // MQLOCK
 }
 
 static void 
@@ -157,10 +166,6 @@ epoch_worker(void *arg)
 	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
 		printf("thread affinity setting is error.\n");
 		exit(1);
-	}
-
-	for (unsigned int i = 0; i < THREAD_NUM + 3; ++i) {
-		MQLNodeList[i].init(LockMode::None, (uint32_t)SentinelValue::None, false);
 	}
 
 	//----------

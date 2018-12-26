@@ -17,8 +17,14 @@ class Transaction {
 public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
-	vector<LockElement> RLL;
-	vector<LockElement> CLL;
+#ifdef RWLOCK
+	vector<LockElement<RWLock>> RLL;
+	vector<LockElement<RWLock>> CLL;
+#endif // RWLOCK
+#ifdef MQLOCK
+	vector<LockElement<MQLock>> RLL;
+	vector<LockElement<MQLock>> CLL;
+#endif // MQLOCK
 	TransactionStatus status;
 
 	int thid;
@@ -44,8 +50,8 @@ public:
 
 	ReadElement *searchReadSet(unsigned int key);
 	WriteElement *searchWriteSet(unsigned int key);
-	LockElement *searchRLL(unsigned int key);
-	void removeFromCLL(LockElement *le);
+	template <typename T> T *searchRLL(unsigned int key);
+	void removeFromCLL(unsigned int key);
 	void begin();
 	unsigned int read(unsigned int key);
 	void write(unsigned int key, unsigned int val);

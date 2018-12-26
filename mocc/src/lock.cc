@@ -128,6 +128,7 @@ MQLMetaInfo::atomicCASNext(uint32_t oldnext, uint32_t newnext)
 MQL_RESULT
 MQLock::acquire_reader_lock(uint32_t me, bool trylock)
 {
+	NNN;
 	MQLNode *qnode = &MQLNodeList[me];
 	// initialize
 	qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
@@ -547,14 +548,13 @@ MQLock::finish_release_reader_lock(uint32_t me)
 MQL_RESULT
 MQLock::acquire_writer_lock(uint32_t me, bool trylock)
 {
-	uint64_t spinstart, spinstop;
 	uint32_t pred = tail.exchange(me);
 	MQLNode *qnode = &MQLNodeList[me];
 	if (pred == (uint32_t)SentinelValue::None) {
 		next_writer.store(me, std::memory_order_release);
 		if (nreaders.load(std::memory_order_acquire) == 0
 				&& next_writer.exchange((uint32_t)SentinelValue::None) == me) {
-			MQLNodeList[me].granted.store(true, std::memory_order_release);
+			qnode->granted.store(true, std::memory_order_release);
 			return MQL_RESULT::Acquired;
 		}
 	}
@@ -586,6 +586,7 @@ MQLock::acquire_writer_lock(uint32_t me, bool trylock)
 		}
 	}
 
+	/*
 	spinstart = rdtsc();
 	for (;;) {
 		spinstop = rdtsc();
@@ -595,7 +596,13 @@ MQLock::acquire_writer_lock(uint32_t me, bool trylock)
 			qnode->sucInfo.atomicStoreStatus(LockStatus::Granted);
 			return MQL_RESULT::Acquired;
 		}
-	}
+	}*/
+
+	// tanabe. lock の獲得順序を total order で維持し，それを破る時は trylock を使うコンセプトにも関わらず
+	// cancelation をするのは矛盾している．よって無限待機．
+	while (qnode->granted.load(std::memory_order_acquire) != true);
+	qnode->sucInfo.atomicStoreStatus(LockStatus::Granted);
+	return MQL_RESULT::Acquired;
 }
 
 void
@@ -607,20 +614,32 @@ MQLock::release_writer_lock(uint32_t me)
 	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::SuccessorLeaving);
 
 	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None) {
-		uint32_t expected(me), desired((uint32_t)SentinelValue::None);
-		if (tail.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return;
+		uint32_t expected, desired;
+		expected = me;
+		desired = qnode->prev.load(std::memory_order_acquire);
+		if (tail.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			MQLNodeList[qnode->sucInfo.atomicLoadNext()].prev.store((uint32_t)SentinelValue::None, std::memory_order_release);
+			qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false);
+			qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
+			return;
+		}
 	}
 
+	MQLNode *suc;
 	for (;;) {
 		uint32_t expected(me), desired((uint32_t)SentinelValue::Acquired);
-		MQLNode *suc = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
+		suc = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
 		if (suc->prev.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
 	}
 
-	MQLNode *suc = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
 	if (suc->type.load(std::memory_order_acquire) == LockMode::Reader)
 		nreaders++;
 	suc->granted.store(true, std::memory_order_release);
+
+	MQLNodeList[qnode->sucInfo.atomicLoadNext()].prev.store((uint32_t)SentinelValue::None, std::memory_order_release);
+	qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false);
+	qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
+	return;
 }
 
 MQL_RESULT
@@ -707,6 +726,11 @@ start_cancel:
 				&& tail.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			p->sucInfo.atomicStoreStype(LockMode::None);
 			p->sucInfo.atomicStoreNext((uint32_t)SentinelValue::None);
+
+			// initialize
+			MQLNodeList[qnode->sucInfo.atomicLoadNext()].prev.store((uint32_t)SentinelValue::None, std::memory_order_release);
+			qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false);
+			qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
 			return MQL_RESULT::Cancelled;
 		}
 	}
@@ -743,9 +767,9 @@ retry:
 	// after setting pred.next.id: if we need to wake up successor, we need to also set pred.next.id
 	// to NoSuccessor, which makes it not safe for succ to spin on pred.next.id to wait for me
 	// finishing this relink (pred might disappear any time because its next.id is NoSuccessor).
+	MQLNode *suc = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
 	if (wakeup) {
 		nreaders++;
-		MQLNode *suc = &MQLNodeList[qnode->sucInfo.atomicLoadNext()];
 		suc->granted.store(true, std::memory_order_release);
 		for (;;) {
 			uint32_t localme = me;
@@ -755,10 +779,13 @@ retry:
 	else {
 		for (;;) {
 			uint32_t localme = me;
-			if (qnode->sucInfo.atomicCASNext(localme, pred)) break;
+			if (suc->prev.compare_exchange_strong(localme, pred, std::memory_order_acq_rel, std::memory_order_acquire)) break;
 		}
 	}
 	
+	MQLNodeList[qnode->sucInfo.atomicLoadNext()].prev.store((uint32_t)SentinelValue::None, std::memory_order_release);
+	qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false);
+	qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
 	return MQL_RESULT::Cancelled;
 }
 
@@ -780,8 +807,12 @@ MQLock::cancel_writer_lock_no_pred(uint32_t me)
 	// so lock.next_writer is null now, try to fix the lock tail
 	localme = me;
 	if (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None
-			&& tail.compare_exchange_strong(localme, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire))
+			&& tail.compare_exchange_strong(localme, (uint32_t)SentinelValue::None, std::memory_order_acq_rel, std::memory_order_acquire)) {
+		MQLNodeList[qnode->sucInfo.atomicLoadNext()].prev.store((uint32_t)SentinelValue::None, std::memory_order_release);
+		qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false);
+		qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
 		return MQL_RESULT::Cancelled;
+	}
 
 	while (qnode->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None);
 	uint32_t localnext = qnode->sucInfo.atomicLoadNext();
@@ -818,6 +849,9 @@ MQLock::cancel_writer_lock_no_pred(uint32_t me)
 		suc->granted.store(true, std::memory_order_release);
 	}
 
+	MQLNodeList[qnode->sucInfo.atomicLoadNext()].prev.store((uint32_t)SentinelValue::None, std::memory_order_release);
+	qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false);
+	qnode->sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
 	return MQL_RESULT::Cancelled;
 }
 

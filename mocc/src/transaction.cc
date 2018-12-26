@@ -29,10 +29,10 @@ Transaction::searchWriteSet(unsigned int key)
 	return nullptr;
 }
 
-LockElement *
+template <typename T> T*
 Transaction::searchRLL(unsigned int key)
 {
-	//will do:  binary search
+	// will do : binary search
 	for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
 		if ((*itr).key == key) return &(*itr);
 	}
@@ -41,11 +41,11 @@ Transaction::searchRLL(unsigned int key)
 }
 
 void
-Transaction::removeFromCLL(LockElement *re)
+Transaction::removeFromCLL(unsigned int key)
 {
 	int ctr = 0;
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
-		if ((*itr).key == re->key) break;
+		if ((*itr).key == key) break;
 		else ctr++;
 	}
 
@@ -77,7 +77,13 @@ Transaction::read(unsigned int key)
 	if (inR) return inR->val;
 
 	// tuple doesn't exist in read/write set.
-	LockElement *inRLL = searchRLL(key);
+#ifdef RWLOCK
+	LockElement<RWLock> *inRLL = searchRLL<LockElement<RWLock>>(key);
+#endif // RWLOCK
+#ifdef MQLOCK
+	LockElement<MQLock> *inRLL = searchRLL<LockElement<MQLock>>(key);
+#endif // MQLOCK
+
 	Epotemp loadepot;
 	loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
 
@@ -119,7 +125,13 @@ Transaction::write(unsigned int key, unsigned int val)
 
 	Tuple *tuple = &Table[key];
 
-	LockElement *inRLL = searchRLL(key);
+#ifdef RWLOCK
+	LockElement<RWLock> *inRLL = searchRLL<LockElement<RWLock>>(key);
+#endif // RWLOCK
+#ifdef MQLOCK
+	LockElement<MQLock> *inRLL = searchRLL<LockElement<MQLock>>(key);
+#endif // MQLOCK
+
 	Epotemp loadepot;
 	loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
 
@@ -138,14 +150,24 @@ Transaction::lock(Tuple *tuple, bool mode)
 	unsigned int vioctr = 0;
 	unsigned int threshold;
 	bool upgrade = false;
-	LockElement *le = nullptr;
+
+#ifdef RWLOCK
+	LockElement<RWLock> *le = nullptr;
+#endif // RWLOCK
+	// RWLOCK : アップグレードするとき，CLL ループで該当する
+	// エレメントを記憶しておき，そのエレメントを更新するため．
+	// MQLOCK : アップグレード機能が無いので，不要．
+	// reader ロックを解放して，CLL から除去して，writer ロックをかける．
+
 	for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 		// lock already exists in CLL 
 		// 		&& its lock mode is equal to needed mode or it is stronger than needed mode.
 		if ((*itr).key == tuple->key) {
 		  if (mode == (*itr).mode || mode < (*itr).mode) return;
 			else {
+#ifdef RWLOCK
 				le = &(*itr);
+#endif // RWLOCK
 				upgrade = true;
 			}
 		}
@@ -169,7 +191,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 		if (mode) {
 			if (upgrade) {
 				if (tuple->rwlock.upgrade()) {
-					if (le) le->mode = true;
+					le->mode = true;
 					return;
 				} 
 				else {
@@ -178,7 +200,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 				}
 			} 
 			else if (tuple->rwlock.w_trylock()) {
-				CLL.push_back(LockElement(tuple->key, &(tuple->rwlock), true));
+				CLL.push_back(LockElement<RWLock>(tuple->key, &(tuple->rwlock), true));
 				return;
 			} 
 			else {
@@ -188,7 +210,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 		} 
 		else {
 			if (tuple->rwlock.r_trylock()) {
-				CLL.push_back(LockElement(tuple->key, &(tuple->rwlock), false));
+				CLL.push_back(LockElement<RWLock>(tuple->key, &(tuple->rwlock), false));
 				return;
 			} 
 			else {
@@ -200,10 +222,10 @@ Transaction::lock(Tuple *tuple, bool mode)
 #ifdef MQLOCK
 		if (mode) {
 			if (upgrade) {
-				release_reader_lock(this->locknum);
-				removeFromCLL(le);
+				tuple->mqlock.release_reader_lock(this->locknum);
+				removeFromCLL(tuple->key);
 				if (tuple->mqlock.acquire_writer_lock(this->locknum, true) == MQL_RESULT::Acquired) {
-					CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
+					CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), true));
 					return;
 				}
 				else {
@@ -212,7 +234,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 				}
 			}
 			else if (tuple->mqlock.acquire_writer_lock(this->locknum, true) == MQL_RESULT::Acquired) {
-				CLL.push_back(LockElement(tuple->key, &(tuple->lock), true));
+				CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), true));
 				return;
 			}
 			else {
@@ -222,11 +244,11 @@ Transaction::lock(Tuple *tuple, bool mode)
 		}
 		else {
 			if (tuple->mqlock.acquire_reader_lock(this->locknum, true) == MQL_RESULT::Acquired) {
-				CLL>push_back(LockElement(tuple->key, &(tuple->lock), false));
+				CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), false));
 				return;
 			}
 			else {
-				this->status == TransactionStatus::aborted;
+				this->status = TransactionStatus::aborted;
 				return;
 			}
 		}
@@ -242,8 +264,8 @@ Transaction::lock(Tuple *tuple, bool mode)
 #endif // RWLOCK
 
 #ifdef MQLOCK
-			if ((*itr).mode) Table[(*itr).key].mqlock->release_writer_lock(this->locknum);
-			else Table[(*itr).key].mqlock->release_reader_lock(this->locknum);
+			if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum);
+			else (*itr).lock->release_reader_lock(this->locknum);
 #endif // MQLOCK
 		}
 			
@@ -262,8 +284,8 @@ Transaction::lock(Tuple *tuple, bool mode)
 #endif // RWLOCK
 
 #ifdef MQLOCK
-			if ((*itr).mode) Table[(*itr).key].mqlock->release_writer_lock(this->locknum, false);
-			else Table[(*itr).key].mqlock->release_reader_lock(this->locknum, false);
+			if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum);
+			else (*itr).lock->release_reader_lock(this->locknum);
 #endif // MQLOCK
 			CLL.push_back(*itr);
 		} else break;
@@ -272,15 +294,16 @@ Transaction::lock(Tuple *tuple, bool mode)
 #ifdef RWLOCK
 	if (mode) tuple->rwlock.w_lock();	
 	else tuple->rwlock.r_lock();
+	CLL.push_back(LockElement<RWLock>(tuple->key, &(tuple->rwlock), mode));
+	return;
 #endif // RWLOCK
 
 #ifdef MQLOCK
 	if (mode) tuple->mqlock.acquire_writer_lock(this->locknum, false);
 	else tuple->mqlock.acquire_reader_lock(this->locknum, false);
-#endif // MQLOCK
-
-	CLL.push_back(LockElement(tuple->key, &(tuple->rwlock), mode));
+	CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), mode));
 	return;
+#endif // MQLOCK
 }
 
 void
@@ -290,12 +313,22 @@ Transaction::construct_RLL()
 	RLL.clear();
 	
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		RLL.push_back(LockElement((*itr).key, &(Table[(*itr).key].rwlock), true));
+#ifdef RWLOCK
+		RLL.push_back(LockElement<RWLock>((*itr).key, &(Table[(*itr).key].rwlock), true));
+#endif // RWLOCK
+#ifdef MQLOCK
+		RLL.push_back(LockElement<MQLock>((*itr).key, &(Table[(*itr).key].mqlock), true));
+#endif // MQLOCK
 	}
 
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		// check whether itr exists in RLL
-		if (searchRLL((*itr).key) != nullptr) continue;
+#ifdef RWLOCK
+		if (searchRLL<LockElement<RWLock>>((*itr).key) != nullptr) continue;
+#endif // RWLOCK
+#ifdef MQLOCK
+		if (searchRLL<LockElement<MQLock>>((*itr).key) != nullptr) continue;
+#endif // MQLOCK
 
 		// r not in RLL
 		// if temprature >= threshold
@@ -305,7 +338,12 @@ Transaction::construct_RLL()
 		loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
 		if (loadepot.temp >= TEMP_THRESHOLD 
 				|| (*itr).failed_verification) {
-			RLL.push_back(LockElement((*itr).key, &(tuple->rwlock), false));
+#ifdef RWLOCK
+			RLL.push_back(LockElement<RWLock>((*itr).key, &(tuple->rwlock), false));
+#endif // RWLOCK
+#ifdef MQLOCK
+			RLL.push_back(LockElement<MQLock>((*itr).key, &(tuple->mqlock), false));
+#endif // MQLOCK
 		}
 
 		// maintain temprature p
@@ -346,7 +384,8 @@ Transaction::commit()
 	// phase 1 lock write set.
 	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		lock(&Table[(*itr).key], true);
+		tuple = &Table[(*itr).key];
+		lock(tuple, true);
 		if (this->status == TransactionStatus::aborted) {
 			return false;
 		}
@@ -416,8 +455,8 @@ Transaction::unlockCLL()
 #endif // RWLOCK
 
 #ifdef MQLOCK
-		if ((*itr).mode) Table[(*itr).key].lock.release_writer_lock(this->locknum);
-		else Table[(*itr).key].lock.release_reader_lock(this->locknum);
+		if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum);
+		else (*itr).lock->release_reader_lock(this->locknum);
 #endif
 	}
 	CLL.clear();

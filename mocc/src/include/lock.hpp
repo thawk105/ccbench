@@ -128,13 +128,14 @@ public:
 };
 
 // for lock list
+template <typename T>
 class LockElement {
 public:
 	unsigned int key;	// record を識別する．
-	RWLock *lock;
+	T *lock;
 	bool mode;	// 0 read-mode, 1 write-mode
 
-	LockElement(unsigned int key, RWLock *lock, bool mode) {
+	LockElement(unsigned int key, T *lock, bool mode) {
 		this->key = key;
 		this->lock = lock;
 		this->mode = mode;

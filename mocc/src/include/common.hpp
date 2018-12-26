@@ -46,6 +46,11 @@ GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
 GLOBAL Tuple *Table;
+
+// 下記，ifdef で外すと lock.cc のコードから
+// 参照出来なくてエラーが起きる．
+// lock.hpp, lock.cc の全てを ifdef で分岐させるのは大変な労力なので，
+// 行わず，これは RWLOCK モードでも宣言だけしておく．
 alignas(64) GLOBAL MQLNode *MQLNodeList;
 // an index number corresponds to the thread number.
 // the element mean MQLnode whihch is owned by the thread which has the thread number corresponding to index number.
