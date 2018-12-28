@@ -222,9 +222,9 @@ Transaction::lock(Tuple *tuple, bool mode)
 #ifdef MQLOCK
 		if (mode) {
 			if (upgrade) {
-				tuple->mqlock.release_reader_lock(this->locknum);
+				tuple->mqlock.release_reader_lock(this->locknum, tuple->key);
 				removeFromCLL(tuple->key);
-				if (tuple->mqlock.acquire_writer_lock(this->locknum, true) == MQL_RESULT::Acquired) {
+				if (tuple->mqlock.acquire_writer_lock(this->locknum, tuple->key, true) == MQL_RESULT::Acquired) {
 					CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), true));
 					return;
 				}
@@ -233,7 +233,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 					return;
 				}
 			}
-			else if (tuple->mqlock.acquire_writer_lock(this->locknum, true) == MQL_RESULT::Acquired) {
+			else if (tuple->mqlock.acquire_writer_lock(this->locknum, tuple->key, true) == MQL_RESULT::Acquired) {
 				CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), true));
 				return;
 			}
@@ -243,7 +243,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 			}
 		}
 		else {
-			if (tuple->mqlock.acquire_reader_lock(this->locknum, true) == MQL_RESULT::Acquired) {
+			if (tuple->mqlock.acquire_reader_lock(this->locknum, tuple->key, true) == MQL_RESULT::Acquired) {
 				CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), false));
 				return;
 			}
@@ -264,8 +264,8 @@ Transaction::lock(Tuple *tuple, bool mode)
 #endif // RWLOCK
 
 #ifdef MQLOCK
-			if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum);
-			else (*itr).lock->release_reader_lock(this->locknum);
+			if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum, tuple->key);
+			else (*itr).lock->release_reader_lock(this->locknum, tuple->key);
 #endif // MQLOCK
 		}
 			
@@ -284,8 +284,8 @@ Transaction::lock(Tuple *tuple, bool mode)
 #endif // RWLOCK
 
 #ifdef MQLOCK
-			if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum);
-			else (*itr).lock->release_reader_lock(this->locknum);
+			if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum, tuple->key);
+			else (*itr).lock->release_reader_lock(this->locknum, tuple->key);
 #endif // MQLOCK
 			CLL.push_back(*itr);
 		} else break;
@@ -299,8 +299,8 @@ Transaction::lock(Tuple *tuple, bool mode)
 #endif // RWLOCK
 
 #ifdef MQLOCK
-	if (mode) tuple->mqlock.acquire_writer_lock(this->locknum, false);
-	else tuple->mqlock.acquire_reader_lock(this->locknum, false);
+	if (mode) tuple->mqlock.acquire_writer_lock(this->locknum, tuple->key, false);
+	else tuple->mqlock.acquire_reader_lock(this->locknum, tuple->key, false);
 	CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), mode));
 	return;
 #endif // MQLOCK
@@ -455,8 +455,8 @@ Transaction::unlockCLL()
 #endif // RWLOCK
 
 #ifdef MQLOCK
-		if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum);
-		else (*itr).lock->release_reader_lock(this->locknum);
+		if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum, (*itr).key);
+		else (*itr).lock->release_reader_lock(this->locknum, (*itr).key);
 #endif
 	}
 	CLL.clear();

@@ -51,8 +51,9 @@ GLOBAL Tuple *Table;
 // 参照出来なくてエラーが起きる．
 // lock.hpp, lock.cc の全てを ifdef で分岐させるのは大変な労力なので，
 // 行わず，これは RWLOCK モードでも宣言だけしておく．
-alignas(64) GLOBAL MQLNode *MQLNodeList;
-// an index number corresponds to the thread number.
+alignas(64) GLOBAL MQLNode **MQLNodeTable;
+// first dimension index number corresponds to the thread number.
+// second dimension index number corresponds to the key of records.
 // the element mean MQLnode whihch is owned by the thread which has the thread number corresponding to index number.
 // for MQL sentinel value
 // index 0 mean None.

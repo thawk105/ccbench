@@ -68,10 +68,18 @@ public:
 	MQLMetaInfo sucInfo;
 	// -----
 	//
-	void init(LockMode type, uint32_t prev, bool granted) {
+	MQLNode() {
+		this->type = LockMode::None;
+		this->prev = (uint32_t)SentinelValue::None;
+		this->granted = false;
+		sucInfo.init(false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
+	}
+
+	void init(LockMode type, uint32_t prev, bool granted, bool busy, LockMode stype, LockStatus status, uint32_t next) {
 		this->type = type;
 		this->prev = prev;
 		this->granted = granted;
+		sucInfo.init(busy, stype, status, next);
 	}
 
 	MQLMetaInfo atomicLoadSucInfo();
@@ -90,23 +98,23 @@ public:
 		next_writer = 0;
 	}
 
-	MQL_RESULT acquire_reader_lock(uint32_t me, bool trylock);
-	MQL_RESULT acquire_writer_lock(uint32_t me, bool trylock);
-	MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me, uint32_t pred, bool trylock);
-	MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me, uint32_t pred, bool trylock);
+	MQL_RESULT acquire_reader_lock(uint32_t me, unsigned int key, bool trylock);
+	MQL_RESULT acquire_writer_lock(uint32_t me, unsigned int key, bool trylock);
+	MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me, unsigned int key, uint32_t pred, bool trylock);
+	MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me, unsigned int key, uint32_t pred, bool trylock);
 
-	MQL_RESULT cancel_reader_lock(uint32_t me);
-	MQL_RESULT cancel_reader_lock_relink(uint32_t pred, uint32_t me);
-	MQL_RESULT cancel_reader_lock_with_reader_pred(uint32_t me, uint32_t pred);
-	MQL_RESULT cancel_reader_lock_with_writer_pred(uint32_t me, uint32_t pred);
-	MQL_RESULT cancel_writer_lock(uint32_t me);
-	MQL_RESULT cancel_writer_lock_no_pred(uint32_t me);
+	MQL_RESULT cancel_reader_lock(uint32_t me, unsigned int key);
+	MQL_RESULT cancel_reader_lock_relink(uint32_t pred, uint32_t me, unsigned int key);
+	MQL_RESULT cancel_reader_lock_with_reader_pred(uint32_t me, unsigned int key, uint32_t pred);
+	MQL_RESULT cancel_reader_lock_with_writer_pred(uint32_t me, unsigned int key, uint32_t pred);
+	MQL_RESULT cancel_writer_lock(uint32_t me, unsigned int key);
+	MQL_RESULT cancel_writer_lock_no_pred(uint32_t me, unsigned int key);
 
-	void release_reader_lock(uint32_t me);
-	void release_writer_lock(uint32_t me);
+	void release_reader_lock(uint32_t me, unsigned int key);
+	void release_writer_lock(uint32_t me, unsigned int key);
 
-	MQL_RESULT finish_acquire_reader_lock(uint32_t me);
-	void finish_release_reader_lock(uint32_t me);
+	MQL_RESULT finish_acquire_reader_lock(uint32_t me, unsigned int key);
+	void finish_release_reader_lock(uint32_t me, unsigned int key);
 
 };
 

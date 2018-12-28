@@ -97,7 +97,10 @@ chkArg(const int argc, char *argv[])
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 #ifdef MQLOCK
-		if (posix_memalign((void**)&MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
+		//if (posix_memalign((void**)&MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
+		MQLNodeTable = new MQLNode*[THREAD_NUM + 3];
+		for (unsigned int i = 0; i < THREAD_NUM + 3; ++i)
+			MQLNodeTable[i] = new MQLNode[TUPLE_NUM];
 #endif // MQLOCK
 	} catch (bad_alloc) {
 		ERR;
@@ -108,12 +111,6 @@ chkArg(const int argc, char *argv[])
 		AbortCounts[i] = 0;
 		ThLocalEpoch[i].obj = 0;
 	}
-
-#ifdef MQLOCK
-	for (unsigned int i = 0; i < THREAD_NUM + 3; ++i) {
-		MQLNodeList[i].init(LockMode::None, (uint32_t)SentinelValue::None, false);
-	}
-#endif // MQLOCK
 }
 
 static void 
