@@ -186,7 +186,9 @@ Transaction::lock(Tuple *tuple, bool mode)
 	// if too many violations
 	// i set my condition of too many because the original paper of mocc didn't show
 	// the condition of too many.
-	if ((CLL.size() / 2) < vioctr && CLL.size() >= (MAX_OPE / 2)) {
+	//if ((CLL.size() / 2) < vioctr && CLL.size() >= (MAX_OPE / 2)) {
+	// test condition. mustn't enter.
+	if ((vioctr > 100)) {
 #ifdef RWLOCK
 		if (mode) {
 			if (upgrade) {
