@@ -38,6 +38,8 @@ public:
 	SetElement *searchReadSet(unsigned int key);
 	SetElement *searchWriteSet(unsigned int key);
 	void tbegin();
+	void upReadersBits(Version *ver);
+	void downReadersBits(Version *ver);
 	int ssn_tread(unsigned int key);
 	void ssn_twrite(unsigned int key, unsigned int val);
 	void ssn_commit();

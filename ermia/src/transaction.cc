@@ -8,6 +8,7 @@
 
 using namespace std;
 
+inline
 SetElement *
 Transaction::searchReadSet(unsigned int key) 
 {
@@ -18,6 +19,7 @@ Transaction::searchReadSet(unsigned int key)
 	return nullptr;
 }
 
+inline
 SetElement *
 Transaction::searchWriteSet(unsigned int key) 
 {
@@ -41,6 +43,36 @@ Transaction::tbegin()
 	TMT[thid].status.store(TransactionStatus::inFlight, memory_order_release);
 	pstamp = 0;
 	sstamp = UINT64_MAX;
+}
+
+inline
+void
+Transaction::upReadersBits(Version *ver)
+{
+	uint64_t expected, desired;
+	for (;;) {
+		expected = ver->readers.load(memory_order_acquire);
+RETRY_TREAD:
+		if (expected & (1<<thid)) break;
+		desired = expected | (1<<thid);
+		if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_TREAD;
+	}
+}
+
+inline
+void
+Transaction::downReadersBits(Version *ver)
+{
+	uint64_t expected, desired;
+	for (;;) {
+		expected = ver->readers.load(memory_order_acquire);
+RETRY_TREAD:
+		if (expected & (1<<thid) == 0) break;
+		desired = expected & ~(1<<thid);
+		if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+		else goto RETRY_TREAD;
+	}
 }
 
 int
@@ -80,17 +112,7 @@ Transaction::ssn_tread(unsigned int key)
 	else 
 		// update pi with r:w edge
 		this->sstamp = min(this->sstamp, (ver->sstamp.load(memory_order_acquire) >> 1));
-
-	uint64_t expected, desired;
-	for (;;) {
-		expected = ver->readers.load(memory_order_acquire);
-RETRY_TREAD:
-		if (expected & (1<<thid)) break;	// ビットが立ってたら抜ける
-		// reader ビットを立てる
-		desired = expected | (1<<thid);
-		if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_TREAD;
-	}
+	upReadersBits(ver);
 
 	verify_exclusion_or_abort();
 
@@ -176,7 +198,8 @@ RETRY_TWRITE:
 			break;
 		} else itr++;
 	}
-
+	downReadersBits(vertmp);
+	
 	verify_exclusion_or_abort();
 }
 
@@ -216,18 +239,8 @@ Transaction::ssn_commit()
 	// update eta
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		(*itr).ver->pstamp = max((*itr).ver->pstamp.load(memory_order_acquire), cstamp);
-		// readers ビットを下げる
-		uint64_t expected, desired;
-		for(;;) {
-			expected = (*itr).ver->readers.load(memory_order_acquire);
-RETRY_SSN_COMMIT:
-			if (!(expected & (1<<thid))) break;
-			desired = expected;
-			desired &= ~(1<<thid);
-			if ((*itr).ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-			else goto RETRY_SSN_COMMIT;
-		}
-
+		// down readers bit
+		downReadersBits((*itr).ver);
 	}
 
 	// update pi
@@ -280,12 +293,12 @@ Transaction::ssn_parallel_commit()
 	this->sstamp = min(this->sstamp, this->cstamp);
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		uint64_t v_sstamp = (*itr).ver->sstamp;
-		//最下位ビットが上がっていたら TID
+		// if lowest bits raise, it is TID
 		if (v_sstamp & 1) {
-			//TID から worker を特定する
+			// identify worker by using TID
 			uint8_t worker = (v_sstamp >> 1);
-			// worker == thid はありえない
 			if (worker == thid) {
+				// it mustn't occur "worker == thid", so it's error.
 				dispWS();
 				dispRS();
 				ERR;
@@ -386,6 +399,7 @@ Transaction::ssn_parallel_commit()
 		while (ptmp < this->cstamp) {
 			if ((*itr).ver->pstamp.compare_exchange_weak(ptmp, this->cstamp, memory_order_acq_rel, memory_order_acquire)) break;
 		}
+		downReadersBits((*itr).ver);
 	}
 
 
@@ -427,22 +441,14 @@ Transaction::abort()
 	}
 	writeSet.clear();
 
-	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		uint64_t expected, desired;
-		for(;;) {
-			expected = (*itr).ver->readers.load(memory_order_acquire);
-RETRY_ABORT:
-			if (!(expected & (1<<thid))) break;
-			desired = expected & ~(1<<thid);
-			if ((*itr).ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-			else goto RETRY_ABORT;
-		}
-	}
-	readSet.clear();
+	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr)
+		downReadersBits((*itr).ver);
 
+	readSet.clear();
 	safeRetry = true;
 }
 
+inline
 void
 Transaction::verify_exclusion_or_abort()
 {

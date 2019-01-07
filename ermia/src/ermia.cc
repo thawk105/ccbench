@@ -216,6 +216,7 @@ static void *
 worker(void *arg)
 {
 	int *myid = (int *)arg;
+	Transaction trans(*myid, MAX_OPE);
 	Procedure pro[MAX_OPE];
 	Xoroshiro128Plus rnd;
 	rnd.init();
@@ -250,7 +251,6 @@ worker(void *arg)
 	
 	//start work (transaction)
 	try {
-		Transaction trans(*myid, MAX_OPE);
 		for(;;) {
 			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
@@ -348,9 +348,9 @@ main(const int argc, const char *argv[])
 
 	//displayDB();
 
-	//prtRslt(Bgn, End);
+	prtRslt(Bgn, End);
 	//displayAbortCounts();
-	displayAbortRate();
+	//displayAbortRate();
 
 	return 0;
 }
