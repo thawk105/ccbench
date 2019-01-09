@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "include/common.hpp"
@@ -12,12 +13,47 @@
 #include "include/random.hpp"
 #include "include/tuple.hpp"
 
+uint64_t rdtsc();
+
 bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 {
 	uint64_t diff = 0;
 	diff = stop - start;
 	if (diff > threshold) return true;
 	else return false;
+}
+
+void 
+displayAbortCounts()
+{
+	uint64_t sum = 0;
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		sum += AbortCounts[i];
+	}
+
+	cout << "Abort counts : " << sum << endl;
+}
+
+void
+displayAbortRate()
+{
+	long double sumT(0), sumA(0);
+	long double rate[THREAD_NUM] = {};
+
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		sumT += FinishTransactions[i];
+		sumA += AbortCounts[i];
+		rate[i] = sumA / (sumT + sumA);
+	}
+
+	long double ave_rate(0);
+	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+		ave_rate += rate[i];
+	}
+
+	ave_rate /= (long double) THREAD_NUM;
+
+	cout << ave_rate << endl;
 }
 
 void
@@ -80,36 +116,20 @@ displayPRO(Procedure *pro)
 }
 
 void
-displayAbortRate()
+displayTPS(uint64_t &bgn, uint64_t &end)
 {
-	long double sumT(0), sumA(0);
-	long double rate[THREAD_NUM] = {};
+	uint64_t diff = end - bgn;
+	//cout << diff << endl;
+	//cout << CLOCK_PER_US * 1000000 << endl;
+	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i];
-		sumA += AbortCounts[i];
-		rate[i] = sumA / (sumT + sumA);
-	}
-
-	long double ave_rate(0);
+	int sumTrans = 0;
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		ave_rate += rate[i];
+		sumTrans += FinishTransactions[i];
 	}
 
-	ave_rate /= (long double) THREAD_NUM;
-
-	cout << ave_rate << endl;
-}
-
-void 
-displayAbortCounts()
-{
-	uint64_t sum = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sum += AbortCounts[i];
-	}
-
-	cout << "Abort counts : " << sum << endl;
+	uint64_t result = (double)sumTrans / (double)sec;
+	std::cout << (int)result << std::endl;
 }
 
 void
@@ -162,4 +182,67 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
 	}
 }
 
+void
+naiveGarbageCollection() 
+{
+	uint64_t mintxID = UINT64_MAX;
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		mintxID = min(mintxID, ThtxID[i].num.load(memory_order_acquire));
+	}
+
+	if (mintxID == 0) return;
+	else {
+		//mintxIDから到達不能なバージョンを削除する
+		Version *verTmp, *delTarget;
+		for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+			// 時間がかかるので，離脱条件チェック
+			End = rdtsc();
+			if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+				Finish.store(true, std::memory_order_release);
+				return;
+			}
+			// -----
+
+			verTmp = Table[i].latest.load(memory_order_acquire);
+			if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
+				verTmp = verTmp->committed_prev;
+			// この時点で， verTmp はコミット済み最新バージョン
+
+			uint64_t verCstamp = verTmp->cstamp.load(memory_order_acquire);
+			while (mintxID < (verCstamp >> 1)) {
+				verTmp = verTmp->committed_prev;
+				if (verTmp == nullptr) break;
+				verCstamp = verTmp->cstamp.load(memory_order_acquire);
+			}
+			if (verTmp == nullptr) continue;
+			// verTmp は mintxID によって到達可能．
+			
+			// ssn commit protocol によってverTmp->commited_prev までアクセスされる．
+			verTmp = verTmp->committed_prev;
+			if (verTmp == nullptr) continue;
+			
+			// verTmp->prev からガベコレ可能
+			delTarget = verTmp->prev;
+			if (delTarget == nullptr) continue;
+
+			verTmp->prev = nullptr;
+			while (delTarget != nullptr) {
+				verTmp = delTarget->prev;
+				delete delTarget;
+				delTarget = verTmp;
+			}
+			//-----
+		}
+	}
+}
+
+extern
+uint64_t
+rdtsc()
+{
+	uint64_t rax;
+	uint64_t rdx;
+	asm volatile ("rdtsc" : "=a"(rax), "=d"(rdx));
+	return (rdx << 32) | rax;
+}
 

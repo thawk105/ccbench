@@ -14,11 +14,19 @@
 #include "include/int64byte.hpp"
 #include "include/random.hpp"
 #include "include/transaction.hpp"
-#include "include/tsc.hpp"
 
 using namespace std;
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern void displayAbortCounts();
+extern void displayAbortRate();
+extern void displayDB();
+extern void displayPRO();
+extern void displayTPS(uint64_t &bgn, uint64_t &end);
+extern void makeDB();
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void naiveGarbageCollection();
+extern uint64_t rdtsc();
 
 static bool
 chkInt(const char *arg)
@@ -105,22 +113,6 @@ chkArg(const int argc, const char *argv[])
 	}
 }
 
-static void
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	//cout << diff << endl;
-	//cout << CLOCK_PER_US * 1000000 << endl;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i];
-	}
-
-	uint64_t result = (double)sumTrans / (double)sec;
-	cout << (int)result << endl;
-}
 static void *
 manager_worker(void *arg)
 {
@@ -155,59 +147,13 @@ manager_worker(void *arg)
 			return nullptr;
 		}
 
-		uint64_t mintxID = UINT64_MAX;
-		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-			mintxID = min(mintxID, ThtxID[i].num.load(memory_order_acquire));
-		}
-		if (mintxID == 0) continue;
-		else {
-			//mintxIDから到達不能なバージョンを削除する
-			Version *verTmp, *delTarget;
-			for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-				End = rdtsc();
-				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
-					Finish.store(true, std::memory_order_release);
-					return nullptr;
-				}
-
-				verTmp = Table[i].latest.load(memory_order_acquire);
-				if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
-					verTmp = verTmp->committed_prev;
-				// この時点で， verTmp はコミット済み最新バージョン
-
-				uint64_t verCstamp = verTmp->cstamp.load(memory_order_acquire);
-				while (mintxID < (verCstamp >> 1)) {
-					verTmp = verTmp->committed_prev;
-					if (verTmp == nullptr) break;
-					verCstamp = verTmp->cstamp.load(memory_order_acquire);
-				}
-				if (verTmp == nullptr) continue;
-				// verTmp は mintxID によって到達可能．
-				
-				// ssn commit protocol によってverTmp->commited_prev までアクセスされる．
-				verTmp = verTmp->committed_prev;
-				if (verTmp == nullptr) continue;
-				
-				// verTmp->prev からガベコレ可能
-				delTarget = verTmp->prev;
-				if (delTarget == nullptr) continue;
-
-				verTmp->prev = nullptr;
-				while (delTarget != nullptr) {
-					verTmp = delTarget->prev;
-					delete delTarget;
-					delTarget = verTmp;
-				}
-				//-----
-			}
-		}
+		naiveGarbageCollection();
 	}
 	//-- garbage collector end---
 	//
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
@@ -317,12 +263,6 @@ threadCreate(int id)
 	return t;
 }
 
-extern void displayDB();
-extern void displayPRO();
-extern void displayAbortCounts();
-extern void displayAbortRate();
-extern void makeDB();
-
 int
 main(const int argc, const char *argv[])
 {
@@ -344,7 +284,7 @@ main(const int argc, const char *argv[])
 
 	//displayDB();
 
-	prtRslt(Bgn, End);
+	displayTPS(Bgn, End);
 	displayAbortCounts();
 	//displayAbortRate();
 
