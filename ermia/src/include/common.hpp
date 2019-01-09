@@ -40,6 +40,6 @@ GLOBAL uint64_t End;
 
 GLOBAL RWLock CtrLock;
 GLOBAL Tuple *Table;
-GLOBAL TransactionTable *TMT;	// Transaction Mapping Table
+GLOBAL TransactionTable **TMT;	// Transaction Mapping Table
 
 GLOBAL std::mutex SsnLock;

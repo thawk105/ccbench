@@ -36,8 +36,8 @@ displayDB()
 			cout << endl;
 
 			cout << "cstamp:	" << version->cstamp << endl;
-			cout << "pstamp:	" << version->pstamp << endl;
-			cout << "sstamp:	" << version->sstamp << endl;
+			cout << "pstamp:	" << version->psstamp.pstamp << endl;
+			cout << "sstamp:	" << version->psstamp.sstamp << endl;
 			cout << endl;
 
 			version = version->prev;

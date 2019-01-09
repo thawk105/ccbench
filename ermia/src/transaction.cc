@@ -33,16 +33,34 @@ Transaction::searchWriteSet(unsigned int key)
 void
 Transaction::tbegin()
 {
-	this->txid = TMT[1].prev_cstamp.load(memory_order_acquire);
-	for (unsigned int i = 2; i < THREAD_NUM; ++i) {
-		this->txid = max(this->txid, TMT[i].prev_cstamp.load(memory_order_acquire));
+	TransactionTable *newElement;
+	TransactionTable *tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+	if (this->status == TransactionStatus::aborted)
+		newElement = new TransactionTable(0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
+	else
+		newElement = new TransactionTable(0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
+
+
+	this->txid = 0;
+	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+		do {
+			tmt	= __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+		} while (tmt == nullptr);
+		this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
 	}
-	ThtxID[thid].num.store(txid, memory_order_release);
-	TMT[thid].cstamp.store(0, memory_order_release);
-	status = TransactionStatus::inFlight;
-	TMT[thid].status.store(TransactionStatus::inFlight, memory_order_release);
+	ThtxID[thid].num.store(txid, memory_order_release); // for garbage collection
+
+	TransactionTable *expected, *desired;
+	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+	expected = tmt;
+	for (;;) {
+		desired = newElement;
+		if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+	}
+	
 	pstamp = 0;
-	sstamp = UINT64_MAX;
+	sstamp = UINT32_MAX;
+	status = TransactionStatus::inFlight;
 }
 
 inline
@@ -68,7 +86,7 @@ Transaction::downReadersBits(Version *ver)
 	for (;;) {
 		expected = ver->readers.load(memory_order_acquire);
 RETRY_TREAD:
-		if (expected & (1<<thid) == 0) break;
+		if (!(expected & (1<<thid))) break;
 		desired = expected & ~(1<<thid);
 		if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
 		else goto RETRY_TREAD;
@@ -102,16 +120,20 @@ Transaction::ssn_tread(unsigned int key)
 		//printf("txid %d, (verCstamp >> 1) %d\n", txid, verCstamp >> 1);
 		//fflush(stdout);
 		ver = ver->committed_prev;
-		if (ver == NULL) ERR;
+		if (ver == NULL) {
+			cout << "txid : " << txid
+				<< ", verCstamp : " << verCstamp << endl;
+			ERR;
+		}
 		verCstamp = ver->cstamp.load(memory_order_acquire);
 	}
 
-	if (ver->sstamp.load(memory_order_acquire) == (UINT64_MAX - 1))
+	if (ver->psstamp.atomicLoadSstamp() == (UINT64_MAX - 1))
 		// no overwrite yet
 		readSet.push_back(SetElement(key, ver));
 	else 
 		// update pi with r:w edge
-		this->sstamp = min(this->sstamp, (ver->sstamp.load(memory_order_acquire) >> 1));
+		this->sstamp = min(this->sstamp, (ver->psstamp.atomicLoadSstamp() >> 1));
 	upReadersBits(ver);
 
 	verify_exclusion_or_abort();
@@ -142,15 +164,14 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
 	desired->cstamp.store(tmptid, memory_order_release);	// read operation, write operation, ガベコレからアクセスされるので， CAS 前に格納
 
 	Version *vertmp;
+	expected = Table[key].latest.load(std::memory_order_acquire);
 	for (;;) {
-		expected = Table[key].latest.load(std::memory_order_acquire);
-RETRY_TWRITE:
-
 		// w-w conflict
 		// first updater wins rule
 		if (expected->status.load(memory_order_acquire) == VersionStatus::inFlight) {
 			this->status = TransactionStatus::aborted;
-			TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
+			TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+			tmt->status.store(TransactionStatus::aborted, memory_order_release);
 			delete desired;
 			return;
 		}
@@ -168,7 +189,8 @@ RETRY_TWRITE:
 			//	write - write conflict, first-updater-wins rule.
 			// Writers must abort if they would overwirte a version created after their snapshot.
 			this->status = TransactionStatus::aborted;
-			TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
+			TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+			tmt->status.store(TransactionStatus::aborted, memory_order_release);
 			delete desired;
 			return;
 		}
@@ -176,7 +198,6 @@ RETRY_TWRITE:
 		desired->prev = expected;
 		desired->committed_prev = vertmp;
 		if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_TWRITE;
 	}
 	desired->val = val;
 
@@ -184,10 +205,10 @@ RETRY_TWRITE:
 	uint64_t tmpTID = thid;
 	tmpTID = tmpTID << 1;
 	tmpTID |= 1;
-	desired->committed_prev->sstamp.store(tmpTID, memory_order_release);
+	desired->committed_prev->psstamp.atomicStoreSstamp(tmpTID);
 
 	// update eta with w:r edge
-	this->pstamp = max(this->pstamp, desired->committed_prev->pstamp.load(memory_order_acquire));
+	this->pstamp = max(this->pstamp, desired->committed_prev->psstamp.atomicLoadPstamp());
 	writeSet.push_back(SetElement(key, desired));
 	
 	//	avoid false positive
@@ -203,6 +224,7 @@ RETRY_TWRITE:
 	verify_exclusion_or_abort();
 }
 
+/*
 void
 Transaction::ssn_commit()
 {
@@ -213,13 +235,13 @@ Transaction::ssn_commit()
 
 	// finalize eta(T)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		pstamp = max(pstamp, (*itr).ver->committed_prev->pstamp.load(memory_order_acquire));
+		pstamp = max(pstamp, (*itr).ver->committed_prev->psstamp.atomicLoadPstamp());
 	}	
 
 	// finalize pi(T)
 	sstamp = min(sstamp, cstamp);
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		uint64_t verSstamp = (*itr).ver->sstamp.load(memory_order_acquire);
+		uint32_t verSstamp = (*itr).ver->psstamp.atomicLoadSstamp();
 		//最下位ビットが上がっていたら，並行トランザクションに上書きされている．
 		//しかし，シリアルSSNにおいては，このトランザクションよりも必ず後に
 		//validation (maybe commit) されるので，絶対にスキップできる．
@@ -238,7 +260,7 @@ Transaction::ssn_commit()
 
 	// update eta
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		(*itr).ver->pstamp = max((*itr).ver->pstamp.load(memory_order_acquire), cstamp);
+		(*itr).ver->psstamp.atomicStorePstamp(max((*itr).ver->psstamp.atomicLoadPstamp(), cstamp));
 		// down readers bit
 		downReadersBits((*itr).ver);
 	}
@@ -253,9 +275,9 @@ Transaction::ssn_commit()
 	verCstamp &= ~(1);
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		(*itr).ver->committed_prev->sstamp.store(verSstamp, memory_order_release);	
+		(*itr).ver->committed_prev->psstamp.atomicStoreSstamp(verSstamp);
 		// initialize new version
-		(*itr).ver->pstamp = cstamp;
+		(*itr).ver->psstamp.atomicStorePstamp(cstamp);
 		(*itr).ver->cstamp = verCstamp;
 	}
 
@@ -275,24 +297,24 @@ Transaction::ssn_commit()
 	writeSet.clear();
 	return;
 }
+*/
 
 void
 Transaction::ssn_parallel_commit()
 {
 	this->status = TransactionStatus::committing;
-	TMT[thid].status.store(TransactionStatus::committing);
+	TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+	tmt->status.store(TransactionStatus::committing);
 
-	uint64_t ctmp = Lsn.fetch_add(1);
-	ctmp++;
-	this->cstamp = ctmp;
-	TMT[thid].cstamp.store(ctmp, memory_order_release);
+	this->cstamp = ++Lsn;
+	tmt->cstamp.store(this->cstamp, memory_order_release);
 	
 	// begin pre-commit
 	
 	// finalize pi(T)
 	this->sstamp = min(this->sstamp, this->cstamp);
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		uint64_t v_sstamp = (*itr).ver->sstamp;
+		uint32_t v_sstamp = (*itr).ver->psstamp.atomicLoadSstamp();
 		// if lowest bits raise, it is TID
 		if (v_sstamp & 1) {
 			// identify worker by using TID
@@ -307,29 +329,19 @@ Transaction::ssn_parallel_commit()
 			// このトランザクションよりも新しい commit timestamp でコミットされる．
 			// 従って pi となりえないので，スキップ．
 			// そうでないなら，チェック
-			if (TMT[worker].status.load(memory_order_acquire) == TransactionStatus::committing) {
+			tmt = __atomic_load_n(&TMT[worker], __ATOMIC_ACQUIRE);
+			if (tmt->status.load(memory_order_acquire) == TransactionStatus::committing) {
 				// worker は ssn_parallel_commit() に突入している
 				// cstamp が確実に取得されるまで待機 (cstamp は初期値 0)
-				ctmp = TMT[worker].cstamp.load(memory_order_acquire);
-				while (ctmp == 0) {
-					ctmp = TMT[worker].cstamp.load(memory_order_acquire);
-					// 以下の処理はデバッグとして有用だった．
-					// ワーカーの終了時間を迎え，最後のトランザクション処理となったとする．
-					// 並行ワーカーは(アボート or コミットで)リトライし，
-					// cstamp = 0 と初期化され, read phase でアボートして終了条件を満たしたとしたら，この while は無限ループになってしまう．
-					if (TMT[worker].status.load(memory_order_acquire) == TransactionStatus::aborted) break;
-				}
-				if (TMT[worker].status.load(memory_order_acquire) == TransactionStatus::aborted) continue;
+				while (tmt->cstamp.load(memory_order_acquire) == 0);
+				if (tmt->status.load(memory_order_acquire) == TransactionStatus::aborted) continue;
 
 				// worker->cstamp が this->cstamp より小さいなら pi になる可能性あり
-				if (ctmp < this->cstamp) {
-					TransactionStatus statusTmp = TMT[worker].status.load(memory_order_acquire);
+				if (tmt->cstamp.load(memory_order_acquire) < this->cstamp) {
 					// parallel_commit 終了待ち（sstamp確定待ち)
-					while (statusTmp == TransactionStatus::committing) {
-						statusTmp = TMT[worker].status.load(memory_order_acquire);
-					}
-					if (statusTmp == TransactionStatus::committed) {
-						this->sstamp = min(this->sstamp, TMT[worker].sstamp.load(memory_order_acquire));
+					while (tmt->status.load(memory_order_acquire) == TransactionStatus::committing);
+					if (tmt->status.load(memory_order_acquire) == TransactionStatus::committed) {
+						this->sstamp = min(this->sstamp, tmt->sstamp.load(memory_order_acquire));
 					}
 				}
 			}
@@ -346,58 +358,48 @@ Transaction::ssn_parallel_commit()
 		uint64_t rdrs = (*itr).ver->readers.load(memory_order_acquire);
 		for (unsigned int worker = 1; worker <= THREAD_NUM; ++worker) {
 			if ((rdrs & (one << worker)) ? 1 : 0) {
-				TransactionStatus statusTmp = TMT[worker].status.load(memory_order_acquire);
+				tmt = __atomic_load_n(&TMT[worker], __ATOMIC_ACQUIRE);
 				// 並行 reader が committing なら無視できない．
 				// inFlight なら無視できる．なぜならそれが commit する時にはこのトランザクションよりも
 				// 大きい cstamp を有し， eta となりえないから．
-				while (statusTmp == TransactionStatus::committing) {
-					ctmp = TMT[worker].cstamp.load(memory_order_acquire);
-					while (ctmp == 0) {
-						ctmp = TMT[worker].cstamp.load(memory_order_acquire);
-						// 以下の処理はデバッグとして有用だった．
-						// ワーカーの終了時間を迎え，最後のトランザクション処理となったとする．
-						// 並行トランザクションはアボートしてリトライし，
-						// cstamp = 0 と初期化され, read phase でアボートして終了条件を満たしたとしたら，この while は無限ループになってしまう．
-						if (TMT[worker].status.load(memory_order_acquire) == TransactionStatus::aborted) continue;
-					}
-					if (TMT[worker].status.load(memory_order_acquire) == TransactionStatus::aborted) continue;
+				while (tmt->status.load(memory_order_acquire) == TransactionStatus::committing) {
+					while (tmt->cstamp.load(memory_order_acquire) == 0);
+					if (tmt->status.load(memory_order_acquire) == TransactionStatus::aborted) continue;
 					
 					// worker->cstamp が this->cstamp より小さいなら eta になる可能性あり
-					if (ctmp < this->cstamp) {
-						TransactionStatus statusTmp = TMT[worker].status.load(memory_order_acquire);
+					if (tmt->cstamp.load(memory_order_acquire) < this->cstamp) {
 						// parallel_commit 終了待ち (sstamp 確定待ち)
-						while (statusTmp == TransactionStatus::committing) {
-							statusTmp = TMT[worker].status.load(memory_order_acquire);
-						}
-						if (statusTmp == TransactionStatus::committed) {
-							this->pstamp = min(this->pstamp, TMT[worker].cstamp.load(memory_order_acquire));
+						while (tmt->status.load(memory_order_acquire) == TransactionStatus::committing);
+						if (tmt->status.load(memory_order_acquire) == TransactionStatus::committed) {
+							this->pstamp = min(this->pstamp, tmt->cstamp.load(memory_order_acquire));
 						}
 					}
 				}
 			} 
 		}
 		// re-read pstamp in case we missed any reader
-		this->pstamp = min(this->pstamp, (*itr).ver->committed_prev->pstamp.load(memory_order_acquire));
+		this->pstamp = min(this->pstamp, (*itr).ver->committed_prev->psstamp.atomicLoadPstamp());
 	}
 
+	tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
 	// ssn_check_exclusion
 	if (pstamp < sstamp) {
 		status = TransactionStatus::committed;
-		TMT[thid].sstamp.store(this->sstamp, memory_order_release);
-		TMT[thid].lastcstamp.store(this->cstamp, memory_order_release);
-		TMT[thid].status.store(TransactionStatus::committed, memory_order_release);
+		tmt->sstamp.store(this->sstamp, memory_order_release);
+		tmt->status.store(TransactionStatus::committed, memory_order_release);
 	} else {
 		status = TransactionStatus::aborted;
-		TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
-		TMT[thid].prev_cstamp.store(this->cstamp, memory_order_release);
+		tmt->status.store(TransactionStatus::aborted, memory_order_release);
 		return;
 	}
 
 	// update eta
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-		uint64_t ptmp = (*itr).ver->pstamp.load(memory_order_acquire);
-		while (ptmp < this->cstamp) {
-			if ((*itr).ver->pstamp.compare_exchange_weak(ptmp, this->cstamp, memory_order_acq_rel, memory_order_acquire)) break;
+		Psstamp pstmp;
+		pstmp.obj	= (*itr).ver->psstamp.atomicLoad();
+		while (pstmp.pstamp < this->cstamp) {
+			if ((*itr).ver->psstamp.atomicCASPstamp(pstmp.pstamp, this->cstamp)) break;
+			pstmp.obj = (*itr).ver->psstamp.atomicLoad();
 		}
 		downReadersBits((*itr).ver);
 	}
@@ -413,9 +415,9 @@ Transaction::ssn_parallel_commit()
 	verCstamp &= ~(1);
 
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		(*itr).ver->committed_prev->sstamp.store(verSstamp, memory_order_release);
+		(*itr).ver->committed_prev->psstamp.atomicStoreSstamp(verSstamp);
 		(*itr).ver->cstamp.store(verCstamp, memory_order_release);
-		(*itr).ver->pstamp.store(this->cstamp, memory_order_release);
+		(*itr).ver->psstamp.atomicStorePstamp(this->cstamp);
 	}
 
 	//logging
@@ -426,7 +428,6 @@ Transaction::ssn_parallel_commit()
 		(*itr).ver->status.store(VersionStatus::committed, memory_order_release);
 
 	safeRetry = false;
-	TMT[thid].prev_cstamp.store(this->cstamp, memory_order_release);
 	readSet.clear();
 	writeSet.clear();
 	return;
@@ -436,7 +437,7 @@ void
 Transaction::abort()
 {
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		(*itr).ver->committed_prev->sstamp.store(UINT64_MAX & ~(1), memory_order_release);
+		(*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(1));
 		(*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
 	}
 	writeSet.clear();
@@ -454,7 +455,8 @@ Transaction::verify_exclusion_or_abort()
 {
 	if (this->pstamp >= this->sstamp) {
 		this->status = TransactionStatus::aborted;
-		TMT[thid].status.store(TransactionStatus::aborted, memory_order_release);
+		TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+		tmt->status.store(TransactionStatus::aborted, memory_order_release);
 	}
 }
 

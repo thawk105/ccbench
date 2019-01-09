@@ -30,8 +30,10 @@ makeDB()
 		tmp->key = i;
 		verTmp = tmp->latest.load(std::memory_order_acquire);
 		verTmp->cstamp = 0;
-		verTmp->pstamp = 0;
-		verTmp->sstamp = UINT64_MAX & ~(1);
+		//verTmp->pstamp = 0;
+		//verTmp->sstamp = UINT64_MAX & ~(1);
+		verTmp->psstamp.pstamp = 0;
+		verTmp->psstamp.sstamp = UINT32_MAX & ~(1);
 		// cstamp, sstamp の最下位ビットは TID フラグ
 		// 1の時はTID, 0の時はstamp
 		verTmp->val = rnd.next() % TUPLE_NUM;

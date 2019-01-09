@@ -18,15 +18,15 @@ using namespace std;
 
 class Transaction {
 public:
-	uint64_t cstamp = 0;	// Transaction end time, c(T)	
+	uint32_t cstamp = 0;	// Transaction end time, c(T)	
 	TransactionStatus status = TransactionStatus::inFlight;		// Status: inFlight, committed, or aborted
-	uint64_t pstamp = 0;	// Predecessor high-water mark, η (T)
-	uint64_t sstamp = UINT64_MAX;	// Successor low-water mark, pi (T)
+	uint32_t pstamp = 0;	// Predecessor high-water mark, η (T)
+	uint32_t sstamp = UINT32_MAX;	// Successor low-water mark, pi (T)
 	vector<SetElement> readSet;
 	vector<SetElement> writeSet;
 
 	uint8_t thid;	// thread ID
-	uint64_t txid;	//TID and begin timestamp - the current log sequence number (LSN)
+	uint32_t txid;	//TID and begin timestamp - the current log sequence number (LSN)
 	bool safeRetry = false;
 
 	Transaction(uint8_t thid, unsigned int max_ope) {
@@ -53,10 +53,17 @@ public:
 // for MVCC SSN
 class TransactionTable {
 public:
-	std::atomic<uint64_t> cstamp;
-	std::atomic<uint64_t> sstamp;
-	std::atomic<uint64_t> lastcstamp;
-	std::atomic<uint64_t> prev_cstamp;
+	std::atomic<uint32_t> cstamp;
+	std::atomic<uint32_t> sstamp;
+	std::atomic<uint32_t> lastcstamp;
 	std::atomic<TransactionStatus> status;
+	uint8_t padding[3];
+
+	TransactionTable(uint32_t cstamp, uint32_t sstamp, uint32_t lastcstamp, TransactionStatus status) {
+		this->cstamp = cstamp;
+		this->sstamp = sstamp;
+		this->lastcstamp = lastcstamp;
+		this->status = status;
+	}
 };
 

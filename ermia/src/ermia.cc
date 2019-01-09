@@ -49,6 +49,7 @@ chkArg(const int argc, const char *argv[])
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "Version " << sizeof(Version) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+		cout << "TransactionTable " << sizeof(TransactionTable) << endl;
 
 		exit(0);
 	}
@@ -89,9 +90,9 @@ chkArg(const int argc, const char *argv[])
 
 	try {
 		if (posix_memalign((void**)&ThtxID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-		if (posix_memalign((void**)&TMT, 64, THREAD_NUM * sizeof(TransactionTable)) != 0) ERR;
 		FinishTransactions = new uint64_t[THREAD_NUM];
 		AbortCounts = new uint64_t[THREAD_NUM];
+		TMT = new TransactionTable*[THREAD_NUM];
 	} catch (bad_alloc) {
 		ERR;
 	}
@@ -100,11 +101,7 @@ chkArg(const int argc, const char *argv[])
 		ThtxID[i].num = 0;
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-
-		TMT[i].cstamp.store(0, memory_order_release);
-		TMT[i].sstamp.store(UINT64_MAX, memory_order_release);
-		TMT[i].lastcstamp.store(0, memory_order_release);
-		TMT[i].status.store(TransactionStatus::inFlight, memory_order_release);
+		TMT[i] = new TransactionTable(0, UINT32_MAX, 0, TransactionStatus::inFlight);
 	}
 }
 
@@ -283,7 +280,6 @@ RETRY:
 				}
 			}
 			
-			//trans.ssn_commit();
 			trans.ssn_parallel_commit();
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
@@ -349,7 +345,7 @@ main(const int argc, const char *argv[])
 	//displayDB();
 
 	prtRslt(Bgn, End);
-	//displayAbortCounts();
+	displayAbortCounts();
 	//displayAbortRate();
 
 	return 0;
