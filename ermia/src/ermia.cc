@@ -14,6 +14,7 @@
 #include "include/int64byte.hpp"
 #include "include/random.hpp"
 #include "include/transaction.hpp"
+#include "include/garbageCollection.hpp"
 
 using namespace std;
 
@@ -23,6 +24,7 @@ extern void displayAbortRate();
 extern void displayDB();
 extern void displayPRO();
 extern void displayTPS(uint64_t &bgn, uint64_t &end);
+extern void deceideTMTgcThreshold();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void naiveGarbageCollection();
@@ -82,6 +84,10 @@ chkArg(const int argc, const char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
+	if (THREAD_NUM < 2) {
+		cout << "1 thread is leader thread. \nthread number 1 is no worker thread, so exit." << endl;
+		ERR;
+	}
 	RRATIO = atoi(argv[4]);
 	if (RRATIO > 10) {
 		cout << "rratio (* 10 %%) must be 0 ~ 10" << endl;
@@ -97,7 +103,6 @@ chkArg(const int argc, const char *argv[])
 	EXTIME = atoi(argv[6]);
 
 	try {
-		if (posix_memalign((void**)&ThtxID, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		FinishTransactions = new uint64_t[THREAD_NUM];
 		AbortCounts = new uint64_t[THREAD_NUM];
 		TMT = new TransactionTable*[THREAD_NUM];
@@ -106,19 +111,20 @@ chkArg(const int argc, const char *argv[])
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		ThtxID[i].num = 0;
 		FinishTransactions[i] = 0;
 		AbortCounts[i] = 0;
-		TMT[i] = new TransactionTable(0, UINT32_MAX, 0, TransactionStatus::inFlight);
+		TMT[i] = new TransactionTable(0, 0, UINT32_MAX, 0, TransactionStatus::inFlight);
 	}
 }
 
 static void *
 manager_worker(void *arg)
 {
+	// start, inital work
 	int *myid = (int *)arg;
 	pid_t pid = syscall(SYS_gettid);
 	cpu_set_t cpu_set;
+	GarbageCollection gcobject;
 	
 	CPU_ZERO(&cpu_set);
 	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
@@ -127,6 +133,9 @@ manager_worker(void *arg)
 		ERR;
 	}
 
+	gcobject.decideFirstRange();
+	// end, initial work
+	
 	unsigned int expected, desired;
 	do {
 		expected = Running.load(std::memory_order_acquire);
@@ -138,7 +147,6 @@ manager_worker(void *arg)
 	//-----
 	
 	Bgn = rdtsc();
-	//garbage collector
 	for (;;) {
 		usleep(1);
 		End = rdtsc();
@@ -147,10 +155,14 @@ manager_worker(void *arg)
 			return nullptr;
 		}
 
-		naiveGarbageCollection();
+		//naiveGarbageCollection()
+		
+		if (gcobject.chkSecondRange()) {
+			gcobject.decideGcThreshold();
+			gcobject.mvSecondRangeToFirstRange();
+		}
 	}
-	//-- garbage collector end---
-	//
+
 	return nullptr;
 }
 

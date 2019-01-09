@@ -53,13 +53,15 @@ public:
 // for MVCC SSN
 class TransactionTable {
 public:
+	std::atomic<uint32_t> txid;
 	std::atomic<uint32_t> cstamp;
 	std::atomic<uint32_t> sstamp;
 	std::atomic<uint32_t> lastcstamp;
 	std::atomic<TransactionStatus> status;
-	uint8_t padding[3];
+	uint8_t padding[15];
 
-	TransactionTable(uint32_t cstamp, uint32_t sstamp, uint32_t lastcstamp, TransactionStatus status) {
+	TransactionTable(uint32_t txid, uint32_t cstamp, uint32_t sstamp, uint32_t lastcstamp, TransactionStatus status) {
+		this->txid = txid;
 		this->cstamp = cstamp;
 		this->sstamp = sstamp;
 		this->lastcstamp = lastcstamp;

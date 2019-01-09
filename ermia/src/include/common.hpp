@@ -11,15 +11,15 @@
 
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL
-GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<uint64_t> Lsn(0);
 GLOBAL std::atomic<bool> Finish(false);
+GLOBAL std::atomic<uint64_t> Lsn(0);
+GLOBAL std::atomic<unsigned int> Running(0);
 
 #else
 	#define GLOBAL extern
-GLOBAL std::atomic<unsigned int> Running;
-GLOBAL std::atomic<uint64_t> Lsn;
 GLOBAL std::atomic<bool> Finish;
+GLOBAL std::atomic<uint64_t> Lsn;
+GLOBAL std::atomic<unsigned int> Running;
 
 #endif
 
@@ -31,7 +31,6 @@ GLOBAL unsigned int RRATIO;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL unsigned int EXTIME;
 
-GLOBAL uint64_t_64byte *ThtxID;
 GLOBAL uint64_t *AbortCounts;
 GLOBAL uint64_t *FinishTransactions;
 

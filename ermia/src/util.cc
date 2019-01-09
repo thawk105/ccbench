@@ -185,9 +185,12 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
 void
 naiveGarbageCollection() 
 {
-	uint64_t mintxID = UINT64_MAX;
+	TransactionTable *tmt;
+
+	uint32_t mintxID = UINT32_MAX;
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		mintxID = min(mintxID, ThtxID[i].num.load(memory_order_acquire));
+		tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+		mintxID = min(mintxID, tmt->txid.load(std::memory_order_acquire));
 	}
 
 	if (mintxID == 0) return;

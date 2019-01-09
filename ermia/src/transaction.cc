@@ -33,13 +33,7 @@ Transaction::searchWriteSet(unsigned int key)
 void
 Transaction::tbegin()
 {
-	TransactionTable *newElement;
-	TransactionTable *tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
-	if (this->status == TransactionStatus::aborted)
-		newElement = new TransactionTable(0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
-	else
-		newElement = new TransactionTable(0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
-
+	TransactionTable *newElement, *tmt;
 
 	this->txid = 0;
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -48,7 +42,12 @@ Transaction::tbegin()
 		} while (tmt == nullptr);
 		this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
 	}
-	ThtxID[thid].num.store(txid, memory_order_release); // for garbage collection
+
+	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+	if (this->status == TransactionStatus::aborted)
+		newElement = new TransactionTable(this->txid, 0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
+	else
+		newElement = new TransactionTable(this->txid, 0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
 
 	TransactionTable *expected, *desired;
 	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
