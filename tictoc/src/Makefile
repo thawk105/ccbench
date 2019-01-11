@@ -4,7 +4,7 @@ SOURCES = tictoc.cc transaction.cc util.cc displayGlobal.cc
 CC = g++
 #CFLAGS = -c -Wall -g -O2 -std=c++11 -march=native
 # i find the case that using march-native degrade performance.
-CFLAGS = -c -Wall -g -O2 -std=c++11 
+CFLAGS = -c -Wall -g -O2 -std=c++17 
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 
