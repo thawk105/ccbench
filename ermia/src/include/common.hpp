@@ -23,21 +23,15 @@ GLOBAL std::atomic<unsigned int> Running;
 
 #endif
 
-//run-time args
+// run-time args
 GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
 GLOBAL unsigned int RRATIO;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL unsigned int EXTIME;
+// -----
 
-GLOBAL uint64_t *AbortCounts;
-GLOBAL uint64_t *FinishTransactions;
-
-GLOBAL uint64_t Bgn;
-GLOBAL uint64_t End;
-
-GLOBAL RWLock CtrLock;
 GLOBAL Tuple *Table;
 GLOBAL TransactionTable **TMT;	// Transaction Mapping Table
 

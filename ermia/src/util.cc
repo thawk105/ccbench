@@ -6,11 +6,15 @@
 #include <limits>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/types.h> // syscall(SYS_gettid), 
+#include <unistd.h> // syscall(SYS_gettid), 
 
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/procedure.hpp"
 #include "include/random.hpp"
+#include "include/result.hpp"
 #include "include/tsc.hpp"
 #include "include/tuple.hpp"
 
@@ -21,39 +25,6 @@ bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 	diff = stop - start;
 	if (diff > threshold) return true;
 	else return false;
-}
-
-void 
-displayAbortCounts()
-{
-	uint64_t sum = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sum += AbortCounts[i];
-	}
-
-	cout << "Abort counts : " << sum << endl;
-}
-
-void
-displayAbortRate()
-{
-	long double sumT(0), sumA(0);
-	long double rate[THREAD_NUM] = {};
-
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		sumT += FinishTransactions[i];
-		sumA += AbortCounts[i];
-		rate[i] = sumA / (sumT + sumA);
-	}
-
-	long double ave_rate(0);
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		ave_rate += rate[i];
-	}
-
-	ave_rate /= (long double) THREAD_NUM;
-
-	cout << ave_rate << endl;
 }
 
 void
@@ -116,23 +87,6 @@ displayPRO(Procedure *pro)
 }
 
 void
-displayTPS(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	//cout << diff << endl;
-	//cout << CLOCK_PER_US * 1000000 << endl;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i];
-	}
-
-	uint64_t result = (double)sumTrans / (double)sec;
-	std::cout << (int)result << std::endl;
-}
-
-void
 makeDB()
 {
 	Tuple *tmp;
@@ -186,6 +140,7 @@ void
 naiveGarbageCollection() 
 {
 	TransactionTable *tmt;
+  Result rsobject;
 
 	uint32_t mintxID = UINT32_MAX;
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -199,8 +154,8 @@ naiveGarbageCollection()
 		Version *verTmp, *delTarget;
 		for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 			// 時間がかかるので，離脱条件チェック
-			End = rdtsc();
-			if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+			rsobject.End = rdtsc();
+			if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
 				Finish.store(true, std::memory_order_release);
 				return;
 			}
@@ -240,14 +195,27 @@ naiveGarbageCollection()
 }
 
 void
+setThreadAffinity(int myid)
+{
+  pid_t pid = syscall(SYS_gettid);
+  cpu_set_t cpu_set;
+
+	CPU_ZERO(&cpu_set);
+	CPU_SET(myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
+		ERR;
+	}
+}
+
+void
 waitForReadyOfAllThread()
 {
 	unsigned int expected, desired;
-
+	expected = Running.load(std::memory_order_acquire);
 	do {
-		expected = Running.load(std::memory_order_acquire);
 		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
 
 	//spin-wait
 	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}

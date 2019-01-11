@@ -1,5 +1,5 @@
 PROG = ermia.exe
-SOURCES = ermia.cc transaction.cc util.cc garbageCollection.cc
+SOURCES = ermia.cc transaction.cc util.cc garbageCollection.cc result.cc
 
 CC = g++
 CFLAGS = -c -Wall -g -O2 -std=c++17
@@ -10,10 +10,11 @@ O1 = ermia.o
 O2 = transaction.o
 O3 = util.o
 O4 = garbageCollection.o
+O5 = result.o
 
 all: $(PROG)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4)
+$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 .cc.o:
 	$(CC) $(CFLAGS) $<

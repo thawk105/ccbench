@@ -12,24 +12,20 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/int64byte.hpp"
+#include "include/garbageCollection.hpp"
 #include "include/random.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
-#include "include/garbageCollection.hpp"
 
 using namespace std;
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-extern void displayAbortCounts();
-extern void displayAbortRate();
-extern void displayDB();
-extern void displayPRO();
-extern void displayTPS(uint64_t &bgn, uint64_t &end);
-extern void deceideTMTgcThreshold();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void naiveGarbageCollection();
 extern inline uint64_t rdtsc();
+extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 static bool
@@ -105,16 +101,12 @@ chkArg(const int argc, const char *argv[])
 	EXTIME = atoi(argv[6]);
 
 	try {
-		FinishTransactions = new uint64_t[THREAD_NUM];
-		AbortCounts = new uint64_t[THREAD_NUM];
 		TMT = new TransactionTable*[THREAD_NUM];
 	} catch (bad_alloc) {
 		ERR;
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		FinishTransactions[i] = 0;
-		AbortCounts[i] = 0;
 		TMT[i] = new TransactionTable(0, 0, UINT32_MAX, 0, TransactionStatus::inFlight);
 	}
 }
@@ -124,27 +116,20 @@ manager_worker(void *arg)
 {
 	// start, inital work
 	int *myid = (int *)arg;
-	pid_t pid = syscall(SYS_gettid);
-	cpu_set_t cpu_set;
 	GarbageCollection gcobject;
+  Result rsobject;
 	
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		ERR;
-	}
-
+  setThreadAffinity(*myid);
 	gcobject.decideFirstRange();
 	waitForReadyOfAllThread();
 	// end, initial work
 	
 	
-	Bgn = rdtsc();
+	rsobject.Bgn = rdtsc();
 	for (;;) {
 		usleep(1);
-		End = rdtsc();
-		if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+		rsobject.End = rdtsc();
+		if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
 			Finish.store(true, std::memory_order_release);
 			return nullptr;
 		}
@@ -167,26 +152,11 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	Xoroshiro128Plus rnd;
 	rnd.init();
-	uint64_t localFinishTransactions(0), localAbortCounts(0);
-
-	//----------
-	pid_t pid;
-	cpu_set_t cpu_set;
-
-	pid = syscall(SYS_gettid);
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		ERR;
-	}
-	//check-test
+	Result rsobject;
+	
+	setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
-	//----------
-	
-	//-----
-	
 	waitForReadyOfAllThread();
 	
 	//start work (transaction)
@@ -197,10 +167,8 @@ worker(void *arg)
 RETRY:
 
 			if (Finish.load(std::memory_order_acquire)) {
-				CtrLock.w_lock();
-				FinishTransactions[*myid] = localFinishTransactions;
-				AbortCounts[*myid] = localAbortCounts;
-				CtrLock.w_unlock();
+				rsobject.sumUpAbortCounts();
+				rsobject.sumUpCommitCounts();
 				return nullptr;
 			}
 
@@ -213,14 +181,14 @@ RETRY:
 					//if (trans.status == TransactionStatus::aborted) NNN;
 				} else if (pro[i].ope == Ope::WRITE) {
 					trans.ssn_twrite(pro[i].key, pro[i].val);
-					if (trans.status == TransactionStatus::aborted) NNN;
+					//if (trans.status == TransactionStatus::aborted) NNN;
 				} else {
 					ERR;
 				}
 
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
-					localAbortCounts++;
+					++rsobject.localAbortCounts;
 					goto RETRY;
 				}
 			}
@@ -228,10 +196,10 @@ RETRY:
 			trans.ssn_parallel_commit();
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
-				localAbortCounts++;
+				++rsobject.localAbortCounts;
 				goto RETRY;
 			}
-			localFinishTransactions++;
+			++rsobject.localCommitCounts;
 
 			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
 			if (trans.preGcThreshold != loadThreshold) {
@@ -270,6 +238,7 @@ threadCreate(int id)
 int
 main(const int argc, const char *argv[])
 {
+  Result rsobject;
 	chkArg(argc, argv);
 	makeDB();
 
@@ -288,9 +257,9 @@ main(const int argc, const char *argv[])
 
 	//displayDB();
 
-	displayTPS(Bgn, End);
-	displayAbortCounts();
-	//displayAbortRate();
+	rsobject.displayTPS();
+	rsobject.displayAbortCounts();
+  rsobject.displayAbortRate();
 
 	return 0;
 }
