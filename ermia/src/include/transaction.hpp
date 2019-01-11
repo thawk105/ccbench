@@ -33,7 +33,6 @@ public:
 
 	uint8_t thid;	// thread ID
 	uint32_t txid;	//TID and begin timestamp - the current log sequence number (LSN)
-	bool safeRetry = false;
 
 	Transaction(uint8_t thid, unsigned int max_ope) {
 		this->thid = thid;

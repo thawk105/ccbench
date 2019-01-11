@@ -92,7 +92,7 @@ chkArg(const int argc, const char *argv[])
 	}
 	RRATIO = atoi(argv[4]);
 	if (RRATIO > 10) {
-		cout << "rratio (* 10 %%) must be 0 ~ 10" << endl;
+		cout << "rratio (* 10 percent) must be 0 ~ 10" << endl;
 		ERR;
 	}
 
@@ -149,8 +149,6 @@ manager_worker(void *arg)
 			return nullptr;
 		}
 
-		//naiveGarbageCollection()
-		
 		if (gcobject.chkSecondRange()) {
 			gcobject.decideGcThreshold();
 			gcobject.mvSecondRangeToFirstRange();
@@ -215,7 +213,7 @@ RETRY:
 					//if (trans.status == TransactionStatus::aborted) NNN;
 				} else if (pro[i].ope == Ope::WRITE) {
 					trans.ssn_twrite(pro[i].key, pro[i].val);
-					//if (trans.status == TransactionStatus::aborted) NNN;
+					if (trans.status == TransactionStatus::aborted) NNN;
 				} else {
 					ERR;
 				}

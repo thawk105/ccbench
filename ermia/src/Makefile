@@ -2,7 +2,7 @@ PROG = ermia.exe
 SOURCES = ermia.cc transaction.cc util.cc garbageCollection.cc
 
 CC = g++
-CFLAGS = -c -Wall -g -O2 -std=c++11
+CFLAGS = -c -Wall -g -O2 -std=c++17
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 

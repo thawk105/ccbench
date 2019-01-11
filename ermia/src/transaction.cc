@@ -42,6 +42,7 @@ Transaction::tbegin()
 		} while (tmt == nullptr);
 		this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
 	}
+	this->txid += 1;
 
 	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
 	if (this->status == TransactionStatus::aborted)
@@ -216,10 +217,10 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
 	while (itr != readSet.end()) {
 		if ((*itr).key == key) {
 			readSet.erase(itr);
+			downReadersBits(vertmp);
 			break;
 		} else itr++;
 	}
-	downReadersBits(vertmp);
 	
 	verify_exclusion_or_abort();
 }
@@ -427,7 +428,6 @@ Transaction::ssn_parallel_commit()
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) 
 		(*itr).ver->status.store(VersionStatus::committed, memory_order_release);
 
-	safeRetry = false;
 	readSet.clear();
 	writeSet.clear();
 	return;
@@ -446,7 +446,6 @@ Transaction::abort()
 		downReadersBits((*itr).ver);
 
 	readSet.clear();
-	safeRetry = true;
 }
 
 inline
