@@ -11,9 +11,9 @@
 #include "include/debug.hpp"
 #include "include/procedure.hpp"
 #include "include/random.hpp"
+#include "include/tsc.hpp"
 #include "include/tuple.hpp"
 
-uint64_t rdtsc();
 
 bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 {
@@ -239,13 +239,17 @@ naiveGarbageCollection()
 	}
 }
 
-extern
-uint64_t
-rdtsc()
+void
+waitForReadyOfAllThread()
 {
-	uint64_t rax;
-	uint64_t rdx;
-	asm volatile ("rdtsc" : "=a"(rax), "=d"(rdx));
-	return (rdx << 32) | rax;
-}
+	unsigned int expected, desired;
 
+	do {
+		expected = Running.load(std::memory_order_acquire);
+		desired = expected + 1;
+	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
+
+	//spin-wait
+	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
+	//-----
+}

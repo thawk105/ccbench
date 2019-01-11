@@ -52,6 +52,7 @@ Transaction::tbegin()
 	TransactionTable *expected, *desired;
 	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
 	expected = tmt;
+	gcobject.gcqForTMT.push(expected);
 	for (;;) {
 		desired = newElement;
 		if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;

@@ -14,6 +14,7 @@
 #include "include/int64byte.hpp"
 #include "include/random.hpp"
 #include "include/transaction.hpp"
+#include "include/tsc.hpp"
 #include "include/garbageCollection.hpp"
 
 using namespace std;
@@ -28,7 +29,8 @@ extern void deceideTMTgcThreshold();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void naiveGarbageCollection();
-extern uint64_t rdtsc();
+extern inline uint64_t rdtsc();
+extern void waitForReadyOfAllThread();
 
 static bool
 chkInt(const char *arg)
@@ -134,17 +136,9 @@ manager_worker(void *arg)
 	}
 
 	gcobject.decideFirstRange();
+	waitForReadyOfAllThread();
 	// end, initial work
 	
-	unsigned int expected, desired;
-	do {
-		expected = Running.load(std::memory_order_acquire);
-		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-
-	//spin-wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-	//-----
 	
 	Bgn = rdtsc();
 	for (;;) {
@@ -194,15 +188,8 @@ worker(void *arg)
 	//----------
 	
 	//-----
-	unsigned int expected, desired;
-	do {
-		expected = Running.load();
-		desired = expected + 1;
-	} while (!Running.compare_exchange_weak(expected, desired));
 	
-	//spin wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-	//-----
+	waitForReadyOfAllThread();
 	
 	//start work (transaction)
 	try {
@@ -225,8 +212,10 @@ RETRY:
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				if (pro[i].ope == Ope::READ) {
 					trans.ssn_tread(pro[i].key);
+					//if (trans.status == TransactionStatus::aborted) NNN;
 				} else if (pro[i].ope == Ope::WRITE) {
 					trans.ssn_twrite(pro[i].key, pro[i].val);
+					//if (trans.status == TransactionStatus::aborted) NNN;
 				} else {
 					ERR;
 				}
@@ -245,6 +234,11 @@ RETRY:
 				goto RETRY;
 			}
 			localFinishTransactions++;
+
+			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
+			if (trans.preGcThreshold != loadThreshold) {
+				trans.gcobject.gcTMTelement(loadThreshold);
+			}
 		}
 	} catch (bad_alloc) {
 		ERR;

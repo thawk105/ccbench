@@ -4,8 +4,12 @@
 #include <map>
 #include <vector>
 
+#include "garbageCollection.hpp"
 #include "version.hpp"
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
+
+// forward declaration
+class TransactionTable;
 
 enum class TransactionStatus : uint8_t {
 	inFlight,
@@ -24,6 +28,8 @@ public:
 	uint32_t sstamp = UINT32_MAX;	// Successor low-water mark, pi (T)
 	vector<SetElement> readSet;
 	vector<SetElement> writeSet;
+	GarbageCollection gcobject;
+	uint32_t preGcThreshold = 0;
 
 	uint8_t thid;	// thread ID
 	uint32_t txid;	//TID and begin timestamp - the current log sequence number (LSN)
