@@ -3,7 +3,7 @@ SOURCES = mocc.cc transaction.cc lock.cc util.cc result.cc
 
 CC = g++
 CFLAGS = -c -Wall -g -O2 -std=c++17 -D RWLOCK
-#CFLAGS = -c -Wall -g -O2 -std=c++11 -D MQLOCK
+#CFLAGS = -c -Wall -g -O2 -std=c++17 -D MQLOCK
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 

@@ -70,8 +70,12 @@ public:
 	unsigned int val;
 	Tidword tidword;
 	Epotemp epotemp;	//	temprature, min 0, max 20
-	MQLock mqlock;
+#ifdef RWLOCK
 	RWLock rwlock;	// 4byte
+#endif
+#ifdef MQLOCK
+	MQLock mqlock;
+#endif
 };
 
 // use for read-write set
