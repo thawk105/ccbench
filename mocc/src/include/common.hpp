@@ -11,14 +11,12 @@
 
 GLOBAL std::atomic<unsigned int> Running(0);
 alignas(64) GLOBAL uint64_t_64byte GlobalEpoch(1);
-GLOBAL std::atomic<bool> Finish(false);
 
 #else
 	#define GLOBAL extern
 
-GLOBAL std::atomic<int> Running;
+GLOBAL std::atomic<unsigned int> Running;
 GLOBAL uint64_t_64byte GlobalEpoch;
-GLOBAL std::atomic<bool> Finish;
 
 #endif
 
@@ -33,17 +31,11 @@ GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
 GLOBAL unsigned int EXTIME;
 
-GLOBAL uint64_t *FinishTransactions;
-GLOBAL uint64_t *AbortCounts;
-
 GLOBAL RWLock CtrLock;
 
 // for logging emulation
 GLOBAL uint64_t_64byte *Start;	
 GLOBAL uint64_t_64byte *Stop;
-
-GLOBAL uint64_t Bgn;
-GLOBAL uint64_t End;
 
 GLOBAL Tuple *Table;
 

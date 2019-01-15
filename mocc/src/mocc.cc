@@ -13,12 +13,19 @@
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
 using namespace std;
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern void displayDB();
+extern void displayPRO();
+extern void makeDB();
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void setThreadAffinity(int myid);
+extern void waitForReadyOfAllThread();
 
 static bool
 chkInt(const char *arg)
@@ -91,8 +98,6 @@ chkArg(const int argc, char *argv[])
 	EXTIME = atoi(argv[7]);
 
 	try {
-		FinishTransactions = new uint64_t[THREAD_NUM];
-		AbortCounts = new uint64_t[THREAD_NUM];
 		if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -107,29 +112,9 @@ chkArg(const int argc, char *argv[])
 	}
 
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		FinishTransactions[i] = 0;
-		AbortCounts[i] = 0;
 		ThLocalEpoch[i].obj = 0;
 	}
 }
-
-static void 
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		sumTrans += FinishTransactions[i];
-	}
-
-	uint64_t result = (double) sumTrans / (double) sec;
-	cout << (int)result << endl;
-}
-
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-void threadEndProcess(int *myid);
 
 bool
 chkEpochLoaded()
@@ -142,52 +127,23 @@ chkEpochLoaded()
 	return true;
 }
 
-pid_t gettid(void)
-{
-	return syscall(SYS_gettid);
-}
-
 static void *
 epoch_worker(void *arg)
 {
 	int *myid = (int *)arg;
-	pid_t pid = gettid();
-	cpu_set_t cpu_set;
 	uint64_t EpochTimerStart, EpochTimerStop;
+  Result rsobject;
 
-	//----------
-	// initial work
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+  setThreadAffinity(*myid);
+  waitForReadyOfAllThread();
 
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
-
-	//----------
-	//wait for all threads start. CAS.
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load(memory_order_acquire);
-RETRY_WAIT_L:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT_L;
-	}
-
-	//spin wait
-	while (Running.load(memory_order_acquire) != THREAD_NUM) {};
-	//----------
-
-	uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
-	Bgn = rdtsc();
+	rsobject.Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
 	for (;;) {
 		usleep(1);
-		End = rdtsc();
-		if (chkClkSpan(Bgn, End, finish_time)) {
-			Finish.store(true, memory_order_release);
+		rsobject.End = rdtsc();
+		if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+			rsobject.Finish.store(true, memory_order_release);
 			return nullptr;
 		}
 
@@ -205,8 +161,6 @@ RETRY_WAIT_L:
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-
 static void *
 worker(void *arg)
 {
@@ -214,8 +168,7 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	unsigned int expected, desired;
-	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
+  Result rsobject;
 	int locknum = *myid + 2;
 	// 0 : None
 	// 1 : Acquired
@@ -225,27 +178,8 @@ worker(void *arg)
 	// ..., th num 0 is leader thread.
 	Transaction trans(*myid, &rnd, locknum);
 
-	//----------
-	pid_t pid = gettid();
-	cpu_set_t cpu_set;
-
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) ERR;
-	//----------
-	//wait for all threads start. CAS.
-	for (;;) {
-		expected = Running.load(memory_order_acquire);
-RETRY_WAIT_W:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT_W;
-	}
-	
-	//spin wait
-	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
-	//----------
+  setThreadAffinity(*myid);
+  waitForReadyOfAllThread();
 	
 	try {
 		//start work (transaction)
@@ -253,11 +187,9 @@ RETRY_WAIT_W:
 			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
 RETRY:
-			if (Finish.load(memory_order_acquire)) {
-				CtrLock.w_lock();
-				FinishTransactions[*myid] = totalFinishTransactions;
-				AbortCounts[*myid] = totalAbortCounts;
-				CtrLock.w_unlock();
+			if (rsobject.Finish.load(memory_order_acquire)) {
+        rsobject.sumUpAbortCounts();
+        rsobject.sumUpCommitCounts();
 				return nullptr;
 			}
 
@@ -270,19 +202,19 @@ RETRY:
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
-					totalAbortCounts++;
+          ++rsobject.localAbortCounts;
 					goto RETRY;
 				}
 			}
 
 			if (!(trans.commit())) {
 				trans.abort();
-				totalAbortCounts++;
+        ++rsobject.localAbortCounts;
 				goto RETRY;
 			}
 
 			trans.writePhase();
-			totalFinishTransactions++;
+      ++rsobject.localCommitCounts;
 
 		}
 	} catch (bad_alloc) {
@@ -314,18 +246,12 @@ threadCreate(int id)
 	return t;
 }
 
-extern void displayDB();
-extern void displayPRO();
-extern void displayAbortRate();
-extern void makeDB();
-
 int
 main(int argc, char *argv[]) 
 {
+  Result rsobject;
 	chkArg(argc, argv);
 	makeDB();
-
-	//displayDB();
 
 	pthread_t thread[THREAD_NUM];
 
@@ -337,8 +263,8 @@ main(int argc, char *argv[])
 		pthread_join(thread[i], nullptr);
 	}
 
-	prtRslt(Bgn, End);
-	displayAbortRate();
+  rsobject.displayTPS();
+	rsobject.displayAbortRate();
 
 	return 0;
 }

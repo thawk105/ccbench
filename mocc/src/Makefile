@@ -1,5 +1,5 @@
 PROG = mocc.exe
-SOURCES = mocc.cc makeDB.cc makeProcedure.cc transaction.cc stopWatch.cc displayGlobal.cc lock.cc
+SOURCES = mocc.cc transaction.cc lock.cc util.cc result.cc
 
 CC = g++
 CFLAGS = -c -Wall -g -O2 -std=c++17 -D RWLOCK
@@ -8,16 +8,14 @@ LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 
 O1 = mocc.o
-O2 = makeDB.o
-O3 = makeProcedure.o
+O2 = lock.o
+O3 = result.o
 O4 = transaction.o
-O5 = stopWatch.o
-O6 = displayGlobal.o
-O7 = lock.o
+O5 = util.o
 
 all : $(PROG)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5) $(O6) $(O7)
+$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 .cc.o:
 	$(CC) $(CFLAGS) $< 

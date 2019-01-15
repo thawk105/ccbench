@@ -2,7 +2,6 @@
 
 #include "include/common.hpp"
 #include "include/lock.hpp"
-#include "include/tsc.hpp"
 
 #define xchg(...) __atomic_exchange_n(__VA_ARGS__)
 #define cas(...) __atomic_compare_exchange_n(__VA_ARGS__)
@@ -566,7 +565,7 @@ MQLock::acquire_writer_lock(uint32_t me, unsigned int key, bool trylock)
 		// spin until pred.stype is None and pred.next is NULL
 		while (!(p->sucInfo.atomicLoadStype() == LockMode::None
 				&& p->sucInfo.atomicLoadNext() == (uint32_t)SentinelValue::None)) {
-			printf("th %d : aq wl %d : p->stype %d p->next %d\n", me, key, p->sucInfo.atomicLoadStype(), p->sucInfo.atomicLoadNext());
+			printf("th %d : aq wl %d : p->stype %d p->next %d\n", me, key, (int)p->sucInfo.atomicLoadStype(), p->sucInfo.atomicLoadNext());
 		}
 		//printf("th %d : acquire wl %d\n", me, key);
 		// register on pred.flags as a writer successor,
