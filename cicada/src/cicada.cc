@@ -18,23 +18,17 @@
 #include "include/int64byte.hpp"
 #include "include/procedure.hpp"
 #include "include/random.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 
 using namespace std;
 
-extern void displayDB();
-extern void displayMinRts();
-extern void displayMinWts();
-extern void displayThreadWtsArray();
-extern void displayThreadRtsArray();
-extern void displayPRO();
-extern void displayAbortRate();
-extern void displayFinishTransactions();
-extern void displayAbortCounts();
-extern void displayTransactionRange();
+extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void makeDB(uint64_t *initial_wts);
-extern void prtRslt(uint64_t &bgn, uint64_t &end);
-extern void sumTrans(Transaction *trans);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void setThreadAffinity(int myid);
+extern void waitForReadyOfAllThread();
 
 static bool
 chkInt(char *arg)
@@ -180,51 +174,28 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	}
 }
 
-extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
-
 static void *
 manager_worker(void *arg)
 {
 	int *myid = (int *)arg;
-	const uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
 	TimeStamp tmp;
 
 	uint64_t initial_wts;
 	makeDB(&initial_wts);
 	MinWts.store(initial_wts + 2, memory_order_release);
+  Result rsobject;
 
-	//-----
-	pid_t pid = syscall(SYS_gettid);
-	cpu_set_t cpu_set;
-
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		ERR;
-	}
+  setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-	//-----
-
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load(memory_order_acquire);
-RETRY_WAIT_L:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT_L;
-	}
-
-	while (Running.load(memory_order_acquire) != THREAD_NUM) {}
+  waitForReadyOfAllThread();
 	while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
-	Bgn = rdtsc();
+	rsobject.Bgn = rdtsc();
 	// leader work
 	for(;;) {
-		End = rdtsc();
-		if (chkClkSpan(Bgn, End, finish_time)) {
-			Finish.store(true, std::memory_order_release);
+		rsobject.End = rdtsc();
+		if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+			rsobject.Finish.store(true, std::memory_order_release);
 			return nullptr;
 		}
 
@@ -272,8 +243,6 @@ RETRY_WAIT_L:
 	return nullptr;
 }
 
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-
 static void *
 worker(void *arg)
 {
@@ -282,38 +251,12 @@ worker(void *arg)
 	rnd.init();
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
+  Result rsobject;
 
-	//----------
-	pid_t pid;
-	cpu_set_t cpu_set;
-
-	pid = syscall(SYS_gettid);
-	CPU_ZERO(&cpu_set);
-	//int core_num = *myid % sysconf(_SC_NPROCESSORS_CONF) * 2;
-	//if (core_num > 23) core_num -= 23;	//	chris numa 対策
-	int core_num = *myid % sysconf(_SC_NPROCESSORS_CONF);
-	CPU_SET(core_num, &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) ERR;
-
-	//check-test
+  setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
-	//----------
-	
-	//wait for all threads start. CAS.
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load();
-RETRY_WAIT_W:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT_W;
-	}
-	
-	//spin wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-	//----------
+  waitForReadyOfAllThread();
 	
 	try {
 		//start work(transaction)
@@ -321,8 +264,9 @@ RETRY_WAIT_W:
 			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
 RETRY:
-			if (Finish.load(std::memory_order_acquire)) {
-				sumTrans(&trans);
+			if (rsobject.Finish.load(std::memory_order_acquire)) {
+        rsobject.sumUpAbortCounts();
+        rsobject.sumUpCommitCounts();
 				return nullptr;
 			}
 
@@ -339,7 +283,7 @@ RETRY:
 
 				if (trans.status == TransactionStatus::abort) {
 					trans.earlyAbort();
-					trans.abort_counts++;
+          ++rsobject.localAbortCounts;
 					goto RETRY;
 				}
 			}
@@ -347,20 +291,20 @@ RETRY:
 			//read onlyトランザクションはread setを集めず、validationもしない。
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
-				trans.finish_transactions++;
+        ++rsobject.localCommitCounts;
 				continue;
 			}
 
 			//Validation phase
 			if (!trans.validation()) {
 				trans.abort();
-				trans.abort_counts++;
+        ++rsobject.localAbortCounts;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
-			trans.finish_transactions++;
+      ++rsobject.localCommitCounts;
 
 			//Maintenance
 			//Schedule garbage collection
@@ -399,8 +343,9 @@ threadCreate(int id)
 }
 
 int 
-main(int argc, char *argv[]) {
-
+main(int argc, char *argv[]) 
+{
+  Result rsobject;
 	chkArg(argc, argv);
 
 	pthread_t thread[THREAD_NUM];
@@ -413,17 +358,9 @@ main(int argc, char *argv[]) {
 		pthread_join(thread[i], nullptr);
 	}
 
-	//displayDB();
-	//displayMinRts();
-	//displayMinWts();
-	//displayThreadWtsArray();
-	//displayThreadRtsArray();
-	//displayFinishTransactions();
-	//displayTransactionRange();
-	
-	prtRslt(Bgn, End);
-	//displayAbortCounts();
-	displayAbortRate();
+  rsobject.displayTPS();
+	rsobject.displayAbortCounts();
+	rsobject.displayAbortRate();
 
 	return 0;
 }

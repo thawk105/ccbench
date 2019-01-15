@@ -1,6 +1,11 @@
 #include <atomic>
 #include <cstdint>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
+#include <sys/types.h> // syscall(SYS_gettid),
+#include <unistd.h> // syscall(SYS_gettid),
 #include "include/debug.hpp"
 #include "include/common.hpp"
 #include "include/debug.hpp"
@@ -81,28 +86,28 @@ makeDB(uint64_t *initial_wts)
 }
 
 void
-prtRslt(uint64_t &bgn, uint64_t &end)
+setThreadAffinity(int myid)
 {
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
+  pid_t pid = syscall(SYS_gettid);
+  cpu_set_t cpu_set;
 
-	cout << Finish_transactions / sec << endl;
+	CPU_ZERO(&cpu_set);
+	CPU_SET(myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
+    ERR;
+  return;
 }
 
-void 
-sumTrans(Transaction *trans)
+void
+waitForReadyOfAllThread()
 {
-	uint64_t expected, desired;
+	unsigned int expected, desired;
+	expected = Running.load(std::memory_order_acquire);
+	do {
+		desired = expected + 1;
+	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
 
-	expected = Finish_transactions.load(std::memory_order_acquire);
-	for (;;) {
-		desired = expected + trans->finish_transactions;
-		if (Finish_transactions.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-	}
-
-	expected = Abort_counts.load(std::memory_order_acquire);
-	for (;;) {
-		desired = expected + trans->abort_counts;
-		if (Abort_counts.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-	}
+	while (Running.load(std::memory_order_acquire) != THREAD_NUM);
+  return;
 }

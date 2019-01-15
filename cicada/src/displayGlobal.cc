@@ -108,28 +108,6 @@ displayThreadRtsArray()
     cout << endl << endl;
 }
 
-void
-displayFinishTransactions()
-{
-	cout << Finish_transactions << endl;
-}
-
-void
-displayAbortCounts()
-{
-	cout << Abort_counts << endl;
-}
-
-void 
-displayAbortRate() 
-{
-	long double sumT(Finish_transactions), sumA(Abort_counts);
-	long double rate;
-
-	rate = sumA / (sumT + sumA);
-	cout << rate << endl;
-}
-
 void 
 displaySLogSet() 
 {

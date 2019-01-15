@@ -203,9 +203,9 @@ setThreadAffinity(int myid)
 	CPU_ZERO(&cpu_set);
 	CPU_SET(myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
 
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		ERR;
-	}
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
+    ERR;
+  return;
 }
 
 void
@@ -217,7 +217,6 @@ waitForReadyOfAllThread()
 		desired = expected + 1;
 	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
 
-	//spin-wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-	//-----
+	while (Running.load(std::memory_order_acquire) != THREAD_NUM);
+  return;
 }
