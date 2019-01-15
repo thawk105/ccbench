@@ -1,7 +1,13 @@
 #include <atomic>
+#include <bitset>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
+#include <limits>
+#include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
+#include <sys/types.h> // syscall(SYS_gettid),
+#include <unistd.h> // syscall(SYS_gettid),
 
 #include "../../include/inline.hpp"
 #include "include/common.hpp"
@@ -31,7 +37,55 @@ chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 	else return false;
 }
 
-void makeDB() {
+void 
+displayDB() 
+{
+
+	Tuple *tuple;
+
+	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+		tuple = &Table[i];
+		cout << "------------------------------" << endl;	//-は30個
+		cout << "key: " << tuple->key << endl;
+		cout << "val: " << tuple->val << endl;
+		cout << "TS_word: " << tuple->tsw.obj << endl;
+		cout << "bit: " << static_cast<bitset<64>>(tuple->tsw.obj) << endl;
+		cout << endl;
+	}
+}
+
+void 
+displayPRO(Procedure *pro) 
+{
+	for (unsigned int i = 0; i < MAX_OPE; i++) {
+   		cout << "(ope, key, val) = (";
+		switch(pro[i].ope){
+			case Ope::READ:
+				cout << "READ";
+				break;
+			case Ope::WRITE:
+				cout << "WRITE";
+				break;
+		default:
+				break;
+		}
+   		cout << ", " << pro[i].key
+   		<< ", " << pro[i].val << ")" << endl;
+	}
+}
+
+void
+displayRtsudRate()
+{
+	// read timestamp update rate
+	long double sum(Rtsudctr + Rts_non_udctr), ud(Rtsudctr);
+	cout << "Read timestamp update rate: ";
+	cout << ud / sum << endl;
+}
+
+void
+makeDB() 
+{
 	Tuple *tmp;
 	Xoroshiro128Plus rnd;
 	rnd.init();
@@ -53,7 +107,8 @@ void makeDB() {
 }
 
 void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) 
+{
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
 		if ((rnd.next() % 10) < RRATIO) {
 			pro[i].ope = Ope::READ;
@@ -65,42 +120,29 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
 	}
 }
 
-void 
-prtRslt(uint64_t &bgn, uint64_t &end)
+void
+setThreadAffinity(int myid)
 {
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
+  pid_t pid = syscall(SYS_gettid);
+  cpu_set_t cpu_set;
 
-	uint64_t result = (double)FinishTransactions / (double)sec;
-	cout << (int)result << endl;
+	CPU_ZERO(&cpu_set);
+	CPU_SET(myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+
+	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
+    ERR;
+  return;
 }
 
 void
-sumTrans(Transaction *trans) 
+waitForReadyOfAllThread()
 {
-	uint64_t expected, desired;
+	unsigned int expected, desired;
+	expected = Running.load(std::memory_order_acquire);
+	do {
+		desired = expected + 1;
+	} while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
 
-	expected = FinishTransactions.load(memory_order_acquire);
-	for (;;) {
-		desired = expected + trans->finishTransactions;
-		if (FinishTransactions.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-	}
-
-	expected = AbortCounts.load(memory_order_acquire);
-	for (;;) {
-		desired = expected + trans->abortCounts;
-		if (AbortCounts.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-	}
-
-	expected = Rtsudctr.load(memory_order_acquire);
-	for (;;) {
-		desired = expected + trans->rtsudctr;
-		if (Rtsudctr.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-	}
-
-	expected = Rts_non_udctr.load(memory_order_acquire);
-	for (;;) {
-		desired = expected + trans->rts_non_udctr;
-		if (Rts_non_udctr.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-	}
+	while (Running.load(std::memory_order_acquire) != THREAD_NUM);
+  return;
 }

@@ -178,8 +178,6 @@ Transaction::abort()
 	readSet.clear();
 	writeSet.clear();
 	cll.clear();
-
-	abortCounts++;
 }
 
 void 
@@ -199,8 +197,6 @@ Transaction::writePhase()
 	readSet.clear();
 	writeSet.clear();
 	cll.clear();
-
-	finishTransactions++;
 }
 
 void 

@@ -13,6 +13,7 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/random.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
@@ -21,14 +22,11 @@ using namespace std;
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void displayDB();
 extern void displayPRO();
-extern void displayFinishTransactions();
-extern void displayAbortCounts();
-extern void displayAbortRate();
 extern void displayRtsudRate();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void prtRslt(uint64_t &bgn, uint64_t &end);
-extern void sumTrans(Transaction *trans);
+extern void setThreadAffinity(int myid);
+extern void waitForReadyOfAllThread();
 
 static bool
 chkInt(char *arg)
@@ -89,55 +87,30 @@ worker(void *arg)
 	rnd.init();
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
+  Result rsobject;
 
-	//----------
-	pid_t pid = syscall(SYS_gettid);
-	cpu_set_t cpu_set;
-
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-	//epoch_worker が存在するので， + 1 をする．
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
-	//check-test
+  setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
-	//----------
+  waitForReadyOfAllThread();
 	
-
-	//----------
-	//wait for all threads start. CAS.
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load(memory_order_acquire);
-RETRY_WAIT:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT;
-	}
-	
-	//spin wait
-	while (Running != THREAD_NUM);
-	//----------
-	
-	if (*myid == 0) Bgn = rdtsc();
+	if (*myid == 0) rsobject.Bgn = rdtsc();
 
 	try {
 		//start work(transaction)
 		for (;;) {
 			if (*myid == 0) {
-				End = rdtsc();
-				if (chkClkSpan(Bgn, End, EXTIME*1000*1000 * CLOCK_PER_US)) {
-					Finish.store(true, std::memory_order_release);
-					sumTrans(&trans);
+				rsobject.End = rdtsc();
+				if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME*1000*1000 * CLOCK_PER_US)) {
+					rsobject.Finish.store(true, std::memory_order_release);
+          rsobject.sumUpCommitCounts();
+          rsobject.sumUpAbortCounts();
 					return nullptr;
 				}
 			} else {
-				if (Finish.load(std::memory_order_acquire)) {
-					sumTrans(&trans);
+				if (rsobject.Finish.load(std::memory_order_acquire)) {
+          rsobject.sumUpCommitCounts();
+          rsobject.sumUpAbortCounts();
 					return nullptr;
 				}
 			}
@@ -153,20 +126,21 @@ RETRY:
 					trans.tread(pro[i].key);
 					if (trans.status == TransactionStatus::aborted) {
 						trans.abort();
+            ++rsobject.localAbortCounts;
 						goto RETRY;
 					}
-				} else if (pro[i].ope == Ope::WRITE) {
-					trans.twrite(pro[i].key, pro[i].val);
 				} else {
-					ERR;
-				}
+					trans.twrite(pro[i].key, pro[i].val);
+				} 
 			}
 			
 			//Validation phase
 			if (trans.validationPhase()) {
 				trans.writePhase();
+        ++rsobject.localCommitCounts;
 			} else {
 				trans.abort();
+        ++rsobject.localAbortCounts;
 				goto RETRY;
 			}
 		}
@@ -196,7 +170,9 @@ threadCreate(int id)
 }
 
 int 
-main(int argc, char *argv[]) {
+main(int argc, char *argv[]) 
+{
+  Result rsobject;
 	chkArg(argc, argv);
 	makeDB();
 	
@@ -214,12 +190,9 @@ main(int argc, char *argv[]) {
 	}
 
 	//displayDB();
-	//displayFinishTransactions();
 
-	prtRslt(Bgn, End);
-	displayRtsudRate();
-	//displayAbortRate();
-	//displayAbortCounts();
+  rsobject.displayTPS();
+	//displayRtsudRate();
 
 	return 0;
 }

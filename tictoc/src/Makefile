@@ -1,8 +1,8 @@
 PROG = tictoc.exe
-SOURCES = tictoc.cc transaction.cc util.cc displayGlobal.cc
+SOURCES = tictoc.cc transaction.cc result.cc util.cc 
 
 CC = g++
-#CFLAGS = -c -Wall -g -O2 -std=c++11 -march=native
+#CFLAGS = -c -Wall -g -O2 -std=c++17 -march=native
 # i find the case that using march-native degrade performance.
 CFLAGS = -c -Wall -g -O2 -std=c++17 
 LDFLAGS = -L./../lib
@@ -10,8 +10,8 @@ LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 
 O1 = tictoc.o
 O2 = transaction.o
-O3 = util.o
-O4 = displayGlobal.o
+O3 = result.o
+O4 = util.o
 
 all: $(PROG)
 
