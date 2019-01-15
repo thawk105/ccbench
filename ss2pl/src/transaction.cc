@@ -11,7 +11,6 @@ void
 Transaction::abort()
 {
 	unlock_list();
-	AbortCounts[thid]++;
 
 	readSet.clear();
 	writeSet.clear();
@@ -25,7 +24,6 @@ Transaction::commit()
 	}
 
 	unlock_list();
-	FinishTransactions[thid]++;
 
 	readSet.clear();
 	writeSet.clear();

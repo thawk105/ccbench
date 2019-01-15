@@ -13,12 +13,19 @@
 #include "include/debug.hpp"
 #include "include/int64byte.hpp"
 #include "include/random.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
 using namespace std;
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern void displayDB();
+extern void displayPRO();
+extern void makeDB();
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void setThreadAffinity(int myid);
+extern void waitForReadyOfAllThread();
 
 static bool
 chkInt(const char *arg)
@@ -41,12 +48,7 @@ chkArg(const int argc, const char *argv[])
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "WORKLOAD:" << endl;
-	    cout << "0. read only (read 100%%)" << endl;
-		cout << "1. read intensive (read 80%%)" << endl;
-		cout << "2. read write even (read 50%%)" << endl;
-		cout << "3. write intensive (write 80%%)" << endl;
-		cout << "4. write only (write 100%%)" << endl;
+		cout << "RRATIO : read ratio(* 10 %%)" << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
 
@@ -66,8 +68,8 @@ chkArg(const int argc, const char *argv[])
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
-	if (WORKLOAD > 4) {
+	RRATIO = atoi(argv[4]);
+	if (RRATIO > 10) {
 		ERR;
 	}
 
@@ -78,36 +80,7 @@ chkArg(const int argc, const char *argv[])
 	}
 
 	EXTIME = atoi(argv[6]);
-
-	try {
-		if (posix_memalign((void**)&FinishTransactions, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
-		if (posix_memalign((void**)&AbortCounts, 64, THREAD_NUM * sizeof(uint64_t)) != 0) ERR;
-	} catch (bad_alloc) {
-		ERR;
-	}
-
-	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		FinishTransactions[i] = 0;
-		AbortCounts[i] = 0;
-	}
 }
-
-static void
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-	uint64_t diff = end - bgn;
-	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-	int sumTrans = 0;
-	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		sumTrans += FinishTransactions[i];
-	}
-
-	uint64_t result = (double)sumTrans / (double)sec;
-	cout << (int)result << endl;
-}
-
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 
 static void *
 worker(void *arg)
@@ -117,61 +90,32 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	uint64_t totalFinishTransactions(0), totalAbortCounts(0);
 	Transaction trans(*myid);
+  Result rsobject;
 
-	//----------
-	pid_t pid;
-	cpu_set_t cpu_set;
-
-	pid = syscall(SYS_gettid);
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		ERR;
-	}
-	//check-test
+  setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
-	//----------
+  waitForReadyOfAllThread();
 	
-	//-----
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load();
-RETRY_WAIT:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT;
-	}
-	
-	//spin wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-	//-----
-	
-	if (*myid == 0) Bgn = rdtsc();
+	if (*myid == 0) rsobject.Bgn = rdtsc();
 
 	try {
 		//start work (transaction)
 		for (;;) {
 			//End judgment
 			if (*myid == 0) {
-				End = rdtsc();
-				if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
-					Finish.store(true, std::memory_order_release);
-					CtrLock.w_lock();
-					FinishTransactions[*myid] = totalFinishTransactions;
-					AbortCounts[*myid] = totalAbortCounts;
-					CtrLock.w_unlock();
+				rsobject.End = rdtsc();
+				if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+					rsobject.Finish.store(true, std::memory_order_release);
+          rsobject.sumUpCommitCounts();
+          rsobject.sumUpAbortCounts();
 					return nullptr;
 				}
 			} else {
-				if (Finish.load(std::memory_order_acquire)) {
-					CtrLock.w_lock();
-					FinishTransactions[*myid] = totalFinishTransactions;
-					AbortCounts[*myid] = totalAbortCounts;
-					CtrLock.w_unlock();
+				if (rsobject.Finish.load(std::memory_order_acquire)) {
+          rsobject.sumUpCommitCounts();
+          rsobject.sumUpAbortCounts();
 					return nullptr;
 				}
 			}
@@ -190,14 +134,14 @@ RETRY:
 				}
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
-					totalAbortCounts++;
+          ++rsobject.localAbortCounts;
 					goto RETRY;
 				}
 			}
 
 			//commit - write phase
 			trans.commit();
-			totalFinishTransactions++;
+      ++rsobject.localCommitCounts;
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -224,14 +168,10 @@ threadCreate(int id)
 	return t;
 }
 
-extern void displayDB();
-extern void displayPRO();
-extern void displayAbortRate();
-extern void makeDB();
-
 int
 main(const int argc, const char *argv[])
 {
+  Result rsobject;
 	chkArg(argc, argv);
 	makeDB();
 
@@ -248,8 +188,8 @@ main(const int argc, const char *argv[])
 		pthread_join(thread[i], nullptr);
 	}
 
-	//prtRslt(Bgn, End);
-	displayAbortRate();
+  rsobject.displayTPS();
+	rsobject.displayAbortRate();
 
 	return 0;
 }
