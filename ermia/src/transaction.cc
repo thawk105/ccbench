@@ -448,7 +448,6 @@ Transaction::abort()
 	readSet.clear();
 }
 
-inline
 void
 Transaction::verify_exclusion_or_abort()
 {

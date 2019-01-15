@@ -161,6 +161,7 @@ worker(void *arg)
 	
 	//start work (transaction)
 	try {
+	  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 		for(;;) {
 			makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
@@ -179,11 +180,9 @@ RETRY:
 				if (pro[i].ope == Ope::READ) {
 					trans.ssn_tread(pro[i].key);
 					//if (trans.status == TransactionStatus::aborted) NNN;
-				} else if (pro[i].ope == Ope::WRITE) {
+				} else {
 					trans.ssn_twrite(pro[i].key, pro[i].val);
 					//if (trans.status == TransactionStatus::aborted) NNN;
-				} else {
-					ERR;
 				}
 
 				if (trans.status == TransactionStatus::aborted) {
@@ -201,6 +200,8 @@ RETRY:
 			}
 			++rsobject.localCommitCounts;
 
+      // maintenance phase
+      // garbage collection
 			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
 			if (trans.preGcThreshold != loadThreshold) {
 				trans.gcobject.gcTMTelement(loadThreshold);

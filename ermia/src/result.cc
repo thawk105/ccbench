@@ -17,7 +17,7 @@ void
 Result::displayAbortRate()
 {
 	long double ave_rate = AbortCounts / (CommitCounts + AbortCounts);
-	cout << ave_rate << endl;
+	cout << "Abort rate : " << ave_rate << endl;
 }
 
 void
