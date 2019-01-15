@@ -14,6 +14,7 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/random.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
 
@@ -23,14 +24,10 @@ extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern bool chkEpochLoaded();
 extern void displayDB();
 extern void displayPRO();
-extern void displayFinishTransactions();
-extern void displayAbortCounts();
-extern void displayTotalAbortCounts();
-extern void displayAbortRate();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void prtRslt(uint64_t &bgn, uint64_t &end);
-extern void sumTrans(Transaction *trans);
+extern void setThreadAffinity(int myid);
+extern void waitForReadyOfAllThread();
 
 void threadEndProcess(int *myid);
 
@@ -57,17 +54,11 @@ example:./main 1000000 20 15 3 2400 40 3\n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of thread.\n\
-WORKLOAD:\n\
-0. read only (read 100%%)\n\
-1. read intensive (read 80%%)\n\
-2. read write even (read 50%%)\n\
-3. write intensive (write 80%%)\n\
-4. write only (write 100%%)\n\
+RRATIO : read ratio(* 10 %%)\n\
 CLOCK_PER_US: CPU_MHZ\n\
 EPOCH_TIME(int)(ms): Ex. 40\n\
-EXTIME: execution time.\n\
-\n");
-	    cout << "Tuple " << sizeof(Tuple) << endl;
+EXTIME: execution time.\n\n");
+	  cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 		exit(0);
 	}
@@ -82,8 +73,8 @@ EXTIME: execution time.\n\
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
-	WORKLOAD = atoi(argv[4]);
-	if (WORKLOAD > 4) {
+	RRATIO = atoi(argv[4]);
+	if (RRATIO > 10) {
 		ERR;
 	}
 
@@ -115,43 +106,20 @@ epoch_worker(void *arg)
 //	全ての worker が最新の epoch を読み込んでいる。
 //
 	const int *myid = (int *)arg;
-	pid_t pid = syscall(SYS_gettid);
-	cpu_set_t cpu_set;
 	uint64_t EpochTimerStart, EpochTimerStop;
+  Result rsobject;
 
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-	
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
+  setThreadAffinity(*myid);
+  waitForReadyOfAllThread();
 
 	//----------
-	//wait for all threads start. CAS.
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load(std::memory_order_acquire);
-RETRY_WAIT_L:
-		desired = expected + 1;
-		if (Running.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT_L;
-	}
-	
-	//spin wait
-	while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-	//----------
-
-	const uint64_t finish_time = EXTIME * 1000 * 1000 * CLOCK_PER_US;
-
-	//----------
-	Bgn = rdtsc();
+	rsobject.Bgn = rdtsc();
 	EpochTimerStart = rdtsc();
 	for (;;) {
 		usleep(1);
-		End = rdtsc();
-		if (chkClkSpan(Bgn, End, finish_time)) {
-			Finish.store(true, std::memory_order_release);
+		rsobject.End = rdtsc();
+		if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+			rsobject.Finish.store(true, std::memory_order_release);
 			return nullptr;
 		}
 
@@ -172,43 +140,16 @@ static void *
 worker(void *arg)
 {
 	const int *myid = (int *)arg;
-	//const int thid = *myid;
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
+  Result rsobject;
 
-	//----------
-	pid_t pid = syscall(SYS_gettid);
-	cpu_set_t cpu_set;
-
-	CPU_ZERO(&cpu_set);
-	CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-		printf("thread affinity setting is error.\n");
-		exit(1);
-	}
-	//check-test
+  setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
-	//----------
-	
-
-	//----------
-	//wait for all threads start. CAS.
-	unsigned int expected, desired;
-	for (;;) {
-		expected = Running.load(std::memory_order_acquire);
-RETRY_WAIT_W:
-		desired = expected + 1;
-		if (Running.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-		else goto RETRY_WAIT_W;
-	}
-	
-	//spin wait
-	while (Running != THREAD_NUM) {}
-	//----------
+  waitForReadyOfAllThread();
 	
 	try {
 		//start work(transaction)
@@ -216,8 +157,9 @@ RETRY_WAIT_W:
 			makeProcedure(pro, rnd);
 RETRY:
 			trans.tbegin();
-			if (Finish.load(memory_order_acquire)) {
-				sumTrans(&trans);
+			if (rsobject.Finish.load(memory_order_acquire)) {
+        rsobject.sumUpCommitCounts();
+        rsobject.sumUpAbortCounts();
 				return nullptr;
 			}
 
@@ -237,8 +179,10 @@ RETRY:
 			
 			//Validation phase
 			if (trans.validationPhase()) {
+        ++rsobject.localCommitCounts;
 				trans.writePhase();
 			} else {
+        ++rsobject.localAbortCounts;
 				trans.abort();
 				goto RETRY;
 			}
@@ -274,7 +218,9 @@ threadCreate(int id)
 }
 
 int 
-main(int argc, char *argv[]) {
+main(int argc, char *argv[]) 
+{
+  Result rsobject;
 	chkArg(argc, argv);
 	makeDB();
 	
@@ -292,11 +238,9 @@ main(int argc, char *argv[]) {
 	}
 
 	//displayDB();
-	//displayFinishTransactions();
 
-	prtRslt(Bgn, End);
-	displayAbortRate();
-	//displayTotalAbortCounts();
+  rsobject.displayTPS();
+	rsobject.displayAbortRate();
 
 	return 0;
 }

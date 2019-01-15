@@ -141,7 +141,6 @@ void Transaction::abort()
 {
 	unlockWriteSet();
 
-	this->abortCounts++;
 	readSet.clear();
 	writeSet.clear();
 }
@@ -181,7 +180,6 @@ void Transaction::writePhase()
 		__atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
 	}
 
-	this->finishTransactions++;
 	readSet.clear();
 	writeSet.clear();
 }
