@@ -284,6 +284,7 @@ RETRY:
 				if (trans.status == TransactionStatus::abort) {
 					trans.earlyAbort();
           ++rsobject.localAbortCounts;
+          trans.continuingCommit = 0;
 					goto RETRY;
 				}
 			}
@@ -292,18 +293,21 @@ RETRY:
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
         ++rsobject.localCommitCounts;
+        ++trans.continuingCommit;
 				continue;
 			}
 
 			//Validation phase
 			if (!trans.validation()) {
 				trans.abort();
+        ++trans.continuingCommit = 0;
         ++rsobject.localAbortCounts;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
+      ++trans.continuingCommit;
       ++rsobject.localCommitCounts;
 
 			//Maintenance
@@ -359,6 +363,7 @@ main(int argc, char *argv[])
 	}
 
   rsobject.displayTPS();
+  rsobject.displayCommitCounts();
 	rsobject.displayAbortCounts();
 	rsobject.displayAbortRate();
 

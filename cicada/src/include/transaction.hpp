@@ -23,6 +23,7 @@ enum class TransactionStatus : uint8_t {
 
 class Transaction {
 public:
+	uint8_t thid;
 	TransactionStatus status = TransactionStatus::invalid;
 	uint64_t rts;
 	TimeStamp wts;
@@ -35,10 +36,7 @@ public:
 	uint64_t spinstart, spinstop; // for spin-wait
 	uint64_t grpcmt_start, grpcmt_stop;	// for group commit
 	uint64_t GCstart, GCstop; // for garbage collection
-	uint8_t thid;
-
-	uint64_t finish_transactions;
-	uint64_t abort_counts;
+	uint64_t continuingCommit;
 
 	Transaction(unsigned int thid) {
 		// wait to initialize MinWts
@@ -61,9 +59,7 @@ public:
 		readSet.reserve(MAX_OPE);
 		writeSet.clear();
 		writeSet.reserve(MAX_OPE);
-
-		finish_transactions = 0;
-		abort_counts = 0;
+    continuingCommit = 0;
 	}
 
 	void tbegin(bool ronly);

@@ -14,6 +14,7 @@ public:
 	uint32_t localAbortCounts = 0;
 	uint32_t localCommitCounts = 0;
 
+  void displayCommitCounts();
 	void displayAbortCounts();
 	void displayAbortRate();
 	void displayTPS();

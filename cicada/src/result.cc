@@ -7,6 +7,12 @@ using std::cout, std::endl;
 // forward declaration
 extern uint64_t Result::Bgn, Result::End;
 
+void
+Result::displayCommitCounts()
+{
+  cout << "Commit counts : " << CommitCounts << endl;
+}
+
 void 
 Result::displayAbortCounts()
 {
@@ -16,7 +22,7 @@ Result::displayAbortCounts()
 void
 Result::displayAbortRate()
 {
-	long double ave_rate = AbortCounts / (CommitCounts + AbortCounts);
+	long double ave_rate = (long double) AbortCounts / (long double)(CommitCounts + AbortCounts);
 	cout << "Abort rate : " << ave_rate << endl;
 }
 

@@ -224,7 +224,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 	}
 
 	Version *newObject;
-   	newObject = new Version(0, this->wts.ts, key, val);
+ 	newObject = new Version(0, this->wts.ts, key, val);
 	writeSet.push_back(WriteElement(key, version, newObject));
 	return;
 }
@@ -232,14 +232,27 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 bool
 Transaction::validation() 
 {
+  if (continuingCommit < 5) {
+    // Two optimizations can add unnecessary overhead under low contention 
+    // because they do not improve the performance of uncontended workloads.
+    // Each thread adaptively omits both steps if the recent transactions have been committed (5 in a row in our implementation).
+    //
+    // Sort write set by contention
+    partial_sort(writeSet.begin(), writeSet.begin() + (writeSet.size() / 2), writeSet.end());
+
+    // Pre-check version consistency
+    // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
+    for (auto itr = writeSet.begin(); itr != writeSet.begin() + (writeSet.size() / 2); ++itr) {
+	  		if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts.ts) return false;
+    }
+  }
+  
 	//Install pending version
-	sort(writeSet.begin(), writeSet.end());
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		
 		Version *expected;
+		expected = Table[(*itr).key].latest.load();
 		for (;;) {
-			expected = Table[(*itr).key].latest.load();
-RETRY_VALI:
 			Version *version = expected;
 
 			VersionStatus loadst = version->status.load(memory_order_acquire);
@@ -259,60 +272,54 @@ RETRY_VALI:
 						if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
 							return false;
 						}
+            if (this->wts.ts < version->wts.load(memory_order_acquire)) return false;
 						loadst = version->status.load(memory_order_acquire);
 					}
 				} else {
-					while (loadst == VersionStatus::pending) 
+					while (loadst == VersionStatus::pending) {
+            if (this->wts.ts < version->wts.load(memory_order_acquire)) return false;
 						loadst = version->status.load(memory_order_acquire);
-				}
+				  }
 				//now, version->status is not pending.
-			}	
+			  }
+      }  
 
-			//to keep versions ordered by wts in the version list
-			//if version is pending version, concurrent transaction that has lower timestamp is aborted.
-			if (this->wts.ts < version->wts.load(memory_order_acquire)) {
-				return false;
-			}
+			// to keep versions ordered by wts in the version list
+			// if version is pending version, concurrent transaction that has lower timestamp is aborted.
+      // OR
+	    // validation consistency check (pre-check)
+	    // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
+			if (this->wts.ts < version->wts.load(memory_order_acquire) || this->wts.ts < version->rts.load(memory_order_acquire)) return false;
 
 			(*itr).newObject->status.store(VersionStatus::pending, memory_order_release);
 			(*itr).newObject->next.store(Table[(*itr).key].latest.load(), memory_order_release);
 			if (Table[(*itr).key].latest.compare_exchange_strong(expected, (*itr).newObject, memory_order_acq_rel, memory_order_acquire)) break;
-			else goto RETRY_VALI;
 		}
 	}
 
 	//Read timestamp update
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		uint64_t expected;
+		expected = (*itr).ver->rts.load(memory_order_acquire);
 		for (;;) {
-			expected = (*itr).ver->rts.load(memory_order_acquire);
-RETRY_UPDATE:
-			if (expected >= this->wts.ts) break;
+			if (expected > this->wts.ts) break;
 			if ((*itr).ver->rts.compare_exchange_strong(expected, this->wts.ts, memory_order_acq_rel, memory_order_acquire)) break;
-			else goto RETRY_UPDATE;
 		}
 	}
 
-	//validation consistency check
+	// version consistency check
 	//(a) every previously visible version v of the records in the read set is the currently visible version to the transaction.
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		if (ELR) {
-			if ((*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::committed && (*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::precommitted) {
-				return false;
-			}
-		} else {
-			if ((*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::committed) {
-				return false;
-			}
-		}
+			if ((*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::committed && (*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::precommitted) return false;
+    } 
+    else 
+			if ((*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::committed) return false;
 	}
-
-	//(b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts.ts) {
-			return false;
-		}
-	}
+  // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
+  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+			if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts.ts) return false;
+  }
 
 	return true;
 }
@@ -326,7 +333,7 @@ Transaction::swal()
 		int i = 0;
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			SLogSet[i] = (*itr).newObject;
-			i++;
+			++i;
 		}
 
 		double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
@@ -339,14 +346,14 @@ Transaction::swal()
 		SwalLock.w_lock();
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			SLogSet[GROUP_COMMIT_INDEX[0].num] = (*itr).newObject;
-			GROUP_COMMIT_INDEX[0].num++;
+			++GROUP_COMMIT_INDEX[0].num;
 		}
 
 		if (GROUP_COMMIT_COUNTER[0].num == 0) {
 			grpcmt_start = rdtsc();	// it can also initialize.
 		}
 
-		GROUP_COMMIT_COUNTER[0].num++;
+		++GROUP_COMMIT_COUNTER[0].num;
 
 		if (GROUP_COMMIT_COUNTER[0].num == GROUP_COMMIT) {
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
@@ -367,7 +374,7 @@ Transaction::pwal()
 		int i = 0;
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			PLogSet[thid][i] = (*itr).newObject;
-			i++;
+			++i;
 		}
 
 		// it gives lat ency instead of flush.
@@ -378,7 +385,7 @@ Transaction::pwal()
 	else {
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 			PLogSet[thid][GROUP_COMMIT_INDEX[thid].num] = (*itr).newObject;
-			GROUP_COMMIT_INDEX[this->thid].num++;
+			++GROUP_COMMIT_INDEX[this->thid].num;
 		}
 
 		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
@@ -386,7 +393,7 @@ Transaction::pwal()
 			ThreadRtsArrayForGroup[this->thid].num = this->rts;
 		}
 
-		GROUP_COMMIT_COUNTER[this->thid].num++;
+		++GROUP_COMMIT_COUNTER[this->thid].num;
 
 		if (GROUP_COMMIT_COUNTER[this->thid].num == GROUP_COMMIT) {
 			// it gives latency instead of flush.
