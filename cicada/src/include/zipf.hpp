@@ -55,7 +55,6 @@ public:
     double ans = 0.0;
     for (size_t i = 0; i < nr; ++i) 
       ans += std::pow(1.0 / (double)(i + 1), theta);
-    cout << "zeta : " << ans << endl;
     return ans;
   }
 };

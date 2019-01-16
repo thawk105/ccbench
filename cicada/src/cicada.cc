@@ -20,6 +20,7 @@
 #include "include/random.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
+#include "include/zipf.hpp"
 
 using namespace std;
 
@@ -27,6 +28,7 @@ extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void makeDB(uint64_t *initial_wts);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
@@ -45,16 +47,18 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 12) {
+	if (argc != 14) {
 		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO \n\
              WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
 \n\
-example:./main 200 10 24 2 OFF OFF 2400 5 2 E 3\n\
+example:./main 200 10 24 5 0 ON OFF OFF 2400 5 2 E 3\n\
 \n\
 TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
 MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of worker thread.\n\
-RRATIO: read ratio (* 10 %%)\n\
+RRATIO: read ratio [%%]\n\
+ZIPF_SKEW : zipf skew. 0 ~ 0.999...\n\
+YCSB : ON or OFF. swithc makeProcedure function.\n\
 WAL: P or S or OFF.\n\
 GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
 CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
@@ -77,12 +81,27 @@ EXTIME: execution time [sec]\n\n");
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
 	RRATIO = atoi(argv[4]);
-	if (RRATIO > 10) {
-		cout << "rratio (* 10 %%) must be 0 ~ 10)" << endl;
+	if (RRATIO > 100) {
+		cout << "rratio [%%] must be 0 ~ 100)" << endl;
 		ERR;
 	}
-	
-	string tmp = argv[5];
+
+  ZIPF_SKEW = atof(argv[5]);
+  if (ZIPF_SKEW >= 1) {
+    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+    ERR;
+  }
+
+  string tmp = argv[6];
+  if (tmp == "ON") {
+    YCSB = true;
+  }
+  else if (tmp == "OFF") {
+    YCSB = false;
+  }
+  else ERR;
+
+	tmp = argv[7];
 	if (tmp == "P")  {
 		P_WAL = true;
 		S_WAL = false;
@@ -93,7 +112,7 @@ EXTIME: execution time [sec]\n\n");
 		P_WAL = false;
 		S_WAL = false;
 
-		tmp = argv[6];
+		tmp = argv[8];
 		if (tmp != "OFF") {
 			printf("i don't implement below.\n\
 P_WAL OFF, S_WAL OFF, GROUP_COMMIT number.\n\
@@ -103,33 +122,33 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		}
 	}
 	else {
-		printf("WAL(argv[5]) must be P or S or OFF\n");
+		printf("WAL(argv[6]) must be P or S or OFF\n");
 		exit(0);
 	}
 
-	tmp = argv[6];
+	tmp = argv[8];
 	if (tmp == "OFF") GROUP_COMMIT = 0;
-	else if (chkInt(argv[6])) {
-	   	GROUP_COMMIT = atoi(argv[6]);
+	else if (chkInt(argv[8])) {
+	   	GROUP_COMMIT = atoi(argv[8]);
 	}
 	else {
-		printf("GROUP_COMMIT(argv[6]) must be unsigned integer or OFF\n");
+		printf("GROUP_COMMIT(argv[7]) must be unsigned integer or OFF\n");
 		exit(0);
 	}
 
-	chkInt(argv[7]);
-	CLOCK_PER_US = atof(argv[7]);
+	chkInt(argv[9]);
+	CLOCK_PER_US = atof(argv[9]);
 	if (CLOCK_PER_US < 100) {
 		printf("CPU_MHZ is less than 100. are you really?\n");
 		exit(0);
 	}
 
-	chkInt(argv[8]);
-	IO_TIME_NS = atof(argv[8]);
-	chkInt(argv[9]);
-	GROUP_COMMIT_TIMEOUT_US = atoi(argv[9]);
+	chkInt(argv[10]);
+	IO_TIME_NS = atof(argv[10]);
+	chkInt(argv[11]);
+	GROUP_COMMIT_TIMEOUT_US = atoi(argv[11]);
 
-	tmp = argv[10];
+	tmp = argv[12];
 	if (tmp == "N") {
 		NLR = true;
 		ELR = false;
@@ -139,12 +158,12 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		ELR = true;
 	}
 	else {
-		printf("LockRelease(argv[10]) must be E or N\n");
+		printf("LockRelease(argv[12]) must be E or N\n");
 		exit(0);
 	}
 
-	chkInt(argv[11]);
-	EXTIME = atoi(argv[11]);
+	chkInt(argv[13]);
+	EXTIME = atoi(argv[13]);
 	
 	try {
 		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -252,16 +271,18 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
   Result rsobject;
+  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
   setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
   waitForReadyOfAllThread();
-	
+
 	try {
 		//start work(transaction)
 		for (;;) {
-			makeProcedure(pro, rnd);
+      if (YCSB) makeProcedure(pro, rnd, zipf);
+			else makeProcedure(pro, rnd);
 			asm volatile ("" ::: "memory");
 RETRY:
 			if (rsobject.Finish.load(std::memory_order_acquire)) {

@@ -10,7 +10,7 @@ main()
   Xoroshiro128Plus rnd;
   rnd.init();
 
-  FastZipf zipf(&rnd, 0.99999, 10);
+  FastZipf zipf(&rnd, 0, 10);
 
   //for (uint i = 0; i < 10; ++i)
   //  cout << zipf() << endl;

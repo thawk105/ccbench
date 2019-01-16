@@ -34,6 +34,8 @@ GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
 GLOBAL unsigned int RRATIO;
+GLOBAL double ZIPF_SKEW;
+GLOBAL bool YCSB;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
 GLOBAL bool ELR;	//early lock release

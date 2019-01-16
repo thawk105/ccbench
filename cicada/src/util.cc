@@ -18,6 +18,7 @@
 #include "include/timeStamp.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
+#include "include/zipf.hpp"
 
 using std::cout, std::endl;
 
@@ -163,13 +164,32 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
 	bool ronly = true;
 
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		if ((rnd.next() % 10) < RRATIO) {
+		if ((rnd.next() % 100) < RRATIO) {
 			pro[i].ope = Ope::READ;
 		} else {
 			ronly = false;
 			pro[i].ope = Ope::WRITE;
 		}
 		pro[i].key = rnd.next() % TUPLE_NUM;
+		pro[i].val = rnd.next() % TUPLE_NUM;
+	}
+	
+	if (ronly) pro[0].ronly = true;
+	else pro[0].ronly = false;
+}
+
+void 
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
+	bool ronly = true;
+
+	for (unsigned int i = 0; i < MAX_OPE; ++i) {
+		if ((rnd.next() % 100) < RRATIO) {
+			pro[i].ope = Ope::READ;
+		} else {
+			ronly = false;
+			pro[i].ope = Ope::WRITE;
+		}
+		pro[i].key = zipf() % TUPLE_NUM;
 		pro[i].val = rnd.next() % TUPLE_NUM;
 	}
 	
