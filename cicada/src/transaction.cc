@@ -35,7 +35,7 @@ void Transaction::tbegin(bool ronly)
 
 	//one-sided synchronization
 	stop = rdtsc();
-	if (chkClkSpan(start, stop, 10 * CLOCK_PER_US)) {
+	if (chkClkSpan(start, stop, 100 * CLOCK_PER_US)) {
 		uint64_t maxwts;
 	   	maxwts = __atomic_load_n(&(ThreadWtsArray[1].num), __ATOMIC_ACQUIRE);
 		//record the fastest one, and adjust it.
@@ -519,7 +519,7 @@ Transaction::mainte()
 	//以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
 	//
 
-	if (__atomic_load_n(&(GCFlag[thid].num), __ATOMIC_ACQUIRE)) {
+	if (__atomic_load_n(&(GCExecuteFlag[thid].num), __ATOMIC_ACQUIRE) == 1) {
 		while (gcq.size() > 0) {
 			if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
 		
@@ -535,7 +535,6 @@ Transaction::mainte()
 			if (gcq.front().wts <= Table[gcq.front().key].min_wts) {
 				gcq.pop();
 				continue;
-				break;
 			}
 			//this pointer may be dangling.
 
@@ -557,12 +556,14 @@ Transaction::mainte()
 			Table[gcq.front().key].gClock.store(0, memory_order_release);
 			gcq.pop();
 		}
+
+    __atomic_store_n(&(GCExecuteFlag[thid].num), 0, __ATOMIC_RELEASE);
 	}
 
 	this->GCstop = rdtsc();
 	if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US)) {
 		__atomic_store_n(&(GCFlag[thid].num),  1, __ATOMIC_RELEASE);
-		this->GCstart = rdtsc();
+		this->GCstart = this->GCstop;
 	}
 }
 

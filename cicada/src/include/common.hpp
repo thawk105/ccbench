@@ -59,6 +59,7 @@ GLOBAL RWLock SwalLock;
 GLOBAL RWLock CtrLock;
 
 GLOBAL uint64_t_64byte *GCFlag;
+GLOBAL uint64_t_64byte *GCExecuteFlag;
 
 GLOBAL Tuple *Table;
 GLOBAL uint64_t InitialWts;

@@ -172,6 +172,7 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		if (posix_memalign((void**)&GROUP_COMMIT_INDEX, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&GCFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+		if (posix_memalign((void**)&GCExecuteFlag, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		
 		SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)];	
 		PLogSet = new Version**[THREAD_NUM];
@@ -185,6 +186,7 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		GCFlag[i].num = 0;
+		GCExecuteFlag[i].num = 0;
 		GROUP_COMMIT_INDEX[i].num = 0;
 		GROUP_COMMIT_COUNTER[i].num = 0;
 		ThreadRtsArray[i].num = 0;
@@ -255,6 +257,7 @@ manager_worker(void *arg)
 			// downgrade gc flag
 			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 				__atomic_store_n(&(GCFlag[i].num), 0, __ATOMIC_RELEASE);
+				__atomic_store_n(&(GCExecuteFlag[i].num), 1, __ATOMIC_RELEASE);
 			}
 		}
 	}
