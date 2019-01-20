@@ -2,9 +2,23 @@
 
 #include <atomic>
 #include <queue>
+#include "version.hpp"
 
 // forward declaration
 class TransactionTable;
+
+class GCElement {
+public:
+  unsigned int key;
+  Version *ver;
+  uint32_t cstamp;
+
+  GCElement(unsigned int key, Version *ver, uint32_t cstamp) {
+    this->key = key;
+    this->ver = ver;
+    this->cstamp = cstamp;
+  }
+};
 
 class GarbageCollection {
 private:
@@ -15,6 +29,8 @@ private:
 
 public:
 	std::queue<TransactionTable *> gcqForTMT;
+  std::queue<GCElement> gcqForVersion;
+  uint8_t thid;
 
 	// for all thread
 	uint32_t getGcThreshold() {
@@ -37,8 +53,8 @@ public:
 	// -----
 	
 	// for worker thread
-	void gcTuple();
-	void gcTMTelement(uint32_t threshold);
+	void gcVersion();
+	void gcTMTelement();
 	// -----
 };
 

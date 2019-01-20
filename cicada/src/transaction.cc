@@ -520,12 +520,12 @@ Transaction::mainte()
 	//
 
 	if (__atomic_load_n(&(GCExecuteFlag[thid].num), __ATOMIC_ACQUIRE) == 1) {
-		while (gcq.size() > 0) {
+		while (!gcq.empty()) {
 			if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
 		
 			// (a) acquiring the garbage collection lock succeeds
 			uint8_t zero = 0;
-			if (!Table[gcq.front().key].gClock.compare_exchange_weak(zero, this->thid)) {
+			if (!Table[gcq.front().key].gClock.compare_exchange_weak(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
 				// fail acquiring the lock
 				gcq.pop();
 				continue;
@@ -533,6 +533,8 @@ Transaction::mainte()
 
 			// (b) v.wts > record.min_wts
 			if (gcq.front().wts <= Table[gcq.front().key].min_wts) {
+			  // releases the lock
+			  Table[gcq.front().key].gClock.store(0, memory_order_release);
 				gcq.pop();
 				continue;
 			}

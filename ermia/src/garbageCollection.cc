@@ -49,15 +49,60 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcTuple()
+GarbageCollection::gcVersion()
 {
+  uint32_t threshold = getGcThreshold();
+
+  // my customized Rapid garbage collection inspired from Cicada (sigmod 2017).
+  while (!gcqForVersion.empty()) {
+    if ((gcqForVersion.front().cstamp >> 1) >= threshold) break;
+
+    // (a) acquiring the garbage collection lock succeeds
+    uint8_t zero = 0;
+    if (!Table[gcqForVersion.front().key].gClock.compare_exchange_strong(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
+      // fail acquiring the lock
+      gcqForVersion.pop();
+      continue;
+    }
+
+    // (b) v.cstamp > record.min_cstamp
+    // If not satisfy this condition, (cstamp <= min_cstamp)
+    // the version was cleaned by other threads
+    if (gcqForVersion.front().cstamp <= Table[gcqForVersion.front().key].min_cstamp) {
+      // releases the lock
+      Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+      gcqForVersion.pop();
+      continue;
+    }
+    // this pointer may be dangling.
+    
+    Version *delTarget = gcqForVersion.front().ver->prev;
+
+    // the thread detaches the rest of the version list from v
+    gcqForVersion.front().ver->prev = nullptr;
+    // updates record.min_wts
+    Table[gcqForVersion.front().key].min_cstamp.store(gcqForVersion.front().cstamp, memory_order_release);
+
+    while (delTarget != nullptr) {
+      //next pointer escape
+      Version *tmp = delTarget->prev;
+      delete delTarget;
+      delTarget = tmp;
+    }
+
+    // releases the lock
+    Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+    gcqForVersion.pop();
+  }
+
 	return;
 }
 
 void
-GarbageCollection::gcTMTelement(uint32_t threshold)
+GarbageCollection::gcTMTelement()
 {
-	uint gcctr(0);
+  uint32_t threshold = getGcThreshold();
+	//uint gcctr(0);
 	if (gcqForTMT.empty()) return;
 
 	for (;;) {
@@ -65,7 +110,7 @@ GarbageCollection::gcTMTelement(uint32_t threshold)
 		if (tmt->txid < threshold) {
 			gcqForTMT.pop();
 			delete tmt;
-			++gcctr;
+			//++gcctr;
 			if (gcqForTMT.empty()) break;
 		}
 		else break;

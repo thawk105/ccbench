@@ -105,6 +105,7 @@ makeDB()
 
 	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 		tmp = &Table[i];
+    tmp->min_cstamp = 0;
 		tmp->key = i;
 		verTmp = tmp->latest.load(std::memory_order_acquire);
 		verTmp->cstamp = 0;

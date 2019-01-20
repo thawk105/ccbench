@@ -36,6 +36,7 @@ public:
 
 	Transaction(uint8_t thid, unsigned int max_ope) {
 		this->thid = thid;
+    gcobject.thid = thid;
 		readSet.reserve(max_ope);
 		writeSet.reserve(max_ope);
 	}

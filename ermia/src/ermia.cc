@@ -204,7 +204,9 @@ RETRY:
       // garbage collection
 			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
 			if (trans.preGcThreshold != loadThreshold) {
-				trans.gcobject.gcTMTelement(loadThreshold);
+				trans.gcobject.gcTMTelement();
+        trans.gcobject.gcVersion();
+        trans.preGcThreshold = loadThreshold;
 			}
 		}
 	} catch (bad_alloc) {

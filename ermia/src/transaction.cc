@@ -419,14 +419,12 @@ Transaction::ssn_parallel_commit()
 		(*itr).ver->committed_prev->psstamp.atomicStoreSstamp(verSstamp);
 		(*itr).ver->cstamp.store(verCstamp, memory_order_release);
 		(*itr).ver->psstamp.atomicStorePstamp(this->cstamp);
+		(*itr).ver->status.store(VersionStatus::committed, memory_order_release);
+	  gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, verCstamp));
 	}
 
 	//logging
 	//?*
-	
-	// status, inFlight -> committed
-	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) 
-		(*itr).ver->status.store(VersionStatus::committed, memory_order_release);
 
 	readSet.clear();
 	writeSet.clear();
@@ -439,6 +437,7 @@ Transaction::abort()
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		(*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(1));
 		(*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
+	  gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->cstamp));
 	}
 	writeSet.clear();
 
