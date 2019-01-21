@@ -17,6 +17,7 @@
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
+#include "include/zipf.hpp"
 
 using namespace std;
 
@@ -26,6 +27,7 @@ extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
@@ -46,18 +48,19 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 8) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD EPOCH_TIME EXTIME\n\
-\n\
-example:./main 1000000 20 15 3 2400 40 3\n\
-\n\
-TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
-MAX_OPE(int):    total numbers of operations\n\
-THREAD_NUM(int): total numbers of thread.\n\
-RRATIO : read ratio(* 10 %%)\n\
-CLOCK_PER_US: CPU_MHZ\n\
-EPOCH_TIME(int)(ms): Ex. 40\n\
-EXTIME: execution time.\n\n");
+	if (argc != 10) {
+    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CLOCK_PER_US EPOCH_TIME EXTIME" << endl << endl;
+
+    cout << "example:./main 1000000 10 24 50 0 ON 2400 40 3" << endl << endl;
+    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+    cout << "MAX_OPE(int):    total numbers of operations" << endl;
+    cout << "THREAD_NUM(int): total numbers of thread." << endl;
+    cout << "RRATIO : read ratio [%%]" << endl;
+    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+    cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
+    cout << "CLOCK_PER_US: CPU_MHZ" << endl;
+    cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
+    cout << "EXTIME: execution time." << endl << endl;
 	  cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
 		exit(0);
@@ -66,22 +69,36 @@ EXTIME: execution time.\n\n");
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
-	chkInt(argv[5]);
-	chkInt(argv[6]);
 	chkInt(argv[7]);
+	chkInt(argv[8]);
+	chkInt(argv[9]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
 	RRATIO = atoi(argv[4]);
-	if (RRATIO > 10) {
+  ZIPF_SKEW = atof(argv[5]);
+  string argycsb = argv[6];
+	CLOCK_PER_US = atof(argv[7]);
+	EPOCH_TIME = atoi(argv[8]);
+	EXTIME = atoi(argv[9]);
+	
+	if (RRATIO > 100) {
 		ERR;
 	}
 
-	CLOCK_PER_US = atof(argv[5]);
-	EPOCH_TIME = atoi(argv[6]);
-	EXTIME = atoi(argv[7]);
-	
+  if (ZIPF_SKEW >= 1) {
+    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+    ERR;
+  }
+
+  if (argycsb == "ON")
+    YCSB = true;
+  else if (argycsb == "OFF")
+    YCSB = false;
+  else
+    ERR;
+
 	if (THREAD_NUM < 2) {
 		printf("One thread is epoch thread, and others are worker threads.\n\
 So you have to set THREAD_NUM >= 2.\n\n");
@@ -145,6 +162,7 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
   Result rsobject;
+  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
   setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -154,7 +172,12 @@ worker(void *arg)
 	try {
 		//start work(transaction)
 		for (;;) {
-			makeProcedure(pro, rnd);
+      if (YCSB)
+  			makeProcedure(pro, rnd, zipf);
+      else
+        makeProcedure(pro, rnd);
+
+      asm volatile ("" ::: "memory");
 RETRY:
 			trans.tbegin();
 			if (rsobject.Finish.load(memory_order_acquire)) {

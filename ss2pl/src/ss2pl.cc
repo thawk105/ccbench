@@ -16,6 +16,7 @@
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
+#include "include/zipf.hpp"
 
 using namespace std;
 
@@ -24,6 +25,7 @@ extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
@@ -42,15 +44,18 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, const char *argv[])
 {
-	if (argc != 7) {
-		cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM WORKLOAD CPU_MHZ EXTIME" << endl;
-		cout << "example: ./ss2pl.exe 200 10 24 3 2400 3" << endl;
+	if (argc != 9) {
+		cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl << endl;
+		cout << "example: ./ss2pl.exe 200 10 24 50 0 ON 2400 3" << endl << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "RRATIO : read ratio(* 10 %%)" << endl;
+		cout << "RRATIO : read ratio [%%]" << endl;
+		cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+
+    cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
-		cout << "EXTIME: execution time [sec]" << endl;
+		cout << "EXTIME: execution time [sec]" << endl << endl;
 
 		cout << "Tuple size " << sizeof(Tuple) << endl;
 		cout << "std::mutex size " << sizeof(mutex) << endl;
@@ -62,24 +67,26 @@ chkArg(const int argc, const char *argv[])
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
-	chkInt(argv[5]);
-	chkInt(argv[6]);
+	chkInt(argv[7]);
+	chkInt(argv[8]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
 	RRATIO = atoi(argv[4]);
-	if (RRATIO > 10) {
+  ZIPF_SKEW = atof(argv[5]);
+  string argycsb = argv[6];
+	CLOCK_PER_US = atof(argv[7]);
+	EXTIME = atoi(argv[8]);
+
+	if (RRATIO > 100) {
 		ERR;
 	}
 
-	CLOCK_PER_US = atof(argv[5]);
 	if (CLOCK_PER_US < 100) {
 		cout << "CPU_MHZ is less than 100. are your really?" << endl;
 		ERR;
 	}
-
-	EXTIME = atoi(argv[6]);
 }
 
 static void *
@@ -92,6 +99,7 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
   Result rsobject;
+  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
   setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -120,8 +128,10 @@ worker(void *arg)
 				}
 			}
 			//-----
-			
-			makeProcedure(pro, rnd);
+		  if (YCSB)	
+			  makeProcedure(pro, rnd, zipf);
+      else
+        makeProcedure(pro, rnd);
 RETRY:
 			trans.tbegin();
 			//transaction begin

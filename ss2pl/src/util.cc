@@ -14,6 +14,7 @@
 #include "include/procedure.hpp"
 #include "include/random.hpp"
 #include "include/tuple.hpp"
+#include "include/zipf.hpp"
 
 bool
 chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
@@ -82,12 +83,25 @@ void
 makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
 {
 	for (unsigned int i = 0; i < MAX_OPE; ++i) {
-		if ((rnd.next() % 10) < RRATIO) {
+		if ((rnd.next() % 100) < RRATIO)
 			pro[i].ope = Ope::READ;
-		} else {
+	  else
 			pro[i].ope = Ope::WRITE;
-		}
+
 		pro[i].key = rnd.next() % TUPLE_NUM;
+		pro[i].val = rnd.next() % TUPLE_NUM;
+	}
+}
+
+void 
+makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
+	for (unsigned int i = 0; i < MAX_OPE; ++i) {
+		if ((rnd.next() % 100) < RRATIO)
+			pro[i].ope = Ope::READ;
+	  else
+			pro[i].ope = Ope::WRITE;
+
+		pro[i].key = zipf() % TUPLE_NUM;
 		pro[i].val = rnd.next() % TUPLE_NUM;
 	}
 }

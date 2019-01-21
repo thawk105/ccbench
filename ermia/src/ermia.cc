@@ -47,7 +47,7 @@ chkArg(const int argc, const char *argv[])
 {
 	if (argc != 9) {
 	//if (argc != 1) {
-		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO CPU_MHZ EXTIME" << endl;
+		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl;
 		cout << "example: ./ermia.exe 200 10 24 50 0 OFF 2400 3" << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;

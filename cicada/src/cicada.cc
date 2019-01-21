@@ -48,24 +48,21 @@ static void
 chkArg(const int argc, char *argv[])
 {
 	if (argc != 14) {
-		printf("usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO \n\
-             WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME\n\
-\n\
-example:./main 200 10 24 5 0 ON OFF OFF 2400 5 2 E 3\n\
-\n\
-TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)\n\
-MAX_OPE(int):    total numbers of operations\n\
-THREAD_NUM(int): total numbers of worker thread.\n\
-RRATIO: read ratio [%%]\n\
-ZIPF_SKEW : zipf skew. 0 ~ 0.999...\n\
-YCSB : ON or OFF. switch makeProcedure function.\n\
-WAL: P or S or OFF.\n\
-GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
-CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\
-IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds).\n\
-GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds).\n\
-LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release.\n\
-EXTIME: execution time [sec]\n\n");
+    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME" << endl << endl;
+    cout << "example:./main 200 10 24 5 0 ON OFF OFF 2400 5 2 E 3" << endl << endl;
+    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+    cout << "MAX_OPE(int):    total numbers of operations" << endl;
+    cout << "THREAD_NUM(int): total numbers of worker thread." << endl;
+    cout << "RRATIO: read ratio [%%]" << endl;
+    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+    cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
+    cout << "WAL: P or S or OFF." << endl;
+    cout << "GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3" << endl;
+    cout << "CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock." << endl;
+    cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds)." << endl;
+    cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds)." << endl;
+    cout << "LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release." << endl;
+    cout << "EXTIME: execution time [sec]" << endl << endl;
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
 		cout << "Version " << sizeof(Version) << endl;
@@ -73,47 +70,59 @@ EXTIME: execution time [sec]\n\n");
 		cout << "Procedure" << sizeof(Procedure) << endl;
 		exit(0);
 	}
+
 	chkInt(argv[1]);
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
+	chkInt(argv[9]);
+	chkInt(argv[10]);
+	chkInt(argv[11]);
+	chkInt(argv[13]);
+
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
 	RRATIO = atoi(argv[4]);
+  ZIPF_SKEW = atof(argv[5]);
+  string argycsb = argv[6];
+	string argwal = argv[7];
+	string arggrpc = argv[8];
+	CLOCK_PER_US = atof(argv[9]);
+	IO_TIME_NS = atof(argv[10]);
+	GROUP_COMMIT_TIMEOUT_US = atoi(argv[11]);
+	string arglr = argv[12];
+	EXTIME = atoi(argv[13]);
+
 	if (RRATIO > 100) {
 		cout << "rratio [%%] must be 0 ~ 100)" << endl;
 		ERR;
 	}
 
-  ZIPF_SKEW = atof(argv[5]);
   if (ZIPF_SKEW >= 1) {
     cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
     ERR;
   }
 
-  string tmp = argv[6];
-  if (tmp == "ON") {
+  if (argycsb == "ON") {
     YCSB = true;
   }
-  else if (tmp == "OFF") {
+  else if (argycsb == "OFF") {
     YCSB = false;
   }
   else ERR;
 
-	tmp = argv[7];
-	if (tmp == "P")  {
+	if (argwal == "P")  {
 		P_WAL = true;
 		S_WAL = false;
-	} else if (tmp == "S") {
+	} else if (argwal == "S") {
 		P_WAL = false;
 		S_WAL = true;
-	} else if (tmp == "OFF") {
+	} else if (argwal == "OFF") {
 		P_WAL = false;
 		S_WAL = false;
 
-		tmp = argv[8];
-		if (tmp != "OFF") {
+		if (arggrpc != "OFF") {
 			printf("i don't implement below.\n\
 P_WAL OFF, S_WAL OFF, GROUP_COMMIT number.\n\
 usage: P_WAL or S_WAL is selected. \n\
@@ -122,38 +131,29 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		}
 	}
 	else {
-		printf("WAL(argv[6]) must be P or S or OFF\n");
+		printf("WAL(argv[7]) must be P or S or OFF\n");
 		exit(0);
 	}
 
-	tmp = argv[8];
-	if (tmp == "OFF") GROUP_COMMIT = 0;
+	if (arggrpc == "OFF") GROUP_COMMIT = 0;
 	else if (chkInt(argv[8])) {
 	   	GROUP_COMMIT = atoi(argv[8]);
 	}
 	else {
-		printf("GROUP_COMMIT(argv[7]) must be unsigned integer or OFF\n");
+		printf("GROUP_COMMIT(argv[8]) must be unsigned integer or OFF\n");
 		exit(0);
 	}
 
-	chkInt(argv[9]);
-	CLOCK_PER_US = atof(argv[9]);
 	if (CLOCK_PER_US < 100) {
 		printf("CPU_MHZ is less than 100. are you really?\n");
 		exit(0);
 	}
 
-	chkInt(argv[10]);
-	IO_TIME_NS = atof(argv[10]);
-	chkInt(argv[11]);
-	GROUP_COMMIT_TIMEOUT_US = atoi(argv[11]);
-
-	tmp = argv[12];
-	if (tmp == "N") {
+	if (arglr == "N") {
 		NLR = true;
 		ELR = false;
 	}
-	else if (tmp == "E") {
+	else if (arglr == "E") {
 		NLR = false;
 		ELR = true;
 	}
@@ -162,9 +162,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 		exit(0);
 	}
 
-	chkInt(argv[13]);
-	EXTIME = atoi(argv[13]);
-	
 	try {
 		if (posix_memalign((void**)&ThreadRtsArrayForGroup, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 		if (posix_memalign((void**)&ThreadWtsArray, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
@@ -284,8 +281,11 @@ worker(void *arg)
 	try {
 		//start work(transaction)
 		for (;;) {
-      if (YCSB) makeProcedure(pro, rnd, zipf);
-			else makeProcedure(pro, rnd);
+      if (YCSB) 
+        makeProcedure(pro, rnd, zipf);
+			else 
+        makeProcedure(pro, rnd);
+
 			asm volatile ("" ::: "memory");
 RETRY:
 			if (rsobject.Finish.load(std::memory_order_acquire)) {
