@@ -58,7 +58,7 @@ MAX_OPE(int):    total numbers of operations\n\
 THREAD_NUM(int): total numbers of worker thread.\n\
 RRATIO: read ratio [%%]\n\
 ZIPF_SKEW : zipf skew. 0 ~ 0.999...\n\
-YCSB : ON or OFF. swithc makeProcedure function.\n\
+YCSB : ON or OFF. switch makeProcedure function.\n\
 WAL: P or S or OFF.\n\
 GROUP_COMMIT:	unsigned integer or OFF, i reccomend OFF or 3\n\
 CPU_MHZ(float):	your cpuMHz. used by calculate time of yours 1clock.\n\

@@ -33,7 +33,14 @@ void Transaction::tbegin(bool ronly)
 	this->rts = MinWts.load(std::memory_order_acquire) - 1;
 	__atomic_store_n(&(ThreadRtsArray[thid].num), this->rts, __ATOMIC_RELEASE);
 
-	//one-sided synchronization
+	// one-sided synchronization
+  // tanabe... disabled.
+  // When the database size is small that all record can be on
+  // cache, remote worker's clock can also be on cache after one-sided
+  // synchronization.
+  // After that, by transaction processing, cache line invalidation
+  // often occurs and degrade throughput.
+  /* 
 	stop = rdtsc();
 	if (chkClkSpan(start, stop, 100 * CLOCK_PER_US)) {
 		uint64_t maxwts;
@@ -53,7 +60,7 @@ void Transaction::tbegin(bool ronly)
 		//modify the start position of stopwatch.
 		start = stop;
 	}
-
+  */
 }
 
 int
