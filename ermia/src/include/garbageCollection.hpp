@@ -2,6 +2,8 @@
 
 #include <atomic>
 #include <queue>
+#include "inline.hpp"
+#include "result.hpp"
 #include "version.hpp"
 
 // forward declaration
@@ -33,7 +35,7 @@ public:
   uint8_t thid;
 
 	// for all thread
-	uint32_t getGcThreshold() {
+	INLINE uint32_t getGcThreshold() {
 		return gcThreshold.load(std::memory_order_acquire);
 	}
 	// -----
@@ -42,19 +44,19 @@ public:
 	bool chkSecondRange();
 	void decideFirstRange();
 
-	void decideGcThreshold() {
+	INLINE void decideGcThreshold() {
 		gcThreshold.store(fmin, std::memory_order_release);
 	}
 
-	void mvSecondRangeToFirstRange() {
+	INLINE void mvSecondRangeToFirstRange() {
 		fmin = smin;
 		fmax = smax;
 	}
 	// -----
 	
 	// for worker thread
-	void gcVersion();
-	void gcTMTelement();
+	void gcVersion(Result &rsob);
+	void gcTMTelement(Result &rsob);
 	// -----
 };
 

@@ -1,6 +1,9 @@
 #include "include/common.hpp"
+#include "include/debug.hpp"
 #include "include/garbageCollection.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
+#include "include/version.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -49,7 +52,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion()
+GarbageCollection::gcVersion(Result &rsob)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -75,19 +78,31 @@ GarbageCollection::gcVersion()
       continue;
     }
     // this pointer may be dangling.
-    
-    Version *delTarget = gcqForVersion.front().ver->prev;
-
+       
+    Version *delTarget = gcqForVersion.front().ver->committed_prev;
+    if (delTarget == nullptr) {
+      Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+      gcqForVersion.pop();
+      continue;
+    }
+    delTarget = delTarget->prev;
+    if (delTarget == nullptr) {
+      Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+      gcqForVersion.pop();
+      continue;
+    }
+ 
     // the thread detaches the rest of the version list from v
-    gcqForVersion.front().ver->prev = nullptr;
+    gcqForVersion.front().ver->committed_prev->prev = nullptr;
     // updates record.min_wts
-    Table[gcqForVersion.front().key].min_cstamp.store(gcqForVersion.front().cstamp, memory_order_release);
+    Table[gcqForVersion.front().key].min_cstamp.store(gcqForVersion.front().ver->committed_prev->cstamp, memory_order_release);
 
     while (delTarget != nullptr) {
       //next pointer escape
       Version *tmp = delTarget->prev;
       delete delTarget;
       delTarget = tmp;
+      ++rsob.localGCVersionCounts;
     }
 
     // releases the lock
@@ -99,10 +114,9 @@ GarbageCollection::gcVersion()
 }
 
 void
-GarbageCollection::gcTMTelement()
+GarbageCollection::gcTMTelement(Result &rsob)
 {
   uint32_t threshold = getGcThreshold();
-	//uint gcctr(0);
 	if (gcqForTMT.empty()) return;
 
 	for (;;) {
@@ -110,7 +124,7 @@ GarbageCollection::gcTMTelement()
 		if (tmt->txid < threshold) {
 			gcqForTMT.pop();
 			delete tmt;
-			//++gcctr;
+      ++rsob.localGCTMTElementsCounts;
 			if (gcqForTMT.empty()) break;
 		}
 		else break;

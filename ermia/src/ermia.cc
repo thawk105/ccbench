@@ -17,12 +17,14 @@
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/tsc.hpp"
+#include "include/zipf.hpp"
 
 using namespace std;
 
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
+extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void naiveGarbageCollection();
 extern inline uint64_t rdtsc();
 extern void setThreadAffinity(int myid);
@@ -43,14 +45,16 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, const char *argv[])
 {
-	if (argc != 7) {
+	if (argc != 9) {
 	//if (argc != 1) {
 		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO CPU_MHZ EXTIME" << endl;
-		cout << "example: ./ermia.exe 200 10 24 3 2400 3" << endl;
+		cout << "example: ./ermia.exe 200 10 24 50 0 OFF 2400 3" << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-		cout << "RRATIO: read ratio (* 10%%)" << endl;
+		cout << "RRATIO : read ratio [%%]" << endl;
+		cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+		cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
 
@@ -77,28 +81,43 @@ chkArg(const int argc, const char *argv[])
 	chkInt(argv[2]);
 	chkInt(argv[3]);
 	chkInt(argv[4]);
-	chkInt(argv[6]);
+	chkInt(argv[7]);
+	chkInt(argv[8]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
 	THREAD_NUM = atoi(argv[3]);
+	RRATIO = atoi(argv[4]);
+  ZIPF_SKEW = atof(argv[5]);
+  string argst = argv[6];
+	CLOCK_PER_US = atof(argv[7]);
+	EXTIME = atoi(argv[8]);
+
 	if (THREAD_NUM < 2) {
 		cout << "1 thread is leader thread. \nthread number 1 is no worker thread, so exit." << endl;
 		ERR;
 	}
-	RRATIO = atoi(argv[4]);
-	if (RRATIO > 10) {
-		cout << "rratio (* 10 percent) must be 0 ~ 10" << endl;
+	if (RRATIO > 100) {
+		cout << "rratio [%%] must be 0 ~ 100" << endl;
 		ERR;
 	}
 
-	CLOCK_PER_US = atof(argv[5]);
+  if (ZIPF_SKEW >= 1) {
+    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+    ERR;
+  }
+
+  if (argst == "ON")
+    YCSB = true;
+  else if (argst == "OFF")
+    YCSB = false;
+  else 
+    ERR;
+
 	if (CLOCK_PER_US < 100) {
 		cout << "CPU_MHZ is less than 100. are your really?" << endl;
 		ERR;
 	}
-
-	EXTIME = atoi(argv[6]);
 
 	try {
 		TMT = new TransactionTable*[THREAD_NUM];
@@ -153,6 +172,7 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Result rsobject;
+  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 	
 	setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -163,13 +183,17 @@ worker(void *arg)
 	try {
 	  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 		for(;;) {
-			makeProcedure(pro, rnd);
+			if (YCSB) makeProcedure(pro, rnd, zipf);
+      else makeProcedure(pro, rnd);
+
 			asm volatile ("" ::: "memory");
 RETRY:
 
 			if (Finish.load(std::memory_order_acquire)) {
 				rsobject.sumUpAbortCounts();
 				rsobject.sumUpCommitCounts();
+        rsobject.sumUpGCVersionCounts();
+        rsobject.sumUpGCTMTElementsCounts();
 				return nullptr;
 			}
 
@@ -204,8 +228,8 @@ RETRY:
       // garbage collection
 			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
 			if (trans.preGcThreshold != loadThreshold) {
-				trans.gcobject.gcTMTelement();
-        trans.gcobject.gcVersion();
+				trans.gcobject.gcTMTelement(rsobject);
+        trans.gcobject.gcVersion(rsobject);
         trans.preGcThreshold = loadThreshold;
 			}
 		}
@@ -261,8 +285,9 @@ main(const int argc, const char *argv[])
 	//displayDB();
 
 	rsobject.displayTPS();
-	rsobject.displayAbortCounts();
   rsobject.displayAbortRate();
+  rsobject.displayGCVersionCountsPS();
+  rsobject.displayGCTMTElementsCountsPS();
 
 	return 0;
 }

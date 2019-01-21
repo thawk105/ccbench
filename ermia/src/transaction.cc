@@ -437,7 +437,7 @@ Transaction::abort()
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		(*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(1));
 		(*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
-	  gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->cstamp));
+	  gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid << 1));
 	}
 	writeSet.clear();
 

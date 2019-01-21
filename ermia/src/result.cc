@@ -16,8 +16,29 @@ Result::displayAbortCounts()
 void
 Result::displayAbortRate()
 {
-	long double ave_rate = AbortCounts / (CommitCounts + AbortCounts);
+	long double ave_rate = (double)AbortCounts / (double)(CommitCounts + AbortCounts);
 	cout << "Abort rate : " << ave_rate << endl;
+}
+
+void
+Result::displayGCVersionCountsPS()
+{
+	uint64_t diff = End - Bgn;
+	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
+
+  cout << "GCVersionCounts : " << GCVersionCounts << endl;
+	uint64_t result = (double)GCVersionCounts / (double)sec;
+	std::cout << (int)result << std::endl;
+}
+
+void
+Result::displayGCTMTElementsCountsPS()
+{
+	uint64_t diff = End - Bgn;
+	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
+
+	uint64_t result = (double)GCTMTElementsCounts / (double)sec;
+	std::cout << (int)result << std::endl;
 }
 
 void
@@ -48,6 +69,28 @@ Result::sumUpCommitCounts()
 	for (;;) {
 		desired = expected + localCommitCounts;
 		if (CommitCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+	}
+}
+
+void
+Result::sumUpGCVersionCounts()
+{
+	uint64_t expected, desired;
+	expected = GCVersionCounts.load(std::memory_order_acquire);
+	for (;;) {
+		desired = expected + localGCVersionCounts;
+		if (GCVersionCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+	}
+}
+
+void
+Result::sumUpGCTMTElementsCounts()
+{
+	uint64_t expected, desired;
+	expected = GCTMTElementsCounts.load(std::memory_order_acquire);
+	for (;;) {
+		desired = expected + localGCTMTElementsCounts;
+		if (GCTMTElementsCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
 	}
 }
 
