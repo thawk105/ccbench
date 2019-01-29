@@ -45,6 +45,7 @@ Transaction::tbegin()
 		newElement = new TransactionTable(0, 0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
   }
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    if (i == thid) continue;
 		do {
 			tmt	= __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
 		} while (tmt == nullptr);
