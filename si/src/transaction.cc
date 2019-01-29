@@ -33,21 +33,37 @@ Transaction::searchWriteSet(unsigned int key)
 void
 Transaction::tbegin()
 {
+  TransactionTable *newElement, *tmt;
+
+  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
 	if (this->status == TransactionStatus::committed) {
-    TMT[thid]->lastcstamp.store(cstamp, std::memory_order_release);
     this->txid = cstamp;
+    newElement = new TransactionTable(0, cstamp);
   }
   else {
     this->txid = TMT[thid]->lastcstamp.load(memory_order_acquire);
+    newElement = new TransactionTable(0, tmt->lastcstamp.load(std::memory_order_acquire));
   }
 
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     if (thid == i) continue;
-		this->txid = max(this->txid, TMT[i]->lastcstamp.load(memory_order_acquire));
+    do {
+      tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+    } while (tmt == nullptr);
+		this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
 	}
 	this->txid += 1;
-  TMT[thid]->txid.store(this->txid, std::memory_order_release);
+  newElement->txid = this->txid;
 	
+  TransactionTable *expected, *desired;
+  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  expected = tmt;
+  gcobject.gcqForTMT.push(expected);
+  for (;;) {
+    desired = newElement;
+    if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+  }
+
 	status = TransactionStatus::inFlight;
 }
 

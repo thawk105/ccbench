@@ -199,7 +199,7 @@ main(const int argc, const char *argv[])
 	}
 
   rsobject.displayTPS();
-	rsobject.displayAbortRate();
+	//rsobject.displayAbortRate();
 
 	return 0;
 }

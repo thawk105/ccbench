@@ -2,7 +2,7 @@ PROG = silo.exe
 SOURCES = silo.cc transaction.cc result.cc util.cc 
 
 CC = g++
-CFLAGS = -c -Wall -g -O2 -std=c++17 
+CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17 
 LDFLAGS = -L./../lib
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 

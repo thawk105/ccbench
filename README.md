@@ -1,7 +1,7 @@
 # Redesign and Implement Many Concurrency Control
 
 ---
-## NOCC
+## Snapshot Isolation
 ## SS2PL
 1978 ?
 ## Silo
@@ -17,12 +17,6 @@ SIGMOD 2016
 VLDB 2017
 ## Cicada
 SIGMOD 2017
-
----
-
-## Snapshot Isolation
-TBD (To Be Determined)
-
 ---
 
 ## Instruction Survey

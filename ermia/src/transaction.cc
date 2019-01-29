@@ -37,13 +37,14 @@ Transaction::tbegin()
 
 	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
   if (this->status == TransactionStatus::aborted) {
-	  this->txid = 0;
+	  this->txid = tmt->lastcstamp.load(memory_order_acquire);
 		newElement = new TransactionTable(0, 0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
   }
   else {
     this->txid = this->cstamp;
 		newElement = new TransactionTable(0, 0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
   }
+
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     if (i == thid) continue;
 		do {

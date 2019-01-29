@@ -26,9 +26,8 @@ Result::displayGCVersionCountsPS()
 	uint64_t diff = End - Bgn;
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
-  cout << "GCVersionCounts : " << GCVersionCounts << endl;
 	uint64_t result = (double)GCVersionCounts / (double)sec;
-	std::cout << (int)result << std::endl;
+	std::cout << "GCVersionCountsPS : " << (int)result << std::endl;
 }
 
 void
@@ -38,7 +37,7 @@ Result::displayGCTMTElementsCountsPS()
 	uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
 	uint64_t result = (double)GCTMTElementsCounts / (double)sec;
-	std::cout << (int)result << std::endl;
+	std::cout << "GCTMTElementsCountsPS : " << (int)result << std::endl;
 }
 
 void

@@ -181,6 +181,8 @@ RETRY:
 			if (Finish.load(std::memory_order_acquire)) {
 				rsobject.sumUpAbortCounts();
 				rsobject.sumUpCommitCounts();
+        rsobject.sumUpGCVersionCounts();
+        rsobject.sumUpGCTMTElementsCounts();
 				return nullptr;
 			}
 
@@ -210,6 +212,7 @@ RETRY:
       // garbage collection
 			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
 			if (trans.preGcThreshold != loadThreshold) {
+        trans.gcobject.gcTMTelement(rsobject);
         trans.gcobject.gcVersion(rsobject);
         trans.preGcThreshold = loadThreshold;
 			}
@@ -269,6 +272,7 @@ main(const int argc, const char *argv[])
   //rsobject.displayAbortRate();
   //rsobject.displayAbortCounts();
   //rsobject.displayGCVersionCountsPS();
+  //rsobject.displayGCTMTElementsCountsPS();
 
 	return 0;
 }
