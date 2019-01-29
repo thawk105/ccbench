@@ -229,14 +229,18 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
 	verify_exclusion_or_abort();
 }
 
-/*
 void
 Transaction::ssn_commit()
 {
-	SsnLock.lock();
+	this->status = TransactionStatus::committing;
+	TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+	tmt->status.store(TransactionStatus::committing);
 
-	cstamp = Lsn.fetch_add(1);	//	begin pre-commit
-	cstamp++;
+	this->cstamp = ++Lsn;
+	tmt->cstamp.store(this->cstamp, memory_order_release);
+	
+	// begin pre-commit
+	SsnLock.lock();
 
 	// finalize eta(T)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -247,10 +251,10 @@ Transaction::ssn_commit()
 	sstamp = min(sstamp, cstamp);
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		uint32_t verSstamp = (*itr).ver->psstamp.atomicLoadSstamp();
-		//最下位ビットが上がっていたら，並行トランザクションに上書きされている．
-		//しかし，シリアルSSNにおいては，このトランザクションよりも必ず後に
-		//validation (maybe commit) されるので，絶対にスキップできる．
-		//その上，最下位ビットが上がっていたら，それはスタンプではなく TIDである．
+    // if the lowest bit raise, the record was overwrited by other concurrent transactions.
+    // but in serial SSN, the validation of the concurrent transactions will be done after that of this transaction.
+    // So it can skip.
+    // And if the lowest bit raise, the stamp is TID;
 		if (verSstamp & 1) continue;
 		sstamp = min(sstamp, verSstamp >> 1);
 	}
@@ -294,15 +298,11 @@ Transaction::ssn_commit()
 		(*itr).ver->status.store(VersionStatus::committed, memory_order_release);
 
 	this->status = TransactionStatus::committed;
-	safeRetry = false;
-
 	SsnLock.unlock();
-
 	readSet.clear();
 	writeSet.clear();
 	return;
 }
-*/
 
 void
 Transaction::ssn_parallel_commit()

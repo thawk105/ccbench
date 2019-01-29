@@ -194,6 +194,8 @@ RETRY:
 				rsobject.sumUpCommitCounts();
         rsobject.sumUpGCVersionCounts();
         rsobject.sumUpGCTMTElementsCounts();
+
+        //printf("Th #%d : CommitCounts : %lu : AbortCounts : %lu\n", trans.thid, rsobject.localCommitCounts, rsobject.localAbortCounts);
 				return nullptr;
 			}
 
@@ -215,8 +217,10 @@ RETRY:
 					goto RETRY;
 				}
 			}
-			
-			trans.ssn_parallel_commit();
+
+      trans.ssn_commit();
+			//trans.ssn_parallel_commit();
+
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
 				++rsobject.localAbortCounts;
