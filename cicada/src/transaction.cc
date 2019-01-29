@@ -570,7 +570,7 @@ Transaction::mainte()
 	}
 
 	this->GCstop = rdtsc();
-	if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US)) {
+	if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US * CLOCK_PER_US)) {
 		__atomic_store_n(&(GCFlag[thid].num),  1, __ATOMIC_RELEASE);
 		this->GCstart = this->GCstop;
 	}
