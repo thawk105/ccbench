@@ -35,7 +35,15 @@ Transaction::tbegin()
 {
 	TransactionTable *newElement, *tmt;
 
-	this->txid = 0;
+	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  if (this->status == TransactionStatus::aborted) {
+	  this->txid = 0;
+		newElement = new TransactionTable(0, 0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
+  }
+  else {
+    this->txid = this->cstamp;
+		newElement = new TransactionTable(0, 0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
+  }
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		do {
 			tmt	= __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
@@ -43,12 +51,7 @@ Transaction::tbegin()
 		this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
 	}
 	this->txid += 1;
-
-	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
-	if (this->status == TransactionStatus::aborted)
-		newElement = new TransactionTable(this->txid, 0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
-	else
-		newElement = new TransactionTable(this->txid, 0, UINT32_MAX, tmt->cstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
+  newElement->txid = this->txid;
 
 	TransactionTable *expected, *desired;
 	tmt	= __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);

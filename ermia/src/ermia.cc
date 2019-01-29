@@ -285,9 +285,9 @@ main(const int argc, const char *argv[])
 	//displayDB();
 
 	rsobject.displayTPS();
-  rsobject.displayAbortRate();
-  rsobject.displayGCVersionCountsPS();
-  rsobject.displayGCTMTElementsCountsPS();
+  //rsobject.displayAbortRate();
+  //rsobject.displayGCVersionCountsPS();
+  //rsobject.displayGCTMTElementsCountsPS();
 
 	return 0;
 }
