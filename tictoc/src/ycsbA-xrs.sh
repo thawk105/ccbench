@@ -8,7 +8,7 @@ cpumhz=2400
 extime=3
 epoch=5
 
-result=result_tictoc_ycsbA_tuple100-10m.dat
+result=result_tictoc_ycsbA_tuple100-10m_ar.dat
 rm $result
 echo "#tuple num, abort_rate, min, max" >> $result
 

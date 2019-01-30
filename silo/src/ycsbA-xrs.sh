@@ -9,7 +9,7 @@ epochtime=40
 extime=3
 epoch=5
 
-result=result_silo_ycsbA_tuple100-10m.dat
+result=result_silo_ycsbA_tuple100-10m_ar.dat
 rm $result
 echo "#tuple num, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result

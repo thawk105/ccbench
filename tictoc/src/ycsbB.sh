@@ -8,7 +8,7 @@ extime=3
 epoch=5
 
 tuple=500
-result=result_tictoc_ycsbB_tuple500.dat
+result=result_tictoc_ycsbB_tuple500_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 
@@ -81,7 +81,7 @@ do
 done
 
 tuple=500000
-result=result_tictoc_ycsbB_tuple500k.dat
+result=result_tictoc_ycsbB_tuple500k_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 
@@ -154,7 +154,7 @@ do
 done
 
 tuple=5000000
-result=result_tictoc_ycsbB_tuple5m.dat
+result=result_tictoc_ycsbB_tuple5m_ar.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 

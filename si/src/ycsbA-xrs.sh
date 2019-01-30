@@ -8,7 +8,7 @@ cpu_mhz=2400
 extime=3
 epoch=5
 
-result=result_si_ycsbA_tuple100-10m.dat
+result=result_si_ycsbA_tuple100-10m_ar.dat
 rm $result
 echo "#tuple num, throughput, min, max" >> $result
 echo "#./si.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime" >> $result

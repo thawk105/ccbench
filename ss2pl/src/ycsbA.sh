@@ -8,7 +8,7 @@ extime=3
 epoch=5
 
 tuple=500
-result=result_ss2pl_ycsbA_tuple500.dat
+result=result_ss2pl_ycsbA_tuple500_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 
@@ -83,7 +83,7 @@ do
 done
 
 tuple=500000
-result=result_ss2pl_ycsbA_tuple500k.dat
+result=result_ss2pl_ycsbA_tuple500k_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 
@@ -158,7 +158,7 @@ do
 done
 
 tuple=5000000
-result=result_ss2pl_ycsbA_tuple5m.dat
+result=result_ss2pl_ycsbA_tuple5m_ar.dat
 rm $result
 echo "#Worker threads, throughput, min, max" >> $result
 

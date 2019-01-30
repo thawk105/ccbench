@@ -13,7 +13,7 @@ lock_release=E
 extime=3
 epoch=5
 
-result=result_cicada_ycsbA_tuple100-10m.dat
+result=result_cicada_ycsbA_tuple100-10m_ar.dat
 rm $result
 echo "#tuple num, throughput, min, max" >> $result
 echo "#./cicada.exe tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime" >> $result

@@ -217,7 +217,8 @@ main(int argc, char *argv[])
 
 	//displayDB();
 
-  rsobject.displayTPS();
+  //rsobject.displayTPS();
+  rsobject.displayAbortRate();
 	//displayRtsudRate();
 
 	return 0;

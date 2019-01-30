@@ -1,8 +1,9 @@
 #include "include/common.hpp"
 #include "include/result.hpp"
+#include <iomanip>
 #include <iostream>
 
-using std::cout, std::endl;
+using std::cout, std::endl, std::fixed, std::setprecision;
 
 // forward declaration
 extern uint64_t Result::Bgn, Result::End;
@@ -17,7 +18,7 @@ void
 Result::displayAbortRate()
 {
 	long double ave_rate = (double)AbortCounts / (double)(CommitCounts + AbortCounts);
-	cout << "Abort rate : " << ave_rate << endl;
+	cout << fixed << setprecision(4) << ave_rate << endl;
 }
 
 void

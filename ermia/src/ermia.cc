@@ -218,8 +218,8 @@ RETRY:
 				}
 			}
 
-      //trans.ssn_commit();
-			trans.ssn_parallel_commit();
+      trans.ssn_commit();
+			//trans.ssn_parallel_commit();
 
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
@@ -288,10 +288,10 @@ main(const int argc, const char *argv[])
 
 	//displayDB();
 
-	rsobject.displayTPS();
-  //rsobject.displayAbortRate();
-  rsobject.displayGCVersionCountsPS();
-  rsobject.displayGCTMTElementsCountsPS();
+	//rsobject.displayTPS();
+  rsobject.displayAbortRate();
+  //rsobject.displayGCVersionCountsPS();
+  //rsobject.displayGCTMTElementsCountsPS();
 
 	return 0;
 }

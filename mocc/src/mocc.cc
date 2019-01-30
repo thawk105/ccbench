@@ -280,8 +280,8 @@ main(int argc, char *argv[])
 		pthread_join(thread[i], nullptr);
 	}
 
-  rsobject.displayTPS();
-	//rsobject.displayAbortRate();
+  //rsobject.displayTPS();
+	rsobject.displayAbortRate();
 
 	return 0;
 }

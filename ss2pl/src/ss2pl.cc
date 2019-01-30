@@ -198,8 +198,8 @@ main(const int argc, const char *argv[])
 		pthread_join(thread[i], nullptr);
 	}
 
-  rsobject.displayTPS();
-	//rsobject.displayAbortRate();
+  //rsobject.displayTPS();
+	rsobject.displayAbortRate();
 
 	return 0;
 }

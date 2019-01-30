@@ -8,7 +8,7 @@ cpu_mhz=2400
 extime=3
 epoch=5
 
-result=result_ss2pl_ycsbA_tuple100-10m.dat
+result=result_ss2pl_ycsbA_tuple100-10m_ar.dat
 rm $result
 echo "#tuple num, throughput, min, max" >> $result
 
