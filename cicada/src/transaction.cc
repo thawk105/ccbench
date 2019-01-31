@@ -461,6 +461,8 @@ Transaction::earlyAbort()
 	}
 
 	this->wts.set_clockBoost(CLOCK_PER_US);
+  ++rsobject.localAbortCounts;
+  continuingCommit = 0;
 	this->status = TransactionStatus::abort;
 }
 
@@ -480,6 +482,8 @@ Transaction::abort()
 	writeSet.clear();
 
 	this->wts.set_clockBoost(CLOCK_PER_US);
+  ++rsobject.localAbortCounts;
+  continuingCommit = 0;
 }
 
 void
@@ -527,6 +531,7 @@ Transaction::mainte()
 	//
 
 	if (__atomic_load_n(&(GCExecuteFlag[thid].num), __ATOMIC_ACQUIRE) == 1) {
+    ++rsobject.localGCCounts;
 		while (!gcq.empty()) {
 			if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
 		
@@ -603,5 +608,8 @@ Transaction::writePhase()
 	this->wts.set_clockBoost(0);
 	readSet.clear();
 	writeSet.clear();
+
+  ++continuingCommit;
+  ++rsobject.localCommitCounts;
 }
 

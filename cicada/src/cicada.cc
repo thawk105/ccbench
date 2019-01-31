@@ -47,9 +47,9 @@ chkInt(char *arg)
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 14) {
-    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD EXTIME" << endl << endl;
-    cout << "example:./main 200 10 24 5 0 ON OFF OFF 2400 5 2 E 3" << endl << endl;
+	if (argc != 15) {
+    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD GC_INTER_US EXTIME" << endl << endl;
+    cout << "example:./main 200 10 24 5 0 ON OFF OFF 2400 5 2 E 10 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread." << endl;
@@ -62,6 +62,7 @@ chkArg(const int argc, char *argv[])
     cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds)." << endl;
     cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds)." << endl;
     cout << "LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release." << endl;
+    cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
@@ -79,6 +80,7 @@ chkArg(const int argc, char *argv[])
 	chkInt(argv[10]);
 	chkInt(argv[11]);
 	chkInt(argv[13]);
+	chkInt(argv[14]);
 
 	TUPLE_NUM = atoi(argv[1]);
 	MAX_OPE = atoi(argv[2]);
@@ -92,7 +94,8 @@ chkArg(const int argc, char *argv[])
 	IO_TIME_NS = atof(argv[10]);
 	GROUP_COMMIT_TIMEOUT_US = atoi(argv[11]);
 	string arglr = argv[12];
-	EXTIME = atoi(argv[13]);
+  GC_INTER_US = atoi(argv[13]);
+	EXTIME = atoi(argv[14]);
 
 	if (RRATIO > 100) {
 		cout << "rratio [%%] must be 0 ~ 100)" << endl;
@@ -270,7 +273,6 @@ worker(void *arg)
 	rnd.init();
 	Procedure pro[MAX_OPE];
 	Transaction trans(*myid);
-  Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
   setThreadAffinity(*myid);
@@ -288,9 +290,10 @@ worker(void *arg)
 
 			asm volatile ("" ::: "memory");
 RETRY:
-			if (rsobject.Finish.load(std::memory_order_acquire)) {
-        rsobject.sumUpAbortCounts();
-        rsobject.sumUpCommitCounts();
+			if (trans.rsobject.Finish.load(std::memory_order_acquire)) {
+        trans.rsobject.sumUpAbortCounts();
+        trans.rsobject.sumUpCommitCounts();
+        trans.rsobject.sumUpGCCounts();
 				return nullptr;
 			}
 
@@ -307,8 +310,6 @@ RETRY:
 
 				if (trans.status == TransactionStatus::abort) {
 					trans.earlyAbort();
-          ++rsobject.localAbortCounts;
-          trans.continuingCommit = 0;
 					goto RETRY;
 				}
 			}
@@ -316,7 +317,7 @@ RETRY:
 			//read onlyトランザクションはread setを集めず、validationもしない。
 			//write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
 			if (trans.ronly) {
-        ++rsobject.localCommitCounts;
+        ++trans.rsobject.localCommitCounts;
         ++trans.continuingCommit;
 				continue;
 			}
@@ -324,15 +325,11 @@ RETRY:
 			//Validation phase
 			if (!trans.validation()) {
 				trans.abort();
-        ++trans.continuingCommit = 0;
-        ++rsobject.localAbortCounts;
 				goto RETRY;
 			}
 
 			//Write phase
 			trans.writePhase();
-      ++trans.continuingCommit;
-      ++rsobject.localCommitCounts;
 
 			//Maintenance
 			//Schedule garbage collection
@@ -390,6 +387,7 @@ main(int argc, char *argv[])
   //rsobject.displayCommitCounts();
 	//rsobject.displayAbortCounts();
 	//rsobject.displayAbortRate();
+  //rsobject.displayGCCounts();
 
 	return 0;
 }

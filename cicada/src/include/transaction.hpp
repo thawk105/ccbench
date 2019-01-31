@@ -6,6 +6,7 @@
 #include "tuple.hpp"
 #include "timeStamp.hpp"
 #include "version.hpp"
+#include "result.hpp"
 
 #include <atomic>
 #include <iostream>
@@ -31,6 +32,7 @@ public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 	queue<GCElement> gcq;
+  Result rsobject;
 
 	uint64_t start, stop;	// for one-sided synchronization
 	uint64_t spinstart, spinstop; // for spin-wait
