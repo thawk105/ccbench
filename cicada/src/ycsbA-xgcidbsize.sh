@@ -13,12 +13,12 @@ lock_release=E
 extime=3
 epoch=5
 
-result=result_cicada_ycsbA_tuple100-10m_gci1us-100ms.dat
+result=result_cicada_ycsbA_tuple100-10m_gci1us-100ms_ar.dat
 rm $result
 echo "#tuple num, gci, throughput, min, max" >> $result
-for ((gci=1; gci<=100000; gci*=10))
+for ((tuple=100; tuple<=10000000; tuple*=10))
 do
-  for ((tuple=100; tuple<=10000000; tuple*=10))
+  for ((gci=1; gci<=100000; gci*=10))
   do
       sum=0
   	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
@@ -53,4 +53,5 @@ do
   	echo "min: $min"
   	echo "$tuple $gci $avg $min $max" >> $result
   done
+  echo "" >> $result
 done

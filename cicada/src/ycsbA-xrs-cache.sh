@@ -10,8 +10,8 @@ cpu_mhz=2400
 io_time_ns=5
 group_commit_timeout_us=2
 lock_release=E
-extime=3
-epoch=5
+extime=1
+epoch=1
 
 result=result_cicada_ycsbA_tuple100-10m_cachemiss.dat
 rm $result
