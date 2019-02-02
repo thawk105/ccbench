@@ -45,10 +45,10 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, const char *argv[])
 {
-	if (argc != 9) {
+	if (argc != 10) {
 	//if (argc != 1) {
-		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl;
-		cout << "example: ./ermia.exe 200 10 24 50 0 OFF 2400 3" << endl;
+		cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US EXTIME" << endl;
+		cout << "example: ./ermia.exe 200 10 24 50 0 OFF 2400 10 3" << endl;
 		cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
 		cout << "MAX_OPE(int): total numbers of operations" << endl;
 		cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
@@ -56,6 +56,7 @@ chkArg(const int argc, const char *argv[])
 		cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
 		cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
 		cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
+    cout << "GC_INTER_US : garbage collection interval [usec]" << endl;
 		cout << "EXTIME: execution time [sec]" << endl;
 
 		cout << "Tuple " << sizeof(Tuple) << endl;
@@ -91,7 +92,8 @@ chkArg(const int argc, const char *argv[])
   ZIPF_SKEW = atof(argv[5]);
   string argst = argv[6];
 	CLOCK_PER_US = atof(argv[7]);
-	EXTIME = atoi(argv[8]);
+	GC_INTER_US = atoi(argv[8]);
+	EXTIME = atoi(argv[9]);
 
 	if (THREAD_NUM < 2) {
 		cout << "1 thread is leader thread. \nthread number 1 is no worker thread, so exit." << endl;
@@ -128,6 +130,8 @@ chkArg(const int argc, const char *argv[])
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		TMT[i] = new TransactionTable(0, 0, UINT32_MAX, 0, TransactionStatus::inFlight);
 	}
+
+
 }
 
 static void *
@@ -171,7 +175,6 @@ worker(void *arg)
 	Procedure pro[MAX_OPE];
 	Xoroshiro128Plus rnd;
 	rnd.init();
-	Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 	
 	setThreadAffinity(*myid);
@@ -179,6 +182,7 @@ worker(void *arg)
 	//printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 	waitForReadyOfAllThread();
 	
+  trans.gcstart = rdtsc();
 	//start work (transaction)
 	try {
 	  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -190,11 +194,11 @@ worker(void *arg)
 RETRY:
 
 			if (Finish.load(std::memory_order_acquire)) {
-				rsobject.sumUpAbortCounts();
-				rsobject.sumUpCommitCounts();
-        rsobject.sumUpGCVersionCounts();
-        rsobject.sumUpGCTMTElementsCounts();
-
+				trans.rsobject.sumUpAbortCounts();
+				trans.rsobject.sumUpCommitCounts();
+        trans.rsobject.sumUpGCVersionCounts();
+        trans.rsobject.sumUpGCTMTElementsCounts();
+        trans.rsobject.sumUpGCCounts();
         //printf("Th #%d : CommitCounts : %lu : AbortCounts : %lu\n", trans.thid, rsobject.localCommitCounts, rsobject.localAbortCounts);
 				return nullptr;
 			}
@@ -213,29 +217,21 @@ RETRY:
 
 				if (trans.status == TransactionStatus::aborted) {
 					trans.abort();
-					++rsobject.localAbortCounts;
 					goto RETRY;
 				}
 			}
 
-      trans.ssn_commit();
-			//trans.ssn_parallel_commit();
+      //trans.ssn_commit();
+			trans.ssn_parallel_commit();
 
 			if (trans.status == TransactionStatus::aborted) {
 				trans.abort();
-				++rsobject.localAbortCounts;
 				goto RETRY;
 			}
-			++rsobject.localCommitCounts;
 
       // maintenance phase
       // garbage collection
-			uint32_t loadThreshold = trans.gcobject.getGcThreshold();
-			if (trans.preGcThreshold != loadThreshold) {
-				trans.gcobject.gcTMTelement(rsobject);
-        trans.gcobject.gcVersion(rsobject);
-        trans.preGcThreshold = loadThreshold;
-			}
+      trans.mainte();
 		}
 	} catch (bad_alloc) {
 		ERR;
@@ -288,8 +284,9 @@ main(const int argc, const char *argv[])
 
 	//displayDB();
 
-	//rsobject.displayTPS();
-  rsobject.displayAbortRate();
+	rsobject.displayTPS();
+  //rsobject.displayGCCounts();
+  //rsobject.displayAbortRate();
   //rsobject.displayGCVersionCountsPS();
   //rsobject.displayGCTMTElementsCountsPS();
 

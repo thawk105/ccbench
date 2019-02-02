@@ -1,10 +1,13 @@
 #include "include/common.hpp"
 #include "include/debug.hpp"
 #include "include/transaction.hpp"
+#include "include/tsc.hpp"
 #include "include/version.hpp"
 #include <atomic>
 #include <algorithm>
 #include <bitset>
+
+extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 
 using namespace std;
 
@@ -433,6 +436,7 @@ Transaction::ssn_parallel_commit()
 
 	readSet.clear();
 	writeSet.clear();
+  ++rsobject.localCommitCounts;
 	return;
 }
 
@@ -450,6 +454,7 @@ Transaction::abort()
 		downReadersBits((*itr).ver);
 
 	readSet.clear();
+  ++rsobject.localAbortCounts;
 }
 
 void
@@ -460,6 +465,23 @@ Transaction::verify_exclusion_or_abort()
 		TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
 		tmt->status.store(TransactionStatus::aborted, memory_order_release);
 	}
+}
+
+void
+Transaction::mainte()
+{
+  gcstop = rdtsc();
+  if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCK_PER_US)) {
+	  uint32_t loadThreshold = gcobject.getGcThreshold();
+	  if (preGcThreshold != loadThreshold) {
+	  	gcobject.gcTMTelement(rsobject);
+      gcobject.gcVersion(rsobject);
+      preGcThreshold = loadThreshold;
+
+      ++rsobject.localGCCounts;
+      gcstart = gcstop;
+    }
+  }
 }
 
 void

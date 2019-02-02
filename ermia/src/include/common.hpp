@@ -31,7 +31,8 @@ GLOBAL unsigned int RRATIO;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL uint64_t CLOCK_PER_US;
-GLOBAL unsigned int EXTIME;
+GLOBAL uint64_t GC_INTER_US; // garbage collection interval
+GLOBAL uint64_t EXTIME;
 // -----
 
 GLOBAL Tuple *Table;

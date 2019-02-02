@@ -22,6 +22,12 @@ Result::displayAbortRate()
 }
 
 void
+Result::displayGCCounts()
+{
+  cout << "GCCounts : " << GCCounts << endl;
+}
+
+void
 Result::displayGCVersionCountsPS()
 {
 	uint64_t diff = End - Bgn;
@@ -69,6 +75,17 @@ Result::sumUpCommitCounts()
 	for (;;) {
 		desired = expected + localCommitCounts;
 		if (CommitCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+	}
+}
+
+void
+Result::sumUpGCCounts()
+{
+	uint64_t expected, desired;
+	expected = GCCounts.load(std::memory_order_acquire);
+	for (;;) {
+		desired = expected + localGCCounts;
+		if (GCCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
 	}
 }
 
