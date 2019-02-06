@@ -4,43 +4,41 @@
 
 #define LOGLIST_SIZE 31
 
+class LogHeader {
+public:
+  int chkSum = 0;
+  unsigned int logRecNum = 0;
+  // 8 bytes
+
+  void init() {
+    chkSum = 0; 
+    logRecNum = 0;
+  }
+};
+
 class LogRecord {
 public:
   uint64_t tid;
   unsigned int key;
-  unsigned int val; // 16bytes
-};
+  unsigned int val; 
+  // 16 bytes
 
-class LogPack {
-public:
-  int chkSum;
-  unsigned int index = 0; // index of filled logList.
-  uint8_t padding[8] = {};
-  LogRecord logList[LOGLIST_SIZE];
-
-  void init() { chkSum = 0; index = 0; }
-
-  bool put(uint64_t tid, unsigned int key, unsigned val) {
-    if (index == LOGLIST_SIZE) return false;
-
-    logList[index].tid = tid; 
-    logList[index].key = key;
-    logList[index].val = val;
-    ++index;
-    return true;
+  LogRecord(uint64_t tid, unsigned int key, unsigned int val) {
+    this->tid = tid;
+    this->key = key;
+    this->val = val;
   }
 
-  void computeChkSum() {
+  int computeChkSum() {
     // compute checksum
-    int tmpChkSum = 0;
+    int chkSum = 0;
     int *itr = (int *)this;
-    for (int i = 0; i < LOGLIST_SIZE; ++i) {
-      tmpChkSum += (*itr);
+    for (unsigned int i = 0; i < sizeof(LogRecord) / sizeof(int); ++i) {
+      chkSum += (*itr);
       ++itr;
     }
 
-    tmpChkSum ^= 0xffffffff;
-    chkSum = ++tmpChkSum;
+    chkSum ^= 0xffffffff;
+    return ++chkSum;
   }
-
 };

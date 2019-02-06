@@ -59,10 +59,10 @@ class WriteElement {
 public:
 	unsigned int key, val;
 
-	WriteElement(unsigned int key, unsigned int val) {
-		this->key = key;
-		this->val = val;
-	}
+  WriteElement(unsigned int key, unsigned int val) {
+    this->key = key;
+    this->val = val;
+  }
 
 	bool operator<(const WriteElement& right) const {
 		return this->key < right.key;

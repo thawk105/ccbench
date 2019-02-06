@@ -1,6 +1,8 @@
 #pragma once
+
 #include "common.hpp"
-#include "../../../include/inline.hpp"
+
+#include "../../include/inline.hpp"
 
 INLINE uint64_t atomicLoadGE();
 

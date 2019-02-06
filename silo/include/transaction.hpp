@@ -11,6 +11,8 @@
 #include "procedure.hpp"
 #include "tuple.hpp"
 
+#include "../../include/fileio.hpp"
+
 #define LOGSET_SIZE 1000
 
 using namespace std;
@@ -20,8 +22,10 @@ public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 
-  vector<LogPack> logSet;
-  LogPack latestLogPack;
+  vector<LogRecord> logSet;
+  LogHeader latestLogHeader;
+
+  File logfile;
 
 	unsigned int thid;
 	Tidword mrctid;
@@ -35,7 +39,7 @@ public:
 		writeSet.reserve(MAX_OPE);
     logSet.reserve(LOGSET_SIZE);
 
-    latestLogPack.init();
+    latestLogHeader.init();
 
 		max_rset.obj = 0;
 		max_wset.obj = 0;
@@ -49,7 +53,7 @@ public:
 	bool validationPhase();
 	void abort();
 	void writePhase();
-  void wal();
+  void wal(uint64_t ctid);
 	void lockWriteSet();
 	void unlockWriteSet();
 	ReadElement *searchReadSet(unsigned int key);
