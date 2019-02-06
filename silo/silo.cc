@@ -15,10 +15,12 @@
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 
-#include "../../include/debug.hpp"
-#include "../../include/random.hpp"
-#include "../../include/tsc.hpp"
-#include "../../include/zipf.hpp"
+#include "../include/check.hpp"
+#include "../include/debug.hpp"
+#include "../include/fileio.hpp"
+#include "../include/random.hpp"
+#include "../include/tsc.hpp"
+#include "../include/zipf.hpp"
 
 using namespace std;
 
@@ -33,18 +35,6 @@ extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 void threadEndProcess(int *myid);
-
-static bool
-chkInt(char *arg)
-{
-    for (uint i=0; i<strlen(arg); ++i) {
-        if (!isdigit(arg[i])) {
-			cout << std::string(arg) << " is not a number." << endl;
-			exit(0);
-        }
-    }
-	return true;
-}
 
 static void 
 chkArg(const int argc, char *argv[])
@@ -166,7 +156,13 @@ worker(void *arg)
 	TxnExecutor trans(*myid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
-  //File logfile;
+  
+  std::string logpath("/work/tanabe/ccbench/silo/src/log/log");
+  logpath += std::to_string(*myid);
+  //cout << logpath << endl;
+  createEmptyFile(logpath);
+  trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
+  trans.logfile.ftruncate(10^9);
 
   setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -193,10 +189,10 @@ RETRY:
 			//Read phase
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				switch(pro[i].ope) {
-					case(Ope::READ):
+          case((Ope)READ):
 						trans.tread(pro[i].key);
 						break;
-					case(Ope::WRITE):
+          case((Ope)WRITE):
 						trans.twrite(pro[i].key, pro[i].val);
 						break;
 					default:

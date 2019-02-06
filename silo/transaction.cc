@@ -11,8 +11,8 @@
 #include "include/common.hpp"
 #include "include/log.hpp"
 #include "include/transaction.hpp"
-#include "../../include/debug.hpp"
-#include "../../include/fileio.hpp"
+#include "../include/debug.hpp"
+#include "../include/fileio.hpp"
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void displayDB();
@@ -148,9 +148,27 @@ void TxnExecutor::abort()
 	writeSet.clear();
 }
 
-void TxnExecutor::wal()
+void TxnExecutor::wal(uint64_t ctid)
 {
+  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+    LogRecord log(ctid, (*itr).key, (*itr).val);
+    logSet.push_back(log);
+    latestLogHeader.chkSum += log.computeChkSum();
+    ++latestLogHeader.logRecNum;
+  }
 
+  if (logSet.size() > LOGSET_SIZE / 2) {
+    // write header
+    logfile.write((void *)&latestLogHeader, sizeof(LogHeader));
+
+    // write log record
+    for (auto itr = logSet.begin(); itr != logSet.end(); ++itr)
+      logfile.write((void *)&(*itr), sizeof(LogRecord));
+    
+    // clear for next transactions.
+    latestLogHeader.init();
+    logSet.clear();
+  }
 }
 
 void TxnExecutor::writePhase()
@@ -181,7 +199,7 @@ void TxnExecutor::writePhase()
 	maxtid.latest = 1;
 	mrctid = maxtid;
 
-  wal();
+  wal(maxtid.obj);
 
 	//write(record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
