@@ -10,15 +10,16 @@
 #include <sys/time.h>
 #include <sys/types.h> // syscall(SYS_gettid),
 #include <unistd.h> // syscall(SYS_gettid),
-#include "include/debug.hpp"
+
 #include "include/common.hpp"
-#include "include/debug.hpp"
 #include "include/procedure.hpp"
-#include "include/random.hpp"
 #include "include/timeStamp.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
-#include "include/zipf.hpp"
+
+#include "../include/debug.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
 
 using std::cout, std::endl;
 
@@ -108,7 +109,7 @@ displayThreadWtsArray()
 {
 	cout << "ThreadWtsArray:" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		cout << "thid " << i << ": " << ThreadWtsArray[i].num << endl;
+		cout << "thid " << i << ": " << ThreadWtsArray[i].obj << endl;
 	}
 	cout << endl << endl;
 }
@@ -118,7 +119,7 @@ displayThreadRtsArray()
 {
 	cout << "ThreadRtsArray:" << endl;
 	for (unsigned int i = 0; i < THREAD_NUM; i++) {
-		cout << "thid " << i << ": " << ThreadRtsArray[i].num << endl;
+		cout << "thid " << i << ": " << ThreadRtsArray[i].obj << endl;
     }
     cout << endl << endl;
 }
@@ -131,7 +132,7 @@ displaySLogSet()
 	else {
 		if (S_WAL) {
 			SwalLock.w_lock();
-			for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; ++i) {
+			for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj; ++i) {
 				printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key, SLogSet[i]->val);
 			}
 			SwalLock.w_unlock();

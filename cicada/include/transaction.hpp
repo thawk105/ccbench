@@ -1,17 +1,18 @@
 #pragma once
 
+#include <atomic>
+#include <iostream>
+#include <map>
+#include <queue>
+
 #include "common.hpp"
-#include "debug.hpp"
 #include "procedure.hpp"
 #include "tuple.hpp"
 #include "timeStamp.hpp"
 #include "version.hpp"
 #include "result.hpp"
 
-#include <atomic>
-#include <iostream>
-#include <map>
-#include <queue>
+#include "../../include/debug.hpp"
 
 using namespace std;
 
@@ -48,7 +49,7 @@ public:
 		this->thid = thid;
 		this->ronly = false;
 
-		__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
+		__atomic_store_n(&(ThreadWtsArray[thid].obj), this->wts.ts, __ATOMIC_RELEASE);
 		unsigned int expected, desired;
 		do {
 			expected = FirstAllocateTimestamp.load(memory_order_acquire);

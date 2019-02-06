@@ -9,9 +9,10 @@
 #include "include/transaction.hpp"
 #include "include/common.hpp"
 #include "include/timeStamp.hpp"
-#include "include/debug.hpp"
 #include "include/version.hpp"
-#include "include/tsc.hpp"
+
+#include "../include/debug.hpp"
+#include "../include/tsc.hpp"
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
@@ -29,9 +30,9 @@ void Transaction::tbegin(bool ronly)
 
 	this->status = TransactionStatus::inflight;
 	this->wts.generateTimeStamp(thid);
-	__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
+	__atomic_store_n(&(ThreadWtsArray[thid].obj), this->wts.ts, __ATOMIC_RELEASE);
 	this->rts = MinWts.load(std::memory_order_acquire) - 1;
-	__atomic_store_n(&(ThreadRtsArray[thid].num), this->rts, __ATOMIC_RELEASE);
+	__atomic_store_n(&(ThreadRtsArray[thid].obj), this->rts, __ATOMIC_RELEASE);
 
 	// one-sided synchronization
   // tanabe... disabled.
@@ -44,18 +45,18 @@ void Transaction::tbegin(bool ronly)
 	stop = rdtsc();
 	if (chkClkSpan(start, stop, 100 * CLOCK_PER_US)) {
 		uint64_t maxwts;
-	   	maxwts = __atomic_load_n(&(ThreadWtsArray[1].num), __ATOMIC_ACQUIRE);
+	   	maxwts = __atomic_load_n(&(ThreadWtsArray[1].obj), __ATOMIC_ACQUIRE);
 		//record the fastest one, and adjust it.
 		//one-sided synchronization
 		uint64_t check;
 		for (unsigned int i = 2; i < THREAD_NUM; ++i) {
-			check = __atomic_load_n(&(ThreadWtsArray[i].num), __ATOMIC_ACQUIRE);
+			check = __atomic_load_n(&(ThreadWtsArray[i].obj), __ATOMIC_ACQUIRE);
 			if (maxwts < check) maxwts = check;
 		}
 		maxwts = maxwts & (~MSK_TID);
 		maxwts = maxwts | thid;
 		this->wts.ts = maxwts;
-		__atomic_store_n(&(ThreadWtsArray[thid].num), this->wts.ts, __ATOMIC_RELEASE);
+		__atomic_store_n(&(ThreadWtsArray[thid].obj), this->wts.ts, __ATOMIC_RELEASE);
 
 		//modify the start position of stopwatch.
 		start = stop;
@@ -352,17 +353,17 @@ Transaction::swal()
 	else {	//group commit
 		SwalLock.w_lock();
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-			SLogSet[GROUP_COMMIT_INDEX[0].num] = (*itr).newObject;
-			++GROUP_COMMIT_INDEX[0].num;
+			SLogSet[GROUP_COMMIT_INDEX[0].obj] = (*itr).newObject;
+			++GROUP_COMMIT_INDEX[0].obj;
 		}
 
-		if (GROUP_COMMIT_COUNTER[0].num == 0) {
+		if (GROUP_COMMIT_COUNTER[0].obj == 0) {
 			grpcmt_start = rdtsc();	// it can also initialize.
 		}
 
-		++GROUP_COMMIT_COUNTER[0].num;
+		++GROUP_COMMIT_COUNTER[0].obj;
 
-		if (GROUP_COMMIT_COUNTER[0].num == GROUP_COMMIT) {
+		if (GROUP_COMMIT_COUNTER[0].obj == GROUP_COMMIT) {
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 			spinstart = rdtsc();
 			while ((rdtsc() - spinstart) < threshold) {}	//spin-wait
@@ -391,18 +392,18 @@ Transaction::pwal()
 	} 
 	else {
 		for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-			PLogSet[thid][GROUP_COMMIT_INDEX[thid].num] = (*itr).newObject;
-			++GROUP_COMMIT_INDEX[this->thid].num;
+			PLogSet[thid][GROUP_COMMIT_INDEX[thid].obj] = (*itr).newObject;
+			++GROUP_COMMIT_INDEX[this->thid].obj;
 		}
 
-		if (GROUP_COMMIT_COUNTER[this->thid].num == 0) {
+		if (GROUP_COMMIT_COUNTER[this->thid].obj == 0) {
 			grpcmt_start = rdtsc();	// it can also initialize.
-			ThreadRtsArrayForGroup[this->thid].num = this->rts;
+			ThreadRtsArrayForGroup[this->thid].obj = this->rts;
 		}
 
-		++GROUP_COMMIT_COUNTER[this->thid].num;
+		++GROUP_COMMIT_COUNTER[this->thid].obj;
 
-		if (GROUP_COMMIT_COUNTER[this->thid].num == GROUP_COMMIT) {
+		if (GROUP_COMMIT_COUNTER[this->thid].obj == GROUP_COMMIT) {
 			// it gives latency instead of flush.
 			double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
 			spinstart = rdtsc();
@@ -435,18 +436,18 @@ void
 Transaction::gcpv()
 {
 	if (S_WAL) {
-		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].num; ++i) {
+		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj; ++i) {
 			SLogSet[i]->status.store(VersionStatus::committed, memory_order_release);
 		}
-		GROUP_COMMIT_COUNTER[0].num = 0;
-		GROUP_COMMIT_INDEX[0].num = 0;
+		GROUP_COMMIT_COUNTER[0].obj = 0;
+		GROUP_COMMIT_INDEX[0].obj = 0;
 	}
 	else if (P_WAL) {
-		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[thid].num; ++i) {
+		for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[thid].obj; ++i) {
 			PLogSet[thid][i]->status.store(VersionStatus::committed, memory_order_release);
 		}
-		GROUP_COMMIT_COUNTER[thid].num = 0;
-		GROUP_COMMIT_INDEX[thid].num = 0;
+		GROUP_COMMIT_COUNTER[thid].obj = 0;
+		GROUP_COMMIT_INDEX[thid].obj = 0;
 	}
 }
 
@@ -530,7 +531,7 @@ Transaction::mainte()
 	//以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
 	//
 
-	if (__atomic_load_n(&(GCExecuteFlag[thid].num), __ATOMIC_ACQUIRE) == 1) {
+	if (__atomic_load_n(&(GCExecuteFlag[thid].obj), __ATOMIC_ACQUIRE) == 1) {
     ++rsobject.localGCCounts;
 		while (!gcq.empty()) {
 			if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
@@ -571,12 +572,12 @@ Transaction::mainte()
 			gcq.pop();
 		}
 
-    __atomic_store_n(&(GCExecuteFlag[thid].num), 0, __ATOMIC_RELEASE);
+    __atomic_store_n(&(GCExecuteFlag[thid].obj), 0, __ATOMIC_RELEASE);
 	}
 
 	this->GCstop = rdtsc();
 	if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US * CLOCK_PER_US)) {
-		__atomic_store_n(&(GCFlag[thid].num),  1, __ATOMIC_RELEASE);
+		__atomic_store_n(&(GCFlag[thid].obj),  1, __ATOMIC_RELEASE);
 		this->GCstart = this->GCstop;
 	}
 }

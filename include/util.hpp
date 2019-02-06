@@ -16,6 +16,8 @@
 #include <sstream>
 #include <vector>
 
+inline void compiler_fence() { asm volatile("" ::: "memory");}
+
 class LibcError : public std::exception
 {
 private:

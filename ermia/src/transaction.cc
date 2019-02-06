@@ -316,6 +316,8 @@ Transaction::ssn_parallel_commit()
 	tmt->status.store(TransactionStatus::committing);
 
 	this->cstamp = ++Lsn;
+  //this->cstamp = 2; test for effect of centralized counter in YCSB-C (read only workload)
+
 	tmt->cstamp.store(this->cstamp, memory_order_release);
 	
 	// begin pre-commit

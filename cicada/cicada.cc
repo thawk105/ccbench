@@ -14,13 +14,14 @@
 
 #define GLOBAL_VALUE_DEFINE
 #include "include/common.hpp"
-#include "include/debug.hpp"
-#include "include/int64byte.hpp"
 #include "include/procedure.hpp"
-#include "include/random.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
-#include "include/zipf.hpp"
+
+#include "../include/debug.hpp"
+#include "../include/int64byte.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
 
 using namespace std;
 
@@ -185,13 +186,13 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be OFF. this isn't logging. pe
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-		GCFlag[i].num = 0;
-		GCExecuteFlag[i].num = 0;
-		GROUP_COMMIT_INDEX[i].num = 0;
-		GROUP_COMMIT_COUNTER[i].num = 0;
-		ThreadRtsArray[i].num = 0;
-		ThreadWtsArray[i].num = 0;
-		ThreadRtsArrayForGroup[i].num = 0;
+		GCFlag[i].obj = 0;
+		GCExecuteFlag[i].obj = 0;
+		GROUP_COMMIT_INDEX[i].obj = 0;
+		GROUP_COMMIT_COUNTER[i].obj = 0;
+		ThreadRtsArray[i].obj = 0;
+		ThreadWtsArray[i].obj = 0;
+		ThreadRtsArrayForGroup[i].obj = 0;
 	}
 }
 
@@ -223,31 +224,31 @@ manager_worker(void *arg)
 		bool gc_update = true;
 		for (unsigned int i = 1; i < THREAD_NUM; ++i) {
 		//check all thread's flag raising
-			if (__atomic_load_n(&(GCFlag[i].num), __ATOMIC_ACQUIRE) == 0) {
+			if (__atomic_load_n(&(GCFlag[i].obj), __ATOMIC_ACQUIRE) == 0) {
 				usleep(1);
 				gc_update = false;
 				break;
 			}
 		}
 		if (gc_update) {
-			uint64_t minw = __atomic_load_n(&(ThreadWtsArray[1].num), __ATOMIC_ACQUIRE);
+			uint64_t minw = __atomic_load_n(&(ThreadWtsArray[1].obj), __ATOMIC_ACQUIRE);
 			uint64_t minr;
 			if (GROUP_COMMIT == 0) {
-				minr = __atomic_load_n(&(ThreadRtsArray[1].num), __ATOMIC_ACQUIRE);
+				minr = __atomic_load_n(&(ThreadRtsArray[1].obj), __ATOMIC_ACQUIRE);
 			}
 			else {
-				minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].num), __ATOMIC_ACQUIRE);
+				minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj), __ATOMIC_ACQUIRE);
 			}
 
 			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-				uint64_t tmp = __atomic_load_n(&(ThreadWtsArray[i].num), __ATOMIC_ACQUIRE);
+				uint64_t tmp = __atomic_load_n(&(ThreadWtsArray[i].obj), __ATOMIC_ACQUIRE);
 				if (minw > tmp) minw = tmp;
 				if (GROUP_COMMIT == 0) {
-					tmp = __atomic_load_n(&(ThreadRtsArray[i].num), __ATOMIC_ACQUIRE);
+					tmp = __atomic_load_n(&(ThreadRtsArray[i].obj), __ATOMIC_ACQUIRE);
 					if (minr > tmp) minr = tmp;
 				}
 				else {
-					tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].num), __ATOMIC_ACQUIRE);
+					tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj), __ATOMIC_ACQUIRE);
 					if (minr > tmp) minr = tmp;
 				}
 			}
@@ -256,8 +257,8 @@ manager_worker(void *arg)
 
 			// downgrade gc flag
 			for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-				__atomic_store_n(&(GCFlag[i].num), 0, __ATOMIC_RELEASE);
-				__atomic_store_n(&(GCExecuteFlag[i].num), 1, __ATOMIC_RELEASE);
+				__atomic_store_n(&(GCFlag[i].obj), 0, __ATOMIC_RELEASE);
+				__atomic_store_n(&(GCExecuteFlag[i].obj), 1, __ATOMIC_RELEASE);
 			}
 		}
 	}

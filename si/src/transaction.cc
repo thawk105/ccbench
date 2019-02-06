@@ -172,7 +172,8 @@ Transaction::twrite(unsigned int key, unsigned int val)
 void
 Transaction::commit()
 {
-	this->cstamp = ++Lsn;
+	//this->cstamp = ++Lsn;
+  this->cstamp = 2;
 	status = TransactionStatus::committed;
 
 	uint64_t verCstamp = cstamp;

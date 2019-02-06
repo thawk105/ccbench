@@ -1,14 +1,16 @@
 #pragma once
 
-#include "int64byte.hpp"
-#include "lock.hpp"
-#include "procedure.hpp"
-#include "tuple.hpp"
-#include "version.hpp"
 #include <pthread.h>
 #include <iostream>
 #include <atomic>
 #include <queue>
+
+#include "lock.hpp"
+#include "procedure.hpp"
+#include "tuple.hpp"
+#include "version.hpp"
+
+#include "../../include/int64byte.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL

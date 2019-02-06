@@ -1,5 +1,6 @@
 #pragma once
-#include "tsc.hpp"
+
+#include "../../include/tsc.hpp"
 
 class TimeStamp {
 public:
