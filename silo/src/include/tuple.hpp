@@ -16,9 +16,7 @@ struct Tidword {
 		};
 	};
 
-	Tidword() {
-		obj = 0;
-	}
+	Tidword() : obj(0) {};
 
 	bool operator==(const Tidword& right) const {
 		return obj == right.obj;
@@ -37,7 +35,7 @@ class Tuple	{
 public:
 	Tidword tidword;
 	unsigned int key = 0;
-	unsigned int val;
+	unsigned int val=0;
 };
 
 class ReadElement {
@@ -46,11 +44,11 @@ public:
 	unsigned int key;
 	unsigned int val;
 
-	ReadElement(unsigned int key, unsigned int val, Tidword tidword) {
-		this->key = key;
-		this->val = val;
-		this->tidword = tidword;
-	}
+	ReadElement(unsigned int newkey, unsigned int newval, Tidword newtidword) {
+   tidword.obj = newtidword.obj;
+   key = newkey;
+   val = newval;
+  }
 
 	bool operator<(const ReadElement& right) const {
 		return this->key < right.key;

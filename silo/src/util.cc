@@ -1,23 +1,25 @@
-#include <bitset>
-#include <cstdint>
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <fstream>
 #include <stdio.h>
 #include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
 #include <sys/types.h> // syscall(SYS_gettid),
 #include <unistd.h> // syscall(SYS_gettid),
 
+#include <bitset>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <fstream>
+
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
-#include "include/debug.hpp"
 #include "include/procedure.hpp"
-#include "include/random.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
-#include "include/zipf.hpp"
+
+#include "../../include/debug.hpp"
+#include "../../include/random.hpp"
+#include "../../include/zipf.hpp"
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
@@ -40,10 +42,10 @@ chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 bool
 chkEpochLoaded()
 {
-	uint64_t_64byte nowepo = loadAcquireGE();
+	uint64_t nowepo = atomicLoadGE();
 //全てのワーカースレッドが最新エポックを読み込んだか確認する．
 	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo.obj) return false;
+		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo) return false;
 	}
 
 	return true;

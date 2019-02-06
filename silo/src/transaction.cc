@@ -1,7 +1,3 @@
-#include "include/atomic_tool.hpp"
-#include "include/transaction.hpp"
-#include "include/common.hpp"
-#include "include/debug.hpp"
 #include <algorithm>
 #include <bitset>
 #include <fstream>
@@ -11,20 +7,27 @@
 #include <sys/time.h>
 #include <xmmintrin.h>
 
+#include "include/atomic_tool.hpp"
+#include "include/common.hpp"
+#include "include/log.hpp"
+#include "include/transaction.hpp"
+#include "../../include/debug.hpp"
+#include "../../include/fileio.hpp"
+
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void displayDB();
 
 using namespace std;
 
 void
-Transaction::tbegin()
+TxnExecutor::tbegin()
 {
 	max_wset.obj = 0;
 	max_rset.obj = 0;
 }
 
 WriteElement *
-Transaction::searchWriteSet(unsigned int key)
+TxnExecutor::searchWriteSet(unsigned int key)
 {
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		if ((*itr).key == key) return &(*itr);
@@ -34,7 +37,7 @@ Transaction::searchWriteSet(unsigned int key)
 }
 
 ReadElement *
-Transaction::searchReadSet(unsigned int key)
+TxnExecutor::searchReadSet(unsigned int key)
 {
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		if ((*itr).key == key) return &(*itr);
@@ -44,7 +47,7 @@ Transaction::searchReadSet(unsigned int key)
 }
 
 int 
-Transaction::tread(unsigned int key)
+TxnExecutor::tread(unsigned int key)
 {
 	int read_value;
 	Tuple *tuple = &Table[key];
@@ -90,7 +93,7 @@ Transaction::tread(unsigned int key)
 	return read_value;
 }
 
-void Transaction::twrite(unsigned int key, unsigned int val)
+void TxnExecutor::twrite(unsigned int key, unsigned int val)
 {
 	WriteElement *inW = searchWriteSet(key);
 	if (inW) {
@@ -102,7 +105,7 @@ void Transaction::twrite(unsigned int key, unsigned int val)
 	return;
 }
 
-bool Transaction::validationPhase()
+bool TxnExecutor::validationPhase()
 {
 	//Phase 1 
 	// lock writeSet sorted.
@@ -110,7 +113,7 @@ bool Transaction::validationPhase()
 	lockWriteSet();
 
 	asm volatile("" ::: "memory");
-	__atomic_store_n(&(ThLocalEpoch[thid].obj), (loadAcquireGE()).obj, __ATOMIC_RELEASE);
+  atomicStoreThLocalEpoch(thid, atomicLoadGE());
 	asm volatile("" ::: "memory");
 
 	//Phase 2 abort if any condition of below is satisfied. 
@@ -137,7 +140,7 @@ bool Transaction::validationPhase()
 	return true;
 }
 
-void Transaction::abort() 
+void TxnExecutor::abort() 
 {
 	unlockWriteSet();
 
@@ -145,7 +148,12 @@ void Transaction::abort()
 	writeSet.clear();
 }
 
-void Transaction::writePhase()
+void TxnExecutor::wal()
+{
+
+}
+
+void TxnExecutor::writePhase()
 {
 	//It calculates the smallest number that is 
 	//(a) larger than the TID of any record read or written by the transaction,
@@ -173,6 +181,8 @@ void Transaction::writePhase()
 	maxtid.latest = 1;
 	mrctid = maxtid;
 
+  wal();
+
 	//write(record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		//update and unlock
@@ -184,7 +194,7 @@ void Transaction::writePhase()
 	writeSet.clear();
 }
 
-void Transaction::lockWriteSet()
+void TxnExecutor::lockWriteSet()
 {
 	Tuple *tuple;
 	Tidword expected, desired;
@@ -206,7 +216,7 @@ void Transaction::lockWriteSet()
 	}
 }
 
-void Transaction::unlockWriteSet()
+void TxnExecutor::unlockWriteSet()
 {
 	Tidword expected, desired;
 

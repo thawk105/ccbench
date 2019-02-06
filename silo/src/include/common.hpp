@@ -33,6 +33,7 @@ GLOBAL uint64_t EPOCH_TIME;
 GLOBAL unsigned int EXTIME;
 
 GLOBAL uint64_t_64byte *ThLocalEpoch;
+GLOBAL uint64_t_64byte *CTIDW;
 
 GLOBAL Procedure **Pro;
 

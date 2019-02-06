@@ -12,12 +12,13 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
-#include "include/debug.hpp"
-#include "include/random.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
-#include "include/tsc.hpp"
-#include "include/zipf.hpp"
+
+#include "../../include/debug.hpp"
+#include "../../include/random.hpp"
+#include "../../include/tsc.hpp"
+#include "../../include/zipf.hpp"
 
 using namespace std;
 
@@ -106,12 +107,14 @@ So you have to set THREAD_NUM >= 2.\n\n");
 
 	try {
 		if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//[0]は使わない
+		if (posix_memalign((void**)&CTIDW, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;	//[0]は使わない
 	} catch (bad_alloc) {
 		ERR;
 	}
 	//init
 	for (unsigned int i = 0; i < THREAD_NUM; ++i) {
 		ThLocalEpoch[i].obj = 0;
+		CTIDW[i].obj = 0;
 	}
 }
 
@@ -160,9 +163,10 @@ worker(void *arg)
 	Xoroshiro128Plus rnd;
 	rnd.init();
 	Procedure pro[MAX_OPE];
-	Transaction trans(*myid);
+	TxnExecutor trans(*myid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  //File logfile;
 
   setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -262,8 +266,8 @@ main(int argc, char *argv[])
 
 	//displayDB();
 
-  //rsobject.displayTPS();
-	rsobject.displayAbortRate();
+  rsobject.displayTPS();
+	//rsobject.displayAbortRate();
 
 	return 0;
 }

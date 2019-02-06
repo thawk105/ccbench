@@ -2,32 +2,41 @@
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
-#include "tuple.hpp"
-#include "procedure.hpp"
-#include "common.hpp"
 #include <iostream>
 #include <set>
 #include <vector>
 
+#include "common.hpp"
+#include "log.hpp"
+#include "procedure.hpp"
+#include "tuple.hpp"
+
+#define LOGSET_SIZE 1000
+
 using namespace std;
 
-class Transaction {
+class TxnExecutor {
 public:
 	vector<ReadElement> readSet;
 	vector<WriteElement> writeSet;
 
-	int thid;
+  vector<LogPack> logSet;
+  LogPack latestLogPack;
+
+	unsigned int thid;
 	Tidword mrctid;
 	Tidword max_rset, max_wset;
 
 	uint64_t finishTransactions;
 	uint64_t abortCounts;
 
-	Transaction(int thid) {
+	TxnExecutor(int newthid) : thid(newthid) {
 		readSet.reserve(MAX_OPE);
 		writeSet.reserve(MAX_OPE);
+    logSet.reserve(LOGSET_SIZE);
 
-		this->thid = thid;
+    latestLogPack.init();
+
 		max_rset.obj = 0;
 		max_wset.obj = 0;
 		finishTransactions = 0;
@@ -40,6 +49,7 @@ public:
 	bool validationPhase();
 	void abort();
 	void writePhase();
+  void wal();
 	void lockWriteSet();
 	void unlockWriteSet();
 	ReadElement *searchReadSet(unsigned int key);

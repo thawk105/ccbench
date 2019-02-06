@@ -35,6 +35,12 @@ Result::displayGCCounts()
 }
 
 void
+Result::displayLocalCommitCounts() 
+{
+  printf("Th #%d : localCommitCounts : %lu\n", thid, localCommitCounts);
+}
+
+void
 Result::displayTPS()
 {
 	uint64_t diff = End - Bgn;

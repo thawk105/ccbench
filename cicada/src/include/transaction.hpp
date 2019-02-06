@@ -62,6 +62,8 @@ public:
 		writeSet.clear();
 		writeSet.reserve(MAX_OPE);
     continuingCommit = 0;
+
+    rsobject.thid = thid;
 	}
 
 	void tbegin(bool ronly);

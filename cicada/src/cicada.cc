@@ -294,6 +294,7 @@ RETRY:
         trans.rsobject.sumUpAbortCounts();
         trans.rsobject.sumUpCommitCounts();
         trans.rsobject.sumUpGCCounts();
+        trans.rsobject.displayLocalCommitCounts();
 				return nullptr;
 			}
 
@@ -383,10 +384,10 @@ main(int argc, char *argv[])
 		pthread_join(thread[i], nullptr);
 	}
 
-  //rsobject.displayTPS();
+  rsobject.displayTPS();
   //rsobject.displayCommitCounts();
 	//rsobject.displayAbortCounts();
-	rsobject.displayAbortRate();
+	//rsobject.displayAbortRate();
   //rsobject.displayGCCounts();
 
 	return 0;
