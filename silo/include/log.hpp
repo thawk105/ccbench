@@ -14,6 +14,11 @@ public:
     chkSum = 0; 
     logRecNum = 0;
   }
+
+  void convertChkSumIntoComplementOnTwo () {
+    chkSum ^= 0xffffffff;
+    ++chkSum;
+  }
 };
 
 class LogRecord {
@@ -22,6 +27,8 @@ public:
   unsigned int key;
   unsigned int val; 
   // 16 bytes
+  //
+  LogRecord () : tid(0), key(0), val(0) {}
 
   LogRecord(uint64_t tid, unsigned int key, unsigned int val) {
     this->tid = tid;
@@ -38,7 +45,6 @@ public:
       ++itr;
     }
 
-    chkSum ^= 0xffffffff;
-    return ++chkSum;
+    return chkSum;
   }
 };

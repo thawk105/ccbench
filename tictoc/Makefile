@@ -1,5 +1,5 @@
-PROG = silo.exe
-SOURCES = silo.cc transaction.cc result.cc util.cc 
+PROG = tictoc.exe
+SOURCES = tictoc.cc transaction.cc result.cc util.cc 
 
 CC = g++
 CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17 
@@ -19,14 +19,14 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = silo.o
+O1 = tictoc.o
 O2 = transaction.o
-O3 = result.cc
+O3 = result.o
 O4 = util.o
 
 all: $(PROG)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4)
+$(PROG) : $(O1) $(O2) $(O3) $(O4) 
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 .cc.o:
 	$(CC) $(CFLAGS) $<

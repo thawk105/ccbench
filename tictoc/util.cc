@@ -1,25 +1,27 @@
-#include <stdio.h>
+
 #include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
 #include <sys/types.h> // syscall(SYS_gettid),
 #include <unistd.h> // syscall(SYS_gettid),
 
+#include <atomic>
 #include <bitset>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <limits>
-#include <fstream>
 
-#include "include/atomic_tool.hpp"
+#include "../include/inline.hpp"
+#include "../include/debug.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
+
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
 
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+using namespace std;
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
@@ -39,30 +41,19 @@ chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
 	else return false;
 }
 
-bool
-chkEpochLoaded()
-{
-	uint64_t nowepo = atomicLoadGE();
-//全てのワーカースレッドが最新エポックを読み込んだか確認する．
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo) return false;
-	}
-
-	return true;
-}
-
-
 void 
 displayDB() 
 {
+
 	Tuple *tuple;
+
 	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 		tuple = &Table[i];
 		cout << "------------------------------" << endl;	//-は30個
 		cout << "key: " << tuple->key << endl;
 		cout << "val: " << tuple->val << endl;
-		cout << "TIDword: " << tuple->tidword.obj << endl;
-		cout << "bit: " << tuple->tidword.obj << endl;
+		cout << "TS_word: " << tuple->tsw.obj << endl;
+		cout << "bit: " << static_cast<bitset<64>>(tuple->tsw.obj) << endl;
 		cout << endl;
 	}
 }
@@ -70,16 +61,16 @@ displayDB()
 void 
 displayPRO(Procedure *pro) 
 {
-	for (unsigned int i = 0; i < MAX_OPE; ++i) {
+	for (unsigned int i = 0; i < MAX_OPE; i++) {
    		cout << "(ope, key, val) = (";
 		switch(pro[i].ope){
-      case Ope::READ:
+			case Ope::READ:
 				cout << "READ";
 				break;
-      case Ope::WRITE:
+			case Ope::WRITE:
 				cout << "WRITE";
 				break;
-			default:
+		default:
 				break;
 		}
    		cout << ", " << pro[i].key
@@ -87,7 +78,16 @@ displayPRO(Procedure *pro)
 	}
 }
 
-void 
+void
+displayRtsudRate()
+{
+	// read timestamp update rate
+	long double sum(Rtsudctr + Rts_non_udctr), ud(Rtsudctr);
+	cout << "Read timestamp update rate: ";
+	cout << ud / sum << endl;
+}
+
+void
 makeDB() 
 {
 	Tuple *tmp;
@@ -102,9 +102,8 @@ makeDB()
 
 	for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 		tmp = &Table[i];
-		tmp->tidword.epoch = 1;
-		tmp->tidword.latest = 1;
-		tmp->tidword.lock = 0;
+		tmp->tsw.obj = 0;
+		tmp->pre_tsw.obj = 0;
 		tmp->key = i;
 		tmp->val = rnd.next() % TUPLE_NUM;
 	}

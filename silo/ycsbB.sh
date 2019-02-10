@@ -8,8 +8,12 @@ epochtime=40
 extime=3
 epoch=5
 
+host=`hostname`
+chris41="chris41.omni.hpcc.jp"
+dbs11="dbs11"
+
 tuple=500
-result=result_silo_ycsbB_tuple500_ar.dat
+result=result_silo_ycsbB_tuple500.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result
@@ -48,7 +52,17 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread = 4; thread <= 24; thread+=4))
+if  test $host = $chris41 ; then
+inith=4
+enth=24
+inc=4
+fi
+if  test $host = $dbs11 ; then
+inith=16
+enth=224
+inc=16
+fi
+for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
 	echo "./silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
@@ -85,7 +99,7 @@ do
 done
 
 tuple=500000
-result=result_silo_ycsbB_tuple500k_ar.dat
+result=result_silo_ycsbB_tuple500k.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result
@@ -124,7 +138,17 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread = 4; thread <= 24; thread+=4))
+if  test $host = $chris41 ; then
+inith=4
+enth=24
+inc=4
+fi
+if  test $host = $dbs11 ; then
+inith=16
+enth=224
+inc=16
+fi
+for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
 	echo "./silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
@@ -161,7 +185,7 @@ do
 done
 
 tuple=5000000
-result=result_silo_ycsbB_tuple5m_ar.dat
+result=result_silo_ycsbB_tuple5m.dat
 rm $result
 echo "#worker threads, abort_rate, min, max" >> $result
 echo "#./silo.exe $tuple $maxope thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result
@@ -200,7 +224,17 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread = 4; thread <= 24; thread+=4))
+if  test $host = $chris41 ; then
+inith=4
+enth=24
+inc=4
+fi
+if  test $host = $dbs11 ; then
+inith=16
+enth=224
+inc=16
+fi
+for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
 	echo "./silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"

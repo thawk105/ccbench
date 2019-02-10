@@ -1,8 +1,8 @@
-PROG = silo.exe
-SOURCES = silo.cc transaction.cc result.cc util.cc 
+PROG = si.exe
+SOURCES = si.cc transaction.cc util.cc garbageCollection.cc result.cc
 
 CC = g++
-CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17 
+CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
@@ -19,16 +19,19 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = silo.o
+O1 = si.o
 O2 = transaction.o
-O3 = result.cc
-O4 = util.o
+O3 = util.o
+O4 = garbageCollection.o
+O5 = result.o
 
 all: $(PROG)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4)
+$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 .cc.o:
 	$(CC) $(CFLAGS) $<
 clean:
 	rm -f *~ *.o *.exe *.stackdump
+
+

@@ -39,22 +39,22 @@ void threadEndProcess(int *myid);
 static void 
 chkArg(const int argc, char *argv[])
 {
-	if (argc != 10) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CLOCK_PER_US EPOCH_TIME EXTIME" << endl << endl;
+  if (argc != 10) {
+  cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CLOCK_PER_US EPOCH_TIME EXTIME" << endl << endl;
 
-    cout << "example:./main 1000000 10 24 50 0 ON 2400 40 3" << endl << endl;
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
-    cout << "MAX_OPE(int):    total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of thread." << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
-    cout << "CLOCK_PER_US: CPU_MHZ" << endl;
-    cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
-    cout << "EXTIME: execution time." << endl << endl;
-	  cout << "Tuple " << sizeof(Tuple) << endl;
-		cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-		exit(0);
+  cout << "example:./main 1000000 10 24 50 0 ON 2400 40 3" << endl << endl;
+  cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+  cout << "MAX_OPE(int):    total numbers of operations" << endl;
+  cout << "THREAD_NUM(int): total numbers of thread." << endl;
+  cout << "RRATIO : read ratio [%%]" << endl;
+  cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+  cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
+  cout << "CLOCK_PER_US: CPU_MHZ" << endl;
+  cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
+  cout << "EXTIME: execution time." << endl << endl;
+  cout << "Tuple " << sizeof(Tuple) << endl;
+  cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+  exit(0);
 	}
 	chkInt(argv[1]);
 	chkInt(argv[2]);
@@ -157,12 +157,15 @@ worker(void *arg)
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
-  std::string logpath("/work/tanabe/ccbench/silo/src/log/log");
+  /*
+  std::string logpath("/work/tanabe/ccbench/silo/log/log");
+  std::string logpath("/dev/sdb1/silo/log");
   logpath += std::to_string(*myid);
-  //cout << logpath << endl;
+  cout << logpath << endl;
   createEmptyFile(logpath);
   trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
   trans.logfile.ftruncate(10^9);
+  */
 
   setThreadAffinity(*myid);
 	//printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -189,10 +192,10 @@ RETRY:
 			//Read phase
 			for (unsigned int i = 0; i < MAX_OPE; ++i) {
 				switch(pro[i].ope) {
-          case((Ope)READ):
+          case(Ope::READ):
 						trans.tread(pro[i].key);
 						break;
-          case((Ope)WRITE):
+          case(Ope::WRITE):
 						trans.twrite(pro[i].key, pro[i].val);
 						break;
 					default:

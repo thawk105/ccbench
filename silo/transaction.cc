@@ -158,13 +158,19 @@ void TxnExecutor::wal(uint64_t ctid)
   }
 
   if (logSet.size() > LOGSET_SIZE / 2) {
+    // prepare write header
+    latestLogHeader.convertChkSumIntoComplementOnTwo();
+
     // write header
     logfile.write((void *)&latestLogHeader, sizeof(LogHeader));
 
     // write log record
-    for (auto itr = logSet.begin(); itr != logSet.end(); ++itr)
-      logfile.write((void *)&(*itr), sizeof(LogRecord));
+    //for (auto itr = logSet.begin(); itr != logSet.end(); ++itr)
+    //  logfile.write((void *)&(*itr), sizeof(LogRecord));
+    logfile.write((void *)&(logSet[0]), sizeof(LogRecord) * latestLogHeader.logRecNum);
     
+    //logfile.fdatasync();
+
     // clear for next transactions.
     latestLogHeader.init();
     logSet.clear();
@@ -199,7 +205,7 @@ void TxnExecutor::writePhase()
 	maxtid.latest = 1;
 	mrctid = maxtid;
 
-  wal(maxtid.obj);
+  //wal(maxtid.obj);
 
 	//write(record, commit-tid)
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
