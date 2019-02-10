@@ -1,10 +1,12 @@
 #pragma once
 
-#include "../../../include/int64byte.hpp"
-#include "procedure.hpp"
-#include "random.hpp"
-#include "tuple.hpp"
 #include <atomic>
+
+#include "../../include/int64byte.hpp"
+#include "../../include/random.hpp"
+
+#include "procedure.hpp"
+#include "tuple.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
 	#define GLOBAL

@@ -5,7 +5,7 @@
 #include <utility>
 #include <xmmintrin.h>
 
-#include "debug.hpp"
+#include "../../include/debug.hpp"
 
 #define LOCK_TIMEOUT_US 5
 // 5 us.

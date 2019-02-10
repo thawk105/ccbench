@@ -1,3 +1,9 @@
+
+#include <stdio.h>
+#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/types.h> // syscall(SYS_gettid),
+#include <unistd.h> // syscall(SYS_gettid),
+
 #include <algorithm>
 #include <atomic>
 #include <bitset>
@@ -6,18 +12,15 @@
 #include <iostream>
 #include <fstream>
 #include <limits>
-#include <stdio.h>
-#include <sys/syscall.h> // syscall(SYS_gettid),
-#include <sys/types.h> // syscall(SYS_gettid),
 #include <random>
-#include <unistd.h> // syscall(SYS_gettid),
+
+#include "../include/debug.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
 
 #include "include/common.hpp"
-#include "include/debug.hpp"
 #include "include/procedure.hpp"
-#include "include/random.hpp"
 #include "include/tuple.hpp"
-#include "include/zipf.hpp"
 
 using namespace std;
 

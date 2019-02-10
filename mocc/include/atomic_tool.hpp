@@ -1,6 +1,8 @@
 #pragma once
+
+#include "../../include/inline.hpp"
+
 #include "common.hpp"
-#include "../../../include/inline.hpp"
 
 INLINE uint64_t_64byte
 loadAcquireGE()

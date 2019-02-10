@@ -2,8 +2,10 @@
 #include <cmath>
 #include <random>
 #include <stdio.h>
+
+#include "../include/debug.hpp"
+
 #include "include/atomic_tool.hpp"
-#include "include/debug.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
 
