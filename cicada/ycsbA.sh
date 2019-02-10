@@ -10,8 +10,8 @@ io_time_ns=5
 group_commit_timeout_us=2
 lock_release=E
 gci=10
-extime=1
-epoch=1
+extime=3
+epoch=5
 
 tuple=500
 result=result_cicada_ycsbA_tuple500.dat
@@ -53,7 +53,7 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread=4; thread<=24; thread+=4))
+for ((thread=16; thread<=224; thread+=16))
 do
     sum=0
 	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
@@ -130,7 +130,7 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread=4; thread<=24; thread+=4))
+for ((thread=16; thread<=224; thread+=16))
 do
     sum=0
 	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
@@ -207,7 +207,7 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread=4; thread<=24; thread+=4))
+for ((thread=16; thread<=224; thread+=16))
 do
     sum=0
 	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
