@@ -3,15 +3,20 @@ SOURCES = cicada.cc transaction.cc util.cc result.cc
 
 CC = g++
 CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17 
+
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
-LDFLAGS = -L./../lib
+LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
 endif
 ifeq ($(shell hostname), dbs11)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release
 LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
-else
+endif
+
+ifneq ($(shell hostname), chris41.omni.hpcc.jp)
+ifneq ($(shell hostname), dbs11)
 LIBS = -lpthread
+endif
 endif
 
 O1 = cicada.o
