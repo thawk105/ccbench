@@ -13,6 +13,10 @@ gci=10
 extime=3
 epoch=5
 
+host=`hostname`
+chris41="chris41.omni.hpcc.jp"
+dbs11="dbs11"
+
 tuple=500
 result=result_cicada_ycsbA_tuple500.dat
 rm $result
@@ -53,7 +57,17 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread=16; thread<=224; thread+=16))
+if  test $host = $chris41 ; then
+inith=4
+enth=24
+inc=4
+fi
+if  test $host = $dbs11 ; then
+inith=16
+enth=224
+inc=16
+fi
+for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
 	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
@@ -130,7 +144,17 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread=16; thread<=224; thread+=16))
+if  test $host = $chris41 ; then
+inith=4
+enth=24
+inc=4
+fi
+if  test $host = $dbs11 ; then
+inith=16
+enth=224
+inc=16
+fi
+for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
 	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
@@ -207,7 +231,17 @@ echo "min: $min"
 thout=`echo "$thread - 1" | bc`
 echo "$thout $avg $min $max" >> $result
 
-for ((thread=16; thread<=224; thread+=16))
+if  test $host = $chris41 ; then
+inith=4
+enth=24
+inc=4
+fi
+if  test $host = $dbs11 ; then
+inith=16
+enth=224
+inc=16
+fi
+for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
 	echo "./cicada.exe $tuple $maxope $thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime"
