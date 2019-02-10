@@ -295,7 +295,7 @@ RETRY:
         trans.rsobject.sumUpAbortCounts();
         trans.rsobject.sumUpCommitCounts();
         trans.rsobject.sumUpGCCounts();
-        trans.rsobject.displayLocalCommitCounts();
+        //trans.rsobject.displayLocalCommitCounts();
 				return nullptr;
 			}
 
