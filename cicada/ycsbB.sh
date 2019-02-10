@@ -18,7 +18,7 @@ chris41="chris41.omni.hpcc.jp"
 dbs11="dbs11"
 
 tuple=500
-result=result_cicada_ycsbB_tuple500_ar.dat
+result=result_cicada_ycsbB_tuple500.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
 echo "#./cicada.exe $tuple $maxope thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime" >> $result
@@ -105,7 +105,7 @@ do
 done
 
 tuple=500000
-result=result_cicada_ycsbB_tuple500k_ar.dat
+result=result_cicada_ycsbB_tuple500k.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
 echo "#./cicada.exe $tuple $maxope thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime" >> $result
@@ -192,7 +192,7 @@ do
 done
 
 tuple=5000000
-result=result_cicada_ycsbB_tuple5m_ar.dat
+result=result_cicada_ycsbB_tuple5m.dat
 rm $result
 echo "#worker thread, throughput, min, max" >> $result
 echo "#./cicada.exe $tuple $maxope thread $rratio $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $gci $extime" >> $result
