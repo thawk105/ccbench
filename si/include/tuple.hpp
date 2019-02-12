@@ -6,9 +6,9 @@
 
 class Tuple {
 public: 
-	std::atomic<Version *> latest;
+  std::atomic<Version *> latest;
   std::atomic<uint32_t> min_cstamp;
-	unsigned int key;
+  unsigned int key;
   std::atomic<uint8_t> gClock;
 
   Tuple() {

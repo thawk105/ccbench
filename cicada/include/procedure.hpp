@@ -2,15 +2,15 @@
 #include <cstdint>
 
 enum class Ope {
-	READ, 
-	WRITE
+  READ, 
+  WRITE
 };
 
 class Procedure {
 public:
-	unsigned int key = 0;
-	unsigned int val = 0;
-	Ope ope = Ope::READ;
-	bool ronly = false;
-	uint8_t pad[3];
+  unsigned int key = 0;
+  unsigned int val = 0;
+  Ope ope = Ope::READ;
+  bool ronly = false;
+  uint8_t pad[3];
 };

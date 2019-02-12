@@ -26,19 +26,19 @@ do
     sum=`echo "$sum + $tmp" | bc -l `
     echo "sum: $sum,   tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -50,35 +50,35 @@ echo "$tuple $avg $min $max" >> $result
 for ((tuple = 100; tuple <= 10000000; tuple*=10))
 do
     sum=0
-	echo "./mocc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
+  echo "./mocc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
     
-	max=0
-	min=0
+  max=0
+  min=0
     for ((i = 1; i <= epoch; ++i))
     do
         tmp=`./mocc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
         sum=`echo "$sum + $tmp" | bc -l `
         echo "sum: $sum,   tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
-	done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	echo "$tuple $avg $min $max" >> $result
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
+  done
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  echo "$tuple $avg $min $max" >> $result
 done
 

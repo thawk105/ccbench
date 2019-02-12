@@ -19,23 +19,23 @@ max=0
 min=0
 for ((i=1; i <= epoch; ++i))
 do
-	tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-	sum=`echo "$sum + $tmp" | bc -l`
-	echo "sum: $sum,	tmp: $tmp"
+  tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+  sum=`echo "$sum + $tmp" | bc -l`
+  echo "sum: $sum,  tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -47,38 +47,38 @@ echo "$thout $avg $min $max" >> $result
 
 for ((thread=4; thread<=24; thread+=4))
 do
-	sum=0
-	echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
+  sum=0
+  echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
 
-	max=0
-	min=0
-	for ((i=1; i <= epoch; ++i))
-	do
-		tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-		sum=`echo "$sum + $tmp" | bc -l`
-		echo "sum: $sum,	tmp: $tmp"
+  max=0
+  min=0
+  for ((i=1; i <= epoch; ++i))
+  do
+    tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+    sum=`echo "$sum + $tmp" | bc -l`
+    echo "sum: $sum,  tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
-	done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
+  done
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 
 workload=1
@@ -95,23 +95,23 @@ max=0
 min=0
 for ((i=1; i <= epoch; ++i))
 do
-	tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-	sum=`echo "$sum + $tmp" | bc -l`
-	echo "sum: $sum,	tmp: $tmp"
+  tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+  sum=`echo "$sum + $tmp" | bc -l`
+  echo "sum: $sum,  tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -123,38 +123,38 @@ echo "$thout $avg $min $max" >> $result
 
 for ((thread=4; thread<=24; thread+=4))
 do
-	sum=0
-	echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
+  sum=0
+  echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
 
-	max=0
-	min=0
-	for ((i=1; i <= epoch; ++i))
-	do
-		tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-		sum=`echo "$sum + $tmp" | bc -l`
-		echo "sum: $sum,	tmp: $tmp"
+  max=0
+  min=0
+  for ((i=1; i <= epoch; ++i))
+  do
+    tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+    sum=`echo "$sum + $tmp" | bc -l`
+    echo "sum: $sum,  tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
-	done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
+  done
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 
 workload=2
@@ -171,23 +171,23 @@ max=0
 min=0
 for ((i=1; i <= epoch; ++i))
 do
-	tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-	sum=`echo "$sum + $tmp" | bc -l`
-	echo "sum: $sum,	tmp: $tmp"
+  tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+  sum=`echo "$sum + $tmp" | bc -l`
+  echo "sum: $sum,  tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -199,38 +199,38 @@ echo "$thout $avg $min $max" >> $result
 
 for ((thread=4; thread<=24; thread+=4))
 do
-	sum=0
-	echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
+  sum=0
+  echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
 
-	max=0
-	min=0
-	for ((i=1; i <= epoch; ++i))
-	do
-		tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-		sum=`echo "$sum + $tmp" | bc -l`
-		echo "sum: $sum,	tmp: $tmp"
+  max=0
+  min=0
+  for ((i=1; i <= epoch; ++i))
+  do
+    tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+    sum=`echo "$sum + $tmp" | bc -l`
+    echo "sum: $sum,  tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
-	done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
+  done
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 
 workload=3
@@ -247,23 +247,23 @@ max=0
 min=0
 for ((i=1; i <= epoch; ++i))
 do
-	tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-	sum=`echo "$sum + $tmp" | bc -l`
-	echo "sum: $sum,	tmp: $tmp"
+  tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+  sum=`echo "$sum + $tmp" | bc -l`
+  echo "sum: $sum,  tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -275,38 +275,38 @@ echo "$thout $avg $min $max" >> $result
 
 for ((thread=4; thread<=24; thread+=4))
 do
-	sum=0
-	echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
+  sum=0
+  echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
 
-	max=0
-	min=0
-	for ((i=1; i <= epoch; ++i))
-	do
-		tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-		sum=`echo "$sum + $tmp" | bc -l`
-		echo "sum: $sum,	tmp: $tmp"
+  max=0
+  min=0
+  for ((i=1; i <= epoch; ++i))
+  do
+    tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+    sum=`echo "$sum + $tmp" | bc -l`
+    echo "sum: $sum,  tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
-	done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
+  done
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 
 workload=4
@@ -323,23 +323,23 @@ max=0
 min=0
 for ((i=1; i <= epoch; ++i))
 do
-	tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-	sum=`echo "$sum + $tmp" | bc -l`
-	echo "sum: $sum,	tmp: $tmp"
+  tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+  sum=`echo "$sum + $tmp" | bc -l`
+  echo "sum: $sum,  tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -351,37 +351,37 @@ echo "$thout $avg $min $max" >> $result
 
 for ((thread=4; thread<=24; thread+=4))
 do
-	sum=0
-	echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
+  sum=0
+  echo "./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime"
 
-	max=0
-	min=0
-	for ((i=1; i <= epoch; ++i))
-	do
-		tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
-		sum=`echo "$sum + $tmp" | bc -l`
-		echo "sum: $sum,	tmp: $tmp"
+  max=0
+  min=0
+  for ((i=1; i <= epoch; ++i))
+  do
+    tmp=`./ermia.exe $tuple $maxope $thread $workload $cpu_mhz $extime`
+    sum=`echo "$sum + $tmp" | bc -l`
+    echo "sum: $sum,  tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
-	done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
+  done
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 

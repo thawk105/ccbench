@@ -11,13 +11,13 @@
 #include "tuple.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
-	#define GLOBAL
+  #define GLOBAL
 GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> Lsn(0);
 GLOBAL std::atomic<unsigned int> Running(0);
 
 #else
-	#define GLOBAL extern
+  #define GLOBAL extern
 GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> Lsn;
 GLOBAL std::atomic<unsigned int> Running;
@@ -36,4 +36,4 @@ GLOBAL unsigned int EXTIME;
 // -----
 
 GLOBAL Tuple *Table;
-GLOBAL TransactionTable **TMT;	// Transaction Mapping Table
+GLOBAL TransactionTable **TMT;  // Transaction Mapping Table

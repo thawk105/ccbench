@@ -8,11 +8,11 @@
 #include "tuple.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
-	#define GLOBAL
+  #define GLOBAL
 GLOBAL std::atomic<unsigned int> Running(0);
 
 #else
-	#define GLOBAL extern
+  #define GLOBAL extern
 GLOBAL std::atomic<unsigned int> Running;
 
 #endif

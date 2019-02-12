@@ -21,26 +21,26 @@ sum=0
 echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
 echo "$thread $epoch"
 max=0
-min=0	
+min=0 
 for ((i = 1; i <= epoch; ++i))
 do
     tmp=`./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime`
     sum=`echo "$sum + $tmp" | bc -l`
     echo "sum: $sum,   tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -53,38 +53,38 @@ echo "$thout $avg $min $max" >> $result
 for ((thread=4; thread<=24; thread+=4))
 do
     sum=0
-	echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
-	echo "$thread $epoch"
+  echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
+  echo "$thread $epoch"
  
- 	max=0
-	min=0	
+  max=0
+  min=0 
     for ((i = 1; i <= epoch; ++i))
     do
         tmp=`./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime`
         sum=`echo "$sum + $tmp" | bc -l`
         echo "sum: $sum,   tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
     done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 
 wal=P
@@ -99,26 +99,26 @@ sum=0
 echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
 echo "$thread $epoch"
 max=0
-min=0	
+min=0 
 for ((i = 1; i <= epoch; ++i))
 do
     tmp=`./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime`
     sum=`echo "$sum + $tmp" | bc -l`
     echo "sum: $sum,   tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -131,38 +131,38 @@ echo "$thout $avg $min $max" >> $result
 for ((thread=4; thread<=24; thread+=4))
 do
     sum=0
-	echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
-	echo "$thread $epoch"
+  echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
+  echo "$thread $epoch"
  
- 	max=0
-	min=0	
+  max=0
+  min=0 
     for ((i = 1; i <= epoch; ++i))
     do
         tmp=`./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime`
         sum=`echo "$sum + $tmp" | bc -l`
         echo "sum: $sum,   tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
     done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 
 wal=S
@@ -176,26 +176,26 @@ sum=0
 echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
 echo "$thread $epoch"
 max=0
-min=0	
+min=0 
 for ((i = 1; i <= epoch; ++i))
 do
     tmp=`./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime`
     sum=`echo "$sum + $tmp" | bc -l`
     echo "sum: $sum,   tmp: $tmp"
 
-	if test $i -eq 1 ; then
-		max=$tmp
-		min=$tmp
-	fi
+  if test $i -eq 1 ; then
+    max=$tmp
+    min=$tmp
+  fi
 
-	flag=`echo "$tmp > $max" | bc -l`
-	if test $flag -eq 1 ; then
-		max=$tmp
-	fi
-	flag=`echo "$tmp < $min" | bc -l`
-	if test $flag -eq 1 ; then
-		min=$tmp
-	fi
+  flag=`echo "$tmp > $max" | bc -l`
+  if test $flag -eq 1 ; then
+    max=$tmp
+  fi
+  flag=`echo "$tmp < $min" | bc -l`
+  if test $flag -eq 1 ; then
+    min=$tmp
+  fi
 done
 avg=`echo "$sum / $epoch" | bc -l`
 echo "sum: $sum, epoch: $epoch"
@@ -208,37 +208,37 @@ echo "$thout $avg $min $max" >> $result
 for ((thread=4; thread<=24; thread+=4))
 do
     sum=0
-	echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
-	echo "$thread $epoch"
+  echo "./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime"
+  echo "$thread $epoch"
  
- 	max=0
-	min=0	
+  max=0
+  min=0 
     for ((i = 1; i <= epoch; ++i))
     do
         tmp=`./cicada.exe $tuple $maxope $thread $workload $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $lock_release $extime`
         sum=`echo "$sum + $tmp" | bc -l`
         echo "sum: $sum,   tmp: $tmp"
 
-		if test $i -eq 1 ; then
-			max=$tmp
-			min=$tmp
-		fi
+    if test $i -eq 1 ; then
+      max=$tmp
+      min=$tmp
+    fi
 
-		flag=`echo "$tmp > $max" | bc -l`
-		if test $flag -eq 1 ; then
-			max=$tmp
-		fi
-		flag=`echo "$tmp < $min" | bc -l`
-		if test $flag -eq 1 ; then
-			min=$tmp
-		fi
+    flag=`echo "$tmp > $max" | bc -l`
+    if test $flag -eq 1 ; then
+      max=$tmp
+    fi
+    flag=`echo "$tmp < $min" | bc -l`
+    if test $flag -eq 1 ; then
+      min=$tmp
+    fi
     done
-	avg=`echo "$sum / $epoch" | bc -l`
-	echo "sum: $sum, epoch: $epoch"
-	echo "avg $avg"
-	echo "max: $max"
-	echo "min: $min"
-	thout=`echo "$thread - 1" | bc`
-	echo "$thout $avg $min $max" >> $result
+  avg=`echo "$sum / $epoch" | bc -l`
+  echo "sum: $sum, epoch: $epoch"
+  echo "avg $avg"
+  echo "max: $max"
+  echo "min: $min"
+  thout=`echo "$thread - 1" | bc`
+  echo "$thout $avg $min $max" >> $result
 done
 

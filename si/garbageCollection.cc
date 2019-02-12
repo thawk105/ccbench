@@ -16,40 +16,40 @@ using std::cout, std::endl;
 bool
 GarbageCollection::chkSecondRange()
 {
-	TransactionTable *tmt;
+  TransactionTable *tmt;
 
-	smin = UINT32_MAX;
-	smax = 0;
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
-		uint32_t tmptxid = tmt->txid.load(std::memory_order_acquire);
-		smin = min(smin, tmptxid);
-		smax = max(smax, tmptxid);
-	}
+  smin = UINT32_MAX;
+  smax = 0;
+  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+    uint32_t tmptxid = tmt->txid.load(std::memory_order_acquire);
+    smin = min(smin, tmptxid);
+    smax = max(smax, tmptxid);
+  }
 
-	//cout << "fmin, fmax : " << fmin << ", " << fmax << endl;
-	//cout << "smin, smax : " << smin << ", " << smax << endl;
+  //cout << "fmin, fmax : " << fmin << ", " << fmax << endl;
+  //cout << "smin, smax : " << smin << ", " << smax << endl;
 
-	if (fmax < smin)
-		return true;
-	else 
-		return false;
+  if (fmax < smin)
+    return true;
+  else 
+    return false;
 }
 
 void
 GarbageCollection::decideFirstRange()
 {
-	TransactionTable *tmt;
+  TransactionTable *tmt;
 
-	fmin = fmax = 0;
-	for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-		tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
-		uint32_t tmptxid = tmt->txid.load(std::memory_order_acquire);
-		fmin = min(fmin, tmptxid);
-		fmax = max(fmax, tmptxid);
-	}
+  fmin = fmax = 0;
+  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+    uint32_t tmptxid = tmt->txid.load(std::memory_order_acquire);
+    fmin = min(fmin, tmptxid);
+    fmax = max(fmax, tmptxid);
+  }
 
-	return;
+  return;
 }
 // end, for leader thread.
 
@@ -113,26 +113,26 @@ GarbageCollection::gcVersion(Result &rsob)
     gcqForVersion.pop();
   }
 
-	return;
+  return;
 }
 
 void
 GarbageCollection::gcTMTelement(Result &rsob)
 {
   uint32_t threshold = getGcThreshold();
-	if (gcqForTMT.empty()) return;
+  if (gcqForTMT.empty()) return;
 
-	for (;;) {
-		TransactionTable *tmt = gcqForTMT.front();
-		if (tmt->txid < threshold) {
-			gcqForTMT.pop();
-			delete tmt;
+  for (;;) {
+    TransactionTable *tmt = gcqForTMT.front();
+    if (tmt->txid < threshold) {
+      gcqForTMT.pop();
+      delete tmt;
       ++rsob.localGCTMTElementsCounts;
-			if (gcqForTMT.empty()) break;
-		}
-		else break;
-	}
-	
-	return;
+      if (gcqForTMT.empty()) break;
+    }
+    else break;
+  }
+  
+  return;
 }
 

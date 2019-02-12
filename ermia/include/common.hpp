@@ -1,22 +1,23 @@
 #pragma once
 
-#include "int64byte.hpp"
+#include <mutex>
+#include <vector>
+
+#include "../../include/int64byte.hpp"
+
 #include "lock.hpp"
 #include "procedure.hpp"
 #include "transaction.hpp"
 #include "tuple.hpp"
 
-#include <mutex>
-#include <vector>
-
 #ifdef GLOBAL_VALUE_DEFINE
-	#define GLOBAL
+  #define GLOBAL
 GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> Lsn(0);
 GLOBAL std::atomic<unsigned int> Running(0);
 
 #else
-	#define GLOBAL extern
+  #define GLOBAL extern
 GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> Lsn;
 GLOBAL std::atomic<unsigned int> Running;
@@ -36,6 +37,6 @@ GLOBAL uint64_t EXTIME;
 // -----
 
 GLOBAL Tuple *Table;
-GLOBAL TransactionTable **TMT;	// Transaction Mapping Table
+GLOBAL TransactionTable **TMT;  // Transaction Mapping Table
 
 GLOBAL std::mutex SsnLock;

@@ -13,4 +13,4 @@
 #define RERR(fd) do {perror("Recv Error"); NNN; close(fd); pthread_exit(NULL);} while (0)
 #define ERR2    do {perror("ERROR"); NNN; pthread_exit(NULL);} while (0)
 
-#define FCN	cout << "file can't open.\n"
+#define FCN cout << "file can't open.\n"

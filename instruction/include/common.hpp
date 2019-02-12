@@ -1,19 +1,19 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
-#include "int64byte.hpp"
-
+#include <atomic>
 #include <mutex>
 #include <vector>
 
+#include "../../include/int64byte.hpp"
+
 #ifdef GLOBAL_VALUE_DEFINE
-	#define GLOBAL
+  #define GLOBAL
 GLOBAL std::atomic<unsigned int> Running(0);
 GLOBAL std::atomic<uint64_t> Counter(0);
 GLOBAL std::atomic<bool> Finish(false);
 
 #else
-	#define GLOBAL extern
+  #define GLOBAL extern
 GLOBAL std::atomic<unsigned int> Running;
 GLOBAL std::atomic<uint64_t> Lsn;
 GLOBAL std::atomic<bool> Finish;
@@ -30,4 +30,3 @@ GLOBAL uint64_t_64byte *CounterIncrements;
 GLOBAL uint64_t Bgn;
 GLOBAL uint64_t End;
 
-#endif	//	COMMON_HPP

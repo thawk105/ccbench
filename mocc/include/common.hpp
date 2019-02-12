@@ -9,13 +9,13 @@
 #include "tuple.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
-	#define GLOBAL
+  #define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
 alignas(64) GLOBAL uint64_t_64byte GlobalEpoch(1);
 
 #else
-	#define GLOBAL extern
+  #define GLOBAL extern
 
 GLOBAL std::atomic<unsigned int> Running;
 GLOBAL uint64_t_64byte GlobalEpoch;
@@ -38,7 +38,7 @@ GLOBAL unsigned int EXTIME;
 GLOBAL RWLock CtrLock;
 
 // for logging emulation
-GLOBAL uint64_t_64byte *Start;	
+GLOBAL uint64_t_64byte *Start;  
 GLOBAL uint64_t_64byte *Stop;
 
 GLOBAL Tuple *Table;

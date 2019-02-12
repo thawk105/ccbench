@@ -9,13 +9,13 @@ INLINE uint64_t atomicLoadGE();
 INLINE void
 atomicAddGE()
 {
-	uint64_t expected, desired;
+  uint64_t expected, desired;
 
-	expected = atomicLoadGE();
-	for (;;) {
-		desired = expected + 1;
-		if (__atomic_compare_exchange_n(&(GlobalEpoch.obj), &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-	}
+  expected = atomicLoadGE();
+  for (;;) {
+    desired = expected + 1;
+    if (__atomic_compare_exchange_n(&(GlobalEpoch.obj), &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+  }
 }
 
 INLINE uint64_t

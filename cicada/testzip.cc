@@ -16,10 +16,10 @@ main()
   pid_t pid = syscall(SYS_gettid);
   cpu_set_t cpu_set;
 
-	CPU_ZERO(&cpu_set);
-	CPU_SET(0, &cpu_set);
+  CPU_ZERO(&cpu_set);
+  CPU_SET(0, &cpu_set);
 
-	if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
+  if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
     ERR;
 
   Xoroshiro128Plus rnd;

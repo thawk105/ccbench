@@ -13,14 +13,14 @@
 #include "tuple.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
-	#define GLOBAL
+  #define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
 GLOBAL std::atomic<uint64_t> Rtsudctr(0);
 GLOBAL std::atomic<uint64_t> Rts_non_udctr(0);
 
 #else
-	#define GLOBAL extern
+  #define GLOBAL extern
 
 GLOBAL std::atomic<unsigned int> Running;
 GLOBAL std::atomic<uint64_t> Rtsudctr;
