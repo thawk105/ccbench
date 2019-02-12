@@ -91,17 +91,13 @@ Transaction::tread(unsigned int key)
     ver = ver->committed_prev;
   }
 
-  uint64_t verCstamp = ver->cstamp.load(memory_order_acquire);
-  while (txid < (verCstamp >> 1)) {
+  while (txid < ver->cstamp.load(memory_order_acquire)) {
     //printf("txid %d, (verCstamp >> 1) %d\n", txid, verCstamp >> 1);
     //fflush(stdout);
     ver = ver->committed_prev;
     if (ver == nullptr) {
-      cout << "txid : " << txid
-        << ", verCstamp : " << verCstamp << endl;
       ERR;
     }
-    verCstamp = ver->cstamp.load(memory_order_acquire);
   }
 
   readSet.push_back(SetElement(key, ver));
@@ -125,20 +121,24 @@ Transaction::twrite(unsigned int key, unsigned int val)
   
   Version *expected, *desired;
   desired = new Version();
-  uint64_t tmptid = this->thid;
-  tmptid = tmptid << 1;
-  tmptid |= 1;
-  desired->cstamp.store(tmptid, memory_order_release);  // storing before CAS because it will be accessed from read operation, write operation and garbage collection.
+  desired->cstamp.store(this->txid, memory_order_release);  // storing before CAS because it will be accessed from read operation, write operation and garbage collection.
+  desired->status.store(VersionStatus::inFlight, memory_order_release);
 
   Version *vertmp;
   expected = Table[key].latest.load(std::memory_order_acquire);
   for (;;) {
-    // w-w conflict
-    // first updater wins rule
+    // w-w conflict with concurrent transactions.
     if (expected->status.load(memory_order_acquire) == VersionStatus::inFlight) {
-      this->status = TransactionStatus::aborted;
-      delete desired;
-      return;
+
+      uint64_t rivaltid = expected->cstamp.load(memory_order_acquire);
+      if (this->txid <= rivaltid) {
+        this->status = TransactionStatus::aborted;
+        delete desired;
+        return;
+      }
+
+      expected = Table[key].latest.load(std::memory_order_acquire);
+      continue;
     }
     
     // if a head version isn't committed version
@@ -149,8 +149,7 @@ Transaction::twrite(unsigned int key, unsigned int val)
     }
 
     // vertmp is committed latest version.
-    uint64_t verCstamp = vertmp->cstamp.load(memory_order_acquire);
-    if (txid < (verCstamp >> 1)) {  
+    if (txid < vertmp->cstamp.load(memory_order_acquire)) {  
       //  write - write conflict, first-updater-wins rule.
       // Writers must abort if they would overwirte a version created after their snapshot.
       this->status = TransactionStatus::aborted;
@@ -164,35 +163,27 @@ Transaction::twrite(unsigned int key, unsigned int val)
   }
   desired->val = val;
 
-  //ver->committed_prev->sstamp に TID を入れる
-  uint64_t tmpTID = thid;
-  tmpTID = tmpTID << 1;
-  tmpTID |= 1;
-
   writeSet.push_back(SetElement(key, desired));
 }
 
 void
 Transaction::commit()
 {
-  //this->cstamp = ++Lsn;
-  this->cstamp = 2;
+  this->cstamp = ++Lsn;
   status = TransactionStatus::committed;
 
-  uint64_t verCstamp = cstamp;
-  verCstamp = verCstamp << 1;
-  verCstamp &= ~(1);
-
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    (*itr).ver->cstamp.store(verCstamp, memory_order_release);
+    (*itr).ver->cstamp.store(this->cstamp, memory_order_release);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, verCstamp));
+    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, cstamp));
   }
 
   //logging
 
   readSet.clear();
   writeSet.clear();
+
+  ++rsobject.localCommitCounts;
   return;
 }
 
@@ -208,6 +199,8 @@ Transaction::abort()
 
   readSet.clear();
   writeSet.clear();
+
+  ++rsobject.localAbortCounts;
 }
 
 void

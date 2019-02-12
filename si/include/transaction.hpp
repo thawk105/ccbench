@@ -28,6 +28,7 @@ public:
   vector<SetElement> writeSet;
   GarbageCollection gcobject;
   uint32_t preGcThreshold = 0;
+  Result rsobject;
 
   uint8_t thid; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)

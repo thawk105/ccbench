@@ -61,7 +61,7 @@ GarbageCollection::gcVersion(Result &rsob)
 
   // my customized Rapid garbage collection inspired from Cicada (sigmod 2017).
   while (!gcqForVersion.empty()) {
-    if ((gcqForVersion.front().cstamp >> 1) >= threshold) break;
+    if (gcqForVersion.front().cstamp >= threshold) break;
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;

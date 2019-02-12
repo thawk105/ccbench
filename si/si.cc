@@ -163,7 +163,6 @@ worker(void *arg)
   Procedure pro[MAX_OPE];
   Xoroshiro128Plus rnd;
   rnd.init();
-  Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
   setThreadAffinity(*myid);
@@ -182,10 +181,10 @@ worker(void *arg)
 RETRY:
 
       if (Finish.load(std::memory_order_acquire)) {
-        rsobject.sumUpAbortCounts();
-        rsobject.sumUpCommitCounts();
-        rsobject.sumUpGCVersionCounts();
-        rsobject.sumUpGCTMTElementsCounts();
+        trans.rsobject.sumUpAbortCounts();
+        trans.rsobject.sumUpCommitCounts();
+        trans.rsobject.sumUpGCVersionCounts();
+        trans.rsobject.sumUpGCTMTElementsCounts();
         return nullptr;
       }
 
@@ -203,20 +202,18 @@ RETRY:
 
         if (trans.status == TransactionStatus::aborted) {
           trans.abort();
-          ++rsobject.localAbortCounts;
           goto RETRY;
         }
       }
 
       trans.commit();
-      ++rsobject.localCommitCounts;
 
       // maintenance phase
       // garbage collection
       uint32_t loadThreshold = trans.gcobject.getGcThreshold();
       if (trans.preGcThreshold != loadThreshold) {
-        trans.gcobject.gcTMTelement(rsobject);
-        trans.gcobject.gcVersion(rsobject);
+        trans.gcobject.gcTMTelement(trans.rsobject);
+        trans.gcobject.gcVersion(trans.rsobject);
         trans.preGcThreshold = loadThreshold;
       }
     }
