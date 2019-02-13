@@ -36,4 +36,4 @@ GLOBAL unsigned int EXTIME;
 // -----
 
 GLOBAL Tuple *Table;
-GLOBAL TransactionTable **TMT;  // Transaction Mapping Table
+GLOBAL uint64_t_64byte *TxidTable;

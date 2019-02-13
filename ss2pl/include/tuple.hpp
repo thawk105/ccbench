@@ -3,7 +3,7 @@
 #include <atomic>
 #include <mutex>
 
-#include "lock.hpp"
+#include "../../include/rwlock.hpp"
 
 using namespace std;
 

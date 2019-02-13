@@ -2,7 +2,8 @@
 
 #include <vector>
 
-#include "lock.hpp"
+#include "../../include/rwlock.hpp"
+
 #include "tuple.hpp"
 
 using namespace std;
@@ -31,10 +32,12 @@ public:
     w_lockList.reserve(MAX_OPE);
   }
 
-  void abort();
-  void commit();
+  SetElement *searchReadSet(unsigned int key);
+  SetElement *searchWriteSet(unsigned int key);
   void tbegin();
   int tread(unsigned int key);
   void twrite(unsigned int key, unsigned int val);
+  void commit();
+  void abort();
   void unlock_list();
 };

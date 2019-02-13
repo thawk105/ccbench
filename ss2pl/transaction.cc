@@ -10,6 +10,28 @@
 
 using namespace std;
 
+inline
+SetElement *
+Transaction::searchReadSet(unsigned int key) 
+{
+  for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+    if ((*itr).key == key) return &(*itr);
+  }
+
+  return nullptr;
+}
+
+inline
+SetElement *
+Transaction::searchWriteSet(unsigned int key) 
+{
+  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+    if ((*itr).key == key) return &(*itr);
+  }
+
+  return nullptr;
+}
+
 void
 Transaction::abort()
 {
@@ -41,19 +63,22 @@ Transaction::tbegin()
 int
 Transaction::tread(unsigned int key)
 {
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    if ((*itr).key == key) return (*itr).val;
+  //if it already access the key object once.
+  // w
+  SetElement *inW = searchWriteSet(key);
+  if (inW != nullptr) {
+    return inW->val;
   }
 
-  for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-    if ((*itr).key == key) return (*itr).val;
+  SetElement *inR = searchReadSet(key);
+  if (inR != nullptr) {
+    return inR->val;
   }
 
   if (Table[key].lock.r_trylock()) {
     r_lockList.push_back(&Table[key].lock);
-    unsigned int val = Table[key].val;
-    readSet.push_back(SetElement(key, val));
-    return val;
+    readSet.emplace_back(key, Table[key].val);
+    return Table[key].val;
   } else {
     this->status = TransactionStatus::aborted;
     return -1;
@@ -63,28 +88,32 @@ Transaction::tread(unsigned int key)
 void
 Transaction::twrite(unsigned int key, unsigned int val)
 {
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    if ((*itr).key == key) {
-      (*itr).val = val;
-      return;
-    }
+  // if it already wrote the key object once.
+  SetElement *inW = searchWriteSet(key);
+  if (inW) {
+    inW->val = val;
+    return;
   }
 
-  for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-    if ((*itr).key == key) {
-      if (!Table[key % TUPLE_NUM].lock.upgrade()) {
+  for (auto rItr = readSet.begin(); rItr != readSet.end(); ++rItr) {
+    if ((*rItr).key == key) { // hit
+      if (!Table[key].lock.tryupgrade()) {
         this->status = TransactionStatus::aborted;
         return;
       }
+
       // upgrade success
-      for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr) {
-        if (*itr == &(Table[key].lock)) {
-          r_lockList.erase(itr);
-          w_lockList.push_back(&Table[key].lock);
-          writeSet.push_back(SetElement(key, val));
-          return;
+      for (auto lItr = r_lockList.begin(); lItr != r_lockList.end(); ++lItr) {
+        if (*lItr == &(Table[key].lock)) {
+          r_lockList.erase(lItr);
+          w_lockList.emplace_back(&Table[key].lock);
+          writeSet.emplace_back(key, val);
+          break;
         }
       }
+
+      readSet.erase(rItr);
+      return;
     }
   }
 
@@ -94,22 +123,21 @@ Transaction::twrite(unsigned int key, unsigned int val)
     return;
   }
 
-  w_lockList.push_back(&Table[key % TUPLE_NUM].lock);
-  writeSet.push_back(SetElement(key, val));
+  w_lockList.emplace_back(&Table[key % TUPLE_NUM].lock);
+  writeSet.emplace_back(key, val);
   return;
 }
 
 void
 Transaction::unlock_list()
 {
-  for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr) {
+  for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr)
     (*itr)->r_unlock();
-  }
-  r_lockList.clear();
 
-  for (auto itr = w_lockList.begin(); itr != w_lockList.end(); ++itr) {
+  for (auto itr = w_lockList.begin(); itr != w_lockList.end(); ++itr)
     (*itr)->w_unlock();
-  }
+
+  r_lockList.clear();
   w_lockList.clear();
 }
 

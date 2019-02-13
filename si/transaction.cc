@@ -100,7 +100,7 @@ Transaction::tread(unsigned int key)
     }
   }
 
-  readSet.push_back(SetElement(key, ver));
+  readSet.emplace_back(key, ver);
   return ver->val;
 }
 
