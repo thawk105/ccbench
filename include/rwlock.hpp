@@ -15,6 +15,11 @@ public:
   RWLock() {
     counter.store(0, memory_order_release);
   }
+
+  void init() {
+    counter.store(0, memory_order_release);
+  }
+
   // Read lock
   void r_lock() {
     int expected, desired;

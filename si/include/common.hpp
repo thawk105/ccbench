@@ -5,7 +5,6 @@
 
 #include "../../include/int64byte.hpp"
 
-#include "lock.hpp"
 #include "procedure.hpp"
 #include "transaction.hpp"
 #include "tuple.hpp"
@@ -36,4 +35,4 @@ GLOBAL unsigned int EXTIME;
 // -----
 
 GLOBAL Tuple *Table;
-GLOBAL uint64_t_64byte *TxidTable;
+GLOBAL TransactionTable **TMT;  // Transaction Mapping Table

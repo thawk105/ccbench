@@ -50,3 +50,17 @@ public:
   void dispWS();
   void dispRS();
 };
+
+// for MVCC SSN
+class TransactionTable {
+public:
+  std::atomic<uint32_t> txid;
+  std::atomic<uint32_t> lastcstamp;
+  uint8_t padding[56];
+
+  TransactionTable(uint32_t txid, uint32_t lastcstamp) {
+    this->txid = txid;
+    this->lastcstamp = lastcstamp;
+  }
+};
+
