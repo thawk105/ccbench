@@ -132,6 +132,8 @@ Transaction::twrite(unsigned int key, unsigned int val)
 
       uint64_t rivaltid = expected->cstamp.load(memory_order_acquire);
       if (this->txid <= rivaltid) {
+      //if (1) { // no-wait で abort させても性能劣化はほぼ起きていない．
+      //性能が向上されるケースもある．
         this->status = TransactionStatus::aborted;
         delete desired;
         return;
@@ -163,7 +165,7 @@ Transaction::twrite(unsigned int key, unsigned int val)
   }
   desired->val = val;
 
-  writeSet.push_back(SetElement(key, desired));
+  writeSet.emplace_back(key, desired);
 }
 
 void
@@ -194,7 +196,7 @@ Transaction::abort()
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid << 1));
+    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid));
   }
 
   readSet.clear();
