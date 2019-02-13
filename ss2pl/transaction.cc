@@ -76,7 +76,7 @@ Transaction::tread(unsigned int key)
   }
 
   if (Table[key].lock.r_trylock()) {
-    r_lockList.push_back(&Table[key].lock);
+    r_lockList.emplace_back(&Table[key].lock);
     readSet.emplace_back(key, Table[key].val);
     return Table[key].val;
   } else {
