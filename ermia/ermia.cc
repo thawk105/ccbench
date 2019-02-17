@@ -225,7 +225,6 @@ RETRY:
         }
       }
 
-      //trans.ssn_commit();
       trans.ssn_parallel_commit();
 
       if (trans.status == TransactionStatus::aborted) {

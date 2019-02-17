@@ -18,13 +18,13 @@ echo "#worker threads, abort_rate, min, max" >> $result
 
 thread=1
 sum=0
-echo "./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
+echo "../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
 
 max=0
 min=0
 for ((i = 1; i <= epoch; ++i))
 do
-    tmp=`./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
+    tmp=`../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
     sum=`echo "$sum + $tmp" | bc -l `
     echo "sum: $sum,   tmp: $tmp"
 
@@ -55,20 +55,20 @@ enth=24
 inc=4
 fi
 if  test $host = $dbs11 ; then
-inith=16
+inith=28
 enth=224
-inc=16
+inc=28
 fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
-  echo "./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
+  echo "../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
     
   max=0
   min=0
     for ((i = 1; i <= epoch; ++i))
     do
-        tmp=`./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
+        tmp=`../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
         sum=`echo "$sum + $tmp" | bc -l `
         echo "sum: $sum,   tmp: $tmp"
 
@@ -101,13 +101,13 @@ echo "#worker threads, abort_rate, min, max" >> $result
 
 thread=1
 sum=0
-echo "./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
+echo "../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
 
 max=0
 min=0
 for ((i = 1; i <= epoch; ++i))
 do
-    tmp=`./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
+    tmp=`../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
     sum=`echo "$sum + $tmp" | bc -l `
     echo "sum: $sum,   tmp: $tmp"
 
@@ -138,20 +138,20 @@ enth=24
 inc=4
 fi
 if  test $host = $dbs11 ; then
-inith=16
+inith=28
 enth=224
-inc=16
+inc=28
 fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
-  echo "./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
+  echo "../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
     
   max=0
   min=0
     for ((i = 1; i <= epoch; ++i))
     do
-        tmp=`./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
+        tmp=`../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
         sum=`echo "$sum + $tmp" | bc -l `
         echo "sum: $sum,   tmp: $tmp"
 
@@ -184,13 +184,13 @@ echo "#worker threads, abort_rate, min, max" >> $result
 
 thread=1
 sum=0
-echo "./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
+echo "../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
 
 max=0
 min=0
 for ((i = 1; i <= epoch; ++i))
 do
-    tmp=`./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
+    tmp=`../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
     sum=`echo "$sum + $tmp" | bc -l `
     echo "sum: $sum,   tmp: $tmp"
 
@@ -221,20 +221,20 @@ enth=24
 inc=4
 fi
 if  test $host = $dbs11 ; then
-inith=16
+inith=28
 enth=224
-inc=16
+inc=28
 fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
     sum=0
-  echo "./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
+  echo "../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime"
     
   max=0
   min=0
     for ((i = 1; i <= epoch; ++i))
     do
-        tmp=`./tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
+        tmp=`../tictoc.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $extime`
         sum=`echo "$sum + $tmp" | bc -l `
         echo "sum: $sum,   tmp: $tmp"
 

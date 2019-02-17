@@ -18,14 +18,14 @@ echo "#Worker threads, throughput, min, max" >> $result
 
 thread=1
 sum=0
-echo "./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
+echo "../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
 echo "$thread $epoch"
 
 max=0
 min=0
 for ((i=1; i <= epoch; i++))
 do
-  tmp=`./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
+  tmp=`../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
   sum=`echo "$sum + $tmp" | bc -l`
   echo "sum: $sum,  tmp: $tmp"
   
@@ -56,21 +56,21 @@ enth=24
 inc=4
 fi
 if  test $host = $dbs11 ; then
-inith=16
+inith=28
 enth=224
-inc=16
+inc=28
 fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
   sum=0
-  echo "./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
+  echo "../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
   echo "$thread $epoch"
 
   max=0
   min=0
   for ((i=1; i <= epoch; i++))
   do
-    tmp=`./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
+    tmp=`../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
     sum=`echo "$sum + $tmp" | bc -l`
     echo "sum: $sum,  tmp: $tmp"
     
@@ -103,14 +103,14 @@ echo "#Worker threads, throughput, min, max" >> $result
 
 thread=1
 sum=0
-echo "./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
+echo "../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
 echo "$thread $epoch"
 
 max=0
 min=0
 for ((i=1; i <= epoch; i++))
 do
-  tmp=`./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
+  tmp=`../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
   sum=`echo "$sum + $tmp" | bc -l`
   echo "sum: $sum,  tmp: $tmp"
   
@@ -141,21 +141,21 @@ enth=24
 inc=4
 fi
 if  test $host = $dbs11 ; then
-inith=16
+inith=28
 enth=224
-inc=16
+inc=28
 fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
   sum=0
-  echo "./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
+  echo "../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
   echo "$thread $epoch"
 
   max=0
   min=0
   for ((i=1; i <= epoch; i++))
   do
-    tmp=`./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
+    tmp=`../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
     sum=`echo "$sum + $tmp" | bc -l`
     echo "sum: $sum,  tmp: $tmp"
     
@@ -188,14 +188,14 @@ echo "#Worker threads, throughput, min, max" >> $result
 
 thread=1
 sum=0
-echo "./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
+echo "../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
 echo "$thread $epoch"
 
 max=0
 min=0
 for ((i=1; i <= epoch; i++))
 do
-  tmp=`./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
+  tmp=`../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
   sum=`echo "$sum + $tmp" | bc -l`
   echo "sum: $sum,  tmp: $tmp"
   
@@ -226,21 +226,21 @@ enth=24
 inc=4
 fi
 if  test $host = $dbs11 ; then
-inith=16
+inith=28
 enth=224
-inc=16
+inc=28
 fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
   sum=0
-  echo "./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
+  echo "../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime"
   echo "$thread $epoch"
 
   max=0
   min=0
   for ((i=1; i <= epoch; i++))
   do
-    tmp=`./ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
+    tmp=`../ss2pl.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime`
     sum=`echo "$sum + $tmp" | bc -l`
     echo "sum: $sum,  tmp: $tmp"
     
