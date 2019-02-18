@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 
+#include "../include/check.hpp"
 #include "../include/debug.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
@@ -18,6 +19,70 @@
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/tuple.hpp"
+
+void
+chkArg(const int argc, const char *argv[])
+{
+  if (argc != 10) {
+    cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl << endl;
+    cout << "example: ./ss2pl.exe 200 10 24 50 on 0 on 2400 3" << endl << endl;
+    cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
+    cout << "MAX_OPE(int): total numbers of operations" << endl;
+    cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
+    cout << "RRATIO : read ratio [%%]" << endl;
+    cout << "RMW : read modify write. on or off." << endl;
+    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+
+    cout << "YCSB : on or off. switch makeProcedure function." << endl;
+    cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
+    cout << "EXTIME: execution time [sec]" << endl << endl;
+
+    cout << "Tuple size " << sizeof(Tuple) << endl;
+    cout << "std::mutex size " << sizeof(mutex) << endl;
+    cout << "RWLock size " << sizeof(RWLock) << endl;
+    exit(0);
+  }
+
+  chkInt(argv[1]);
+  chkInt(argv[2]);
+  chkInt(argv[3]);
+  chkInt(argv[4]);
+  chkInt(argv[8]);
+  chkInt(argv[9]);
+
+  TUPLE_NUM = atoi(argv[1]);
+  MAX_OPE = atoi(argv[2]);
+  THREAD_NUM = atoi(argv[3]);
+  RRATIO = atoi(argv[4]);
+  string argrmw = argv[5];
+  ZIPF_SKEW = atof(argv[6]);
+  string argycsb = argv[7];
+  CLOCK_PER_US = atof(argv[8]);
+  EXTIME = atoi(argv[9]);
+
+  if (RRATIO > 100) {
+    ERR;
+  }
+
+  if (argrmw == "on")
+    RMW = true;
+  else if (argrmw == "off")
+    RMW = false;
+  else
+    ERR;
+
+  if (argycsb == "on")
+    YCSB = true;
+  else if (argycsb == "off")
+    YCSB = false;
+  else
+    ERR;
+
+  if (CLOCK_PER_US < 100) {
+    cout << "CPU_MHZ is less than 100. are your really?" << endl;
+    ERR;
+  }
+}
 
 bool
 chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)

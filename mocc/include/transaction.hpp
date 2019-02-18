@@ -13,7 +13,7 @@ enum class TransactionStatus : uint8_t {
   aborted,
 };
 
-class Transaction {
+class TxExecutor {
 public:
   vector<ReadElement> readSet;
   vector<WriteElement> writeSet;
@@ -34,7 +34,7 @@ public:
   Xoroshiro128Plus *rnd;
   int locknum; // corresponding to index of MQLNodeList.
 
-  Transaction(int thid, Xoroshiro128Plus *rnd, int locknum) {
+  TxExecutor(int thid, Xoroshiro128Plus *rnd, int locknum) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     RLL.reserve(MAX_OPE);

@@ -12,7 +12,7 @@
 using namespace std;
 
 ReadElement *
-Transaction::searchReadSet(unsigned int key)
+TxExecutor::searchReadSet(unsigned int key)
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -22,7 +22,7 @@ Transaction::searchReadSet(unsigned int key)
 }
 
 WriteElement *
-Transaction::searchWriteSet(unsigned int key)
+TxExecutor::searchWriteSet(unsigned int key)
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -32,7 +32,7 @@ Transaction::searchWriteSet(unsigned int key)
 }
 
 template <typename T> T*
-Transaction::searchRLL(unsigned int key)
+TxExecutor::searchRLL(unsigned int key)
 {
   // will do : binary search
   for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
@@ -43,7 +43,7 @@ Transaction::searchRLL(unsigned int key)
 }
 
 void
-Transaction::removeFromCLL(unsigned int key)
+TxExecutor::removeFromCLL(unsigned int key)
 {
   int ctr = 0;
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
@@ -55,7 +55,7 @@ Transaction::removeFromCLL(unsigned int key)
 }
 
 void
-Transaction::begin()
+TxExecutor::begin()
 {
   this->status = TransactionStatus::inFlight;
   this->max_rset.obj = 0;
@@ -65,7 +65,7 @@ Transaction::begin()
 }
 
 unsigned int
-Transaction::read(unsigned int key)
+TxExecutor::read(unsigned int key)
 {
   unsigned int return_val;
   Tuple *tuple = &Table[key];
@@ -119,7 +119,7 @@ Transaction::read(unsigned int key)
 }
 
 void
-Transaction::write(unsigned int key, unsigned int val)
+TxExecutor::write(unsigned int key, unsigned int val)
 {
   // tuple exists in write set.
   WriteElement *inw = searchWriteSet(key);
@@ -148,7 +148,7 @@ Transaction::write(unsigned int key, unsigned int val)
 }
 
 void
-Transaction::lock(Tuple *tuple, bool mode)
+TxExecutor::lock(Tuple *tuple, bool mode)
 {
   unsigned int vioctr = 0;
   unsigned int threshold;
@@ -326,7 +326,7 @@ Transaction::lock(Tuple *tuple, bool mode)
 }
 
 void
-Transaction::construct_RLL()
+TxExecutor::construct_RLL()
 {
   Tuple *tuple;
   RLL.clear();
@@ -395,7 +395,7 @@ Transaction::construct_RLL()
 }
 
 bool
-Transaction::commit()
+TxExecutor::commit()
 {
   Tuple *tuple;
   Tidword expected, desired;
@@ -448,7 +448,7 @@ Transaction::commit()
 }
 
 void
-Transaction::abort()
+TxExecutor::abort()
 {
   //unlock CLL
   unlockCLL();
@@ -461,7 +461,7 @@ Transaction::abort()
 }
 
 void
-Transaction::unlockCLL()
+TxExecutor::unlockCLL()
 {
   Tidword expected, desired;
 
@@ -485,7 +485,7 @@ Transaction::unlockCLL()
 }
 
 void
-Transaction::writePhase()
+TxExecutor::writePhase()
 {
   Tidword tid_a, tid_b, tid_c;
 
@@ -520,7 +520,7 @@ Transaction::writePhase()
 }
 
 void
-Transaction::dispCLL()
+TxExecutor::dispCLL()
 {
   cout << "th " << this->thid << ": CLL: ";
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
@@ -532,7 +532,7 @@ Transaction::dispCLL()
 }
 
 void
-Transaction::dispRLL()
+TxExecutor::dispRLL()
 {
   cout << "th " << this->thid << ": RLL: ";
   for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
@@ -544,7 +544,7 @@ Transaction::dispRLL()
 }
 
 void
-Transaction::dispWS()
+TxExecutor::dispWS()
 {
   cout << "th " << this->thid << ": write set: ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {

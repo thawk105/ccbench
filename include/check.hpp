@@ -5,13 +5,14 @@
 #include <iostream>
 
 static bool
-chkInt(char *arg)
+chkInt(const char *arg)
 {
-    for (uint i=0; i<strlen(arg); ++i) {
-        if (!isdigit(arg[i])) {
-          std::cout << std::string(arg) << " is not a number." << std::endl;
-      exit(0);
-        }
-    }
+  for (uint i=0; i<strlen(arg); ++i) {
+      if (!isdigit(arg[i])) {
+        std::cout << std::string(arg) << " is not a number." << std::endl;
+        exit(0);
+      }
+  }
+
   return true;
 }

@@ -23,7 +23,7 @@ using namespace std;
 
 #define MSK_TID 0b11111111
 
-void Transaction::tbegin(bool ronly)
+void TxExecutor::tbegin(bool ronly)
 {
   if (ronly) this->ronly = true;
   else this->ronly = false;
@@ -65,7 +65,7 @@ void Transaction::tbegin(bool ronly)
 }
 
 int
-Transaction::tread(unsigned int key)
+TxExecutor::tread(unsigned int key)
 {
   //read-own-writes
   //if n E write set
@@ -148,7 +148,7 @@ Transaction::tread(unsigned int key)
 }
 
 void
-Transaction::twrite(unsigned int key,  unsigned int val)
+TxExecutor::twrite(unsigned int key,  unsigned int val)
 {
   //if n E writeSet
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -238,7 +238,7 @@ Transaction::twrite(unsigned int key,  unsigned int val)
 }
 
 bool
-Transaction::validation() 
+TxExecutor::validation() 
 {
   if (continuingCommit < 5) {
     // Two optimizations can add unnecessary overhead under low contention 
@@ -333,7 +333,7 @@ Transaction::validation()
 }
 
 void
-Transaction::swal()
+TxExecutor::swal()
 {
   if (!GROUP_COMMIT) {  //non-group commit
     SwalLock.w_lock();
@@ -376,7 +376,7 @@ Transaction::swal()
 }
 
 void
-Transaction::pwal()
+TxExecutor::pwal()
 {
   if (!GROUP_COMMIT) {
     int i = 0;
@@ -415,7 +415,7 @@ Transaction::pwal()
 }
 
 inline void
-Transaction::cpv()  //commit pending versions
+TxExecutor::cpv()  //commit pending versions
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).newObject->status.store(VersionStatus::committed, std::memory_order_release);
@@ -424,7 +424,7 @@ Transaction::cpv()  //commit pending versions
 }
 
 void
-Transaction::precpv() 
+TxExecutor::precpv() 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).newObject->status.store(VersionStatus::precommitted, std::memory_order_release);
@@ -433,7 +433,7 @@ Transaction::precpv()
 }
   
 void 
-Transaction::gcpv()
+TxExecutor::gcpv()
 {
   if (S_WAL) {
     for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj; ++i) {
@@ -452,7 +452,7 @@ Transaction::gcpv()
 }
 
 void 
-Transaction::earlyAbort()
+TxExecutor::earlyAbort()
 {
   writeSet.clear();
   readSet.clear();
@@ -468,7 +468,7 @@ Transaction::earlyAbort()
 }
 
 void
-Transaction::abort()
+TxExecutor::abort()
 {
   //pending versionのステータスをabortedに変更
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -488,7 +488,7 @@ Transaction::abort()
 }
 
 void
-Transaction::displayWset()
+TxExecutor::displayWset()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     printf("%d ", (*itr).newObject->key);
@@ -497,7 +497,7 @@ Transaction::displayWset()
 }
 
 bool
-Transaction::chkGcpvTimeout()
+TxExecutor::chkGcpvTimeout()
 {
   if (P_WAL) {
     grpcmt_stop = rdtsc();
@@ -520,7 +520,7 @@ Transaction::chkGcpvTimeout()
 }
 
 void 
-Transaction::mainte()
+TxExecutor::mainte()
 {
   //Maintenance
   //Schedule garbage collection
@@ -583,7 +583,7 @@ Transaction::mainte()
 }
 
 void
-Transaction::writePhase()
+TxExecutor::writePhase()
 {
   //early lock release
   //ログを書く前に保有するバージョンステータスをprecommittedにする．

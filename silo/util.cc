@@ -11,15 +11,91 @@
 #include <limits>
 #include <fstream>
 
+#include "../include/check.hpp"
+#include "../include/cache_line_size.hpp"
+#include "../include/debug.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
+
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
 
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+void 
+chkArg(const int argc, char *argv[])
+{
+  if (argc != 11) {
+  cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCK_PER_US EPOCH_TIME EXTIME" << endl << endl;
+
+  cout << "example:./main 1000000 10 24 50 off 0 on 2400 40 3" << endl << endl;
+  cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+  cout << "MAX_OPE(int):    total numbers of operations" << endl;
+  cout << "THREAD_NUM(int): total numbers of thread." << endl;
+  cout << "RRATIO : read ratio [%%]" << endl;
+  cout << "RMW : read modify write. on or off."<< endl;
+  cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+  cout << "YCSB : on or off. switch makeProcedure function." << endl;
+  cout << "CLOCK_PER_US: CPU_MHZ" << endl;
+  cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
+  cout << "EXTIME: execution time." << endl << endl;
+  cout << "Tuple " << sizeof(Tuple) << endl;
+  cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+  exit(0);
+  }
+  chkInt(argv[1]);
+  chkInt(argv[2]);
+  chkInt(argv[3]);
+  chkInt(argv[4]);
+  chkInt(argv[8]);
+  chkInt(argv[9]);
+  chkInt(argv[10]);
+
+  TUPLE_NUM = atoi(argv[1]);
+  MAX_OPE = atoi(argv[2]);
+  THREAD_NUM = atoi(argv[3]);
+  RRATIO = atoi(argv[4]);
+  string argrmw = argv[5];
+  ZIPF_SKEW = atof(argv[6]);
+  string argycsb = argv[7];
+  CLOCK_PER_US = atof(argv[8]);
+  EPOCH_TIME = atoi(argv[9]);
+  EXTIME = atoi(argv[10]);
+  
+  if (RRATIO > 100) {
+    ERR;
+  }
+
+  if (ZIPF_SKEW >= 1) {
+    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+    ERR;
+  }
+
+  if (argycsb == "on")
+    YCSB = true;
+  else if (argycsb == "off")
+    YCSB = false;
+  else
+    ERR;
+
+  if (THREAD_NUM < 2) {
+    printf("One thread is epoch thread, and others are worker threads.\n\
+So you have to set THREAD_NUM >= 2.\n\n");
+  }
+
+  try {
+    if (posix_memalign((void**)&ThLocalEpoch, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;  //[0]は使わない
+    if (posix_memalign((void**)&CTIDW, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR; //[0]は使わない
+  } catch (bad_alloc) {
+    ERR;
+  }
+  //init
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+    ThLocalEpoch[i].obj = 0;
+    CTIDW[i].obj = 0;
+  }
+}
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)

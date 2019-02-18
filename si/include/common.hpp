@@ -3,6 +3,7 @@
 #include <mutex>
 #include <vector>
 
+#include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 
 #include "procedure.hpp"
@@ -28,11 +29,12 @@ GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
 GLOBAL unsigned int RRATIO;
+GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL unsigned int EXTIME;
 // -----
 
-GLOBAL Tuple *Table;
-GLOBAL TransactionTable **TMT;  // Transaction Mapping Table
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL TransactionTable **TMT;  // Transaction Mapping Table

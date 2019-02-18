@@ -10,6 +10,7 @@
 #include "tuple.hpp"
 #include "version.hpp"
 
+#include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
@@ -17,18 +18,18 @@
 
 GLOBAL std::atomic<unsigned int> Running(0);
 GLOBAL std::atomic<bool> Finish(false);
-GLOBAL std::atomic<uint64_t> MinRts(0);
-GLOBAL std::atomic<uint64_t> MinWts(0);
-GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp(0);
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinRts(0);
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinWts(0);
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp(0);
 
 #else
   #define GLOBAL extern
 
 GLOBAL std::atomic<unsigned int> Running;
 GLOBAL std::atomic<bool> Finish;
-GLOBAL std::atomic<uint64_t> MinRts;
-GLOBAL std::atomic<uint64_t> MinWts;
-GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinRts;
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinWts;
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
 
 #endif
 
@@ -36,6 +37,7 @@ GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
 GLOBAL unsigned int RRATIO;
+GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL bool P_WAL;

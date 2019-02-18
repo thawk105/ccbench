@@ -25,7 +25,7 @@ enum class TransactionStatus : uint8_t {
   abort,
 };
 
-class Transaction {
+class TxExecutor {
 public:
   uint8_t thid;
   TransactionStatus status = TransactionStatus::invalid;
@@ -43,7 +43,7 @@ public:
   uint64_t GCstart, GCstop; // for garbage collection
   uint64_t continuingCommit;
 
-  Transaction(unsigned int thid) {
+  TxExecutor(unsigned int thid) {
     // wait to initialize MinWts
     while(MinWts.load(memory_order_acquire) == 0);
     this->rts = MinWts.load(memory_order_acquire) - 1;

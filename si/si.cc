@@ -24,6 +24,7 @@
 
 using namespace std;
 
+extern void chkArg(const int argc, const char *argv[]);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
@@ -32,95 +33,6 @@ extern void naiveGarbageCollection();
 extern inline uint64_t rdtsc();
 extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
-
-static bool
-chkInt(const char *arg)
-{
-  for (unsigned int i = 0; i < strlen(arg); ++i) {
-    if (!isdigit(arg[i])) {
-      cout << std::string(arg) << " is not a number." << endl;
-      exit(0);
-    }
-  }
-  return true;
-}
-
-static void
-chkArg(const int argc, const char *argv[])
-{
-  if (argc != 9) {
-  //if (argc != 1) {
-    cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl;
-    cout << "example: ./si.exe 200 10 24 50 0 OFF 2400 3" << endl;
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
-    cout << "MAX_OPE(int): total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
-    cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
-    cout << "EXTIME: execution time [sec]" << endl;
-
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "Version " << sizeof(Version) << endl;
-    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-    cout << "TransactionTable " << sizeof(TransactionTable) << endl;
-
-    exit(0);
-  }
-
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[7]);
-  chkInt(argv[8]);
-
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  ZIPF_SKEW = atof(argv[5]);
-  string argst = argv[6];
-  CLOCK_PER_US = atof(argv[7]);
-  EXTIME = atoi(argv[8]);
-
-  if (THREAD_NUM < 2) {
-    cout << "1 thread is leader thread. \nthread number 1 is no worker thread, so exit." << endl;
-    ERR;
-  }
-  if (RRATIO > 100) {
-    cout << "rratio [%%] must be 0 ~ 100" << endl;
-    ERR;
-  }
-
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
-    ERR;
-  }
-
-  if (argst == "ON")
-    YCSB = true;
-  else if (argst == "OFF")
-    YCSB = false;
-  else 
-    ERR;
-
-  if (CLOCK_PER_US < 100) {
-    cout << "CPU_MHZ is less than 100. are your really?" << endl;
-    ERR;
-  }
-
-  try {
-    TMT = new TransactionTable*[THREAD_NUM];
-  } catch (bad_alloc) {
-    ERR;
-  }
-
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    TMT[i] = new TransactionTable(0, 0);
-  }
-}
 
 static void *
 manager_worker(void *arg)
@@ -194,10 +106,12 @@ RETRY:
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
         if (pro[i].ope == Ope::READ) {
           trans.tread(pro[i].key);
-          //if (trans.status == TransactionStatus::aborted) NNN;
         } else {
-          trans.twrite(pro[i].key, pro[i].val);
-          //if (trans.status == TransactionStatus::aborted) NNN;
+          if (RMW) {
+            trans.tread(pro[i].key);
+            trans.twrite(pro[i].key, pro[i].val);
+          } else
+            trans.twrite(pro[i].key, pro[i].val);
         }
 
         if (trans.status == TransactionStatus::aborted) {
