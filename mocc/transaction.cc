@@ -98,11 +98,14 @@ Transaction::read(unsigned int key)
   for (;;) {
     expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 
+#ifdef RWLOCK
     while (expected.lock) {
+#endif // RWLOCK
       // if you wait due to being write-locked, it may occur dead lock.
       // it need to guarantee that this parts definitely progress.
       // So it sholud wait expected.lock because it will be released definitely.
       //
+      // if expected.lock raise, opponent worker entered pre-commit phase.
       expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     }
 
@@ -111,7 +114,7 @@ Transaction::read(unsigned int key)
     if (expected == desired) break;
   }
 
-  readSet.push_back(ReadElement(expected, key, return_val));
+  readSet.emplace_back(expected, key, return_val);
   return return_val;
 }
 
@@ -147,8 +150,6 @@ Transaction::write(unsigned int key, unsigned int val)
 void
 Transaction::lock(Tuple *tuple, bool mode)
 {
-  // lock exists in CLL (current lock list)
-  sort(CLL.begin(), CLL.end());
   unsigned int vioctr = 0;
   unsigned int threshold;
   bool upgrade = false;
@@ -161,6 +162,8 @@ Transaction::lock(Tuple *tuple, bool mode)
   // MQLOCK : アップグレード機能が無いので，不要．
   // reader ロックを解放して，CLL から除去して，writer ロックをかける．
 
+  // lock exists in CLL (current lock list)
+  sort(CLL.begin(), CLL.end());
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
     // lock already exists in CLL 
     //    && its lock mode is equal to needed mode or it is stronger than needed mode.
@@ -263,12 +266,16 @@ Transaction::lock(Tuple *tuple, bool mode)
     // not in canonical mode. restore.
     for (auto itr = CLL.begin() + (CLL.size() - vioctr); itr != CLL.end(); ++itr) {
 #ifdef RWLOCK
-      if ((*itr).mode) (*itr).lock->w_unlock();
+      if ((*itr).mode) {
+        (*itr).lock->w_unlock();
+      }
       else (*itr).lock->r_unlock();
 #endif // RWLOCK
 
 #ifdef MQLOCK
-      if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum, tuple->key);
+      if ((*itr).mode) {
+        (*itr).lock->release_writer_lock(this->locknum, tuple->key);
+      }
       else (*itr).lock->release_reader_lock(this->locknum, tuple->key);
 #endif // MQLOCK
     }
@@ -283,27 +290,35 @@ Transaction::lock(Tuple *tuple, bool mode)
     if ((*itr).key <= threshold) continue;
     if ((*itr).key < tuple->key) {
 #ifdef RWLOCK
-      if ((*itr).mode) (*itr).lock->w_lock();
+      if ((*itr).mode) {
+        (*itr).lock->w_lock();
+      }
       else (*itr).lock->r_lock();
 #endif // RWLOCK
 
 #ifdef MQLOCK
-      if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum, tuple->key);
-      else (*itr).lock->release_reader_lock(this->locknum, tuple->key);
+      if ((*itr).mode) {
+        (*itr).lock->acquire_writer_lock(this->locknum, tuple->key);
+      }
+      else (*itr).lock->acquire_reader_lock(this->locknum, tuple->key);
 #endif // MQLOCK
       CLL.push_back(*itr);
     } else break;
   }
 
 #ifdef RWLOCK
-  if (mode) tuple->rwlock.w_lock(); 
+  if (mode) {
+    tuple->rwlock.w_lock(); 
+  }
   else tuple->rwlock.r_lock();
   CLL.push_back(LockElement<RWLock>(tuple->key, &(tuple->rwlock), mode));
   return;
 #endif // RWLOCK
 
 #ifdef MQLOCK
-  if (mode) tuple->mqlock.acquire_writer_lock(this->locknum, tuple->key, false);
+  if (mode) {
+    tuple->mqlock.acquire_writer_lock(this->locknum, tuple->key, false);
+  }
   else tuple->mqlock.acquire_reader_lock(this->locknum, tuple->key, false);
   CLL.push_back(LockElement<MQLock>(tuple->key, &(tuple->mqlock), mode));
   return;
@@ -389,6 +404,7 @@ Transaction::commit()
   sort(writeSet.begin(), writeSet.end());
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     tuple = &Table[(*itr).key];
+
     lock(tuple, true);
     if (this->status == TransactionStatus::aborted) {
       return false;
@@ -412,7 +428,9 @@ Transaction::commit()
     }
 
     // Silo protocol
+#ifdef RWLOCK
     if (tuple->rwlock.counter.load(memory_order_acquire) == -1) {
+#endif // RWLOCK
       WriteElement *inW = searchWriteSet((*itr).key);
       //if the rwlock is already acquired and the owner isn't me, abort.
       if (inW == nullptr) {
@@ -423,13 +441,8 @@ Transaction::commit()
     this->max_rset = max(this->max_rset, tuple->tidword);
   }
 
-  // pre-commit
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    expected = Table[(*itr).key].tidword;
-    desired = expected;
-    desired.lock = 1;
-    __atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
-  }
+  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr)
+    Table[(*itr).key].tidword.upLockBits();
 
   return true;
 }
@@ -454,12 +467,17 @@ Transaction::unlockCLL()
 
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 #ifdef RWLOCK
-    if ((*itr).mode) (*itr).lock->w_unlock();
+    if ((*itr).mode) {
+      (*itr).lock->w_unlock();
+    }
     else (*itr).lock->r_unlock();
 #endif // RWLOCK
 
 #ifdef MQLOCK
-    if ((*itr).mode) (*itr).lock->release_writer_lock(this->locknum, (*itr).key);
+    if ((*itr).mode) {
+
+      (*itr).lock->release_writer_lock(this->locknum, (*itr).key);
+    }
     else (*itr).lock->release_reader_lock(this->locknum, (*itr).key);
 #endif
   }

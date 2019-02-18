@@ -22,7 +22,7 @@ GLOBAL uint64_t_64byte GlobalEpoch;
 
 #endif
 
-GLOBAL uint64_t_64byte *ThLocalEpoch;
+alignas(64) GLOBAL uint64_t_64byte *ThLocalEpoch;
 
 // run-time args
 GLOBAL unsigned int TUPLE_NUM;
@@ -38,10 +38,10 @@ GLOBAL unsigned int EXTIME;
 GLOBAL RWLock CtrLock;
 
 // for logging emulation
-GLOBAL uint64_t_64byte *Start;  
-GLOBAL uint64_t_64byte *Stop;
+alignas(64) GLOBAL uint64_t_64byte *Start;  
+alignas(64) GLOBAL uint64_t_64byte *Stop;
 
-GLOBAL Tuple *Table;
+alignas(64) GLOBAL Tuple *Table;
 
 // 下記，ifdef で外すと lock.cc のコードから
 // 参照出来なくてエラーが起きる．

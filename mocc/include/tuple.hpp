@@ -34,6 +34,23 @@ struct Tidword {
   bool operator<(const Tidword& right) const {
     return this->obj < right.obj;
   }
+
+
+  void upLockBits() {
+    Tidword expected, desired;
+    expected = *this;
+    desired = expected;
+    desired.lock = 1;
+    __atomic_store_n(&(this->obj), desired.obj, __ATOMIC_RELEASE);
+  }
+
+  void downLockBits() {
+    Tidword expected, desired;
+    expected = *this;
+    desired = expected;
+    desired.lock = 0;
+    __atomic_store_n(&(this->obj), desired.obj, __ATOMIC_RELEASE);
+  }
 };
 
 // 32bit temprature, 32bit epoch
