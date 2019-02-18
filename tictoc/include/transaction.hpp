@@ -25,8 +25,6 @@ public:
   int thid;
   uint64_t commit_ts;
   uint64_t appro_commit_ts;
-  uint64_t rtsudctr;
-  uint64_t rts_non_udctr; //read timestamp non update counter
 
   TransactionStatus status;
   vector<SetElement> readSet;
@@ -40,8 +38,6 @@ public:
     cll.reserve(MAX_OPE);
 
     this->thid = thid;
-    this->rtsudctr = 0;
-    this->rts_non_udctr = 0;
   }
 
   void tbegin();

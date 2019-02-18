@@ -16,15 +16,11 @@
   #define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
-GLOBAL std::atomic<uint64_t> Rtsudctr(0);
-GLOBAL std::atomic<uint64_t> Rts_non_udctr(0);
 
 #else
   #define GLOBAL extern
 
 GLOBAL std::atomic<unsigned int> Running;
-GLOBAL std::atomic<uint64_t> Rtsudctr;
-GLOBAL std::atomic<uint64_t> Rts_non_udctr;
 
 #endif
 
@@ -37,6 +33,4 @@ GLOBAL bool YCSB;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL unsigned int EXTIME;
 
-GLOBAL Procedure **Pro;
-
-GLOBAL Tuple *Table;
+alignas(64) GLOBAL Tuple *Table;

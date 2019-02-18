@@ -27,7 +27,6 @@ using namespace std;
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void displayDB();
 extern void displayPRO();
-extern void displayRtsudRate();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
@@ -223,7 +222,6 @@ main(int argc, char *argv[])
 
   rsobject.displayTPS();
   //rsobject.displayAbortRate();
-  //displayRtsudRate();
 
   return 0;
 }

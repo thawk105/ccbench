@@ -79,15 +79,6 @@ displayPRO(Procedure *pro)
 }
 
 void
-displayRtsudRate()
-{
-  // read timestamp update rate
-  long double sum(Rtsudctr + Rts_non_udctr), ud(Rtsudctr);
-  cout << "Read timestamp update rate: ";
-  cout << ud / sum << endl;
-}
-
-void
 makeDB() 
 {
   Tuple *tmp;
