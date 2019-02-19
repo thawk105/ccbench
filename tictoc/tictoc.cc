@@ -24,6 +24,7 @@
 
 using namespace std;
 
+extern void chkArg(const int argc, char *argv[]);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void displayDB();
 extern void displayPRO();
@@ -32,75 +33,6 @@ extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
-
-static bool
-chkInt(char *arg)
-{
-    for (uint i=0; i<strlen(arg); ++i) {
-        if (!isdigit(arg[i])) {
-      cout << std::string(arg) << " is not a number." << endl;
-      exit(0);
-        }
-    }
-  return true;
-}
-
-static void 
-chkArg(const int argc, char *argv[])
-{
-  if (argc != 9) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO ZIPF_SKEW YCSB CLOCK_PER_US EXTIME" << endl << endl;
-
-    cout << "example:./main 200 10 24 50 0 ON 2400 3" << endl << endl;
-
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
-    cout << "MAX_OPE(int):    total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of thread." << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : ON or OFF. switch makeProcedure function." << endl;
-    cout << "CLOCK_PER_US: CPU_MHZ" << endl;
-    cout << "EXTIME: execution time." << endl << endl;
-
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-    exit(0);
-  }
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[7]);
-  chkInt(argv[8]);
-
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  ZIPF_SKEW = atof(argv[5]);
-  string argycsb = argv[6];
-  CLOCK_PER_US = atof(argv[7]);
-  EXTIME = atoi(argv[8]);
-
-  if (RRATIO > 100) {
-    cout << "rratio must be 0 ~ 10" << endl;
-    ERR;
-  }
-
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
-    ERR;
-  }
-
-  if (argycsb == "ON")
-    YCSB = true;
-  else if (argycsb == "OFF")
-    YCSB = false;
-  else
-    ERR;
-
-  return;
-}
 
 static void *
 worker(void *arg)
@@ -121,8 +53,17 @@ worker(void *arg)
   if (*myid == 0) rsobject.Bgn = rdtsc();
 
   try {
-    //start work(transaction)
     for (;;) {
+      if (YCSB)
+        makeProcedure(pro, rnd, zipf);
+      else
+        makeProcedure(pro, rnd);
+
+RETRY:
+
+      trans.tbegin();
+
+      // finish judge
       if (*myid == 0) {
         rsobject.End = rdtsc();
         if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME*1000*1000 * CLOCK_PER_US)) {
@@ -138,18 +79,8 @@ worker(void *arg)
           return nullptr;
         }
       }
+      // -----
 
-      //transaction begin
-      //Read phase
-
-      if (YCSB)
-        makeProcedure(pro, rnd, zipf);
-      else
-        makeProcedure(pro, rnd);
-
-      asm volatile ("" ::: "memory");
-RETRY:
-      trans.tbegin();
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
         if (pro[i].ope == Ope::READ) {
           trans.tread(pro[i].key);
@@ -158,9 +89,17 @@ RETRY:
             ++rsobject.localAbortCounts;
             goto RETRY;
           }
-        } else {
-          trans.twrite(pro[i].key, pro[i].val);
         } 
+        else if (pro[i].ope == Ope::WRITE) {
+          if (RMW) {
+            trans.tread(pro[i].key);
+            trans.twrite(pro[i].key, pro[i].val);
+          }
+          else
+            trans.twrite(pro[i].key, pro[i].val);
+        }
+        else
+          ERR;
       }
       
       //Validation phase

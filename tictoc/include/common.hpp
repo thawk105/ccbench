@@ -28,6 +28,7 @@ GLOBAL unsigned int TUPLE_NUM;
 GLOBAL unsigned int MAX_OPE;
 GLOBAL unsigned int THREAD_NUM;
 GLOBAL unsigned int RRATIO;
+GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL uint64_t CLOCK_PER_US;

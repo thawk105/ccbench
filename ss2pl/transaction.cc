@@ -106,6 +106,7 @@ Transaction::twrite(unsigned int key, unsigned int val)
       for (auto lItr = r_lockList.begin(); lItr != r_lockList.end(); ++lItr) {
         if (*lItr == &(Table[key].lock)) {
           r_lockList.erase(lItr);
+          w_lockList.emplace_back(&Table[key % TUPLE_NUM].lock);
           writeSet.emplace_back(key, val);
           break;
         }

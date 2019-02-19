@@ -56,9 +56,17 @@ worker(void *arg)
   try {
     //start work (transaction)
     for (;;) {
-      //End judgment
+      if (YCSB) 
+        makeProcedure(pro, rnd, zipf);
+      else
+        makeProcedure(pro, rnd);
 RETRY:
+      trans.tbegin();
+
+      //End judgment
       if (*myid == 0) {
+
+        // finish judge
         rsobject.End = rdtsc();
         if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
           rsobject.Finish.store(true, std::memory_order_release);
@@ -74,12 +82,6 @@ RETRY:
         }
       }
       //-----
-      if (YCSB) 
-        makeProcedure(pro, rnd, zipf);
-      else
-        makeProcedure(pro, rnd);
-      trans.tbegin();
-      //transaction begin
       
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
         if (pro[i].ope == Ope::READ) {
@@ -93,6 +95,8 @@ RETRY:
           else
             trans.twrite(pro[i].key, pro[i].val);
         }
+        else
+          ERR;
 
         if (trans.status == TransactionStatus::aborted) {
           trans.abort();
@@ -152,6 +156,7 @@ main(const int argc, const char *argv[])
 
   rsobject.displayTPS();
   //rsobject.displayAbortRate();
+  //rsobject.displayAbortCounts();
 
   return 0;
 }

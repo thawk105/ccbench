@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 
+#include "../include/check.hpp"
 #include "../include/inline.hpp"
 #include "../include/debug.hpp"
 #include "../include/random.hpp"
@@ -22,6 +23,72 @@
 #include "include/tuple.hpp"
 
 using namespace std;
+
+void 
+chkArg(const int argc, char *argv[])
+{
+  if (argc != 10) {
+    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCK_PER_US EXTIME" << endl << endl;
+
+    cout << "example:./main 200 10 24 50 on 0 on 2400 3" << endl << endl;
+
+    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+    cout << "MAX_OPE(int):    total numbers of operations" << endl;
+    cout << "THREAD_NUM(int): total numbers of thread." << endl;
+    cout << "RRATIO : read ratio [%%]" << endl;
+    cout << "RMW : read modify write. on or off." << endl;
+    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
+    cout << "YCSB : on or off. switch makeProcedure function." << endl;
+    cout << "CLOCK_PER_US: CPU_MHZ" << endl;
+    cout << "EXTIME: execution time." << endl << endl;
+
+    cout << "Tuple " << sizeof(Tuple) << endl;
+    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+    exit(0);
+  }
+  chkInt(argv[1]);
+  chkInt(argv[2]);
+  chkInt(argv[3]);
+  chkInt(argv[4]);
+  chkInt(argv[8]);
+  chkInt(argv[9]);
+
+  TUPLE_NUM = atoi(argv[1]);
+  MAX_OPE = atoi(argv[2]);
+  THREAD_NUM = atoi(argv[3]);
+  RRATIO = atoi(argv[4]);
+  string argrmw = argv[5];
+  ZIPF_SKEW = atof(argv[6]);
+  string argycsb = argv[7];
+  CLOCK_PER_US = atof(argv[8]);
+  EXTIME = atoi(argv[9]);
+
+  if (RRATIO > 100) {
+    cout << "rratio must be 0 ~ 10" << endl;
+    ERR;
+  }
+
+  if (argrmw == "on")
+    RMW = true;
+  else if (argrmw == "off")
+    RMW = false;
+  else
+    ERR;
+
+  if (ZIPF_SKEW >= 1) {
+    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+    ERR;
+  }
+
+  if (argycsb == "on")
+    YCSB = true;
+  else if (argycsb == "off")
+    YCSB = false;
+  else
+    ERR;
+
+  return;
+}
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
