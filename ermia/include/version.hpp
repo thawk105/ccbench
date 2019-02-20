@@ -77,7 +77,6 @@ struct Psstamp {
 
 class Version {
 public:
-  unsigned int val;
   std::atomic<uint32_t> cstamp;       // Version creation stamp, c(V)
   //std::atomic<uint32_t> pstamp;       // Version access stamp, η(V)
   //std::atomic<uint32_t> sstamp;       // Version successor stamp, pi(V)
@@ -87,7 +86,9 @@ public:
 
   std::atomic<uint64_t> readers;  // summarize all of V's readers.
   std::atomic<VersionStatus> status;
-  int8_t padding[23];
+  int8_t padding[27];
+
+  char val[VAL_SIZE] = {};
 
   Version() {
     psstamp.init(0, UINT32_MAX);

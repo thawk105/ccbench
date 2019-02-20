@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include <atomic>
 #include <algorithm>
 #include <bitset>
@@ -16,7 +18,7 @@ using namespace std;
 
 inline
 SetElement *
-Transaction::searchReadSet(unsigned int key) 
+TxExecutor::searchReadSet(unsigned int key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -27,7 +29,7 @@ Transaction::searchReadSet(unsigned int key)
 
 inline
 SetElement *
-Transaction::searchWriteSet(unsigned int key) 
+TxExecutor::searchWriteSet(unsigned int key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -37,7 +39,7 @@ Transaction::searchWriteSet(unsigned int key)
 }
 
 void
-Transaction::tbegin()
+TxExecutor::tbegin()
 {
   TransactionTable *newElement, *tmt;
 
@@ -75,38 +77,8 @@ Transaction::tbegin()
   status = TransactionStatus::inFlight;
 }
 
-inline
-void
-Transaction::upReadersBits(Version *ver)
-{
-  uint64_t expected, desired;
-  for (;;) {
-    expected = ver->readers.load(memory_order_acquire);
-RETRY_TREAD:
-    if (expected & (1<<thid)) break;
-    desired = expected | (1<<thid);
-    if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-    else goto RETRY_TREAD;
-  }
-}
-
-inline
-void
-Transaction::downReadersBits(Version *ver)
-{
-  uint64_t expected, desired;
-  for (;;) {
-    expected = ver->readers.load(memory_order_acquire);
-RETRY_TREAD:
-    if (!(expected & (1<<thid))) break;
-    desired = expected & ~(1<<thid);
-    if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
-    else goto RETRY_TREAD;
-  }
-}
-
-int
-Transaction::ssn_tread(unsigned int key)
+char *
+TxExecutor::ssn_tread(unsigned int key)
 {
   //safe retry property
   
@@ -154,12 +126,12 @@ Transaction::ssn_tread(unsigned int key)
 }
 
 void
-Transaction::ssn_twrite(unsigned int key, unsigned int val)
+TxExecutor::ssn_twrite(unsigned int key)
 {
   // if it already wrote the key object once.
   SetElement *inW = searchWriteSet(key);
   if (inW) {
-    inW->ver->val = val;
+    memcpy(inW->ver->val, writeVal, VAL_SIZE);
     return;
   }
 
@@ -211,7 +183,7 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
     desired->committed_prev = vertmp;
     if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
-  desired->val = val;
+  memcpy(desired->val, writeVal, VAL_SIZE);
 
   //ver->committed_prev->sstamp に TID を入れる
   uint64_t tmpTID = thid;
@@ -237,7 +209,7 @@ Transaction::ssn_twrite(unsigned int key, unsigned int val)
 }
 
 void
-Transaction::ssn_commit()
+TxExecutor::ssn_commit()
 {
   this->status = TransactionStatus::committing;
   TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
@@ -312,7 +284,7 @@ Transaction::ssn_commit()
 }
 
 void
-Transaction::ssn_parallel_commit()
+TxExecutor::ssn_parallel_commit()
 {
   this->status = TransactionStatus::committing;
   TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
@@ -446,7 +418,7 @@ Transaction::ssn_parallel_commit()
 }
 
 void
-Transaction::abort()
+TxExecutor::abort()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(1));
@@ -463,7 +435,7 @@ Transaction::abort()
 }
 
 void
-Transaction::verify_exclusion_or_abort()
+TxExecutor::verify_exclusion_or_abort()
 {
   if (this->pstamp >= this->sstamp) {
     this->status = TransactionStatus::aborted;
@@ -473,7 +445,7 @@ Transaction::verify_exclusion_or_abort()
 }
 
 void
-Transaction::mainte()
+TxExecutor::mainte()
 {
   gcstop = rdtsc();
   if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCK_PER_US)) {
@@ -490,7 +462,7 @@ Transaction::mainte()
 }
 
 void
-Transaction::dispWS()
+TxExecutor::dispWS()
 {
   cout << "th " << this->thid << " : write set : ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -500,7 +472,7 @@ Transaction::dispWS()
 }
 
 void
-Transaction::dispRS()
+TxExecutor::dispRS()
 {
   cout << "th " << this->thid << " : read set : ";
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {

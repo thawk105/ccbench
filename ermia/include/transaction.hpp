@@ -4,10 +4,11 @@
 #include <map>
 #include <vector>
 
+#include "../../include/util.hpp"
+
 #include "garbageCollection.hpp"
 #include "result.hpp"
 #include "version.hpp"
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 // forward declaration
 class TransactionTable;
@@ -21,7 +22,7 @@ enum class TransactionStatus : uint8_t {
 
 using namespace std;
 
-class Transaction {
+class TxExecutor {
 public:
   uint32_t cstamp = 0;  // Transaction end time, c(T) 
   TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
@@ -38,20 +39,22 @@ public:
   Result rsobject;
   uint64_t gcstart, gcstop; // counter for garbage collection
 
-  Transaction(uint8_t thid, unsigned int max_ope) {
-    this->thid = thid;
+  char writeVal[VAL_SIZE] = {};
+
+  TxExecutor(uint8_t newThid, unsigned int max_ope) {
+    this->thid = newThid;
     gcobject.thid = thid;
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);
+
+    writeValGenerator(writeVal, VAL_SIZE, thid);
   }
 
   SetElement *searchReadSet(unsigned int key);
   SetElement *searchWriteSet(unsigned int key);
   void tbegin();
-  void upReadersBits(Version *ver);
-  void downReadersBits(Version *ver);
-  int ssn_tread(unsigned int key);
-  void ssn_twrite(unsigned int key, unsigned int val);
+  char* ssn_tread(unsigned int key);
+  void ssn_twrite(unsigned int key);
   void ssn_commit();
   void ssn_parallel_commit();
   void abort();
@@ -59,6 +62,30 @@ public:
   void verify_exclusion_or_abort();
   void dispWS();
   void dispRS();
+
+  void upReadersBits(Version *ver) {
+    uint64_t expected, desired;
+    for (;;) {
+      expected = ver->readers.load(memory_order_acquire);
+RETRY_URB:
+      if (expected & (1<<thid)) break;
+      desired = expected | (1<<thid);
+      if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+      else goto RETRY_URB;
+    }
+  }
+
+  void downReadersBits(Version *ver) {
+    uint64_t expected, desired;
+    for (;;) {
+      expected = ver->readers.load(memory_order_acquire);
+RETRY_DRB:
+      if (!(expected & (1<<thid))) break;
+      desired = expected & ~(1<<thid);
+      if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+      else goto RETRY_DRB;
+    }
+  }
 };
 
 // for MVCC SSN

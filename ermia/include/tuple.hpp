@@ -8,8 +8,11 @@ class Tuple {
 public: 
   std::atomic<Version *> latest;
   std::atomic<uint32_t> min_cstamp;
-  unsigned int key;
   std::atomic<uint8_t> gClock;
+  int8_t pad[3] = {};
+  // size to here is 16 bytes
+
+  int8_t keypad[KEY_SIZE] = {}; // virtual key. it can assume many key size.
 
   Tuple() {
     latest.store(nullptr);

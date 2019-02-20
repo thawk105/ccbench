@@ -131,9 +131,9 @@ displayDB()
   Version *version;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tuple = &Table[i % TUPLE_NUM];
+    tuple = &Table[i];
     cout << "------------------------------" << endl; // - 30
-    cout << "key: " << tuple->key << endl;
+    cout << "key: " << i << endl;
 
     version = tuple->latest.load(std::memory_order_acquire);
     while (version != NULL) {
@@ -203,7 +203,6 @@ makeDB()
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tmp = &Table[i];
     tmp->min_cstamp = 0;
-    tmp->key = i;
     verTmp = tmp->latest.load(std::memory_order_acquire);
     verTmp->cstamp = 0;
     //verTmp->pstamp = 0;
@@ -212,7 +211,6 @@ makeDB()
     verTmp->psstamp.sstamp = UINT32_MAX & ~(1);
     // cstamp, sstamp の最下位ビットは TID フラグ
     // 1の時はTID, 0の時はstamp
-    verTmp->val = rnd.next() % TUPLE_NUM;
     verTmp->prev = nullptr;
     verTmp->committed_prev = nullptr;
     verTmp->status.store(VersionStatus::committed, std::memory_order_release);

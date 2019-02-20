@@ -72,7 +72,7 @@ static void *
 worker(void *arg)
 {
   int *myid = (int *)arg;
-  Transaction trans(*myid, MAX_OPE);
+  TxExecutor trans(*myid, MAX_OPE);
   Procedure pro[MAX_OPE];
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -82,7 +82,7 @@ worker(void *arg)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
   waitForReadyOfAllThread();
-  
+
   trans.gcstart = rdtsc();
   //start work (transaction)
   try {
@@ -113,9 +113,9 @@ RETRY:
         } else {
           if (RMW) {
             trans.ssn_tread(pro[i].key);
-            trans.ssn_twrite(pro[i].key, pro[i].val);
+            trans.ssn_twrite(pro[i].key);
           } else 
-            trans.ssn_twrite(pro[i].key, pro[i].val);
+            trans.ssn_twrite(pro[i].key);
         }
 
         if (trans.status == TransactionStatus::aborted) {

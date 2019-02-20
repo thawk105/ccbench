@@ -146,7 +146,7 @@ TxExecutor::tread(unsigned int key)
     return version->val;
   }
 
-  readSet.push_back(ReadElement(key, version));
+  readSet.emplace_back(key, version);
   return version->val;
 }
 
@@ -236,7 +236,7 @@ TxExecutor::twrite(unsigned int key)
 
   Version *newObject;
   newObject = new Version(0, this->wts.ts, writeVal);
-  writeSet.push_back(WriteElement(key, version, newObject));
+  writeSet.emplace_back(key, version, newObject);
   return;
 }
 

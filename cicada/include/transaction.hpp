@@ -10,6 +10,7 @@
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 #include "../../include/debug.hpp"
+#include "../../include/util.hpp"
 
 #include "common.hpp"
 #include "procedure.hpp"
@@ -68,28 +69,10 @@ public:
     continuingCommit = 0;
     rsobject.thid = thid;
 
+    writeValGenerator(writeVal, VAL_SIZE, thid);
+
     start = rdtsc();
     GCstart = start;
-
-    // generate write value for this thread.
-    int num(thid), digit(0);
-    while (num != 0) {
-      num /= 10;
-      ++digit;
-    }
-    char thidString[digit];
-    sprintf(thidString, "%d", thid); 
-    for (int i = 0; i < VAL_SIZE;) {
-      for (int j = 0; j < digit; ++j) {
-        writeVal[i] = thidString[j];
-        ++i;
-        if (i == VAL_SIZE - 2) {
-          break;
-        }
-      }
-    }
-    writeVal[VAL_SIZE - 1] = '\0';
-    // -----
   }
 
   void tbegin(bool ronly);

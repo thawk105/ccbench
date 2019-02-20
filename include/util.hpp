@@ -37,3 +37,28 @@ private:
 public:
   explicit LibcError(int errnum = errno, const std::string &msg = "libc_error:") : errnum_(errnum), str_(generateMessage(errnum, msg)) {}
 };
+
+static
+void
+writeValGenerator(char *writeVal, int val_size, int thid)
+{
+  // generate write value for this thread.
+  int num(thid), digit(0);
+  while (num != 0) {
+    num /= 10;
+    ++digit;
+  }
+  char thidString[digit];
+  sprintf(thidString, "%d", thid); 
+  for (int i = 0; i < val_size;) {
+    for (int j = 0; j < digit; ++j) {
+      writeVal[i] = thidString[j];
+      ++i;
+      if (i == val_size - 2) {
+        break;
+      }
+    }
+  }
+  writeVal[val_size - 1] = '\0';
+  // -----
+}
