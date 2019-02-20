@@ -10,9 +10,11 @@ class Tuple {
 public:
   atomic<Version *> latest;
   atomic<uint64_t> min_wts;
-  unsigned int key;
   atomic<uint8_t> gClock;
-  int8_t pad[43];
+  int8_t pad[7];
+  // size to here is 24 bytes
+
+  int8_t keypad[KEY_SIZE]; // virtual key. it can assume many key size.
 
   Tuple() {
     latest.store(nullptr);

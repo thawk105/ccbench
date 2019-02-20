@@ -1,18 +1,21 @@
-#include <algorithm>
+
+#include <string.h> // memcpy
 #include <sys/time.h>
 #include <stdio.h>
+#include <xmmintrin.h>
+
+#include <algorithm>
 #include <fstream>
 #include <string>
 #include <vector>
-#include <xmmintrin.h>
+
+#include "../include/debug.hpp"
+#include "../include/tsc.hpp"
 
 #include "include/transaction.hpp"
 #include "include/common.hpp"
 #include "include/timeStamp.hpp"
 #include "include/version.hpp"
-
-#include "../include/debug.hpp"
-#include "../include/tsc.hpp"
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
@@ -64,7 +67,7 @@ void TxExecutor::tbegin(bool ronly)
   */
 }
 
-int
+char *
 TxExecutor::tread(unsigned int key)
 {
   //read-own-writes
@@ -111,7 +114,7 @@ TxExecutor::tread(unsigned int key)
             spinstop = rdtsc();
             if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
               earlyAbort();
-              return -1;
+              return nullptr;
             }
             loadst = version->status.load(memory_order_acquire);
           }
@@ -148,12 +151,12 @@ TxExecutor::tread(unsigned int key)
 }
 
 void
-TxExecutor::twrite(unsigned int key,  unsigned int val)
+TxExecutor::twrite(unsigned int key)
 {
   //if n E writeSet
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) {
-      (*itr).newObject->val = val;
+      memcpy((*itr).newObject->val, writeVal, VAL_SIZE);
       return;
     }
   }
@@ -232,7 +235,7 @@ TxExecutor::twrite(unsigned int key,  unsigned int val)
   }
 
   Version *newObject;
-  newObject = new Version(0, this->wts.ts, key, val);
+  newObject = new Version(0, this->wts.ts, writeVal);
   writeSet.push_back(WriteElement(key, version, newObject));
   return;
 }
@@ -491,7 +494,7 @@ void
 TxExecutor::displayWset()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    printf("%d ", (*itr).newObject->key);
+    printf("%d ", (*itr).key);
   }
   cout << endl;
 }

@@ -1,8 +1,10 @@
 #pragma once
 
+#include <string.h> // memcpy
+#include <sys/time.h>
+
 #include <atomic>
 #include <cstdint>
-#include <sys/time.h>
 #include "timeStamp.hpp"
 
 using namespace std;
@@ -20,25 +22,22 @@ class Version {
 public:
   atomic<uint64_t> rts;
   atomic<uint64_t> wts;
-  
-  unsigned int key; //log what is this key.
-  unsigned int val;     
   atomic<Version *> next;
-
   atomic<VersionStatus> status; //commit record
   int8_t pad[7];
-  int8_t pad2[24];
+  // version size to here is 32 bytes.
+
+  char val[VAL_SIZE] = {};
 
   Version() {
     status.store(VersionStatus::pending, memory_order_release);
     next.store(nullptr, memory_order_release);
   }
 
-  Version(uint64_t rts, uint64_t wts, unsigned int key, unsigned int val) {
+  Version(uint64_t rts, uint64_t wts, char *val) {
     this->rts.store(rts, memory_order_relaxed);
     this->wts.store(wts, memory_order_relaxed);
-    this->key = key;
-    this->val = val;
+    memcpy(this->val, val, VAL_SIZE);
   }
 };
 

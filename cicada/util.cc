@@ -198,7 +198,7 @@ displayDB()
   for (unsigned int i = 0; i < TUPLE_NUM; i++) {
     tuple = &Table[i % TUPLE_NUM];
     cout << "------------------------------" << endl; //-は30個
-    cout << "key: " << tuple->key << endl;
+    cout << "key: " << i << endl;
 
     version = tuple->latest;
     while (version != NULL) {
@@ -299,7 +299,7 @@ displaySLogSet()
     if (S_WAL) {
       SwalLock.w_lock();
       for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj; ++i) {
-        printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key, SLogSet[i]->val);
+        //printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key, SLogSet[i]->val);
       }
       SwalLock.w_unlock();
 
@@ -338,7 +338,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
       pro[i].ope = Ope::WRITE;
     }
     pro[i].key = rnd.next() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
   
   if (ronly) pro[0].ronly = true;
@@ -357,9 +356,7 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
       ronly = false;
       pro[i].ope = Ope::WRITE;
     }
-
     pro[i].key = zipf() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
   
   if (ronly) pro[0].ronly = true;
@@ -389,13 +386,12 @@ makeDB(uint64_t *initial_wts)
   for (unsigned int i = 0; i < TUPLE_NUM; i++) {
     tmp = &Table[i];
     tmp->min_wts = tstmp.ts;
-    tmp->key = i;
     tmp->gClock.store(0, std::memory_order_release);
     verTmp = tmp->latest.load();
     verTmp->wts.store(tstmp.ts, std::memory_order_release);;
     verTmp->status.store(VersionStatus::committed, std::memory_order_release);
-    verTmp->key = i;
-    verTmp->val = rnd.next() % (TUPLE_NUM * 10);
+    verTmp->val[0] = 'a';
+    verTmp->val[1] = '\0';
   }
 }
 

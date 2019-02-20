@@ -119,6 +119,8 @@ worker(void *arg)
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
   waitForReadyOfAllThread();
 
+  //printf("%s\n", trans.writeVal);
+
   try {
     //start work(transaction)
     for (;;) {
@@ -147,9 +149,9 @@ RETRY:
         } else {
           if (RMW) {
             trans.tread(pro[i].key);
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
           } else 
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
         }
 
         if (trans.status == TransactionStatus::abort) {

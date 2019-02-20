@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdio.h>
+
 #include <atomic>
 #include <iostream>
 #include <map>
@@ -27,49 +29,72 @@ enum class TransactionStatus : uint8_t {
 
 class TxExecutor {
 public:
-  uint8_t thid;
   TransactionStatus status = TransactionStatus::invalid;
-  uint64_t rts;
   TimeStamp wts;
-  bool ronly;
   vector<ReadElement> readSet;
   vector<WriteElement> writeSet;
   queue<GCElement> gcq;
   Result rsobject;
 
+  bool ronly;
+  uint8_t thid;
+  uint64_t rts;
   uint64_t start, stop; // for one-sided synchronization
   uint64_t spinstart, spinstop; // for spin-wait
   uint64_t grpcmt_start, grpcmt_stop; // for group commit
   uint64_t GCstart, GCstop; // for garbage collection
   uint64_t continuingCommit;
+  char writeVal[VAL_SIZE] = {};
 
-  TxExecutor(unsigned int thid) {
+  TxExecutor(unsigned int newThid) {
     // wait to initialize MinWts
     while(MinWts.load(memory_order_acquire) == 0);
-    this->rts = MinWts.load(memory_order_acquire) - 1;
-    this->wts.generateTimeStampFirst(thid);
-    this->thid = thid;
-    this->ronly = false;
+    rts = MinWts.load(memory_order_acquire) - 1;
+    wts.generateTimeStampFirst(thid);
+    ronly = false;
+    thid = newThid;
 
-    __atomic_store_n(&(ThreadWtsArray[thid].obj), this->wts.ts, __ATOMIC_RELEASE);
+    __atomic_store_n(&(ThreadWtsArray[thid].obj), wts.ts, __ATOMIC_RELEASE);
     unsigned int expected, desired;
-    do {
-      expected = FirstAllocateTimestamp.load(memory_order_acquire);
+    expected = FirstAllocateTimestamp.load(memory_order_acquire);
+    for (;;) {
       desired = expected + 1;
-    } while (!FirstAllocateTimestamp.compare_exchange_weak(expected, desired, memory_order_acq_rel));
+      if (FirstAllocateTimestamp.compare_exchange_weak(expected, desired, memory_order_acq_rel)) break;
+    }
+
+    readSet.reserve(MAX_OPE);
+    writeSet.reserve(MAX_OPE);
+
+    continuingCommit = 0;
+    rsobject.thid = thid;
 
     start = rdtsc();
     GCstart = start;
-    readSet.reserve(MAX_OPE);
-    writeSet.reserve(MAX_OPE);
-    continuingCommit = 0;
 
-    rsobject.thid = thid;
+    // generate write value for this thread.
+    int num(thid), digit(0);
+    while (num != 0) {
+      num /= 10;
+      ++digit;
+    }
+    char thidString[digit];
+    sprintf(thidString, "%d", thid); 
+    for (int i = 0; i < VAL_SIZE;) {
+      for (int j = 0; j < digit; ++j) {
+        writeVal[i] = thidString[j];
+        ++i;
+        if (i == VAL_SIZE - 2) {
+          break;
+        }
+      }
+    }
+    writeVal[VAL_SIZE - 1] = '\0';
+    // -----
   }
 
   void tbegin(bool ronly);
-  int tread(unsigned int key);
-  void twrite(unsigned int key, unsigned int val);
+  char* tread(unsigned int key);
+  void twrite(unsigned int key);
   bool validation();
   void writePhase();
   void swal();
