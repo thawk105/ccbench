@@ -34,6 +34,8 @@ public:
   Xoroshiro128Plus *rnd;
   int locknum; // corresponding to index of MQLNodeList.
 
+  char writeVal[VAL_SIZE] = {};
+
   TxExecutor(int thid, Xoroshiro128Plus *rnd, int locknum) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
@@ -46,6 +48,8 @@ public:
     max_rset.obj = 0;
     max_wset.obj = 0;
     this->locknum = locknum;
+
+    writeValGenerator(writeVal, VAL_SIZE, thid);
   }
 
   ReadElement *searchReadSet(unsigned int key);

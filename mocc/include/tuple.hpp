@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cstdint>
 
+#include "../../include/util.hpp"
+
 #include "lock.hpp"
 
 #define TEMP_THRESHOLD 5
@@ -83,29 +85,33 @@ struct Epotemp {
 
 class Tuple {
 public:
-  unsigned int key = 0;
-  unsigned int val;
+  char val[VAL_SIZE];
   Tidword tidword;
   Epotemp epotemp;  //  temprature, min 0, max 20
 #ifdef RWLOCK
   RWLock rwlock;  // 4byte
+  char pad[4] = {};
+  // size to here is 32 bytes
 #endif
 #ifdef MQLOCK
   MQLock mqlock;
 #endif
+
+  char keypad[KEY_SIZE];
 };
 
 // use for read-write set
 class ReadElement {
 public:
   Tidword tidword;
-  unsigned int key, val;
+  unsigned int key;
+  char val[VAL_SIZE];
   bool failed_verification;
 
-  ReadElement (Tidword tidword, unsigned int key, unsigned int val) {
+  ReadElement (Tidword tidword, unsigned int key, char *newVal) {
     this->tidword = tidword;
     this->key = key;
-    this->val = val;
+    memcpy(val, newVal, VAL_SIZE);
     this->failed_verification = false;
   }
 
@@ -116,11 +122,12 @@ public:
   
 class WriteElement {
 public:
-  unsigned int key, val;
+  unsigned int key;
+  char val[VAL_SIZE];
 
-  WriteElement(unsigned int key, unsigned int val) {
+  WriteElement(unsigned int key, char *newVal) {
     this->key = key;
-    this->val = val;
+    memcpy(val, newVal, VAL_SIZE);
   }
 
   bool operator<(const WriteElement& right) const {
