@@ -43,10 +43,10 @@ void
 writeValGenerator(char *writeVal, int val_size, int thid)
 {
   // generate write value for this thread.
-  int num(thid), digit(0);
+  int num(thid), digit(1);
   while (num != 0) {
     num /= 10;
-    ++digit;
+    if (num != 0) ++digit;
   }
   char thidString[digit];
   sprintf(thidString, "%d", thid); 

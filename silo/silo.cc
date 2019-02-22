@@ -83,7 +83,6 @@ worker(void *arg)
   rnd.init();
   Procedure pro[MAX_OPE];
   TxnExecutor trans(*myid);
-  Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
   /*
@@ -112,9 +111,9 @@ worker(void *arg)
       asm volatile ("" ::: "memory");
 RETRY:
       trans.tbegin();
-      if (rsobject.Finish.load(memory_order_acquire)) {
-        rsobject.sumUpCommitCounts();
-        rsobject.sumUpAbortCounts();
+      if (trans.rsobject.Finish.load(memory_order_acquire)) {
+        trans.rsobject.sumUpCommitCounts();
+        trans.rsobject.sumUpAbortCounts();
         return nullptr;
       }
 
@@ -126,10 +125,10 @@ RETRY:
         else if (pro[i].ope == Ope::WRITE) {
           if (RMW) {
             trans.tread(pro[i].key);
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
           }
           else
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
         }
         else
           ERR;
@@ -137,10 +136,10 @@ RETRY:
       
       //Validation phase
       if (trans.validationPhase()) {
-        ++rsobject.localCommitCounts;
+        ++trans.rsobject.localCommitCounts;
         trans.writePhase();
       } else {
-        ++rsobject.localAbortCounts;
+        ++trans.rsobject.localAbortCounts;
         trans.abort();
         goto RETRY;
       }

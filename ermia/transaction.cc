@@ -85,9 +85,8 @@ TxExecutor::ssn_tread(unsigned int key)
   //if it already access the key object once.
   // w
   SetElement *inW = searchWriteSet(key);
-  if (inW) {
-    return inW->ver->val;
-  }
+  if (inW) return writeVal;
+  // tanabe の実験ではスレッドごとに書き込む新しい値が決まっている．
 
   SetElement *inR = searchReadSet(key);
   if (inR) {
@@ -114,7 +113,7 @@ TxExecutor::ssn_tread(unsigned int key)
 
   if (ver->psstamp.atomicLoadSstamp() == (UINT64_MAX - 1))
     // no overwrite yet
-    readSet.push_back(SetElement(key, ver));
+    readSet.emplace_back(key, ver);
   else 
     // update pi with r:w edge
     this->sstamp = min(this->sstamp, (ver->psstamp.atomicLoadSstamp() >> 1));
@@ -130,10 +129,10 @@ TxExecutor::ssn_twrite(unsigned int key)
 {
   // if it already wrote the key object once.
   SetElement *inW = searchWriteSet(key);
-  if (inW) {
-    memcpy(inW->ver->val, writeVal, VAL_SIZE);
-    return;
-  }
+  if (inW) return;
+  // tanabe の実験では，スレッドごとに書き込む新しい値が決まっている．
+  // であれば，コミットが確定し，version status を committed にして other worker に visible になるときに
+  // memcpy するのが一番無駄が少ない．
 
   // if v not in t.writes:
   //
@@ -183,7 +182,6 @@ TxExecutor::ssn_twrite(unsigned int key)
     desired->committed_prev = vertmp;
     if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
-  memcpy(desired->val, writeVal, VAL_SIZE);
 
   //ver->committed_prev->sstamp に TID を入れる
   uint64_t tmpTID = thid;
@@ -193,7 +191,7 @@ TxExecutor::ssn_twrite(unsigned int key)
 
   // update eta with w:r edge
   this->pstamp = max(this->pstamp, desired->committed_prev->psstamp.atomicLoadPstamp());
-  writeSet.push_back(SetElement(key, desired));
+  writeSet.emplace_back(key, desired);
   
   //  avoid false positive
   auto itr = readSet.begin();
@@ -273,8 +271,10 @@ TxExecutor::ssn_commit()
   //?*
   
   // status, inFlight -> committed
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) 
+  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+    memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
+  }
 
   this->status = TransactionStatus::committed;
   SsnLock.unlock();
@@ -404,6 +404,7 @@ TxExecutor::ssn_parallel_commit()
     (*itr).ver->committed_prev->psstamp.atomicStoreSstamp(verSstamp);
     (*itr).ver->cstamp.store(verCstamp, memory_order_release);
     (*itr).ver->psstamp.atomicStorePstamp(this->cstamp);
+    memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
     gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, verCstamp));
   }

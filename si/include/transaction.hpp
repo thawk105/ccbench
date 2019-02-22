@@ -4,9 +4,10 @@
 #include <map>
 #include <vector>
 
+#include "../../include/util.hpp"
+
 #include "garbageCollection.hpp"
 #include "version.hpp"
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 // forward declaration
 class TransactionTable;
@@ -20,7 +21,7 @@ enum class TransactionStatus : uint8_t {
 
 using namespace std;
 
-class Transaction {
+class TxExecutor {
 public:
   uint32_t cstamp = 0;  // Transaction end time, c(T) 
   TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
@@ -33,18 +34,21 @@ public:
   uint8_t thid; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
 
-  Transaction(uint8_t thid, unsigned int max_ope) {
-    this->thid = thid;
+  char writeVal[VAL_SIZE] = {};
+
+  TxExecutor(uint8_t newthid, unsigned int max_ope) : thid(newthid) {
     gcobject.thid = thid;
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);
+
+    writeValGenerator(writeVal, VAL_SIZE, thid);
   }
 
   SetElement *searchReadSet(unsigned int key);
   SetElement *searchWriteSet(unsigned int key);
   void tbegin();
-  int tread(unsigned int key);
-  void twrite(unsigned int key, unsigned int val);
+  char* tread(unsigned int key);
+  void twrite(unsigned int key);
   void commit();
   void abort();
   void dispWS();

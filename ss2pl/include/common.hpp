@@ -2,6 +2,7 @@
 
 #include <atomic>
 
+#include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 
 #include "procedure.hpp"
@@ -28,4 +29,4 @@ GLOBAL bool YCSB;
 GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL unsigned int EXTIME;
 
-GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;

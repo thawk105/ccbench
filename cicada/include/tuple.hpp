@@ -11,8 +11,8 @@ public:
   atomic<Version *> latest;
   atomic<uint64_t> min_wts;
   atomic<uint8_t> gClock;
-  int8_t pad[7];
-  // size to here is 24 bytes
+  int8_t pad[8];
+  // size to here is 28 bytes
 
   int8_t keypad[KEY_SIZE]; // virtual key. it can assume many key size.
 

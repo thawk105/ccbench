@@ -41,7 +41,7 @@ worker(void *arg)
   Xoroshiro128Plus rnd;
   rnd.init();
   Procedure pro[MAX_OPE];
-  Transaction trans(*myid);
+  TxExecutor trans(*myid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
@@ -60,7 +60,6 @@ worker(void *arg)
         makeProcedure(pro, rnd);
 
 RETRY:
-
       trans.tbegin();
 
       // finish judge
@@ -93,10 +92,10 @@ RETRY:
         else if (pro[i].ope == Ope::WRITE) {
           if (RMW) {
             trans.tread(pro[i].key);
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
           }
           else
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
         }
         else
           ERR;

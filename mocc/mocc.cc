@@ -121,9 +121,9 @@ RETRY:
         } else {
           if (RMW) {
             trans.read(pro[i].key);
-            trans.write(pro[i].key, pro[i].val);
+            trans.write(pro[i].key);
           } else 
-            trans.write(pro[i].key, pro[i].val);
+            trans.write(pro[i].key);
         }
 
         if (trans.status == TransactionStatus::aborted) {

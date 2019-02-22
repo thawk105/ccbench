@@ -1,7 +1,9 @@
-#include "include/common.hpp"
-#include "include/result.hpp"
+
 #include <iomanip>
 #include <iostream>
+
+#include "include/common.hpp"
+#include "include/result.hpp"
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 

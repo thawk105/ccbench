@@ -118,9 +118,9 @@ displayDB()
   Version *version;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tuple = &Table[i % TUPLE_NUM];
+    tuple = &Table[i];
     cout << "------------------------------" << endl; // - 30
-    cout << "key: " << tuple->key << endl;
+    cout << "key: " << i << endl;
 
     version = tuple->latest.load(std::memory_order_acquire);
     while (version != NULL) {
@@ -188,10 +188,8 @@ makeDB()
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tmp = &Table[i];
     tmp->min_cstamp = 0;
-    tmp->key = i;
     verTmp = tmp->latest.load(std::memory_order_acquire);
     verTmp->cstamp = 0;
-    verTmp->val = rnd.next() % TUPLE_NUM;
     verTmp->prev = nullptr;
     verTmp->committed_prev = nullptr;
     verTmp->status.store(VersionStatus::committed, std::memory_order_release);
@@ -208,7 +206,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
       pro[i].ope = Ope::WRITE;
     
     pro[i].key = rnd.next() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
 }
 
@@ -222,7 +219,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf)
       pro[i].ope = Ope::WRITE;
     
     pro[i].key = zipf() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
 }
 

@@ -46,15 +46,14 @@ TxnExecutor::searchReadSet(unsigned int key)
   return nullptr;
 }
 
-int 
+char*
 TxnExecutor::tread(unsigned int key)
 {
-  int read_value;
   Tuple *tuple = &Table[key];
 
   //w
   WriteElement *inW = searchWriteSet(key);
-  if (inW) return inW->val;
+  if (inW) return writeVal;
 
   //r
   ReadElement *inR = searchReadSet(key);
@@ -77,7 +76,7 @@ TxnExecutor::tread(unsigned int key)
     // omit. because this is implemented by single version
     
     //(c) reads the data
-    read_value = tuple->val;
+    memcpy(returnVal, tuple->val, VAL_SIZE);
 
     //(d) performs a memory fence
     // don't need.
@@ -89,21 +88,17 @@ TxnExecutor::tread(unsigned int key)
     else expected = check;
   }
   
-  //readSet.push_back(ReadElement(key, read_value, expected));
-  readSet.emplace_back(key, read_value, expected); // emplace の方が性能が良い
-  return read_value;
+  readSet.emplace_back(key, returnVal, expected); // emplace の方が性能が良い
+  return returnVal;
 }
 
-void TxnExecutor::twrite(unsigned int key, unsigned int val)
+void 
+TxnExecutor::twrite(unsigned int key)
 {
   WriteElement *inW = searchWriteSet(key);
-  if (inW) {
-    inW->val = val;
-    return;
-  }
+  if (inW) return;
 
-  writeSet.push_back(WriteElement(key, val)); // push の方が性能が良い
-  //writeSet.emplace_back(key, val);
+  writeSet.emplace_back(key); // push の方が性能が良い
   return;
 }
 
@@ -153,7 +148,7 @@ void TxnExecutor::abort()
 void TxnExecutor::wal(uint64_t ctid)
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    LogRecord log(ctid, (*itr).key, (*itr).val);
+    LogRecord log(ctid, (*itr).key, writeVal);
     logSet.push_back(log);
     latestLogHeader.chkSum += log.computeChkSum();
     ++latestLogHeader.logRecNum;
@@ -212,7 +207,7 @@ void TxnExecutor::writePhase()
   //write(record, commit-tid)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //update and unlock
-    Table[(*itr).key].val = (*itr).val;
+    memcpy(Table[(*itr).key].val, writeVal, VAL_SIZE);
     __atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
   }
 

@@ -1,9 +1,12 @@
 #pragma once
 
+#include <vector>
+
+#include "../../include/util.hpp"
+
+#include "common.hpp"
 #include "lock.hpp"
 #include "tuple.hpp"
-#include "common.hpp"
-#include <vector>
 
 using namespace std;
 
@@ -35,6 +38,7 @@ public:
   int locknum; // corresponding to index of MQLNodeList.
 
   char writeVal[VAL_SIZE] = {};
+  char returnVal[VAL_SIZE] = {};
 
   TxExecutor(int thid, Xoroshiro128Plus *rnd, int locknum) {
     readSet.reserve(MAX_OPE);
@@ -57,9 +61,9 @@ public:
   template <typename T> T *searchRLL(unsigned int key);
   void removeFromCLL(unsigned int key);
   void begin();
-  unsigned int read(unsigned int key);
-  void write(unsigned int key, unsigned int val);
-  void lock(Tuple *tuple, bool mode);
+  char* read(unsigned int key);
+  void write(unsigned int key);
+  void lock(unsigned int key, Tuple *tuple, bool mode);
   void construct_RLL(); // invoked on abort;
   void unlockCLL();
   bool commit();

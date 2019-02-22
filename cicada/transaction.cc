@@ -74,7 +74,8 @@ TxExecutor::tread(unsigned int key)
   //if n E write set
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) {
-      return (*itr).newObject->val;
+      return writeVal;
+      // tanabe の実験では，スレッドごとに新しく書く値は決まっている．
     }
   }
   // if n E read set
@@ -156,8 +157,8 @@ TxExecutor::twrite(unsigned int key)
   //if n E writeSet
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) {
-      memcpy((*itr).newObject->val, writeVal, VAL_SIZE);
       return;
+      // tanabe の実験では，スレッドごとに新たに書く値が決まっている．
     }
   }
     
@@ -235,7 +236,7 @@ TxExecutor::twrite(unsigned int key)
   }
 
   Version *newObject;
-  newObject = new Version(0, this->wts.ts, writeVal);
+  newObject = new Version(0, this->wts.ts);
   writeSet.emplace_back(key, version, newObject);
   return;
 }
@@ -421,6 +422,8 @@ inline void
 TxExecutor::cpv()  //commit pending versions
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+    gcq.push(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
+    memcpy((*itr).newObject->val, writeVal, VAL_SIZE);
     (*itr).newObject->status.store(VersionStatus::committed, std::memory_order_release);
   }
 
@@ -588,25 +591,16 @@ TxExecutor::mainte()
 void
 TxExecutor::writePhase()
 {
-  //early lock release
-  //ログを書く前に保有するバージョンステータスをprecommittedにする．
-  if (ELR)  precpv();
+  if (GROUP_COMMIT) {
+    //check time out of commit pending versions
+    chkGcpvTimeout();
+  } else {
+    cpv();
+  }
 
-  //write phase
   //log write set & possibly group commit pending version
   if (P_WAL) pwal();
   if (S_WAL) swal();
-
-  if (!GROUP_COMMIT) {
-    cpv();
-  } else {
-    //check time out of commit pending versions
-    chkGcpvTimeout();
-  }
-
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    gcq.push(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
-  }
 
   //ここまで来たらコミットしている
   this->wts.set_clockBoost(0);

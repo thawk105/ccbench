@@ -77,13 +77,16 @@ struct Psstamp {
 
 class Version {
 public:
-  unsigned int val;
-  std::atomic<uint32_t> cstamp;       // Version creation stamp, c(V)
   Version *prev;  // Pointer to overwritten version
   Version *committed_prev;  // Pointer to the next committed version, to reduce serach cost.
 
+  std::atomic<uint32_t> cstamp;       // Version creation stamp, c(V)
   std::atomic<VersionStatus> status;
   int8_t padding[7];
+  // size to here is 28 bytes.
+  // if default (val size is 4) total version size is 32 bytes.
+
+  char val[VAL_SIZE] = {};
 
   Version() {
     status.store(VersionStatus::inFlight, std::memory_order_release);

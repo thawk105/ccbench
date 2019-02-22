@@ -25,15 +25,15 @@ class LogRecord {
 public:
   uint64_t tid;
   unsigned int key;
-  unsigned int val; 
+  char val[VAL_SIZE]; 
   // 16 bytes
   //
-  LogRecord () : tid(0), key(0), val(0) {}
+  LogRecord () : tid(0), key(0) {}
 
-  LogRecord(uint64_t tid, unsigned int key, unsigned int val) {
+  LogRecord(uint64_t tid, unsigned int key, char* val) {
     this->tid = tid;
     this->key = key;
-    this->val = val;
+    memcpy(this->val, val, VAL_SIZE);
   }
 
   int computeChkSum() {

@@ -21,7 +21,7 @@ extern void displayDB();
 using namespace std;
 
 SetElement *
-Transaction::searchWriteSet(unsigned int key)
+TxExecutor::searchWriteSet(unsigned int key)
 {
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 		if ((*itr).key == key) return &(*itr);
@@ -31,7 +31,7 @@ Transaction::searchWriteSet(unsigned int key)
 }
 
 SetElement *
-Transaction::searchReadSet(unsigned int key)
+TxExecutor::searchReadSet(unsigned int key)
 {
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
 		if ((*itr).key == key) return &(*itr);
@@ -41,26 +41,25 @@ Transaction::searchReadSet(unsigned int key)
 }
 
 void
-Transaction::tbegin()
+TxExecutor::tbegin()
 {
 	this->status = TransactionStatus::inFlight;
 	this->commit_ts = 0;
 	this->appro_commit_ts = 0;
 }
 
-int
-Transaction::tread(unsigned int key)
+char*
+TxExecutor::tread(unsigned int key)
 {
 	SetElement *result;
 
 	result = searchWriteSet(key);
-	if (result) return result->val;
+	if (result != nullptr) return writeVal;
 
 	result = searchReadSet(key);
-	if (result) return result->val;
+	if (result != nullptr) return result->val;
 
 	TsWord v1, v2;
-	unsigned int return_val;
 
 	v1.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 	for (;;) {
@@ -77,7 +76,7 @@ Transaction::tread(unsigned int key)
 			}
 		}
 
-		return_val = Table[key].val;
+    memcpy(returnVal, Table[key].val, VAL_SIZE);
 
 		v2.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 		if (v1 == v2 && !v1.lock) break;
@@ -85,30 +84,27 @@ Transaction::tread(unsigned int key)
 	} 
 
 	this->appro_commit_ts = max(this->appro_commit_ts, v1.wts);
-	readSet.push_back(SetElement(key, return_val, v1));
+	readSet.emplace_back(key, returnVal, v1);
 
-	return return_val;
+	return returnVal;
 }
 
 void 
-Transaction::twrite(unsigned int key, unsigned int val)
+TxExecutor::twrite(unsigned int key)
 {
 	SetElement *result;
 
 	result = searchWriteSet(key);
-	if (result) {
-		result->val = val;
-		return;
-	}
+	if (result != nullptr) return;
 
 	TsWord tsword;
 	tsword.obj = __atomic_load_n(&(Table[key].tsw.obj), __ATOMIC_ACQUIRE);
 	this->appro_commit_ts = max(this->appro_commit_ts, tsword.rts() + 1);
-	writeSet.push_back(SetElement(key, val, tsword));
+	writeSet.emplace_back(key, tsword);
 }
 
 bool 
-Transaction::validationPhase()
+TxExecutor::validationPhase()
 {
 	lockWriteSet();
 	if (this->status == TransactionStatus::aborted) {
@@ -166,7 +162,7 @@ Transaction::validationPhase()
 }
 
 void 
-Transaction::abort() 
+TxExecutor::abort() 
 {
 	unlockCLL();
 
@@ -176,11 +172,11 @@ Transaction::abort()
 }
 
 void 
-Transaction::writePhase()
+TxExecutor::writePhase()
 {
 	TsWord result;
 	for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-		Table[(*itr).key].val = (*itr).val;
+    memcpy(Table[(*itr).key].val, writeVal, VAL_SIZE);
 		result.wts = this->commit_ts;
 		result.delta = 0;
 		result.lock = 0;
@@ -195,7 +191,7 @@ Transaction::writePhase()
 }
 
 void 
-Transaction::lockWriteSet()
+TxExecutor::lockWriteSet()
 {
 	TsWord expected, desired;
 
@@ -223,7 +219,7 @@ Transaction::lockWriteSet()
 }
 
 void 
-Transaction::unlockCLL()
+TxExecutor::unlockCLL()
 {
 	TsWord expected, desired;
 
@@ -237,7 +233,7 @@ Transaction::unlockCLL()
 }
 
 void
-Transaction::dispWS()
+TxExecutor::dispWS()
 {
 	cout << "th " << this->thid << ": write set: ";
 

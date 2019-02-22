@@ -1,8 +1,11 @@
 PROG = silo.exe
 SOURCES = silo.cc transaction.cc result.cc util.cc 
 
+KEY_SIZE=4
+VAL_SIZE=4
+
 CC = g++
-CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17 
+CFLAGS = -c -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else -g -O2 -std=c++17 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE)
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
@@ -21,7 +24,7 @@ endif
 
 O1 = silo.o
 O2 = transaction.o
-O3 = result.cc
+O3 = result.o
 O4 = util.o
 
 all: $(PROG)

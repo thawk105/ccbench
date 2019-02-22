@@ -36,7 +36,7 @@ GLOBAL uint64_t CLOCK_PER_US;
 GLOBAL uint64_t EPOCH_TIME;
 GLOBAL unsigned int EXTIME;
 
-GLOBAL uint64_t_64byte *ThLocalEpoch;
-GLOBAL uint64_t_64byte *CTIDW;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *CTIDW;
 
-GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;

@@ -129,7 +129,7 @@ displayDB()
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tuple = &Table[i % TUPLE_NUM];
     cout << "----------" << endl; // - is 10
-    cout << "key: " << tuple->key << endl;
+    cout << "key: " << i << endl;
     cout << "val: " << tuple->val << endl;
     cout << "lockctr: " << tuple->rwlock.counter << endl;
     cout << "TIDword: " << tuple->tidword.obj << endl;
@@ -188,8 +188,7 @@ void makeDB() {
     tmp->epotemp.epoch = 1;
     tmp->epotemp.temp = 0;
 
-    tmp->key = i;
-    tmp->val = rnd.next() % TUPLE_NUM;
+    tmp->val[0] = 'a'; tmp->val[1] = '\0';
   }
 
 }
@@ -204,7 +203,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
       pro[i].ope = Ope::WRITE;
     
     pro[i].key = rnd.next() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
 }
 
@@ -218,7 +216,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf)
       pro[i].ope = Ope::WRITE;
 
     pro[i].key = zipf() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
 }
 

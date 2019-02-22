@@ -1,8 +1,10 @@
 #pragma once
 
+#include <pthread.h>
+#include <string.h>
+
 #include <atomic>
 #include <cstdint>
-#include <pthread.h>
 
 struct TsWord {
   union {
@@ -41,20 +43,25 @@ public:
   TsWord tsw;
   TsWord pre_tsw;
   // wts 48bit, rts-wts 15bit, lockbit 1bit
-  unsigned int key = 0;
-  unsigned int val;
-  int8_t padding[8];
+  //
+  int8_t pad[8];
+
+  char keypad[KEY_SIZE];
+  char val[VAL_SIZE];
 };
 
 class SetElement {
 public:
   unsigned int key;
-  unsigned int val;
+  char val[VAL_SIZE];
   TsWord tsw;
 
-  SetElement(unsigned int key, unsigned int val, TsWord tsw) {
-    this->key = key;
-    this->val = val;
+  SetElement(unsigned int newkey, char *newval, TsWord tsw) : key(newkey) {
+    memcpy(val, newval, VAL_SIZE);
+    this->tsw.obj = tsw.obj;
+  }
+
+  SetElement(unsigned int newkey, TsWord tsw) : key(newkey) {
     this->tsw.obj = tsw.obj;
   }
 
@@ -67,7 +74,5 @@ class LockElement {
 public:
   unsigned int key;
 
-  LockElement(unsigned int key) {
-    this->key = key;
-  }
+  LockElement(unsigned int newkey) : key(newkey) {}
 };

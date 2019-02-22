@@ -1,8 +1,10 @@
 #pragma once
 
+#include <pthread.h>
+#include <string.h>
+
 #include <atomic>
 #include <cstdint>
-#include <pthread.h>
 
 struct Tidword {
   union {
@@ -34,20 +36,20 @@ struct Tidword {
 class Tuple {
 public:
   Tidword tidword;
-  unsigned int key = 0;
-  unsigned int val=0;
+
+  char keypad[KEY_SIZE];
+  char val[VAL_SIZE];
 };
 
 class ReadElement {
 public:
   Tidword tidword;
   unsigned int key;
-  unsigned int val;
+  char val[VAL_SIZE];
 
-  ReadElement(unsigned int newkey, unsigned int newval, Tidword newtidword) {
-   tidword.obj = newtidword.obj;
-   key = newkey;
-   val = newval;
+  ReadElement(unsigned int newkey, char* newval, Tidword newtidword) : key(newkey) {
+    tidword.obj = newtidword.obj;
+    memcpy(this->val, newval, VAL_SIZE);
   }
 
   bool operator<(const ReadElement& right) const {
@@ -57,11 +59,10 @@ public:
 
 class WriteElement {
 public:
-  unsigned int key, val;
+  unsigned int key;
 
-  WriteElement(unsigned int key, unsigned int val) {
+  WriteElement(unsigned int key) {
     this->key = key;
-    this->val = val;
   }
 
   bool operator<(const WriteElement& right) const {

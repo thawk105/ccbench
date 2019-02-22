@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <string.h>
 
 #include <atomic>
 
@@ -12,7 +13,7 @@ using namespace std;
 
 inline
 SetElement *
-Transaction::searchReadSet(unsigned int key) 
+TxExecutor::searchReadSet(unsigned int key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -23,7 +24,7 @@ Transaction::searchReadSet(unsigned int key)
 
 inline
 SetElement *
-Transaction::searchWriteSet(unsigned int key) 
+TxExecutor::searchWriteSet(unsigned int key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -33,7 +34,7 @@ Transaction::searchWriteSet(unsigned int key)
 }
 
 void
-Transaction::abort()
+TxExecutor::abort()
 {
   unlock_list();
 
@@ -42,10 +43,10 @@ Transaction::abort()
 }
 
 void
-Transaction::commit()
+TxExecutor::commit()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    Table[(*itr).key].val = (*itr).val;
+    memcpy(Table[(*itr).key].val, writeVal, VAL_SIZE);
   }
 
   unlock_list();
@@ -55,25 +56,21 @@ Transaction::commit()
 }
 
 void
-Transaction::tbegin()
+TxExecutor::tbegin()
 {
   this->status = TransactionStatus::inFlight;
 }
 
-int
-Transaction::tread(unsigned int key)
+char*
+TxExecutor::tread(unsigned int key)
 {
   //if it already access the key object once.
   // w
   SetElement *inW = searchWriteSet(key);
-  if (inW != nullptr) {
-    return inW->val;
-  }
+  if (inW != nullptr) return writeVal;
 
   SetElement *inR = searchReadSet(key);
-  if (inR != nullptr) {
-    return inR->val;
-  }
+  if (inR != nullptr) return inR->val;
 
   if (Table[key].lock.r_trylock()) {
     r_lockList.emplace_back(&Table[key].lock);
@@ -81,19 +78,16 @@ Transaction::tread(unsigned int key)
     return Table[key].val;
   } else {
     this->status = TransactionStatus::aborted;
-    return -1;
+    return nullptr;
   }
 }
 
 void
-Transaction::twrite(unsigned int key, unsigned int val)
+TxExecutor::twrite(unsigned int key)
 {
   // if it already wrote the key object once.
   SetElement *inW = searchWriteSet(key);
-  if (inW) {
-    inW->val = val;
-    return;
-  }
+  if (inW) return;
 
   for (auto rItr = readSet.begin(); rItr != readSet.end(); ++rItr) {
     if ((*rItr).key == key) { // hit
@@ -106,8 +100,8 @@ Transaction::twrite(unsigned int key, unsigned int val)
       for (auto lItr = r_lockList.begin(); lItr != r_lockList.end(); ++lItr) {
         if (*lItr == &(Table[key].lock)) {
           r_lockList.erase(lItr);
-          w_lockList.emplace_back(&Table[key % TUPLE_NUM].lock);
-          writeSet.emplace_back(key, val);
+          w_lockList.emplace_back(&Table[key].lock);
+          writeSet.emplace_back(key, writeVal);
           break;
         }
       }
@@ -118,18 +112,18 @@ Transaction::twrite(unsigned int key, unsigned int val)
   }
 
   // trylock
-  if (!Table[key % TUPLE_NUM].lock.w_trylock()) {
+  if (!Table[key].lock.w_trylock()) {
     this->status = TransactionStatus::aborted;
     return;
   }
 
-  w_lockList.emplace_back(&Table[key % TUPLE_NUM].lock);
-  writeSet.emplace_back(key, val);
+  w_lockList.emplace_back(&Table[key].lock);
+  writeSet.emplace_back(key, writeVal);
   return;
 }
 
 void
-Transaction::unlock_list()
+TxExecutor::unlock_list()
 {
   for (auto itr = r_lockList.begin(); itr != r_lockList.end(); ++itr)
     (*itr)->r_unlock();

@@ -1,9 +1,8 @@
 #pragma once
 
+#include <string.h> // memcpy
 #include <atomic>
 #include <cstdint>
-
-#include "../../include/util.hpp"
 
 #include "lock.hpp"
 
@@ -85,19 +84,19 @@ struct Epotemp {
 
 class Tuple {
 public:
-  char val[VAL_SIZE];
   Tidword tidword;
   Epotemp epotemp;  //  temprature, min 0, max 20
 #ifdef RWLOCK
   RWLock rwlock;  // 4byte
   char pad[4] = {};
-  // size to here is 32 bytes
+  // size to here is 24 bytes
 #endif
 #ifdef MQLOCK
   MQLock mqlock;
 #endif
 
   char keypad[KEY_SIZE];
+  char val[VAL_SIZE];
 };
 
 // use for read-write set
@@ -123,11 +122,12 @@ public:
 class WriteElement {
 public:
   unsigned int key;
-  char val[VAL_SIZE];
+  //char val[VAL_SIZE];
 
-  WriteElement(unsigned int key, char *newVal) {
+  //WriteElement(unsigned int key, char *newVal) {
+  WriteElement(unsigned int key) {
     this->key = key;
-    memcpy(val, newVal, VAL_SIZE);
+    //memcpy(val, newVal, VAL_SIZE);
   }
 
   bool operator<(const WriteElement& right) const {

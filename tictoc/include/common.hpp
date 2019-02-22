@@ -6,6 +6,7 @@
 #include <iostream>
 #include <queue>
 
+#include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 
 #include "lock.hpp"

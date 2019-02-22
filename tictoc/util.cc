@@ -117,7 +117,7 @@ displayDB()
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tuple = &Table[i];
     cout << "------------------------------" << endl; //-は30個
-    cout << "key: " << tuple->key << endl;
+    cout << "key: " << i << endl;
     cout << "val: " << tuple->val << endl;
     cout << "TS_word: " << tuple->tsw.obj << endl;
     cout << "bit: " << static_cast<bitset<64>>(tuple->tsw.obj) << endl;
@@ -162,8 +162,7 @@ makeDB()
     tmp = &Table[i];
     tmp->tsw.obj = 0;
     tmp->pre_tsw.obj = 0;
-    tmp->key = i;
-    tmp->val = rnd.next() % TUPLE_NUM;
+    tmp->val[0] = 'a'; tmp->val[1] = '\0';
   }
 
 }
@@ -178,7 +177,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
       pro[i].ope = Ope::WRITE;
     
     pro[i].key = rnd.next() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
 }
 
@@ -191,7 +189,6 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
       pro[i].ope = Ope::WRITE;
 
     pro[i].key = zipf() % TUPLE_NUM;
-    pro[i].val = rnd.next() % TUPLE_NUM;
   }
 }
 

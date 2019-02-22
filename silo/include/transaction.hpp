@@ -1,17 +1,17 @@
 #pragma once
 
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
-
 #include <iostream>
 #include <set>
 #include <vector>
 
+#include "../../include/util.hpp"
+#include "../../include/fileio.hpp"
+
 #include "common.hpp"
 #include "log.hpp"
 #include "procedure.hpp"
+#include "result.hpp"
 #include "tuple.hpp"
-
-#include "../../include/fileio.hpp"
 
 #define LOGSET_SIZE 1000
 
@@ -25,14 +25,18 @@ public:
   vector<LogRecord> logSet;
   LogHeader latestLogHeader;
 
+  Result rsob;
+
   File logfile;
 
   unsigned int thid;
   Tidword mrctid;
   Tidword max_rset, max_wset;
 
-  uint64_t finishTransactions;
-  uint64_t abortCounts;
+  Result rsobject;
+
+  char writeVal[VAL_SIZE];
+  char returnVal[VAL_SIZE];
 
   TxnExecutor(int newthid) : thid(newthid) {
     readSet.reserve(MAX_OPE);
@@ -43,13 +47,13 @@ public:
 
     max_rset.obj = 0;
     max_wset.obj = 0;
-    finishTransactions = 0;
-    abortCounts = 0;
+
+    writeValGenerator(writeVal, VAL_SIZE, thid);
   }
 
   void tbegin();
-  int tread(unsigned int key);
-  void twrite(unsigned int key, unsigned int val);
+  char* tread(unsigned int key);
+  void twrite(unsigned int key);
   bool validationPhase();
   void abort();
   void writePhase();

@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include <atomic>
 #include <algorithm>
 #include <bitset>
@@ -13,7 +15,7 @@ using namespace std;
 
 inline
 SetElement *
-Transaction::searchReadSet(unsigned int key) 
+TxExecutor::searchReadSet(unsigned int key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -24,7 +26,7 @@ Transaction::searchReadSet(unsigned int key)
 
 inline
 SetElement *
-Transaction::searchWriteSet(unsigned int key) 
+TxExecutor::searchWriteSet(unsigned int key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -34,7 +36,7 @@ Transaction::searchWriteSet(unsigned int key)
 }
 
 void
-Transaction::tbegin()
+TxExecutor::tbegin()
 {
   TransactionTable *newElement, *tmt;
 
@@ -70,20 +72,16 @@ Transaction::tbegin()
   status = TransactionStatus::inFlight;
 }
 
-int
-Transaction::tread(unsigned int key)
+char*
+TxExecutor::tread(unsigned int key)
 {
   //if it already access the key object once.
   // w
   SetElement *inW = searchWriteSet(key);
-  if (inW) {
-    return inW->ver->val;
-  }
+  if (inW) return writeVal;
 
   SetElement *inR = searchReadSet(key);
-  if (inR) {
-    return inR->ver->val;
-  }
+  if (inR) return inR->ver->val;
 
   // if v not in t.writes:
   Version *ver = Table[key].latest.load(std::memory_order_acquire);
@@ -105,14 +103,11 @@ Transaction::tread(unsigned int key)
 }
 
 void
-Transaction::twrite(unsigned int key, unsigned int val)
+TxExecutor::twrite(unsigned int key)
 {
   // if it already wrote the key object once.
   SetElement *inW = searchWriteSet(key);
-  if (inW) {
-    inW->ver->val = val;
-    return;
-  }
+  if (inW) return;
 
   // if v not in t.writes:
   //
@@ -163,19 +158,19 @@ Transaction::twrite(unsigned int key, unsigned int val)
     desired->committed_prev = vertmp;
     if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
-  desired->val = val;
 
   writeSet.emplace_back(key, desired);
 }
 
 void
-Transaction::commit()
+TxExecutor::commit()
 {
   this->cstamp = ++Lsn;
   status = TransactionStatus::committed;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->cstamp.store(this->cstamp, memory_order_release);
+    memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
     gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, cstamp));
   }
@@ -190,7 +185,7 @@ Transaction::commit()
 }
 
 void
-Transaction::abort()
+TxExecutor::abort()
 {
   status = TransactionStatus::aborted;
 
@@ -206,7 +201,7 @@ Transaction::abort()
 }
 
 void
-Transaction::dispWS()
+TxExecutor::dispWS()
 {
   cout << "th " << this->thid << " : write set : ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -216,7 +211,7 @@ Transaction::dispWS()
 }
 
 void
-Transaction::dispRS()
+TxExecutor::dispRS()
 {
   cout << "th " << this->thid << " : read set : ";
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {

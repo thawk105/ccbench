@@ -37,12 +37,11 @@ extern void waitForReadyOfAllThread();
 static void *
 worker(void *arg)
 {
-
   const int *myid = (int *)arg;
   Xoroshiro128Plus rnd;
   rnd.init();
   Procedure pro[MAX_OPE];
-  Transaction trans(*myid);
+  TxExecutor trans(*myid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
@@ -90,10 +89,10 @@ RETRY:
         else if (pro[i].ope == Ope::WRITE) {
           if (RMW) {
             trans.tread(pro[i].key);
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
           }
           else
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
         }
         else
           ERR;

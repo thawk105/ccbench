@@ -10,19 +10,16 @@ using namespace std;
 class Tuple {
 public:
   RWLock lock;
-  atomic<unsigned int> key;
-  atomic<unsigned int> val;
+  char pad[4];
 
-  uint8_t padding[20];
+  char keypad[KEY_SIZE];
+  char val[VAL_SIZE];
 };
 
 class SetElement {
 public:
   unsigned int key;
-  unsigned int val;
+  char *val;
 
-  SetElement(unsigned int key, unsigned int val) {
-    this->key = key;
-    this->val = val;
-  }
+  SetElement(unsigned int newkey, char *newval) : key(newkey), val(newval) {}
 };

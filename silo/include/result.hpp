@@ -22,7 +22,6 @@ public:
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
-  // declare in ermia.cc
 std::atomic<uint64_t> Result::AbortCounts(0);
 std::atomic<uint64_t> Result::CommitCounts(0);
 std::atomic<bool> Result::Finish(false);

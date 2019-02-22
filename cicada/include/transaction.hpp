@@ -7,8 +7,6 @@
 #include <map>
 #include <queue>
 
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
-
 #include "../../include/debug.hpp"
 #include "../../include/util.hpp"
 

@@ -1,11 +1,12 @@
 #pragma once
 
+#include <string.h>
+
 #include <iostream>
 #include <set>
 #include <vector>
 
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
-
+#include "../../include/util.hpp"
 #include "../../include/inline.hpp"
 
 #include "common.hpp"
@@ -20,7 +21,7 @@ enum class TransactionStatus : uint8_t {
   aborted,
 };
 
-class Transaction {
+class TxExecutor {
 public:
   int thid;
   uint64_t commit_ts;
@@ -32,17 +33,20 @@ public:
   vector<unsigned int> cll; // current lock list;
   //use for lockWriteSet() to record locks;
 
-  Transaction(int thid) {
+  char writeVal[VAL_SIZE];
+  char returnVal[VAL_SIZE];
+
+  TxExecutor(int myid) : thid(myid) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     cll.reserve(MAX_OPE);
 
-    this->thid = thid;
+    writeValGenerator(writeVal, VAL_SIZE, thid);
   }
 
   void tbegin();
-  int tread(unsigned int key);
-  void twrite(unsigned int key, unsigned int val);
+  char* tread(unsigned int key);
+  void twrite(unsigned int key);
   bool validationPhase();
   void abort();
   void writePhase();

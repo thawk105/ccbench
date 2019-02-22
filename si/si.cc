@@ -71,7 +71,7 @@ static void *
 worker(void *arg)
 {
   int *myid = (int *)arg;
-  Transaction trans(*myid, MAX_OPE);
+  TxExecutor trans(*myid, MAX_OPE);
   Procedure pro[MAX_OPE];
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -109,9 +109,9 @@ RETRY:
         } else {
           if (RMW) {
             trans.tread(pro[i].key);
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
           } else
-            trans.twrite(pro[i].key, pro[i].val);
+            trans.twrite(pro[i].key);
         }
 
         if (trans.status == TransactionStatus::aborted) {
