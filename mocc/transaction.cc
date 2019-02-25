@@ -91,7 +91,6 @@ TxExecutor::read(unsigned int key)
 
   if (inRLL != nullptr) lock(key, tuple, inRLL->mode);
   else if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, false);
-  
   if (this->status == TransactionStatus::aborted) return nullptr;
   
   Tidword expected, desired;
@@ -109,7 +108,7 @@ TxExecutor::read(unsigned int key)
       expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     }
 
-    memcpy(returnVal, writeVal, VAL_SIZE); // read
+    memcpy(returnVal, tuple->val, VAL_SIZE); // read
 
     desired.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     if (expected == desired) break;

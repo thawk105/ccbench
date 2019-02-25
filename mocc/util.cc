@@ -50,6 +50,8 @@ chkArg(const int argc, char *argv[])
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "Xoroshiro128Plus " << sizeof(Xoroshiro128Plus) << endl;
     cout << "pthread_mutex_t" << sizeof(pthread_mutex_t) << endl;
+    cout << "KEY_SIZE : " << KEY_SIZE << endl;
+    cout << "VAL_SIZE : " << VAL_SIZE << endl;
 
     exit(0);
   }

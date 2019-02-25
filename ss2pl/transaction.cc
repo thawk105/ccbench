@@ -75,7 +75,12 @@ TxExecutor::tread(unsigned int key)
   if (Table[key].lock.r_trylock()) {
     r_lockList.emplace_back(&Table[key].lock);
     readSet.emplace_back(key, Table[key].val);
-    return Table[key].val;
+    
+    // for fairness
+    // ultimately, it is wasteful in prototype system
+    memcpy(returnVal, Table[key].val, VAL_SIZE);
+
+    return returnVal;
   } else {
     this->status = TransactionStatus::aborted;
     return nullptr;

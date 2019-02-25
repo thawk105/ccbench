@@ -39,6 +39,7 @@ public:
   Result rsobject;
   uint64_t gcstart, gcstop; // counter for garbage collection
 
+  char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
   TxExecutor(uint8_t newThid, unsigned int max_ope) {

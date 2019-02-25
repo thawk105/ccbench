@@ -43,6 +43,8 @@ public:
   uint64_t grpcmt_start, grpcmt_stop; // for group commit
   uint64_t GCstart, GCstop; // for garbage collection
   uint64_t continuingCommit;
+
+  char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
   TxExecutor(unsigned int newThid) {

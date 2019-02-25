@@ -52,7 +52,8 @@ chkArg(const int argc, char *argv[])
     cout << "Version " << sizeof(Version) << endl;
     cout << "TimeStamp " << sizeof(TimeStamp) << endl;
     cout << "Procedure " << sizeof(Procedure) << endl;
-
+    cout << "KEY_SIZE : " << KEY_SIZE << endl;
+    cout << "VAL_SIZE : " << VAL_SIZE << endl;
     exit(0);
   }
 

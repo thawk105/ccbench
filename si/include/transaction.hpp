@@ -34,6 +34,7 @@ public:
   uint8_t thid; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
 
+  char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
   TxExecutor(uint8_t newthid, unsigned int max_ope) : thid(newthid) {

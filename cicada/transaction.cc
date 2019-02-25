@@ -148,6 +148,11 @@ TxExecutor::tread(unsigned int key)
   }
 
   readSet.emplace_back(key, version);
+
+  // for fairness
+  // ultimately, it is wasteful in prototype system.
+  memcpy(returnVal, version->val, VAL_SIZE);
+
   return version->val;
 }
 
