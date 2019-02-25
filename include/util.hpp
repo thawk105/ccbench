@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <sys/time.h>
 
 #include <algorithm>
@@ -21,7 +22,6 @@ inline void compiler_fence() { asm volatile("" ::: "memory");}
 class LibcError : public std::exception
 {
 private:
-  int errnum_;
   std::string str_;
   static std::string generateMessage(int errnum, const std::string &msg) {
     std::string s(msg);
@@ -29,13 +29,13 @@ private:
     char buf[BUF_SIZE];
     ::snprintf(buf, 1024, " %d ", errnum);
     s += buf;
-    const char *c = ::strerror_r(errnum, buf, BUF_SIZE);
-    s += c;
+   ::strerror_r(errnum, buf, BUF_SIZE);
+    s += buf;
     return s;
   }
 
 public:
-  explicit LibcError(int errnum = errno, const std::string &msg = "libc_error:") : errnum_(errnum), str_(generateMessage(errnum, msg)) {}
+  explicit LibcError(int errnum = errno, const std::string &msg = "libc_error:") : str_(generateMessage(errnum, msg)) {}
 };
 
 static

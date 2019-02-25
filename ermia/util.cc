@@ -307,6 +307,7 @@ naiveGarbageCollection()
 void
 setThreadAffinity(int myid)
 {
+#ifdef Linux
   pid_t pid = syscall(SYS_gettid);
   cpu_set_t cpu_set;
 
@@ -315,6 +316,8 @@ setThreadAffinity(int myid)
 
   if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
     ERR;
+#endif // Linux
+
   return;
 }
 

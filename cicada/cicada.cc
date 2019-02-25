@@ -18,6 +18,7 @@
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 
+#include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/random.hpp"
@@ -31,13 +32,15 @@ extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold)
 extern void makeDB(uint64_t *initial_wts);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
+
+#ifdef Linux
+extern void setThreadAffinity(int myid);
+#endif // Linux
 
 static void *
 manager_worker(void *arg)
 {
-  int *myid = (int *)arg;
   TimeStamp tmp;
 
   uint64_t initial_wts;
@@ -45,8 +48,12 @@ manager_worker(void *arg)
   MinWts.store(initial_wts + 2, memory_order_release);
   Result rsobject;
 
+#ifdef Linux
+  int *myid = (int *)arg;
   setThreadAffinity(*myid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+#endif // Linux
+
   waitForReadyOfAllThread();
   while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
@@ -114,9 +121,18 @@ worker(void *arg)
   TxExecutor trans(*myid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
+#ifdef Linux
   setThreadAffinity(*myid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
+#endif // Linux
+
+#ifdef Darwin
+  int nowcpu;
+  GETCPU(nowcpu);
+  //printf("Thread %d on CPU %d\n", *myid, nowcpu);
+#endif // Darwin
+
   waitForReadyOfAllThread();
 
   //printf("%s\n", trans.writeVal);
