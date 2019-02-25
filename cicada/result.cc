@@ -1,12 +1,14 @@
-#include "include/common.hpp"
-#include "include/result.hpp"
+
 #include <iomanip>
 #include <iostream>
 
+#include "include/common.hpp"
+#include "include/result.hpp"
+
 using std::cout, std::endl, std::fixed, std::setprecision;
 
-// forward declaration
-extern uint64_t Result::Bgn, Result::End;
+//extern uint64_t Result::Bgn;
+//extern uint64_t Result::End;
 
 void 
 Result::displayAbortCounts()
@@ -37,7 +39,7 @@ Result::displayGCCounts()
 void
 Result::displayLocalCommitCounts() 
 {
-  printf("Th #%d : localCommitCounts : %lu\n", thid, localCommitCounts);
+  printf("Th #%d : localCommitCounts : %llu\n", thid, localCommitCounts);
 }
 
 void

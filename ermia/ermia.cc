@@ -12,6 +12,7 @@
 
 #define GLOBAL_VALUE_DEFINE
 
+#include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/random.hpp"
@@ -31,7 +32,6 @@ extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void naiveGarbageCollection();
-extern inline uint64_t rdtsc();
 extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
@@ -42,8 +42,11 @@ manager_worker(void *arg)
   int *myid = (int *)arg;
   GarbageCollection gcobject;
   Result rsobject;
-  
+ 
+#ifdef Linux 
   setThreadAffinity(*myid);
+#endif // Linux
+
   gcobject.decideFirstRange();
   waitForReadyOfAllThread();
   // end, initial work
@@ -78,9 +81,12 @@ worker(void *arg)
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
+#ifdef Linux
   setThreadAffinity(*myid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
+#endif // Linux
+
   waitForReadyOfAllThread();
 
   trans.gcstart = rdtsc();
