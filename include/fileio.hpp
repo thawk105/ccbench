@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <linux/fs.h>
 
 #include <mutex>
 #include <stdexcept>
@@ -13,6 +12,10 @@
 
 #include "debug.hpp"
 #include "util.hpp"
+
+#ifdef Linux
+#include <linux/fs.h>
+#endif // Linux
 
 class File
 {
@@ -98,11 +101,13 @@ public:
     }
   }
 
+#ifdef Linux
   void fdatasync() {
     if (::fdatasync(fd()) < 0) {
       throw LibcError(errno, "fdsync failed: ");
     }
   }
+#endif // Linux
 
   void fsync() {
     if (::fsync(fd()) < 0) {

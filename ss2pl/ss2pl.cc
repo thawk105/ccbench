@@ -45,9 +45,12 @@ worker(void *arg)
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
+#ifdef Linux
   setThreadAffinity(*myid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
+#endif // Linux
+
   waitForReadyOfAllThread();
   
   if (*myid == 0) rsobject.Bgn = rdtsc();

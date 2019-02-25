@@ -7,9 +7,6 @@
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 
-// forward declaration
-extern uint64_t Result::Bgn, Result::End;
-
 void 
 Result::displayAbortCounts()
 {

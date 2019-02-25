@@ -111,7 +111,7 @@ TxExecutor::ssn_tread(unsigned int key)
     verCstamp = ver->cstamp.load(memory_order_acquire);
   }
 
-  if (ver->psstamp.atomicLoadSstamp() == (UINT64_MAX - 1))
+  if (ver->psstamp.atomicLoadSstamp() == UINT32_MAX)
     // no overwrite yet
     readSet.emplace_back(key, ver);
   else 

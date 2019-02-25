@@ -10,6 +10,7 @@
 
 #define SPIN 2400
 
+#ifdef MQLOCK
 MQLMetaInfo
 MQLNode::atomicLoadSucInfo()
 {
@@ -403,14 +404,14 @@ retry:
       // pred already should alredy have me on its next.id and has reader successor class,
       // (the CAS loop in the "acquire" block).
       // this also covers the case when pred.next.flags has busy set.
-      qnode->prev.store(pred, std::memory_order_acquire);
+      qnode->prev.store(pred, std::memory_order_release);
       while (qnode->granted.load(std::memory_order_acquire) != true);
       return finish_acquire_reader_lock(me, key);
     }
     else {
       // pred is trying to leave, wait for a new pred or being waken up
       // pred has higher priority to leave, and it should already have me on its next.id
-      qnode->prev.store(pred, std::memory_order_acquire);
+      qnode->prev.store(pred, std::memory_order_release);
       while (qnode->prev.load(std::memory_order_acquire) != pred);
       // consume it and retry
       pred = qnode->prev.exchange((uint32_t)SentinelValue::None);
@@ -845,7 +846,9 @@ MQLock::cancel_writer_lock_no_pred(uint32_t me, unsigned int key)
   qnode->init(LockMode::None, (uint32_t)SentinelValue::None, false, false, LockMode::None, LockStatus::Waiting, (uint32_t)SentinelValue::None);
   return MQL_RESULT::Cancelled;
 }
+#endif // MQLOCK
 
+#ifdef RWLOCK
 void
 RWLock::r_lock()
 {
@@ -917,3 +920,4 @@ RWLock::upgrade()
   int expected = 1;
   return counter.compare_exchange_weak(expected, -1, std::memory_order_acq_rel);
 }
+#endif // RWLOCK

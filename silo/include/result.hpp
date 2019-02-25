@@ -25,6 +25,6 @@ public:
 std::atomic<uint64_t> Result::AbortCounts(0);
 std::atomic<uint64_t> Result::CommitCounts(0);
 std::atomic<bool> Result::Finish(false);
-uint64_t Bgn(0);
-uint64_t End(0);
+uint64_t Result::Bgn(0);
+uint64_t Result::End(0);
 #endif 

@@ -50,7 +50,10 @@ epoch_worker(void *arg)
   uint64_t EpochTimerStart, EpochTimerStop;
   Result rsobject;
 
+#ifdef Linux
   setThreadAffinity(*myid);
+#endif
+
   waitForReadyOfAllThread();
 
   rsobject.Bgn = rdtsc();
@@ -95,7 +98,10 @@ worker(void *arg)
   TxExecutor trans(*myid, &rnd, locknum);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
+#ifdef Linux
   setThreadAffinity(*myid);
+#endif // Linux
+
   waitForReadyOfAllThread();
   
   try {

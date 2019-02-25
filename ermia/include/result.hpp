@@ -34,12 +34,11 @@ public:
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
-  // declare in ermia.cc
 std::atomic<uint64_t> Result::AbortCounts(0);
 std::atomic<uint64_t> Result::CommitCounts(0);
 std::atomic<uint64_t> Result::GCCounts(0);
 std::atomic<uint64_t> Result::GCVersionCounts(0);
 std::atomic<uint64_t> Result::GCTMTElementsCounts(0);
-uint64_t Bgn(0);
-uint64_t End(0);
+uint64_t Result::Bgn(0);
+uint64_t Result::End(0);
 #endif 
