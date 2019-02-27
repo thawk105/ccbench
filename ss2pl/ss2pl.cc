@@ -157,7 +157,7 @@ main(const int argc, const char *argv[])
   }
 
   rsobject.displayTPS();
-  //rsobject.displayAbortRate();
+  rsobject.displayAbortRate();
   //rsobject.displayAbortCounts();
 
   return 0;

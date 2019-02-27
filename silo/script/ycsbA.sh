@@ -1,272 +1,140 @@
 #ycsbA.sh(silo)
 maxope=10
 rratio=50
+rmw=off
 skew=0
-ycsb=ON
+ycsb=on
 cpumhz=2400
 epochtime=40
-extime=3
-epoch=5
+extime=1
+epoch=1
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
 dbs11="dbs11"
 
+#basically
+inith=4
+enth=24
+inc=4
+if  test $host = $dbs11 ; then
+inith=28
+enth=224
+inc=28
+fi
+
 tuple=500
 result=result_silo_ycsbA_tuple500.dat
 rm $result
-echo "#worker threads, abort_rate, min, max" >> $result
-echo "#../silo.exe $tuple $maxope thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result
-
+echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar" >> $result
+echo "#../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 thread=2
-sum=0
-echo "../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
 
-max=0
-min=0
+echo "../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+echo "Thread number $thread"
+
+sumTH=0
+sumAR=0
+maxTH=0
+maxAR=0
+minTH=0
+minAR=0
 for ((i = 1; i <= epoch; ++i))
 do
-    tmp=`../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
-    sum=`echo "$sum + $tmp" | bc -l `
-    echo "sum: $sum,   tmp: $tmp"
+  numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+  tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+  tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+  sumTH=`echo "$sumTH + $tmpTH" | bc`
+  sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
+  echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
 
   if test $i -eq 1 ; then
-    max=$tmp
-    min=$tmp
+    maxTH=$tmpTH
+    maxAR=$tmpAR
+    minTH=$tmpTH
+    minAR=$tmpAR
   fi
 
-  flag=`echo "$tmp > $max" | bc -l`
+  flag=`echo "$tmpTH > $maxTH" | bc`
   if test $flag -eq 1 ; then
-    max=$tmp
+    maxTH=$tmpTH
   fi
-  flag=`echo "$tmp < $min" | bc -l`
+  flag=`echo "$tmpAR > $maxAR" | bc`
   if test $flag -eq 1 ; then
-    min=$tmp
+    maxAR=$tmpAR
   fi
+
+  flag=`echo "$tmpTH < $minTH" | bc`
+  if test $flag -eq 1 ; then
+    minTH=$tmpTH
+  fi
+  flag=`echo "$tmpAR < $minAR" | bc`
+  if test $flag -eq 1 ; then
+    minAR=$tmpAR
+  fi
+
 done
-avg=`echo "$sum / $epoch" | bc -l`
-echo "sum: $sum, epoch: $epoch"
-echo "avg $avg"
-echo "max: $max"
-echo "min: $min"
+avgTH=`echo "$sumTH / $epoch" | bc`
+avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
+echo "sumTH: $sumTH, sumAR: $sumAR"
+echo "avgTH: $avgTH, avgAR: $avgAR"
+echo "maxTH: $maxTH, maxAR: $maxAR"
+echo "minTH: $minTH, minAR: $minAR"
 thout=`echo "$thread - 1" | bc`
-echo "$thout $avg $min $max" >> $result
+echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
 
-if  test $host = $chris41 ; then
-inith=4
-enth=24
-inc=4
-fi
-if  test $host = $dbs11 ; then
-inith=28
-enth=224
-inc=28
-fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-    sum=0
-  echo "../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
-    
-  max=0
-  min=0
-    for ((i = 1; i <= epoch; ++i))
-    do
-        tmp=`../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
-        sum=`echo "$sum + $tmp" | bc -l `
-        echo "sum: $sum,   tmp: $tmp"
-
+  echo "../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+  echo "Thread number $thread"
+  
+  sumTH=0
+  sumAR=0
+  maxTH=0
+  maxAR=0
+  minTH=0
+  minAR=0
+  for ((i = 1; i <= epoch; ++i))
+  do
+    numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+    sumTH=`echo "$sumTH + $tmpTH" | bc`
+    sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
+    echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
+  
     if test $i -eq 1 ; then
-      max=$tmp
-      min=$tmp
+      maxTH=$tmpTH
+      maxAR=$tmpAR
+      minTH=$tmpTH
+      minAR=$tmpAR
     fi
-
-    flag=`echo "$tmp > $max" | bc -l`
+  
+    flag=`echo "$tmpTH > $maxTH" | bc`
     if test $flag -eq 1 ; then
-      max=$tmp
+      maxTH=$tmpTH
     fi
-    flag=`echo "$tmp < $min" | bc -l`
+    flag=`echo "$tmpAR > $maxAR" | bc`
     if test $flag -eq 1 ; then
-      min=$tmp
+      maxAR=$tmpAR
     fi
+  
+    flag=`echo "$tmpTH < $minTH" | bc`
+    if test $flag -eq 1 ; then
+      minTH=$tmpTH
+    fi
+    flag=`echo "$tmpAR < $minAR" | bc`
+    if test $flag -eq 1 ; then
+      minAR=$tmpAR
+    fi
+  
   done
-  avg=`echo "$sum / $epoch" | bc -l`
-  echo "sum: $sum, epoch: $epoch"
-  echo "avg $avg"
-  echo "max: $max"
-  echo "min: $min"
+  avgTH=`echo "$sumTH / $epoch" | bc`
+  avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
+  echo "sumTH: $sumTH, sumAR: $sumAR"
+  echo "avgTH: $avgTH, avgAR: $avgAR"
+  echo "maxTH: $maxTH, maxAR: $maxAR"
+  echo "minTH: $minTH, minAR: $minAR"
   thout=`echo "$thread - 1" | bc`
-  echo "$thout $avg $min $max" >> $result
+  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
 done
-
-tuple=500000
-result=result_silo_ycsbA_tuple500k.dat
-rm $result
-echo "#worker threads, abort_rate, min, max" >> $result
-echo "#../silo.exe $tuple $maxope thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result
-
-thread=2
-sum=0
-echo "../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
-
-max=0
-min=0
-for ((i = 1; i <= epoch; ++i))
-do
-    tmp=`../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
-    sum=`echo "$sum + $tmp" | bc -l `
-    echo "sum: $sum,   tmp: $tmp"
-
-  if test $i -eq 1 ; then
-    max=$tmp
-    min=$tmp
-  fi
-
-  flag=`echo "$tmp > $max" | bc -l`
-  if test $flag -eq 1 ; then
-    max=$tmp
-  fi
-  flag=`echo "$tmp < $min" | bc -l`
-  if test $flag -eq 1 ; then
-    min=$tmp
-  fi
-done
-avg=`echo "$sum / $epoch" | bc -l`
-echo "sum: $sum, epoch: $epoch"
-echo "avg $avg"
-echo "max: $max"
-echo "min: $min"
-thout=`echo "$thread - 1" | bc`
-echo "$thout $avg $min $max" >> $result
-
-if  test $host = $chris41 ; then
-inith=4
-enth=24
-inc=4
-fi
-if  test $host = $dbs11 ; then
-inith=28
-enth=224
-inc=28
-fi
-for ((thread=$inith; thread<=$enth; thread+=$inc))
-do
-    sum=0
-  echo "../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
-    
-  max=0
-  min=0
-    for ((i = 1; i <= epoch; ++i))
-    do
-        tmp=`../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
-        sum=`echo "$sum + $tmp" | bc -l `
-        echo "sum: $sum,   tmp: $tmp"
-
-    if test $i -eq 1 ; then
-      max=$tmp
-      min=$tmp
-    fi
-
-    flag=`echo "$tmp > $max" | bc -l`
-    if test $flag -eq 1 ; then
-      max=$tmp
-    fi
-    flag=`echo "$tmp < $min" | bc -l`
-    if test $flag -eq 1 ; then
-      min=$tmp
-    fi
-  done
-  avg=`echo "$sum / $epoch" | bc -l`
-  echo "sum: $sum, epoch: $epoch"
-  echo "avg $avg"
-  echo "max: $max"
-  echo "min: $min"
-  thout=`echo "$thread - 1" | bc`
-  echo "$thout $avg $min $max" >> $result
-done
-
-tuple=5000000
-result=result_silo_ycsbA_tuple5m.dat
-rm $result
-echo "#worker threads, abort_rate, min, max" >> $result
-echo "#../silo.exe $tuple $maxope thread $rratio $skew $ycsb $cpumhz $epochtime $extime" >> $result
-
-thread=2
-sum=0
-echo "../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
-
-max=0
-min=0
-for ((i = 1; i <= epoch; ++i))
-do
-    tmp=`../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
-    sum=`echo "$sum + $tmp" | bc -l `
-    echo "sum: $sum,   tmp: $tmp"
-
-  if test $i -eq 1 ; then
-    max=$tmp
-    min=$tmp
-  fi
-
-  flag=`echo "$tmp > $max" | bc -l`
-  if test $flag -eq 1 ; then
-    max=$tmp
-  fi
-  flag=`echo "$tmp < $min" | bc -l`
-  if test $flag -eq 1 ; then
-    min=$tmp
-  fi
-done
-avg=`echo "$sum / $epoch" | bc -l`
-echo "sum: $sum, epoch: $epoch"
-echo "avg $avg"
-echo "max: $max"
-echo "min: $min"
-thout=`echo "$thread - 1" | bc`
-echo "$thout $avg $min $max" >> $result
-
-if  test $host = $chris41 ; then
-inith=4
-enth=24
-inc=4
-fi
-if  test $host = $dbs11 ; then
-inith=28
-enth=224
-inc=28
-fi
-for ((thread=$inith; thread<=$enth; thread+=$inc))
-do
-    sum=0
-  echo "../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime"
-    
-  max=0
-  min=0
-    for ((i = 1; i <= epoch; ++i))
-    do
-        tmp=`../silo.exe $tuple $maxope $thread $rratio $skew $ycsb $cpumhz $epochtime $extime`
-        sum=`echo "$sum + $tmp" | bc -l `
-        echo "sum: $sum,   tmp: $tmp"
-
-    if test $i -eq 1 ; then
-      max=$tmp
-      min=$tmp
-    fi
-
-    flag=`echo "$tmp > $max" | bc -l`
-    if test $flag -eq 1 ; then
-      max=$tmp
-    fi
-    flag=`echo "$tmp < $min" | bc -l`
-    if test $flag -eq 1 ; then
-      min=$tmp
-    fi
-  done
-  avg=`echo "$sum / $epoch" | bc -l`
-  echo "sum: $sum, epoch: $epoch"
-  echo "avg $avg"
-  echo "max: $max"
-  echo "min: $min"
-  thout=`echo "$thread - 1" | bc`
-  echo "$thout $avg $min $max" >> $result
-done
-

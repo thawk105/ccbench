@@ -197,7 +197,7 @@ main(int argc, char *argv[])
   //displayDB();
 
   rsobject.displayTPS();
-  //rsobject.displayAbortRate();
+  rsobject.displayAbortRate();
 
   return 0;
 }
