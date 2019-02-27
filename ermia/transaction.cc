@@ -121,6 +121,9 @@ TxExecutor::ssn_tread(unsigned int key)
 
   verify_exclusion_or_abort();
 
+  // for fairness
+  // ultimately, it is wasteful in prototype system.
+  memcpy(returnVal, ver->val, VAL_SIZE);
   return ver->val;
 }
 
