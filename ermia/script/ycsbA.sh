@@ -1,273 +1,254 @@
 #ycsbA.sh(ermia)
 maxope=10
 rratio=50
+rmw=off
 skew=0
-ycsb=ON
+ycsb=on
 cpu_mhz=2400
 gci=10
 extime=3
-epoch=5
+epoch=3
 
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
 dbs11="dbs11"
 
-tuple=500
-result=result_ermia_ycsbA_tuple500.dat
-rm $result
-echo "#worker threads, throughput, min, max" >> $result
-echo "#../ermia.exe $tuple $maxope thread $rratio $skew $ycsb $cpu_mhz $gci $extime" >> $result
-
-thread=2
-sum=0
-echo "../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime"
-
-max=0
-min=0
-for ((i=1; i <= epoch; ++i))
-do
-  tmp=`../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime`
-  sum=`echo "$sum + $tmp" | bc -l`
-  echo "sum: $sum,  tmp: $tmp"
-
-  if test $i -eq 1 ; then
-    max=$tmp
-    min=$tmp
-  fi
-
-  flag=`echo "$tmp > $max" | bc -l`
-  if test $flag -eq 1 ; then
-    max=$tmp
-  fi
-  flag=`echo "$tmp < $min" | bc -l`
-  if test $flag -eq 1 ; then
-    min=$tmp
-  fi
-done
-avg=`echo "$sum / $epoch" | bc -l`
-echo "sum: $sum, epoch: $epoch"
-echo "avg $avg"
-echo "max: $max"
-echo "min: $min"
-thout=`echo "$thread - 1" | bc`
-echo "$thout $avg $min $max" >> $result
-
-if  test $host = $chris41 ; then
+#basically
 inith=4
 enth=24
 inc=4
-fi
 if  test $host = $dbs11 ; then
 inith=28
 enth=224
 inc=28
 fi
-for ((thread=$inith; thread<=$enth; thread+=$inc))
-do
-  sum=0
-  echo "../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime"
 
-  max=0
-  min=0
-  for ((i=1; i <= epoch; ++i))
-  do
-    tmp=`../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime`
-    sum=`echo "$sum + $tmp" | bc -l`
-    echo "sum: $sum,  tmp: $tmp"
-
-    if test $i -eq 1 ; then
-      max=$tmp
-      min=$tmp
-    fi
-
-    flag=`echo "$tmp > $max" | bc -l`
-    if test $flag -eq 1 ; then
-      max=$tmp
-    fi
-    flag=`echo "$tmp < $min" | bc -l`
-    if test $flag -eq 1 ; then
-      min=$tmp
-    fi
-  done
-  avg=`echo "$sum / $epoch" | bc -l`
-  echo "sum: $sum, epoch: $epoch"
-  echo "avg $avg"
-  echo "max: $max"
-  echo "min: $min"
-  thout=`echo "$thread - 1" | bc`
-  echo "$thout $avg $min $max" >> $result
-done
-
-tuple=500000
-result=result_ermia_ycsbA_tuple500k.dat
+tuple=10000
+result=result_ermia_ycsbA_tuple10k_key50-val2k_numaia.dat
 rm $result
-echo "#worker threads, throughput, min, max" >> $result
-echo "#../ermia.exe $tuple $maxope thread $rratio $skew $ycsb $cpu_mhz $gci $extime" >> $result
-
+echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar" >> $result
+echo "#../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
 thread=2
-sum=0
-echo "../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime"
 
-max=0
-min=0
+echo "../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
+echo "Thread number $thread"
+
+sumTH=0
+sumAR=0
+maxTH=0
+maxAR=0
+minTH=0
+minAR=0
 for ((i=1; i <= epoch; ++i))
 do
-  tmp=`../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime`
-  sum=`echo "$sum + $tmp" | bc -l`
-  echo "sum: $sum,  tmp: $tmp"
+  numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
+  tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+  tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+  sumTH=`echo "$sumTH + $tmpTH" | bc`
+  sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
+  echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
 
   if test $i -eq 1 ; then
-    max=$tmp
-    min=$tmp
+    maxTH=$tmpTH
+    maxAR=$tmpAR
+    minTH=$tmpTH
+    minAR=$tmpAR
   fi
 
-  flag=`echo "$tmp > $max" | bc -l`
+  flag=`echo "$tmpTH > $maxTH" | bc`
   if test $flag -eq 1 ; then
-    max=$tmp
+    maxTH=$tmpTH
   fi
-  flag=`echo "$tmp < $min" | bc -l`
+  flag=`echo "$tmpAR > $maxAR" | bc`
   if test $flag -eq 1 ; then
-    min=$tmp
+    maxAR=$tmpAR
+  fi
+
+  flag=`echo "$tmpTH < $minTH" | bc`
+  if test $flag -eq 1 ; then
+    minTH=$tmpTH
+  fi
+  flag=`echo "$tmpAR < $minAR" | bc`
+  if test $flag -eq 1 ; then
+    minAR=$tmpAR
   fi
 done
-avg=`echo "$sum / $epoch" | bc -l`
-echo "sum: $sum, epoch: $epoch"
-echo "avg $avg"
-echo "max: $max"
-echo "min: $min"
+avgTH=`echo "$sumTH / $epoch" | bc`
+avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
+echo "sumTH: $sumTH, sumAR: $sumAR"
+echo "avgTH: $avgTH, avgAR: $avgAR"
+echo "maxTH: $maxTH, maxAR: $maxAR"
+echo "minTH: $minTH, minAR: $minAR"
 thout=`echo "$thread - 1" | bc`
-echo "$thout $avg $min $max" >> $result
+echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
 
-if  test $host = $chris41 ; then
-inith=4
-enth=24
-inc=4
-fi
-if  test $host = $dbs11 ; then
-inith=28
-enth=224
-inc=28
-fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  sum=0
-  echo "../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime"
-
-  max=0
-  min=0
+  echo "../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
+  echo "Thread number $thread"
+  
+  sumTH=0
+  sumAR=0
+  maxTH=0
+  maxAR=0
+  minTH=0
+  minAR=0
   for ((i=1; i <= epoch; ++i))
   do
-    tmp=`../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime`
-    sum=`echo "$sum + $tmp" | bc -l`
-    echo "sum: $sum,  tmp: $tmp"
-
+    numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
+    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+    sumTH=`echo "$sumTH + $tmpTH" | bc`
+    sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
+    echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
+  
     if test $i -eq 1 ; then
-      max=$tmp
-      min=$tmp
+      maxTH=$tmpTH
+      maxAR=$tmpAR
+      minTH=$tmpTH
+      minAR=$tmpAR
     fi
-
-    flag=`echo "$tmp > $max" | bc -l`
+  
+    flag=`echo "$tmpTH > $maxTH" | bc`
     if test $flag -eq 1 ; then
-      max=$tmp
+      maxTH=$tmpTH
     fi
-    flag=`echo "$tmp < $min" | bc -l`
+    flag=`echo "$tmpAR > $maxAR" | bc`
     if test $flag -eq 1 ; then
-      min=$tmp
+      maxAR=$tmpAR
+    fi
+  
+    flag=`echo "$tmpTH < $minTH" | bc`
+    if test $flag -eq 1 ; then
+      minTH=$tmpTH
+    fi
+    flag=`echo "$tmpAR < $minAR" | bc`
+    if test $flag -eq 1 ; then
+      minAR=$tmpAR
     fi
   done
-  avg=`echo "$sum / $epoch" | bc -l`
-  echo "sum: $sum, epoch: $epoch"
-  echo "avg $avg"
-  echo "max: $max"
-  echo "min: $min"
+  avgTH=`echo "$sumTH / $epoch" | bc`
+  avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
+  echo "sumTH: $sumTH, sumAR: $sumAR"
+  echo "avgTH: $avgTH, avgAR: $avgAR"
+  echo "maxTH: $maxTH, maxAR: $maxAR"
+  echo "minTH: $minTH, minAR: $minAR"
   thout=`echo "$thread - 1" | bc`
-  echo "$thout $avg $min $max" >> $result
+  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
 done
 
-tuple=5000000
-result=result_ermia_ycsbA_tuple5m.dat
+tuple=1000000
+result=result_ermia_ycsbA_tuple1m_key50-val2k_numaia.dat
 rm $result
 echo "#worker threads, throughput, min, max" >> $result
-echo "#../ermia.exe $tuple $maxope thread $rratio $skew $ycsb $cpu_mhz $gci $extime" >> $result
-
+echo "#../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
 thread=2
-sum=0
-echo "../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime"
 
-max=0
-min=0
+echo "../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
+echo "Thread number $thread"
+
+sumTH=0
+sumAR=0
+maxTH=0
+maxAR=0
+minTH=0
+minAR=0
 for ((i=1; i <= epoch; ++i))
 do
-  tmp=`../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime`
-  sum=`echo "$sum + $tmp" | bc -l`
-  echo "sum: $sum,  tmp: $tmp"
+  numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
+  tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+  tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+  sumTH=`echo "$sumTH + $tmpTH" | bc`
+  sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
+  echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
 
   if test $i -eq 1 ; then
-    max=$tmp
-    min=$tmp
+    maxTH=$tmpTH
+    maxAR=$tmpAR
+    minTH=$tmpTH
+    minAR=$tmpAR
   fi
 
-  flag=`echo "$tmp > $max" | bc -l`
+  flag=`echo "$tmpTH > $maxTH" | bc`
   if test $flag -eq 1 ; then
-    max=$tmp
+    maxTH=$tmpTH
   fi
-  flag=`echo "$tmp < $min" | bc -l`
+  flag=`echo "$tmpAR > $maxAR" | bc`
   if test $flag -eq 1 ; then
-    min=$tmp
+    maxAR=$tmpAR
+  fi
+
+  flag=`echo "$tmpTH < $minTH" | bc`
+  if test $flag -eq 1 ; then
+    minTH=$tmpTH
+  fi
+  flag=`echo "$tmpAR < $minAR" | bc`
+  if test $flag -eq 1 ; then
+    minAR=$tmpAR
   fi
 done
-avg=`echo "$sum / $epoch" | bc -l`
-echo "sum: $sum, epoch: $epoch"
-echo "avg $avg"
-echo "max: $max"
-echo "min: $min"
+avgTH=`echo "$sumTH / $epoch" | bc`
+avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
+echo "sumTH: $sumTH, sumAR: $sumAR"
+echo "avgTH: $avgTH, avgAR: $avgAR"
+echo "maxTH: $maxTH, maxAR: $maxAR"
+echo "minTH: $minTH, minAR: $minAR"
 thout=`echo "$thread - 1" | bc`
-echo "$thout $avg $min $max" >> $result
+echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
 
-if  test $host = $chris41 ; then
-inith=4
-enth=24
-inc=4
-fi
-if  test $host = $dbs11 ; then
-inith=28
-enth=224
-inc=28
-fi
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  sum=0
-  echo "../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime"
-
-  max=0
-  min=0
+  echo "../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
+  echo "Thread number $thread"
+  
+  sumTH=0
+  sumAR=0
+  maxTH=0
+  maxAR=0
+  minTH=0
+  minAR=0
   for ((i=1; i <= epoch; ++i))
   do
-    tmp=`../ermia.exe $tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $gci $extime`
-    sum=`echo "$sum + $tmp" | bc -l`
-    echo "sum: $sum,  tmp: $tmp"
-
+    numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
+    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+    sumTH=`echo "$sumTH + $tmpTH" | bc`
+    sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
+    echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
+  
     if test $i -eq 1 ; then
-      max=$tmp
-      min=$tmp
+      maxTH=$tmpTH
+      maxAR=$tmpAR
+      minTH=$tmpTH
+      minAR=$tmpAR
     fi
-
-    flag=`echo "$tmp > $max" | bc -l`
+  
+    flag=`echo "$tmpTH > $maxTH" | bc`
     if test $flag -eq 1 ; then
-      max=$tmp
+      maxTH=$tmpTH
     fi
-    flag=`echo "$tmp < $min" | bc -l`
+    flag=`echo "$tmpAR > $maxAR" | bc`
     if test $flag -eq 1 ; then
-      min=$tmp
+      maxAR=$tmpAR
+    fi
+  
+    flag=`echo "$tmpTH < $minTH" | bc`
+    if test $flag -eq 1 ; then
+      minTH=$tmpTH
+    fi
+    flag=`echo "$tmpAR < $minAR" | bc`
+    if test $flag -eq 1 ; then
+      minAR=$tmpAR
     fi
   done
-  avg=`echo "$sum / $epoch" | bc -l`
-  echo "sum: $sum, epoch: $epoch"
-  echo "avg $avg"
-  echo "max: $max"
-  echo "min: $min"
+  avgTH=`echo "$sumTH / $epoch" | bc`
+  avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
+  echo "sumTH: $sumTH, sumAR: $sumAR"
+  echo "avgTH: $avgTH, avgAR: $avgAR"
+  echo "maxTH: $maxTH, maxAR: $maxAR"
+  echo "minTH: $minTH, minAR: $minAR"
   thout=`echo "$thread - 1" | bc`
-  echo "$thout $avg $min $max" >> $result
+  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
 done
 

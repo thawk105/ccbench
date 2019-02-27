@@ -21,7 +21,7 @@ Result::displayAbortRate()
 {
   long double ave_rate = (long double) AbortCounts / (long double)(CommitCounts + AbortCounts);
   //cout << "Abort rate : " << ave_rate << endl;
-  cout << fixed << setprecision(4) << ave_rate << endl;
+  cout << fixed << setprecision(4) << "AbortRate " << ave_rate << endl;
 }
 
 void
@@ -55,8 +55,9 @@ Result::displayTPS()
   uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
   uint64_t result = (double)CommitCounts / (double)sec;
-  std::cout << (int)result << std::endl;
+  std::cout << "Throughput(tps) " << (int)result << std::endl;
 }
+
 void
 Result::sumUpAbortCounts()
 {

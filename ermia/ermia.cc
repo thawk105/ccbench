@@ -177,9 +177,6 @@ main(const int argc, const char *argv[])
   chkArg(argc, argv);
   makeDB();
 
-  //displayDB();
-  //displayPRO();
-
   pthread_t thread[THREAD_NUM];
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
@@ -190,11 +187,10 @@ main(const int argc, const char *argv[])
     pthread_join(thread[i], nullptr);
   }
 
-  //displayDB();
-
   rsobject.displayTPS();
+  rsobject.displayAbortRate();
+
   //rsobject.displayGCCounts();
-  //rsobject.displayAbortRate();
   //rsobject.displayGCVersionCountsPS();
   //rsobject.displayGCTMTElementsCountsPS();
 

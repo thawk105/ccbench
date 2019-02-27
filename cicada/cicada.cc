@@ -246,9 +246,10 @@ main(int argc, char *argv[])
   }
 
   rsobject.displayTPS();
+  rsobject.displayAbortRate();
+
   //rsobject.displayCommitCounts();
   //rsobject.displayAbortCounts();
-  //rsobject.displayAbortRate();
   //rsobject.displayGCCounts();
 
   return 0;
