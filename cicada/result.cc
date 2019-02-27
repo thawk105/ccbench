@@ -39,7 +39,13 @@ Result::displayGCCounts()
 void
 Result::displayLocalCommitCounts() 
 {
+#ifdef Linux
+  printf("Th #%d : localCommitCounts : %lu\n", thid, localCommitCounts);
+#endif // Linux
+
+#ifdef Darwin
   printf("Th #%d : localCommitCounts : %llu\n", thid, localCommitCounts);
+#endif // Darwin
 }
 
 void

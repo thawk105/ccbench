@@ -99,7 +99,7 @@ TxExecutor::ssn_tread(unsigned int key)
     ver = ver->committed_prev;
   }
   uint64_t verCstamp = ver->cstamp.load(memory_order_acquire);
-  while (txid < (verCstamp >> 1)) {
+  while (txid < (verCstamp >> TIDFLAG)) {
     //printf("txid %d, (verCstamp >> 1) %d\n", txid, verCstamp >> 1);
     //fflush(stdout);
     ver = ver->committed_prev;
@@ -111,12 +111,12 @@ TxExecutor::ssn_tread(unsigned int key)
     verCstamp = ver->cstamp.load(memory_order_acquire);
   }
 
-  if (ver->psstamp.atomicLoadSstamp() == UINT32_MAX)
+  if (ver->psstamp.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
     // no overwrite yet
     readSet.emplace_back(key, ver);
   else 
     // update pi with r:w edge
-    this->sstamp = min(this->sstamp, (ver->psstamp.atomicLoadSstamp() >> 1));
+    this->sstamp = min(this->sstamp, (ver->psstamp.atomicLoadSstamp() >> TIDFLAG));
   upReadersBits(ver);
 
   verify_exclusion_or_abort();
@@ -305,9 +305,9 @@ TxExecutor::ssn_parallel_commit()
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     uint32_t v_sstamp = (*itr).ver->psstamp.atomicLoadSstamp();
     // if lowest bits raise, it is TID
-    if (v_sstamp & 1) {
+    if (v_sstamp & TIDFLAG) {
       // identify worker by using TID
-      uint8_t worker = (v_sstamp >> 1);
+      uint8_t worker = (v_sstamp >> TIDFLAG);
       if (worker == thid) {
         // it mustn't occur "worker == thid", so it's error.
         dispWS();
@@ -318,6 +318,10 @@ TxExecutor::ssn_parallel_commit()
       // このトランザクションよりも新しい commit timestamp でコミットされる．
       // 従って pi となりえないので，スキップ．
       // そうでないなら，チェック
+      /*cout << "tmt : " << tmt << endl;
+      cout << "worker : " << worker << endl;
+      cout << "v_sstamp : " << v_sstamp << endl;
+      cout << "UINT32_MAX : " << UINT32_MAX << endl;*/
       tmt = __atomic_load_n(&TMT[worker], __ATOMIC_ACQUIRE);
       if (tmt->status.load(memory_order_acquire) == TransactionStatus::committing) {
         // worker は ssn_parallel_commit() に突入している
@@ -335,7 +339,7 @@ TxExecutor::ssn_parallel_commit()
         }
       }
     } else {
-      this->sstamp = min(this->sstamp, v_sstamp >> 1);
+      this->sstamp = min(this->sstamp, v_sstamp >> TIDFLAG);
     }
   }
 
@@ -396,17 +400,18 @@ TxExecutor::ssn_parallel_commit()
 
   // update pi
   uint64_t verSstamp = this->sstamp;
-  verSstamp = verSstamp << 1;
-  verSstamp &= ~(1);
+  verSstamp = verSstamp << TIDFLAG;
+  verSstamp &= ~(TIDFLAG);
 
   uint64_t verCstamp = cstamp;
-  verCstamp = verCstamp << 1;
-  verCstamp &= ~(1);
+  verCstamp = verCstamp << TIDFLAG;
+  verCstamp &= ~(TIDFLAG);
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->committed_prev->psstamp.atomicStoreSstamp(verSstamp);
     (*itr).ver->cstamp.store(verCstamp, memory_order_release);
     (*itr).ver->psstamp.atomicStorePstamp(this->cstamp);
+    (*itr).ver->psstamp.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
     gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, verCstamp));
@@ -425,9 +430,9 @@ void
 TxExecutor::abort()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    (*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(1));
+    (*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     (*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid << 1));
+    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid << TIDFLAG));
   }
   writeSet.clear();
 

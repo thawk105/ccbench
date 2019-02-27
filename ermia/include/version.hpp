@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cstdint>
 
+#define TIDFLAG 1
+
 enum class VersionStatus : uint8_t {
   inFlight,
   committed,
@@ -92,7 +94,7 @@ public:
   char val[VAL_SIZE] = {};
 
   Version() {
-    psstamp.init(0, UINT32_MAX);
+    psstamp.init(0, UINT32_MAX & ~(TIDFLAG));
     status.store(VersionStatus::inFlight, std::memory_order_release);
     readers.store(0, std::memory_order_release);
   }

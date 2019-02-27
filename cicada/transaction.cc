@@ -141,19 +141,18 @@ TxExecutor::tread(unsigned int key)
     }
   }
 
-  //hit version
-  //if read-only, not track or validate readSet
-  if (this->ronly) {
-    return version->val;
-  }
-
-  readSet.emplace_back(key, version);
-
   // for fairness
   // ultimately, it is wasteful in prototype system.
   memcpy(returnVal, version->val, VAL_SIZE);
 
-  return version->val;
+  //if read-only, not track or validate readSet
+  if (this->ronly) {
+    return version->val;
+  }
+  else {
+    readSet.emplace_back(key, version);
+    return version->val;
+  }
 }
 
 void
