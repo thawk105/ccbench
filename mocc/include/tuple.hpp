@@ -118,7 +118,8 @@ public:
     return this->key < right.key;
   }
 };
-  
+ 
+/*
 class WriteElement {
 public:
   unsigned int key;
@@ -134,3 +135,4 @@ public:
     return this->key < right.key;
   }
 };
+*/

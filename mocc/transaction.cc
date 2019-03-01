@@ -1,7 +1,10 @@
+
+#include <stdio.h>
+
 #include <algorithm>
 #include <cmath>
 #include <random>
-#include <stdio.h>
+#include <thread>
 
 #include "../include/debug.hpp"
 
@@ -21,11 +24,11 @@ TxExecutor::searchReadSet(unsigned int key)
   return nullptr;
 }
 
-WriteElement *
+unsigned int *
 TxExecutor::searchWriteSet(unsigned int key)
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    if ((*itr).key == key) return &(*itr);
+    if ((*itr) == key) return &(*itr);
   }
 
   return nullptr;
@@ -70,7 +73,7 @@ TxExecutor::read(unsigned int key)
   Tuple *tuple = &Table[key];
 
   // tuple exists in write set.
-  WriteElement *inW = searchWriteSet(key);
+  unsigned int *inW = searchWriteSet(key);
   //if (inW) return inW->val;
   if (inW) return returnVal;
 
@@ -88,30 +91,47 @@ TxExecutor::read(unsigned int key)
 
   Epotemp loadepot;
   loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+  bool needVerification = true;;
+  if (inRLL != nullptr) {
+    lock(key, tuple, inRLL->mode);
+    if (this->status == TransactionStatus::aborted) 
+      return nullptr;
+    else 
+      needVerification = false;
+  }
+  else if (loadepot.temp >= TEMP_THRESHOLD) {
+    lock(key, tuple, false);
+    if (this->status == TransactionStatus::aborted) 
+      return nullptr;
+    else 
+      needVerification = false;
+  }
 
-  if (inRLL != nullptr) lock(key, tuple, inRLL->mode);
-  else if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, false);
-  if (this->status == TransactionStatus::aborted) return nullptr;
-  
   Tidword expected, desired;
-  for (;;) {
-    expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+  if (needVerification) {
+    for (;;) {
+      expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 
 #ifdef RWLOCK
-    while (expected.lock) {
+      while (expected.lock) {
 #endif // RWLOCK
-      // if you wait due to being write-locked, it may occur dead lock.
-      // it need to guarantee that this parts definitely progress.
-      // So it sholud wait expected.lock because it will be released definitely.
-      //
-      // if expected.lock raise, opponent worker entered pre-commit phase.
-      expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+        // if you wait due to being write-locked, it may occur dead lock.
+        // it need to guarantee that this parts definitely progress.
+        // So it sholud wait expected.lock because it will be released definitely.
+        //
+        // if expected.lock raise, opponent worker entered pre-commit phase.
+        expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+      }
+
+      memcpy(returnVal, tuple->val, VAL_SIZE); // read
+
+      desired.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+      if (expected == desired) break;
     }
-
+  }
+  else {
+    expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     memcpy(returnVal, tuple->val, VAL_SIZE); // read
-
-    desired.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-    if (expected == desired) break;
   }
 
   readSet.emplace_back(expected, key, returnVal);
@@ -122,7 +142,7 @@ void
 TxExecutor::write(unsigned int key)
 {
   // tuple exists in write set.
-  WriteElement *inw = searchWriteSet(key);
+  unsigned int *inw = searchWriteSet(key);
   if (inw) return;
 
   Tuple *tuple = &Table[key];
@@ -301,7 +321,7 @@ TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
         (*itr).lock->acquire_reader_lock(this->locknum, key);
 #endif // MQLOCK
 
-      CLL.emplace_back(*itr);
+      CLL.emplace_back((*itr).key, (*itr).lock, (*itr).mode);
     } else break;
   }
 
@@ -319,7 +339,7 @@ TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
     tuple->mqlock.acquire_writer_lock(this->locknum, key, false);
   else 
     tuple->mqlock.acquire_reader_lock(this->locknum, key, false);
-  CLL.push_back(LockElement<MQLock>(key, &(tuple->mqlock), mode));
+  CLL.push_back(LockElement<MQLock>(key, tuple->mqlock, mode));
   return;
 #endif // MQLOCK
 }
@@ -332,7 +352,7 @@ TxExecutor::construct_RLL()
   
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 #ifdef RWLOCK
-    RLL.emplace_back((*itr).key, &(Table[(*itr).key].rwlock), true);
+    RLL.emplace_back((*itr), &(Table[(*itr)].rwlock), true);
 #endif // RWLOCK
 #ifdef MQLOCK
     RLL.push_back(LockElement<MQLock>((*itr).key, &(Table[(*itr).key].mqlock), true));
@@ -402,9 +422,9 @@ TxExecutor::commit()
   // phase 1 lock write set.
   sort(writeSet.begin(), writeSet.end());
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    tuple = &Table[(*itr).key];
+    tuple = &Table[(*itr)];
 
-    lock((*itr).key, tuple, true);
+    lock((*itr), tuple, true);
     if (this->status == TransactionStatus::aborted) {
       return false;
     }
@@ -433,7 +453,7 @@ TxExecutor::commit()
 #ifdef RWLOCK
     if (tuple->rwlock.counter.load(memory_order_acquire) == -1) {
 #endif // RWLOCK
-      WriteElement *inW = searchWriteSet((*itr).key);
+      unsigned int *inW = searchWriteSet((*itr).key);
       //if the rwlock is already acquired and the owner isn't me, abort.
       if (inW == nullptr) {
         this->status = TransactionStatus::aborted;
@@ -447,7 +467,7 @@ TxExecutor::commit()
   }
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr)
-    Table[(*itr).key].tidword.upLockBits();
+    Table[(*itr)].tidword.upLockBits();
 
   return true;
 }
@@ -474,15 +494,14 @@ TxExecutor::unlockCLL()
 
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
 #ifdef RWLOCK
-    if ((*itr).mode) {
+    if ((*itr).mode)
       (*itr).lock->w_unlock();
-    }
-    else (*itr).lock->r_unlock();
+    else 
+      (*itr).lock->r_unlock();
 #endif // RWLOCK
 
 #ifdef MQLOCK
     if ((*itr).mode) {
-
       (*itr).lock->release_writer_lock(this->locknum, (*itr).key);
     }
     else (*itr).lock->release_reader_lock(this->locknum, (*itr).key);
@@ -516,8 +535,8 @@ TxExecutor::writePhase()
   //write (record, commit-tid)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //update and down lockBit
-    memcpy(Table[(*itr).key].val, writeVal, VAL_SIZE);
-    __atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
+    memcpy(Table[(*itr)].val, writeVal, VAL_SIZE);
+    __atomic_store_n(&(Table[(*itr)].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
   }
 
   unlockCLL();
@@ -558,7 +577,7 @@ TxExecutor::dispWS()
   cout << "th " << this->thid << ": write set: ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //cout << "(" << (*itr).key << ", " << (*itr).val << "), ";
-    cout << "(" << (*itr).key << ", " << writeVal << "), ";
+    cout << "(" << (*itr) << ", " << writeVal << "), ";
   }
   cout << endl;
 }

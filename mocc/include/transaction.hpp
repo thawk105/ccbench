@@ -20,7 +20,7 @@ enum class TransactionStatus : uint8_t {
 class TxExecutor {
 public:
   vector<ReadElement> readSet;
-  vector<WriteElement> writeSet;
+  vector<unsigned int> writeSet;
 #ifdef RWLOCK
   vector<LockElement<RWLock>> RLL;
   vector<LockElement<RWLock>> CLL;
@@ -59,7 +59,7 @@ public:
   }
 
   ReadElement *searchReadSet(unsigned int key);
-  WriteElement *searchWriteSet(unsigned int key);
+  unsigned int *searchWriteSet(unsigned int key);
   template <typename T> T *searchRLL(unsigned int key);
   void removeFromCLL(unsigned int key);
   void begin();

@@ -205,13 +205,11 @@ main(int argc, char *argv[])
 
   rsobject.displayTPS();
   rsobject.displayAbortRate();
-#ifdef DEBUG
   displayLockedTuple();
+#ifdef DEBUG
   //rsobject.displayAbortByOperationRate();
   rsobject.displayAbortByValidationRate();
   rsobject.displayValidationFailureByWriteLockRate();
   rsobject.displayValidationFailureByTIDRate();
 #endif // DEBUG
-
-  return 0;
 }
