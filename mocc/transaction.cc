@@ -127,17 +127,18 @@ TxExecutor::write(unsigned int key)
 
   Tuple *tuple = &Table[key];
 
+  Epotemp loadepot;
+  loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+  if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
+  if (this->status == TransactionStatus::aborted) return;
+
 #ifdef RWLOCK
   LockElement<RWLock> *inRLL = searchRLL<LockElement<RWLock>>(key);
 #endif // RWLOCK
 #ifdef MQLOCK
   LockElement<MQLock> *inRLL = searchRLL<LockElement<MQLock>>(key);
 #endif // MQLOCK
-
-  Epotemp loadepot;
-  loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
-
-  if (inRLL || loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
+  if (inRLL != nullptr) lock(key, tuple, true);
   if (this->status == TransactionStatus::aborted) return;
   
   //writeSet.emplace_back(key, writeVal);
@@ -181,7 +182,6 @@ TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
       
       vioctr++;
     }
-
   }
 
   if (vioctr == 0) threshold = -1;
@@ -264,17 +264,17 @@ TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
     // not in canonical mode. restore.
     for (auto itr = CLL.begin() + (CLL.size() - vioctr); itr != CLL.end(); ++itr) {
 #ifdef RWLOCK
-      if ((*itr).mode) {
+      if ((*itr).mode) 
         (*itr).lock->w_unlock();
-      }
-      else (*itr).lock->r_unlock();
+      else 
+        (*itr).lock->r_unlock();
 #endif // RWLOCK
 
 #ifdef MQLOCK
-      if ((*itr).mode) {
+      if ((*itr).mode) 
         (*itr).lock->release_writer_lock(this->locknum, key);
-      }
-      else (*itr).lock->release_reader_lock(this->locknum, key);
+      else 
+        (*itr).lock->release_reader_lock(this->locknum, key);
 #endif // MQLOCK
     }
       
@@ -288,36 +288,37 @@ TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
     if ((*itr).key <= threshold) continue;
     if ((*itr).key < key) {
 #ifdef RWLOCK
-      if ((*itr).mode) {
+      if ((*itr).mode)
         (*itr).lock->w_lock();
-      }
-      else (*itr).lock->r_lock();
+      else 
+        (*itr).lock->r_lock();
 #endif // RWLOCK
 
 #ifdef MQLOCK
-      if ((*itr).mode) {
+      if ((*itr).mode)
         (*itr).lock->acquire_writer_lock(this->locknum, key);
-      }
-      else (*itr).lock->acquire_reader_lock(this->locknum, key);
+      else 
+        (*itr).lock->acquire_reader_lock(this->locknum, key);
 #endif // MQLOCK
-      CLL.push_back(*itr);
+
+      CLL.emplace_back(*itr);
     } else break;
   }
 
 #ifdef RWLOCK
-  if (mode) {
+  if (mode)
     tuple->rwlock.w_lock(); 
-  }
-  else tuple->rwlock.r_lock();
-  CLL.push_back(LockElement<RWLock>(key, &(tuple->rwlock), mode));
+  else 
+    tuple->rwlock.r_lock();
+  CLL.emplace_back(key, &(tuple->rwlock), mode);
   return;
 #endif // RWLOCK
 
 #ifdef MQLOCK
-  if (mode) {
+  if (mode)
     tuple->mqlock.acquire_writer_lock(this->locknum, key, false);
-  }
-  else tuple->mqlock.acquire_reader_lock(this->locknum, key, false);
+  else 
+    tuple->mqlock.acquire_reader_lock(this->locknum, key, false);
   CLL.push_back(LockElement<MQLock>(key, &(tuple->mqlock), mode));
   return;
 #endif // MQLOCK
@@ -331,7 +332,7 @@ TxExecutor::construct_RLL()
   
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
 #ifdef RWLOCK
-    RLL.push_back(LockElement<RWLock>((*itr).key, &(Table[(*itr).key].rwlock), true));
+    RLL.emplace_back((*itr).key, &(Table[(*itr).key].rwlock), true);
 #endif // RWLOCK
 #ifdef MQLOCK
     RLL.push_back(LockElement<MQLock>((*itr).key, &(Table[(*itr).key].mqlock), true));
@@ -356,7 +357,7 @@ TxExecutor::construct_RLL()
     if (loadepot.temp >= TEMP_THRESHOLD 
         || (*itr).failed_verification) {
 #ifdef RWLOCK
-      RLL.push_back(LockElement<RWLock>((*itr).key, &(tuple->rwlock), false));
+      RLL.emplace_back((*itr).key, &(tuple->rwlock), false);
 #endif // RWLOCK
 #ifdef MQLOCK
       RLL.push_back(LockElement<MQLock>((*itr).key, &(tuple->mqlock), false));

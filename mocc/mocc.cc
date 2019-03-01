@@ -25,6 +25,7 @@ using namespace std;
 extern void chkArg(const int argc, char *argv[]);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern void displayDB();
+extern void displayLockedTuple();
 extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
@@ -205,6 +206,7 @@ main(int argc, char *argv[])
   rsobject.displayTPS();
   rsobject.displayAbortRate();
 #ifdef DEBUG
+  displayLockedTuple();
   //rsobject.displayAbortByOperationRate();
   rsobject.displayAbortByValidationRate();
   rsobject.displayValidationFailureByWriteLockRate();

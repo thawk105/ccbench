@@ -129,7 +129,7 @@ displayDB()
   Tuple *tuple;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tuple = &Table[i % TUPLE_NUM];
+    tuple = &Table[i];
     cout << "----------" << endl; // - is 10
     cout << "key: " << i << endl;
     cout << "val: " << tuple->val << endl;
@@ -137,6 +137,18 @@ displayDB()
     cout << "TIDword: " << tuple->tidword.obj << endl;
     cout << "bit: " << static_cast<bitset<64>>(tuple->tidword.obj) << endl;
     cout << endl;
+  }
+}
+
+void
+displayLockedTuple()
+{
+  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+#ifdef RWLOCK
+    if (Table[i].rwlock.counter.load(memory_order_relaxed) == -1) {
+#endif // RWLOCK
+      cout << "key : " << i << " is locked!." << endl;
+    }
   }
 }
 
