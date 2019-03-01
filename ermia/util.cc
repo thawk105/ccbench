@@ -48,6 +48,8 @@ chkArg(const int argc, const char *argv[])
     cout << "Version " << sizeof(Version) << endl;
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "TransactionTable " << sizeof(TransactionTable) << endl;
+    cout << "KEY_SIZE : " << KEY_SIZE << endl;
+    cout << "VAL_SIZE : " << VAL_SIZE << endl;
 
     exit(0);
   }

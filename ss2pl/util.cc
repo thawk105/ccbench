@@ -40,6 +40,8 @@ chkArg(const int argc, const char *argv[])
     cout << "Tuple size " << sizeof(Tuple) << endl;
     cout << "std::mutex size " << sizeof(mutex) << endl;
     cout << "RWLock size " << sizeof(RWLock) << endl;
+    cout << "KEY_SIZE : " << KEY_SIZE << endl;
+    cout << "VAL_SIZE : " << VAL_SIZE << endl;
     exit(0);
   }
 

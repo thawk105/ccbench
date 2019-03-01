@@ -27,6 +27,7 @@ Result::displayTPS()
   uint64_t result = (double)CommitCounts / (double)sec;
   std::cout << "Throughput(tps) " << (int)result << std::endl;
 }
+
 void
 Result::sumUpAbortCounts()
 {
@@ -49,3 +50,76 @@ Result::sumUpCommitCounts()
   }
 }
 
+#ifdef DEBUG
+void
+Result::displayAbortByOperationRate()
+{
+  long double out = (double)AbortByOperation / (double)AbortCounts;
+  cout << "AbortByOperationRate " << out << endl;
+}
+
+void
+Result::displayAbortByValidationRate()
+{
+  long double out = (double)AbortByValidation / (double)AbortCounts;
+  cout << "AbortByValidationRate " << out << endl;
+}
+
+void
+Result::displayValidationFailureByWriteLockRate()
+{
+  long double out = (double)ValidationFailureByWriteLock / (double)AbortByValidation;
+  cout << "ValidationFailureByWriteLockRate " << out << endl;
+}
+
+void
+Result::displayValidationFailureByTIDRate()
+{
+  long double out = (double)ValidationFailureByTID / (double)AbortByValidation;
+  cout << "ValidationFailureByTIDRate " << out << endl;
+}
+
+void
+Result::sumUpAbortByOperation()
+{
+  uint64_t expected, desired;
+  expected = AbortByOperation.load(std::memory_order_acquire);
+  for (;;) {
+    desired = expected + localAbortByOperation;
+    if (AbortByOperation.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+  }
+}
+
+void
+Result::sumUpAbortByValidation()
+{
+  uint64_t expected, desired;
+  expected = AbortByValidation.load(std::memory_order_acquire);
+  for (;;) {
+    desired = expected + localAbortByValidation;
+    if (AbortByValidation.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+  }
+}
+
+void
+Result::sumUpValidationFailureByWriteLock()
+{
+  uint64_t expected, desired;
+  expected = ValidationFailureByWriteLock.load(std::memory_order_acquire);
+  for (;;) {
+    desired = expected + localValidationFailureByWriteLock;
+    if (ValidationFailureByWriteLock.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+  }
+}
+
+void
+Result::sumUpValidationFailureByTID()
+{
+  uint64_t expected, desired;
+  expected = ValidationFailureByTID.load(std::memory_order_acquire);
+  for (;;) {
+    desired = expected + localValidationFailureByTID;
+    if (ValidationFailureByTID.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+  }
+}
+#endif // DEBUG

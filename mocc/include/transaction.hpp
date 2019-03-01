@@ -6,6 +6,7 @@
 
 #include "common.hpp"
 #include "lock.hpp"
+#include "result.hpp"
 #include "tuple.hpp"
 
 using namespace std;
@@ -37,6 +38,7 @@ public:
   Xoroshiro128Plus *rnd;
   int locknum; // corresponding to index of MQLNodeList.
 
+  Result rsob;
   char writeVal[VAL_SIZE] = {};
   char returnVal[VAL_SIZE] = {};
 

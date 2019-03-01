@@ -87,7 +87,6 @@ worker(void *arg)
   Xoroshiro128Plus rnd;
   rnd.init();
   Procedure pro[MAX_OPE];
-  Result rsobject;
   int locknum = *myid + 2;
   // 0 : None
   // 1 : Acquired
@@ -114,9 +113,15 @@ worker(void *arg)
 
       asm volatile ("" ::: "memory");
 RETRY:
-      if (rsobject.Finish.load(memory_order_acquire)) {
-        rsobject.sumUpAbortCounts();
-        rsobject.sumUpCommitCounts();
+      if (trans.rsob.Finish.load(memory_order_acquire)) {
+        trans.rsob.sumUpAbortCounts();
+        trans.rsob.sumUpCommitCounts();
+#ifdef DEBUG
+        trans.rsob.sumUpAbortByOperation();
+        trans.rsob.sumUpAbortByValidation();
+        trans.rsob.sumUpValidationFailureByWriteLock();
+        trans.rsob.sumUpValidationFailureByTID();
+#endif // DEBUG
         return nullptr;
       }
 
@@ -134,20 +139,22 @@ RETRY:
 
         if (trans.status == TransactionStatus::aborted) {
           trans.abort();
-          ++rsobject.localAbortCounts;
+#ifdef DEBUG
+          ++trans.rsob.localAbortByOperation;
+#endif // DEBUG
           goto RETRY;
         }
       }
 
       if (!(trans.commit())) {
         trans.abort();
-        ++rsobject.localAbortCounts;
+#ifdef DEBUG
+          ++trans.rsob.localAbortByValidation;
+#endif // DEBUG
         goto RETRY;
       }
 
       trans.writePhase();
-      ++rsobject.localCommitCounts;
-
     }
   } catch (bad_alloc) {
     ERR;
@@ -197,6 +204,12 @@ main(int argc, char *argv[])
 
   rsobject.displayTPS();
   rsobject.displayAbortRate();
+#ifdef DEBUG
+  //rsobject.displayAbortByOperationRate();
+  rsobject.displayAbortByValidationRate();
+  rsobject.displayValidationFailureByWriteLockRate();
+  rsobject.displayValidationFailureByTIDRate();
+#endif // DEBUG
 
   return 0;
 }

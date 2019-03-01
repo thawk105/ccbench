@@ -422,6 +422,9 @@ TxExecutor::commit()
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       (*itr).failed_verification = true;
       this->status = TransactionStatus::aborted;
+#ifdef DEBUG
+      ++rsob.localValidationFailureByTID;
+#endif // DEBUG
       return false;
     }
 
@@ -433,6 +436,9 @@ TxExecutor::commit()
       //if the rwlock is already acquired and the owner isn't me, abort.
       if (inW == nullptr) {
         this->status = TransactionStatus::aborted;
+#ifdef DEBUG
+        ++rsob.localValidationFailureByWriteLock;
+#endif // DEBUG
         return false;
       }
     }
@@ -455,6 +461,8 @@ TxExecutor::abort()
 
   readSet.clear();
   writeSet.clear();
+
+  ++rsob.localAbortCounts;
   return;
 }
 
@@ -515,6 +523,8 @@ TxExecutor::writePhase()
   RLL.clear();
   readSet.clear();
   writeSet.clear();
+
+  ++rsob.localCommitCounts;
 }
 
 void

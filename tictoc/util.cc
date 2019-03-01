@@ -44,6 +44,8 @@ chkArg(const int argc, char *argv[])
 
     cout << "Tuple " << sizeof(Tuple) << endl;
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+    cout << "KEY_SIZE : " << KEY_SIZE << endl;
+    cout << "VAL_SIZE : " << VAL_SIZE << endl;
     exit(0);
   }
   chkInt(argv[1]);
