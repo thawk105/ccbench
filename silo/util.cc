@@ -151,11 +151,11 @@ displayPRO(Procedure *pro)
   for (unsigned int i = 0; i < MAX_OPE; ++i) {
       cout << "(ope, key, val) = (";
     switch(pro[i].ope){
-      case Ope::READ:
-        cout << "READ";
+      case Ope::TREAD:
+        cout << "TREAD";
         break;
-      case Ope::WRITE:
-        cout << "WRITE";
+      case Ope::TWRITE:
+        cout << "TWRITE";
         break;
       default:
         break;
@@ -193,9 +193,9 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
 {
   for (unsigned int i = 0; i < MAX_OPE; ++i) {
     if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
+      pro[i].ope = Ope::TREAD;
     else
-      pro[i].ope = Ope::WRITE;
+      pro[i].ope = Ope::TWRITE;
     
     pro[i].key = rnd.next() % TUPLE_NUM;
   }
@@ -205,9 +205,9 @@ void
 makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
   for (unsigned int i = 0; i < MAX_OPE; ++i) {
     if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
+      pro[i].ope = Ope::TREAD;
     else
-      pro[i].ope = Ope::WRITE;
+      pro[i].ope = Ope::TWRITE;
 
     pro[i].key = zipf() % TUPLE_NUM;
   }
