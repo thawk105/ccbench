@@ -15,7 +15,7 @@ void
 Result::displayAbortRate()
 {
   long double ave_rate = (double)AbortCounts / (double)(CommitCounts + AbortCounts);
-  cout << fixed << setprecision(4) << "AbortRate " << ave_rate << endl;
+  cout << fixed << setprecision(4) << "AbortRate\t" << ave_rate << endl;
 }
 
 void
@@ -25,7 +25,7 @@ Result::displayTPS()
   uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
   uint64_t result = (double)CommitCounts / (double)sec;
-  std::cout << "Throughput(tps) " << (int)result << std::endl;
+  std::cout << "Throughput(tps)\t" << (int)result << std::endl;
 }
 
 void
@@ -55,28 +55,28 @@ void
 Result::displayAbortByOperationRate()
 {
   long double out = (double)AbortByOperation / (double)AbortCounts;
-  cout << "AbortByOperationRate " << out << endl;
+  cout << "AbortByOperationRate\t\t" << out << endl;
 }
 
 void
 Result::displayAbortByValidationRate()
 {
   long double out = (double)AbortByValidation / (double)AbortCounts;
-  cout << "AbortByValidationRate " << out << endl;
+  cout << "AbortByValidationRate\t\t\t" << out << endl;
 }
 
 void
 Result::displayValidationFailureByWriteLockRate()
 {
   long double out = (double)ValidationFailureByWriteLock / (double)AbortByValidation;
-  cout << "ValidationFailureByWriteLockRate " << out << endl;
+  cout << "ValidationFailureByWriteLockRate\t" << out << endl;
 }
 
 void
 Result::displayValidationFailureByTIDRate()
 {
   long double out = (double)ValidationFailureByTID / (double)AbortByValidation;
-  cout << "ValidationFailureByTIDRate " << out << endl;
+  cout << "ValidationFailureByTIDRate\t\t" << out << endl;
 }
 
 void

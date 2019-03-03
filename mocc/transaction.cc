@@ -456,6 +456,7 @@ TxExecutor::commit()
       unsigned int *inW = searchWriteSet((*itr).key);
       //if the rwlock is already acquired and the owner isn't me, abort.
       if (inW == nullptr) {
+        (*itr).failed_verification = true;
         this->status = TransactionStatus::aborted;
 #ifdef DEBUG
         ++rsob.localValidationFailureByWriteLock;
