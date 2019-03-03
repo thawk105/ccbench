@@ -123,10 +123,7 @@ TxExecutor::validationPhase()
 
 	// step3, validate the read set.
 	for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-
 		TsWord v1, v2;
-		SetElement *inW = searchWriteSet((*itr).key);
-
     v1.obj 	= __atomic_load_n(&(Table[(*itr).key].tsw.obj), __ATOMIC_ACQUIRE);
 		for (;;) {
 			if ((*itr).tsw.wts != v1.wts) {
@@ -136,6 +133,7 @@ TxExecutor::validationPhase()
 				else return false;
 			}
 
+		  SetElement *inW = searchWriteSet((*itr).key);
 			if ((v1.rts()) < commit_ts && v1.lock) {
 				if (inW == nullptr) return false;
 			}

@@ -29,8 +29,8 @@ private:
     char buf[BUF_SIZE];
     ::snprintf(buf, 1024, " %d ", errnum);
     s += buf;
-   ::strerror_r(errnum, buf, BUF_SIZE);
-    s += buf;
+    if (::strerror_r(errnum, buf, BUF_SIZE) != nullptr)
+      s += buf;
     return s;
   }
 
