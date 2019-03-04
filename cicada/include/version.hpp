@@ -46,6 +46,11 @@ public:
     this->wts.store(wts, memory_order_relaxed);
   }
 
+  void set(uint64_t rts, uint64_t wts) {
+    this->rts.store(rts, memory_order_relaxed);
+    this->wts.store(wts, memory_order_relaxed);
+  }
+
   void set(uint64_t rts, uint64_t wts, Version *newnex, VersionStatus newst) {
     this->rts.store(rts, memory_order_relaxed);
     this->wts.store(wts, memory_order_relaxed);
@@ -79,11 +84,13 @@ class WriteElement {
 public:
   unsigned int key;
   Version *sourceObject, *newObject;
+  bool finishVersionInstall;
 
   WriteElement(unsigned int key, Version *source, Version *newOb) {
     this->key = key;
     this->sourceObject = source;
     this->newObject = newOb;
+    finishVersionInstall = false;
   }
 
   bool operator<(const WriteElement& right) const {

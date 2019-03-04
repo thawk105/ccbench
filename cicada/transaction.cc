@@ -238,10 +238,17 @@ TxExecutor::twrite(unsigned int key)
       if (version == nullptr) ERR;
     }
   }
+  
+  if (getInlineVersionRight(key)) {
+    Table[key].inlineVersion.set(0, this->wts.ts);
+    writeSet.emplace_back(key, version, &Table[key].inlineVersion);
+  }
+  else {
+    Version *newObject;
+    newObject = new Version(0, this->wts.ts);
+    writeSet.emplace_back(key, version, newObject);
+  }
 
-  Version *newObject;
-  newObject = new Version(0, this->wts.ts);
-  writeSet.emplace_back(key, version, newObject);
   return;
 }
 
@@ -311,6 +318,8 @@ TxExecutor::validation()
       (*itr).newObject->next.store(Table[(*itr).key].latest.load(), memory_order_release);
       if (Table[(*itr).key].latest.compare_exchange_strong(expected, (*itr).newObject, memory_order_acq_rel, memory_order_acquire)) break;
     }
+
+    (*itr).finishVersionInstall = true;
   }
 
   //Read timestamp update
@@ -461,10 +470,24 @@ TxExecutor::gcpv()
   }
 }
 
+void
+TxExecutor::wSetClean()
+{
+  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+    if ((*itr).finishVersionInstall)
+      (*itr).newObject->status.store(VersionStatus::aborted, std::memory_order_release);
+    else
+      if ((*itr).newObject != &Table[(*itr).key].inlineVersion) delete (*itr).newObject;
+      else returnInlineVersionRight((*itr).key);
+  }
+
+  writeSet.clear();
+}
+
 void 
 TxExecutor::earlyAbort()
 {
-  writeSet.clear();
+  wSetClean();
   readSet.clear();
 
   if (GROUP_COMMIT) {
@@ -480,6 +503,9 @@ TxExecutor::earlyAbort()
 void
 TxExecutor::abort()
 {
+  wSetClean();
+  readSet.clear();
+
   //pending versionのステータスをabortedに変更
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).newObject->status.store(VersionStatus::aborted, std::memory_order_release);
@@ -489,8 +515,6 @@ TxExecutor::abort()
     chkGcpvTimeout();
   }
 
-  readSet.clear();
-  writeSet.clear();
 
   this->wts.set_clockBoost(CLOCK_PER_US);
   ++rsobject.localAbortCounts;
@@ -547,8 +571,7 @@ TxExecutor::mainte()
       if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
     
       // (a) acquiring the garbage collection lock succeeds
-      uint8_t zero = 0;
-      if (!Table[gcq.front().key].gClock.compare_exchange_weak(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
+      if (getGCRight(gcq.front().key) == false) {
         // fail acquiring the lock
         gcq.pop();
         continue;
@@ -573,12 +596,13 @@ TxExecutor::mainte()
       while (delTarget != nullptr) {
         //nextポインタ退避
         Version *tmp = delTarget->next.load(std::memory_order_acquire);
-        delete delTarget;
+        if (delTarget != &Table[gcq.front().key].inlineVersion) delete delTarget;
+        else returnInlineVersionRight(gcq.front().key);
         delTarget = tmp;
       }
       
       // releases the lock
-      Table[gcq.front().key].gClock.store(0, memory_order_release);
+      returnGCRight(gcq.front().key);
       gcq.pop();
     }
 

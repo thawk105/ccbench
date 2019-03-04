@@ -31,7 +31,7 @@ chkArg(const int argc, char *argv[])
 {
   if (argc != 16) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD GC_INTER_US EXTIME" << endl << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2400 5 2 E 10 3" << endl << endl;
+    cout << "example:./main 200 10 24 50 off 0 on off off 2400 5 2 e 10 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread." << endl;
@@ -44,7 +44,7 @@ chkArg(const int argc, char *argv[])
     cout << "CPU_MHZ(float):  your cpuMHz. used by calculate time of yours 1clock." << endl;
     cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds)." << endl;
     cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds)." << endl;
-    cout << "LOCK_RELEASE_METHOD: E or NE or N. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release." << endl;
+    cout << "LOCK_RELEASE_METHOD: e or ne or n. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release." << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
@@ -149,16 +149,16 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
     exit(0);
   }
 
-  if (arglr == "N") {
+  if (arglr == "n") {
     NLR = true;
     ELR = false;
   }
-  else if (arglr == "E") {
+  else if (arglr == "e") {
     NLR = false;
     ELR = true;
   }
   else {
-    printf("LockRelease(argv[13]) must be E or N\n");
+    printf("LockRelease(argv[13]) must be e or n\n");
     exit(0);
   }
 

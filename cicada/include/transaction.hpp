@@ -91,4 +91,32 @@ public:
   void wSetClean();
   void displayWset();
   void mainte();  //maintenance
+
+  // inline
+  bool getGCRight(unsigned int key) {
+    uint8_t expected, desired(thid);
+    expected = Table[key].gClock.load(std::memory_order_acquire);
+    for (;;) {
+      if (expected != 0) return false;
+      if (Table[key].gClock.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
+        return true;
+    }
+  }
+
+  void returnGCRight(unsigned int key) {
+    Table[key].gClock.store(0, std::memory_order_release);
+  }
+
+  bool getInlineVersionRight(unsigned int key) {
+    VersionStatus expected, desired(VersionStatus::pending);
+    expected = Table[key].inlineVersion.status.load(std::memory_order_acquire);
+    for (;;) {
+      if (expected != VersionStatus::unused) return false;
+      if (Table[key].inlineVersion.status.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
+    }
+  }
+
+  void returnInlineVersionRight(unsigned int key) {
+    Table[key].inlineVersion.status.store(VersionStatus::unused, std::memory_order_release);
+  }
 };
