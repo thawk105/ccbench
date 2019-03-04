@@ -1,13 +1,14 @@
 #pragma once
+#include <cstdint>
 
 enum class Ope {
-  READ, 
-  WRITE
+  TREAD, 
+  TWRITE
 };
 
 class Procedure {
 public:
-  Ope ope = Ope::READ;
+  Ope ope = Ope::TREAD;
   int key = 0;
   int val = 0;
 };

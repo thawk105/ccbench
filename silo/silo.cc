@@ -12,6 +12,7 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
+#include "include/procedure.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 
@@ -119,10 +120,10 @@ RETRY:
 
       //Read phase
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::READ) {
+        if (pro[i].ope == Ope::TREAD) {
             trans.tread(pro[i].key);
         }
-        else if (pro[i].ope == Ope::WRITE) {
+        else {
           if (RMW) {
             trans.tread(pro[i].key);
             trans.twrite(pro[i].key);
@@ -130,8 +131,6 @@ RETRY:
           else
             trans.twrite(pro[i].key);
         }
-        else
-          ERR;
       }
       
       //Validation phase
