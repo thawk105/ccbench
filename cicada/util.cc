@@ -54,6 +54,8 @@ chkArg(const int argc, char *argv[])
     cout << "Procedure " << sizeof(Procedure) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
+    cout << "CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE)) : " << CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE)) << endl;
+    cout << "CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) : " << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
     exit(0);
   }
 
@@ -367,8 +369,7 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
 void
 makeDB(uint64_t *initial_wts)
 {
-  Tuple *tmp;
-  Version *verTmp;
+  Tuple *tuple;
   Xoroshiro128Plus rnd;
   rnd.init();
 
@@ -385,14 +386,13 @@ makeDB(uint64_t *initial_wts)
   tstmp.generateTimeStampFirst(0);
   *initial_wts = tstmp.ts;
   for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-    tmp = &Table[i];
-    tmp->min_wts = tstmp.ts;
-    tmp->gClock.store(0, std::memory_order_release);
-    verTmp = tmp->latest.load();
-    verTmp->wts.store(tstmp.ts, std::memory_order_release);;
-    verTmp->status.store(VersionStatus::committed, std::memory_order_release);
-    verTmp->val[0] = 'a';
-    verTmp->val[1] = '\0';
+    tuple = &Table[i];
+    tuple->min_wts = tstmp.ts;
+    tuple->gClock.store(0, std::memory_order_release);
+    tuple->latest = &tuple->inlineVersion;
+    tuple->inlineVersion.set(0, tstmp.ts, nullptr, VersionStatus::committed);
+    tuple->inlineVersion.val[0] = 'a';
+    tuple->inlineVersion.val[1] = '\0';
   }
 }
 

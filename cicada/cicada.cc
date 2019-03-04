@@ -181,6 +181,7 @@ RETRY:
       if (trans.ronly) {
         ++trans.rsobject.localCommitCounts;
         ++trans.continuingCommit;
+        trans.mainte();
         continue;
       }
 

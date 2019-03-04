@@ -5,6 +5,9 @@
 
 #include <atomic>
 #include <cstdint>
+
+#include "../../include/cache_line_size.hpp"
+
 #include "timeStamp.hpp"
 
 using namespace std;
@@ -16,6 +19,7 @@ enum class VersionStatus : uint8_t {
   precommitted, //early lock releaseで利用
   committed,
   deleted,
+  unused,
 };
 
 class Version {
@@ -24,10 +28,13 @@ public:
   atomic<uint64_t> wts;
   atomic<Version *> next;
   atomic<VersionStatus> status; //commit record
-  int8_t pad[3];
-  // version size to here is 28 bytes.
+  // version size to here is 25 bytes.
 
   char val[VAL_SIZE];
+
+  int8_t pad[CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE))];
+  // it is description for convenience.
+  // 25 : rts(8) + wts(8) + next(8) + status(1)
 
   Version() {
     status.store(VersionStatus::pending, memory_order_release);
@@ -37,6 +44,13 @@ public:
   Version(uint64_t rts, uint64_t wts) {
     this->rts.store(rts, memory_order_relaxed);
     this->wts.store(wts, memory_order_relaxed);
+  }
+
+  void set(uint64_t rts, uint64_t wts, Version *newnex, VersionStatus newst) {
+    this->rts.store(rts, memory_order_relaxed);
+    this->wts.store(wts, memory_order_relaxed);
+    next = newnex;
+    status = newst;
   }
 };
 
