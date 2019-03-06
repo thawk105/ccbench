@@ -25,4 +25,8 @@ public:
     latest.store(nullptr);
     gClock.store(0, memory_order_release);
   }
+
+  Version *ldAcqLatest() {
+    return latest.load(std::memory_order_acquire);
+  }
 };

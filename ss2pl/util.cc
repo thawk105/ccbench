@@ -25,7 +25,7 @@ chkArg(const int argc, const char *argv[])
 {
   if (argc != 10) {
     cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl << endl;
-    cout << "example: ./ss2pl.exe 200 10 24 50 on 0 on 2400 3" << endl << endl;
+    cout << "example: ./ss2pl.exe 200 10 24 50 off 0 on 2400 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;

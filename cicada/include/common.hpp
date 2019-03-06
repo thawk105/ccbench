@@ -42,8 +42,6 @@ GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
-GLOBAL bool ELR;  // early lock release
-GLOBAL bool NLR;
 GLOBAL unsigned int GROUP_COMMIT;
 GLOBAL uint64_t CLOCK_PER_US; // US = micro(µ) seconds 
 GLOBAL double IO_TIME_NS; // nano second

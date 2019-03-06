@@ -94,51 +94,14 @@ TxExecutor::tread(unsigned int key)
   //-----
 
   //Search version
-  Version *version = Table[key].latest;
-  while (version->wts.load(memory_order_acquire) > trts) {
-    version = version->next.load(std::memory_order_acquire);
-    //if version is not found.
-    if (version == nullptr) {
-      ERR;
-    } 
+  Version *version = Table[key].ldAcqLatest();
+  if (version->ldAcqStatus() == VersionStatus::pending) {
+    if (version->ldAcqWts() < trts)
+      while (version->ldAcqStatus() == VersionStatus::pending);
   }
-  
-  //timestamp condition is ok. and check status
-  VersionStatus loadst = version->status.load(memory_order_acquire);
-  while (loadst != VersionStatus::committed && loadst != VersionStatus::precommitted) {
-    if (loadst != VersionStatus::aborted) {
-      if (NLR) {
-        //spin wait
-        if (GROUP_COMMIT) {
-          spinstart = rdtsc();
-          while (loadst == VersionStatus::pending){
-            spinstop = rdtsc();
-            if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
-              earlyAbort();
-              return nullptr;
-            }
-            loadst = version->status.load(memory_order_acquire);
-          }
-        } else {
-          while (loadst == VersionStatus::pending) {
-            loadst = version->status.load(memory_order_acquire);
-          }
-        }
-        if (loadst == VersionStatus::committed) break;
-      } else if (ELR) {
-        while (loadst == VersionStatus::pending) {
-          loadst = version->status.load(memory_order_acquire);    
-        }
-        if (loadst == VersionStatus::committed || loadst == VersionStatus::precommitted) break;
-      }
-    }
-
-    version = version->next.load(memory_order_acquire);
-    loadst = version->status.load(memory_order_acquire);
-    //if version is not found.
-    if (version == nullptr) {
-      ERR;
-    }
+  while (version->ldAcqWts() > trts
+      || version->ldAcqStatus() != VersionStatus::committed) {
+    version = version->ldAcqNext();
   }
 
   // for fairness
@@ -166,25 +129,17 @@ TxExecutor::twrite(unsigned int key)
     }
   }
     
-  Version *version = Table[key].latest.load();
+  Version *version = Table[key].ldAcqLatest();
 
   //Search version (for early abort check)
   //search latest (committed or pending) version and use for early abort check
   //pending version may be committed, so use for early abort check.
-  VersionStatus loadst = version->status.load(memory_order_acquire);
-  // it uses loadst for reducing a number of atomic-load.
-  while (loadst == VersionStatus::aborted) {
-    version = version->next.load(std::memory_order_acquire);
-    loadst = version->status.load(memory_order_acquire);
-
-    //if version is not found.
-    if (version == nullptr) ERR;
-  }
-  //hit version
+  while (version->ldAcqStatus() == VersionStatus::aborted)
+    version = version->ldAcqNext();
 
   //early abort check(EAC)
   //here, version->status is commit or pending.
-  if ((version->rts.load(memory_order_acquire) > this->wts.ts) && (loadst == VersionStatus::committed)) {
+  if ((version->ldAcqRts() > this->wts.ts) && (version->ldAcqStatus() == VersionStatus::committed)) {
     //it must be aborted in validation phase, so early abort.
     this->status = TransactionStatus::abort;
     return; 
@@ -196,57 +151,15 @@ TxExecutor::twrite(unsigned int key)
     this->status = TransactionStatus::abort;
     return; 
   }
-
-  if (NLR) {
-    while (loadst != VersionStatus::committed) {
-      while (loadst == VersionStatus::pending) {
-        //spin-wait
-        //if nlr & group commit, it happens dead lock.
-        //dead lock prevention is time out.
-        if (GROUP_COMMIT) {
-          spinstart = rdtsc();
-          while (loadst == VersionStatus::pending){
-            spinstop = rdtsc();
-            if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
-              earlyAbort();
-              return;
-            }
-            loadst = version->status.load(memory_order_acquire);
-          }
-        } 
-        loadst = version->status.load(memory_order_acquire);
-      }
-      if (loadst == VersionStatus::committed) break;
-    
-      //status == aborted
-      version = version->next.load(std::memory_order_acquire);
-      loadst = version->status.load(memory_order_acquire);
-      if (version == nullptr) {
-        ERR;
-      }
-    }
-  } 
-  else if (ELR) {
-    //here, the status is pending or committed or precomitted.
-    while (loadst == VersionStatus::pending) 
-      loadst = version->status.load(std::memory_order_acquire);
-
-    while (loadst != VersionStatus::precommitted && loadst != VersionStatus::committed) {
-      //status == aborted
-      version = version->next.load(std::memory_order_acquire);
-      loadst = version->status.load(memory_order_acquire);
-      if (version == nullptr) ERR;
-    }
-  }
   
   if (getInlineVersionRight(key)) {
     Table[key].inlineVersion.set(0, this->wts.ts);
-    writeSet.emplace_back(key, version, &Table[key].inlineVersion);
+    writeSet.emplace_back(key, &Table[key].inlineVersion);
   }
   else {
     Version *newObject;
     newObject = new Version(0, this->wts.ts);
-    writeSet.emplace_back(key, version, newObject);
+    writeSet.emplace_back(key, newObject);
   }
 
   return;
@@ -266,56 +179,39 @@ TxExecutor::validation()
     // Pre-check version consistency
     // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
     for (auto itr = writeSet.begin(); itr != writeSet.begin() + (writeSet.size() / 2); ++itr) {
-        if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts.ts) return false;
+      Version *version = Table[(*itr).key].ldAcqLatest();
+      while (version->ldAcqStatus() != VersionStatus::committed)
+        version = version->ldAcqNext();
+
+      if (version->ldAcqRts() > this->wts.ts) return false;
     }
   }
   
   //Install pending version
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    
     Version *expected;
-    expected = Table[(*itr).key].latest.load();
     for (;;) {
+      Table[(*itr).key].ldAcqLatest();
       Version *version = expected;
 
-      VersionStatus loadst = version->status.load(memory_order_acquire);
-      while (loadst != VersionStatus::committed && loadst != VersionStatus::precommitted) {
+      if (version->ldAcqStatus() == VersionStatus::pending) {
+        if (this->wts.ts < version->ldAcqWts()) return false;
+        while (version->ldAcqStatus() == VersionStatus::pending);
+      }
 
-        while (loadst == VersionStatus::aborted) {
-          version = version->next.load(std::memory_order_acquire);
-          loadst = version->status.load(memory_order_acquire);
-        }
-
-        //to avoid cascading aborts.
-        //install pending version step blocks concurrent transactions that share the same visible version and have higher timestamp than (tx.ts).
-        if (NLR && GROUP_COMMIT) {
-          spinstart = rdtsc();
-          while (loadst == VersionStatus::pending) {
-            spinstop = rdtsc();
-            if (chkClkSpan(spinstart, spinstop, SPIN_WAIT_TIMEOUT_US * CLOCK_PER_US) ) {
-              return false;
-            }
-            if (this->wts.ts < version->wts.load(memory_order_acquire)) return false;
-            loadst = version->status.load(memory_order_acquire);
-          }
-        } else {
-          while (loadst == VersionStatus::pending) {
-            if (this->wts.ts < version->wts.load(memory_order_acquire)) return false;
-            loadst = version->status.load(memory_order_acquire);
-          }
-        //now, version->status is not pending.
-        }
-      }  
+      while (version->ldAcqStatus() != VersionStatus::committed)
+        version = version->ldAcqNext();
+      //to avoid cascading aborts.
+      //install pending version step blocks concurrent 
+      //transactions that share the same visible version 
+      //and have higher timestamp than (tx.ts).
 
       // to keep versions ordered by wts in the version list
       // if version is pending version, concurrent transaction that has lower timestamp is aborted.
-      // OR
-      // validation consistency check (pre-check)
-      // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
-      if (this->wts.ts < version->wts.load(memory_order_acquire) || this->wts.ts < version->rts.load(memory_order_acquire)) return false;
+      if (this->wts.ts < version->ldAcqWts()) return false;
 
       (*itr).newObject->status.store(VersionStatus::pending, memory_order_release);
-      (*itr).newObject->next.store(Table[(*itr).key].latest.load(), memory_order_release);
+      (*itr).newObject->strRelNext(Table[(*itr).key].ldAcqLatest());
       if (Table[(*itr).key].latest.compare_exchange_strong(expected, (*itr).newObject, memory_order_acq_rel, memory_order_acquire)) break;
     }
 
@@ -325,7 +221,7 @@ TxExecutor::validation()
   //Read timestamp update
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     uint64_t expected;
-    expected = (*itr).ver->rts.load(memory_order_acquire);
+    expected = (*itr).ver->ldAcqRts();
     for (;;) {
       if (expected > this->wts.ts) break;
       if ((*itr).ver->rts.compare_exchange_strong(expected, this->wts.ts, memory_order_acq_rel, memory_order_acquire)) break;
@@ -335,15 +231,37 @@ TxExecutor::validation()
   // version consistency check
   //(a) every previously visible version v of the records in the read set is the currently visible version to the transaction.
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
-    if (ELR) {
-      if ((*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::committed && (*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::precommitted) return false;
-    } 
-    else 
-      if ((*itr).ver->status.load(std::memory_order_acquire) != VersionStatus::committed) return false;
+    Version *version, *init;
+    for (;;) {
+      version  = init = Table[(*itr).key].ldAcqLatest();
+
+      if (version->ldAcqStatus() == VersionStatus::pending
+          && version->ldAcqWts() < this->wts.ts) {
+        // pending version であり，観測範囲内であれば，
+        // その termination を見届ける必要がある．
+        // 最終的にコミットされたら，View が壊れる．
+        // 元々それを読まなければいけなかったのでアボート
+        while (version->ldAcqStatus() == VersionStatus::pending);
+        if (version->ldAcqStatus() == VersionStatus::committed) return false;
+      }
+
+      while (version->ldAcqStatus() != VersionStatus::committed 
+          || version->ldAcqWts() > this->wts.ts)
+        version = version->ldAcqNext();
+
+      if ((*itr).ver != version) return false;
+
+      if (init == Table[(*itr).key].ldAcqLatest()) break;
+      // else, the validation was interrupted.
+    }
   }
+
   // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-      if ((*itr).sourceObject->rts.load(memory_order_acquire) > this->wts.ts) return false;
+    Version *version = (*itr).newObject->ldAcqNext();
+    while (version->ldAcqStatus() != VersionStatus::committed)
+      version = version->ldAcqNext();
+    if (version->ldAcqRts() > this->wts.ts) return false;
   }
 
   return true;
@@ -438,15 +356,6 @@ TxExecutor::cpv()  //commit pending versions
     gcq.push(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
     memcpy((*itr).newObject->val, writeVal, VAL_SIZE);
     (*itr).newObject->status.store(VersionStatus::committed, std::memory_order_release);
-  }
-
-}
-
-void
-TxExecutor::precpv() 
-{
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    (*itr).newObject->status.store(VersionStatus::precommitted, std::memory_order_release);
   }
 
 }

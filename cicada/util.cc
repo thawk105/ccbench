@@ -29,9 +29,9 @@ using std::cout, std::endl;
 void 
 chkArg(const int argc, char *argv[])
 {
-  if (argc != 16) {
-    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US LOCK_RELEASE_METHOD GC_INTER_US EXTIME" << endl << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2400 5 2 e 10 3" << endl << endl;
+  if (argc != 15) {
+    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US GC_INTER_US EXTIME" << endl << endl;
+    cout << "example:./main 200 10 24 50 off 0 on off off 2400 5 2 10 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread." << endl;
@@ -44,7 +44,6 @@ chkArg(const int argc, char *argv[])
     cout << "CPU_MHZ(float):  your cpuMHz. used by calculate time of yours 1clock." << endl;
     cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds)." << endl;
     cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds)." << endl;
-    cout << "LOCK_RELEASE_METHOD: e or ne or n. Early lock release(tanabe original) or Normal Early Lock release or Normal lock release." << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
@@ -66,8 +65,8 @@ chkArg(const int argc, char *argv[])
   chkInt(argv[10]);
   chkInt(argv[11]);
   chkInt(argv[12]);
+  chkInt(argv[13]);
   chkInt(argv[14]);
-  chkInt(argv[15]);
 
   TUPLE_NUM = atoi(argv[1]);
   MAX_OPE = atoi(argv[2]);
@@ -81,9 +80,8 @@ chkArg(const int argc, char *argv[])
   CLOCK_PER_US = atof(argv[10]);
   IO_TIME_NS = atof(argv[11]);
   GROUP_COMMIT_TIMEOUT_US = atoi(argv[12]);
-  string arglr = argv[13];
-  GC_INTER_US = atoi(argv[14]);
-  EXTIME = atoi(argv[15]);
+  GC_INTER_US = atoi(argv[13]);
+  EXTIME = atoi(argv[14]);
 
   if (RRATIO > 100) {
     cout << "rratio [%%] must be 0 ~ 100)" << endl;
@@ -146,19 +144,6 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
 
   if (CLOCK_PER_US < 100) {
     printf("CPU_MHZ is less than 100. are you really?\n");
-    exit(0);
-  }
-
-  if (arglr == "n") {
-    NLR = true;
-    ELR = false;
-  }
-  else if (arglr == "e") {
-    NLR = false;
-    ELR = true;
-  }
-  else {
-    printf("LockRelease(argv[13]) must be e or n\n");
     exit(0);
   }
 

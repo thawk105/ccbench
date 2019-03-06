@@ -57,6 +57,26 @@ public:
     next = newnex;
     status = newst;
   }
+
+  uint64_t ldAcqRts() {
+    return rts.load(std::memory_order_acquire);
+  }
+
+  uint64_t ldAcqWts() {
+    return wts.load(std::memory_order_acquire);
+  }
+
+  Version *ldAcqNext() {
+    return next.load(std::memory_order_acquire);
+  }
+
+  VersionStatus ldAcqStatus() {
+    return status.load(std::memory_order_acquire);
+  }
+
+  void strRelNext(Version *next_) {
+    next.store(next_, std::memory_order_release);
+  }
 };
 
 class ElementSet {
@@ -83,12 +103,11 @@ public:
 class WriteElement {
 public:
   unsigned int key;
-  Version *sourceObject, *newObject;
+  Version *newObject;
   bool finishVersionInstall;
 
-  WriteElement(unsigned int key, Version *source, Version *newOb) {
+  WriteElement(unsigned int key, Version *newOb) {
     this->key = key;
-    this->sourceObject = source;
     this->newObject = newOb;
     finishVersionInstall = false;
   }
