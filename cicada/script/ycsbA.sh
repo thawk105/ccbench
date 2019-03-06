@@ -48,7 +48,13 @@ minAR=0
 minCA=0
 for ((i = 1; i <= epoch; ++i))
 do
-  sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+  if test $host = $dbs11 ; then
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+  fi
+  if test $host = $chris41 ; then
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+  fi
+
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
   tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
   tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
@@ -120,7 +126,13 @@ do
   
   for ((i = 1; i <= epoch; ++i))
   do
-    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+    if test $host = $dbs11 ; then
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+    fi
+    if test $host = $chris41 ; then
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+    fi
+
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`

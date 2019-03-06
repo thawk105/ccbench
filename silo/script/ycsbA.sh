@@ -6,8 +6,8 @@ skew=0
 ycsb=on
 cpumhz=2400
 epochtime=40
-extime=3
-epoch=3
+extime=1
+epoch=1
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -26,33 +26,46 @@ fi
 tuple=10000
 result=result_silo_ycsbA_tuple10k_key50-val2k_numaia.dat
 rm $result
-echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar" >> $result
-echo "#../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
+echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 thread=2
 
-echo "../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
 echo "Thread number $thread"
 
 sumTH=0
 sumAR=0
+sumCA=0
 maxTH=0
 maxAR=0
+maxCA=0
 minTH=0
 minAR=0
+minCA=0
 for ((i = 1; i <= epoch; ++i))
 do
-  numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+  if test $host = $dbs11 ; then
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+  fi
+  if test $host = $chris41 ; then
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+  fi
+
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
   tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+  tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
   sumTH=`echo "$sumTH + $tmpTH" | bc`
   sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
-  echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
+  sumCA=`echo "$sumCA + $tmpCA" | bc`
+  echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
 
   if test $i -eq 1 ; then
     maxTH=$tmpTH
     maxAR=$tmpAR
+    maxCA=$tmpCA
     minTH=$tmpTH
     minAR=$tmpAR
+    minCA=$tmpCA
   fi
 
   flag=`echo "$tmpTH > $maxTH" | bc`
@@ -63,121 +76,9 @@ do
   if test $flag -eq 1 ; then
     maxAR=$tmpAR
   fi
-
-  flag=`echo "$tmpTH < $minTH" | bc`
+  flag=`echo "$tmpCA > $maxCA" | bc`
   if test $flag -eq 1 ; then
-    minTH=$tmpTH
-  fi
-  flag=`echo "$tmpAR < $minAR" | bc`
-  if test $flag -eq 1 ; then
-    minAR=$tmpAR
-  fi
-
-done
-avgTH=`echo "$sumTH / $epoch" | bc`
-avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
-echo "sumTH: $sumTH, sumAR: $sumAR"
-echo "avgTH: $avgTH, avgAR: $avgAR"
-echo "maxTH: $maxTH, maxAR: $maxAR"
-echo "minTH: $minTH, minAR: $minAR"
-thout=`echo "$thread - 1" | bc`
-echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
-
-for ((thread=$inith; thread<=$enth; thread+=$inc))
-do
-  echo "../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
-  echo "Thread number $thread"
-  
-  sumTH=0
-  sumAR=0
-  maxTH=0
-  maxAR=0
-  minTH=0
-  minAR=0
-  for ((i = 1; i <= epoch; ++i))
-  do
-    numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
-    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
-    sumTH=`echo "$sumTH + $tmpTH" | bc`
-    sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
-    echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
-  
-    if test $i -eq 1 ; then
-      maxTH=$tmpTH
-      maxAR=$tmpAR
-      minTH=$tmpTH
-      minAR=$tmpAR
-    fi
-  
-    flag=`echo "$tmpTH > $maxTH" | bc`
-    if test $flag -eq 1 ; then
-      maxTH=$tmpTH
-    fi
-    flag=`echo "$tmpAR > $maxAR" | bc`
-    if test $flag -eq 1 ; then
-      maxAR=$tmpAR
-    fi
-  
-    flag=`echo "$tmpTH < $minTH" | bc`
-    if test $flag -eq 1 ; then
-      minTH=$tmpTH
-    fi
-    flag=`echo "$tmpAR < $minAR" | bc`
-    if test $flag -eq 1 ; then
-      minAR=$tmpAR
-    fi
-  
-  done
-  avgTH=`echo "$sumTH / $epoch" | bc`
-  avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
-  echo "sumTH: $sumTH, sumAR: $sumAR"
-  echo "avgTH: $avgTH, avgAR: $avgAR"
-  echo "maxTH: $maxTH, maxAR: $maxAR"
-  echo "minTH: $minTH, minAR: $minAR"
-  thout=`echo "$thread - 1" | bc`
-  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
-done
-
-tuple=1000000
-result=result_silo_ycsbA_tuple1m_key50-val2k_numaia.dat
-rm $result
-echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar" >> $result
-echo "#../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
-thread=2
-
-echo "../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
-echo "Thread number $thread"
-
-sumTH=0
-sumAR=0
-maxTH=0
-maxAR=0
-minTH=0
-minAR=0
-for ((i = 1; i <= epoch; ++i))
-do
-  numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
-  tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-  tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
-  sumTH=`echo "$sumTH + $tmpTH" | bc`
-  sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
-  echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
-
-  if test $i -eq 1 ; then
-    maxTH=$tmpTH
-    maxAR=$tmpAR
-    minTH=$tmpTH
-    minAR=$tmpAR
-  fi
-
-  flag=`echo "$tmpTH > $maxTH" | bc`
-  if test $flag -eq 1 ; then
-    maxTH=$tmpTH
-  fi
-  flag=`echo "$tmpAR > $maxAR" | bc`
-  if test $flag -eq 1 ; then
-    maxAR=$tmpAR
+    maxCA=$tmpCA
   fi
 
   flag=`echo "$tmpTH < $minTH" | bc`
@@ -188,42 +89,61 @@ do
   if test $flag -eq 1 ; then
     minAR=$tmpAR
   fi
+  flag=`echo "$tmpCA < $minCA" | bc`
+  if test $flag -eq 1 ; then
+    minCA=$tmpCA
+  fi
 
 done
 avgTH=`echo "$sumTH / $epoch" | bc`
 avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
-echo "sumTH: $sumTH, sumAR: $sumAR"
-echo "avgTH: $avgTH, avgAR: $avgAR"
-echo "maxTH: $maxTH, maxAR: $maxAR"
-echo "minTH: $minTH, minAR: $minAR"
+avgCA=`echo "$sumCA / $epoch" | bc`
+echo "sumTH: $sumTH, sumAR: $sumAR, sumCA: $sumCA"
+echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
+echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
+echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
+echo ""
 thout=`echo "$thread - 1" | bc`
-echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
+echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
   echo "Thread number $thread"
   
   sumTH=0
   sumAR=0
+  sumCA=0
   maxTH=0
   maxAR=0
+  maxCA=0
   minTH=0
   minAR=0
+  minCA=0
   for ((i = 1; i <= epoch; ++i))
   do
-    numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+    if test $host = $dbs11 ; then
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+    fi
+    if test $host = $chris41 ; then
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+    fi
+  
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+    tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
-    echo "tmpTH: $tmpTH, tmpAR: $tmpAR"
+    sumCA=`echo "$sumCA + $tmpCA" | bc`
+    echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
   
     if test $i -eq 1 ; then
       maxTH=$tmpTH
       maxAR=$tmpAR
+      maxCA=$tmpCA
       minTH=$tmpTH
       minAR=$tmpAR
+      minCA=$tmpCA
     fi
   
     flag=`echo "$tmpTH > $maxTH" | bc`
@@ -234,6 +154,10 @@ do
     if test $flag -eq 1 ; then
       maxAR=$tmpAR
     fi
+    flag=`echo "$tmpCA > $maxCA" | bc`
+    if test $flag -eq 1 ; then
+      maxCA=$tmpCA
+    fi
   
     flag=`echo "$tmpTH < $minTH" | bc`
     if test $flag -eq 1 ; then
@@ -243,15 +167,20 @@ do
     if test $flag -eq 1 ; then
       minAR=$tmpAR
     fi
+    flag=`echo "$tmpCA < $minCA" | bc`
+    if test $flag -eq 1 ; then
+      minCA=$tmpCA
+    fi
   
   done
   avgTH=`echo "$sumTH / $epoch" | bc`
   avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
-  echo "sumTH: $sumTH, sumAR: $sumAR"
-  echo "avgTH: $avgTH, avgAR: $avgAR"
-  echo "maxTH: $maxTH, maxAR: $maxAR"
-  echo "minTH: $minTH, minAR: $minAR"
+  avgCA=`echo "$sumCA / $epoch" | bc`
+  echo "sumTH: $sumTH, sumAR: $sumAR, sumCA: $sumCA"
+  echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
+  echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
+  echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
+  echo ""
   thout=`echo "$thread - 1" | bc`
-  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR" >> $result
+  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
 done
-
