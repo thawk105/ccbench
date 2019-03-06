@@ -1159,7 +1159,7 @@ done
 
 #kugiri
 rratio=100
-tuple=00
+tuple=1000
 result=result_ermia_r10_tuple1k.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
