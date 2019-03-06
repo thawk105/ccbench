@@ -189,10 +189,9 @@ TxExecutor::validation()
   
   //Install pending version
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    Version *expected;
+    Version *expected, *version;
     for (;;) {
-      Table[(*itr).key].ldAcqLatest();
-      Version *version = expected;
+      version = expected = Table[(*itr).key].ldAcqLatest();
 
       if (version->ldAcqStatus() == VersionStatus::pending) {
         if (this->wts.ts < version->ldAcqWts()) return false;

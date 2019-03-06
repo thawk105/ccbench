@@ -29,7 +29,12 @@ private:
     char buf[BUF_SIZE];
     ::snprintf(buf, 1024, " %d ", errnum);
     s += buf;
+#ifdef Linux
     if (::strerror_r(errnum, buf, BUF_SIZE) != nullptr)
+#endif // Linux
+#ifdef Darwin
+    if (::strerror_r(errnum, buf, BUF_SIZE) != 0)
+#endif // Darwin
       s += buf;
     return s;
   }
