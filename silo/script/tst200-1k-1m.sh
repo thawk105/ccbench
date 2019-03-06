@@ -1337,7 +1337,7 @@ done
 #kugiri
 rratio=0
 tuple=1000000
-result=result_silo_r10_tuple1m.dat
+result=result_silo_r0_tuple1m.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
