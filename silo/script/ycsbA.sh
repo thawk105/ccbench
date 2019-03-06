@@ -30,7 +30,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 thread=2
 
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -108,7 +108,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
   echo "Thread number $thread"
   
   sumTH=0
