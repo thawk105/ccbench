@@ -30,7 +30,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -108,7 +108,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -194,7 +194,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -272,7 +272,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -358,7 +358,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -436,7 +436,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -522,7 +522,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -600,7 +600,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -686,7 +686,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -764,7 +764,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -850,7 +850,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -928,7 +928,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -1014,7 +1014,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -1092,7 +1092,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -1178,7 +1178,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -1256,7 +1256,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -1342,7 +1342,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -1420,7 +1420,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -1506,7 +1506,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -1584,7 +1584,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -1670,7 +1670,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -1748,7 +1748,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -1834,7 +1834,7 @@ echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-ca
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 thread=1
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -1912,7 +1912,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
   
   sumTH=0
