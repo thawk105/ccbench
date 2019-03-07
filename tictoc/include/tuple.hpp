@@ -6,6 +6,8 @@
 #include <atomic>
 #include <cstdint>
 
+#include "../../include/cache_line_size.hpp"
+
 struct TsWord {
   union {
     uint64_t obj;
@@ -44,10 +46,11 @@ public:
   TsWord pre_tsw;
   // wts 48bit, rts-wts 15bit, lockbit 1bit
   //
-  int8_t pad[8];
 
   char keypad[KEY_SIZE];
   char val[VAL_SIZE];
+
+  int8_t pad[CACHE_LINE_SIZE - ((16 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
 };
 
 class SetElement {

@@ -79,8 +79,6 @@ struct Psstamp {
 
 class Version {
 public:
-  //std::atomic<uint32_t> pstamp;       // Version access stamp, η(V)
-  //std::atomic<uint32_t> sstamp;       // Version successor stamp, pi(V)
   Psstamp psstamp; // Version access stamp, eta(V), Version successor stamp, pi(V)
   Version *prev;  // Pointer to overwritten version
   Version *committed_prev;  // Pointer to the next committed version, to reduce serach cost.
@@ -88,10 +86,11 @@ public:
   std::atomic<uint64_t> readers;  // summarize all of V's readers.
   std::atomic<uint32_t> cstamp;       // Version creation stamp, c(V)
   std::atomic<VersionStatus> status;
-  int8_t padding[23];
-  // size to here is 60 byte
+  // size to here is 37 byte
 
-  char val[VAL_SIZE] = {};
+  char val[VAL_SIZE];
+
+  int8_t pad[CACHE_LINE_SIZE - ((37 + VAL_SIZE) % CACHE_LINE_SIZE)];
 
   Version() {
     psstamp.init(0, UINT32_MAX & ~(TIDFLAG));

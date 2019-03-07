@@ -82,11 +82,11 @@ public:
 
   std::atomic<uint32_t> cstamp;       // Version creation stamp, c(V)
   std::atomic<VersionStatus> status;
-  int8_t padding[7];
-  // size to here is 28 bytes.
-  // if default (val size is 4) total version size is 32 bytes.
+  // size to here is 21 bytes.
 
   char val[VAL_SIZE] = {};
+
+  int8_t pad[CACHE_LINE_SIZE - ((21 + VAL_SIZE) % CACHE_LINE_SIZE)];
 
   Version() {
     status.store(VersionStatus::inFlight, std::memory_order_release);
