@@ -135,10 +135,8 @@ RETRY:
       
       //Validation phase
       if (trans.validationPhase()) {
-        ++trans.rsobject.localCommitCounts;
         trans.writePhase();
       } else {
-        ++trans.rsobject.localAbortCounts;
         trans.abort();
         goto RETRY;
       }

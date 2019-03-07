@@ -109,8 +109,8 @@ TxExecutor::read(unsigned int key)
 
   Tidword expected, desired;
   if (needVerification) {
+    expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     for (;;) {
-      expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
 
 #ifdef RWLOCK
       while (expected.lock) {
@@ -127,6 +127,8 @@ TxExecutor::read(unsigned int key)
 
       desired.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
       if (expected == desired) break;
+      else 
+        expected.obj = desired.obj;
     }
   }
   else {

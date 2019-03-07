@@ -107,9 +107,8 @@ public:
   char val[VAL_SIZE];
   bool failed_verification;
 
-  ReadElement (Tidword tidword, unsigned int key, char *newVal) {
+  ReadElement (Tidword tidword, unsigned int key_, char *newVal) : key(key_) {
     this->tidword = tidword;
-    this->key = key;
     memcpy(val, newVal, VAL_SIZE);
     this->failed_verification = false;
   }

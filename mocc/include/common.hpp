@@ -2,6 +2,7 @@
 
 #include <atomic>
 
+#include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 #include "../../include/random.hpp"
 
@@ -12,17 +13,17 @@
   #define GLOBAL
 
 GLOBAL std::atomic<unsigned int> Running(0);
-alignas(64) GLOBAL uint64_t_64byte GlobalEpoch(1);
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch(1);
 
 #else
   #define GLOBAL extern
 
 GLOBAL std::atomic<unsigned int> Running;
-GLOBAL uint64_t_64byte GlobalEpoch;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch;
 
 #endif
 
-alignas(64) GLOBAL uint64_t_64byte *ThLocalEpoch;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;
 
 // run-time args
 GLOBAL unsigned int TUPLE_NUM;
@@ -39,16 +40,16 @@ GLOBAL unsigned int EXTIME;
 GLOBAL RWLock CtrLock;
 
 // for logging emulation
-alignas(64) GLOBAL uint64_t_64byte *Start;  
-alignas(64) GLOBAL uint64_t_64byte *Stop;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *Start;  
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *Stop;
 
-alignas(64) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 
 // 下記，ifdef で外すと lock.cc のコードから
 // 参照出来なくてエラーが起きる．
 // lock.hpp, lock.cc の全てを ifdef で分岐させるのは大変な労力なので，
 // 行わず，これは RWLOCK モードでも宣言だけしておく．
-alignas(64) GLOBAL MQLNode **MQLNodeTable;
+alignas(CACHE_LINE_SIZE) GLOBAL MQLNode **MQLNodeTable;
 // first dimension index number corresponds to the thread number.
 // second dimension index number corresponds to the key of records.
 // the element mean MQLnode whihch is owned by the thread which has the thread number corresponding to index number.

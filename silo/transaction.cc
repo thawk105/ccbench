@@ -143,6 +143,7 @@ void TxnExecutor::abort()
 
   readSet.clear();
   writeSet.clear();
+  ++rsobject.localAbortCounts;
 }
 
 void TxnExecutor::wal(uint64_t ctid)
@@ -213,6 +214,7 @@ void TxnExecutor::writePhase()
 
   readSet.clear();
   writeSet.clear();
+  ++rsobject.localCommitCounts;
 }
 
 void TxnExecutor::lockWriteSet()

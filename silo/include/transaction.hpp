@@ -41,9 +41,9 @@ public:
   TxnExecutor(int newthid) : thid(newthid) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
-    logSet.reserve(LOGSET_SIZE);
+    //logSet.reserve(LOGSET_SIZE);
 
-    latestLogHeader.init();
+    //latestLogHeader.init();
 
     max_rset.obj = 0;
     max_wset.obj = 0;
