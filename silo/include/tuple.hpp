@@ -42,7 +42,10 @@ public:
   char keypad[KEY_SIZE];
   char val[VAL_SIZE];
 
+#ifndef SHAVE_REC
   int8_t pad[CACHE_LINE_SIZE - ((8 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
+#endif
+
 };
 
 class ReadElement {

@@ -98,7 +98,14 @@ public:
   char val[VAL_SIZE];
 
 #ifdef RWLOCK
+
+#ifdef SHAVE_REC
+  int8_t pad[4];
+#endif // SHAVE_REC
+#ifndef SHAVE_REC
   int8_t pad[CACHE_LINE_SIZE - ((20 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
+#endif // SHAVE_REC
+
 #endif // RWLOCK
 };
 
