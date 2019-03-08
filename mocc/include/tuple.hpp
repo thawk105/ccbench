@@ -14,8 +14,7 @@ struct Tidword {
   union {
     uint64_t obj;
     struct {
-      bool lock:1;
-      uint64_t tid:31;
+      uint64_t tid:32;
       uint64_t epoch:32;
     };
   };
@@ -34,23 +33,6 @@ struct Tidword {
 
   bool operator<(const Tidword& right) const {
     return this->obj < right.obj;
-  }
-
-
-  void upLockBits() {
-    Tidword expected, desired;
-    expected = *this;
-    desired = expected;
-    desired.lock = 1;
-    __atomic_store_n(&(this->obj), desired.obj, __ATOMIC_RELEASE);
-  }
-
-  void downLockBits() {
-    Tidword expected, desired;
-    expected = *this;
-    desired = expected;
-    desired.lock = 0;
-    __atomic_store_n(&(this->obj), desired.obj, __ATOMIC_RELEASE);
   }
 };
 
@@ -115,12 +97,16 @@ public:
   Tidword tidword;
   unsigned int key;
   char val[VAL_SIZE];
-  bool failed_verification;
+  bool failedVerification;
 
   ReadElement (Tidword tidword, unsigned int key_, char *newVal) : key(key_) {
     this->tidword = tidword;
     memcpy(val, newVal, VAL_SIZE);
-    this->failed_verification = false;
+    this->failedVerification = false;
+  }
+
+  ReadElement (unsigned int key_) : key(key_) {
+    failedVerification = true;
   }
 
   bool operator<(const ReadElement& right) const {

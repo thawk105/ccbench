@@ -124,6 +124,8 @@ public:
   // counter == -1, write locked;
   // counter == 0, not locked;
   // counter > 0, there are $counter readers who acquires read-lock.
+#define W_LOCKED -1
+#define NOT_LOCK 0
   
   RWLock() { counter.store(0, std::memory_order_release);}
   void r_lock(); // read lock
@@ -133,6 +135,10 @@ public:
   bool w_trylock(); // write try lock
   void w_unlock();  // write unlock
   bool upgrade(); // upgrade from reader to writer
+
+  int ldAcqCounter() {
+    return counter.load(std::memory_order_acquire);
+  }
 };
 
 // for lock list

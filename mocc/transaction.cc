@@ -111,16 +111,23 @@ TxExecutor::read(unsigned int key)
   if (needVerification) {
     expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     for (;;) {
-
 #ifdef RWLOCK
-      while (expected.lock) {
+      while (tuple->rwlock.ldAcqCounter() == W_LOCKED) {
 #endif // RWLOCK
-        // if you wait due to being write-locked, it may occur dead lock.
+        /* if you wait due to being write-locked, it may occur dead lock.
         // it need to guarantee that this parts definitely progress.
         // So it sholud wait expected.lock because it will be released definitely.
         //
         // if expected.lock raise, opponent worker entered pre-commit phase.
-        expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+        expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);*/
+        
+        if (key < CLL.back().key) {
+          status = TransactionStatus::aborted;
+          readSet.emplace_back(key);
+          return nullptr;
+        }
+        else 
+          expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
       }
 
       memcpy(returnVal, tuple->val, VAL_SIZE); // read
@@ -377,7 +384,7 @@ TxExecutor::construct_RLL()
     tuple = &Table[(*itr).key];
     loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
     if (loadepot.temp >= TEMP_THRESHOLD 
-        || (*itr).failed_verification) {
+        || (*itr).failedVerification) {
 #ifdef RWLOCK
       RLL.emplace_back((*itr).key, &(tuple->rwlock), false);
 #endif // RWLOCK
@@ -387,7 +394,7 @@ TxExecutor::construct_RLL()
     }
 
     // maintain temprature p
-    if ((*itr).failed_verification) {
+    if ((*itr).failedVerification) {
       Epotemp expected, desired;
       uint64_t nowepo;
       expected.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
@@ -443,7 +450,7 @@ TxExecutor::commit()
     tuple = &Table[(*itr).key];
     check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
-      (*itr).failed_verification = true;
+      (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
 #ifdef DEBUG
       ++rsob.localValidationFailureByTID;
@@ -453,24 +460,21 @@ TxExecutor::commit()
 
     // Silo protocol
 #ifdef RWLOCK
-    if (tuple->rwlock.counter.load(memory_order_acquire) == -1) {
+    if (tuple->rwlock.ldAcqCounter() == W_LOCKED
+        && searchWriteSet((*itr).key) == nullptr) {
 #endif // RWLOCK
-      unsigned int *inW = searchWriteSet((*itr).key);
       //if the rwlock is already acquired and the owner isn't me, abort.
-      if (inW == nullptr) {
-        (*itr).failed_verification = true;
-        this->status = TransactionStatus::aborted;
+      (*itr).failedVerification = true;
+      this->status = TransactionStatus::aborted;
 #ifdef DEBUG
-        ++rsob.localValidationFailureByWriteLock;
+      ++rsob.localValidationFailureByWriteLock;
 #endif // DEBUG
-        return false;
-      }
+
+      return false;
     }
+
     this->max_rset = max(this->max_rset, tuple->tidword);
   }
-
-  for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr)
-    Table[(*itr)].tidword.upLockBits();
 
   return true;
 }
@@ -532,7 +536,6 @@ TxExecutor::writePhase()
 
   // compare a, b, c
   Tidword maxtid = max({tid_a, tid_b, tid_c});
-  maxtid.lock = 0;
   mrctid = maxtid;
 
   //write (record, commit-tid)

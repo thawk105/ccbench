@@ -196,7 +196,6 @@ void makeDB() {
     tmp = &Table[i];
 
     tmp->tidword.epoch = 1;
-    tmp->tidword.lock = 0;
     tmp->tidword.tid = 0;
 
     tmp->epotemp.epoch = 1;

@@ -126,7 +126,7 @@ bool TxnExecutor::validationPhase()
       return false;
     }
     //2
-    if (!check.latest) return false;
+    //if (!check.latest) return false;
 
     //3
     if (check.lock && !searchWriteSet((*itr).key)) return false;
