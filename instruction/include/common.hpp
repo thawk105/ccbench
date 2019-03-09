@@ -15,7 +15,7 @@ GLOBAL std::atomic<bool> Finish(false);
 #else
   #define GLOBAL extern
 GLOBAL std::atomic<unsigned int> Running;
-GLOBAL std::atomic<uint64_t> Lsn;
+GLOBAL std::atomic<uint64_t> Counter;
 GLOBAL std::atomic<bool> Finish;
 
 #endif
