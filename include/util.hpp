@@ -45,18 +45,18 @@ public:
 
 static
 void
-writeValGenerator(char *writeVal, int val_size, int thid)
+writeValGenerator(char *writeVal, size_t val_size, size_t thid)
 {
   // generate write value for this thread.
-  int num(thid), digit(1);
+  uint num(thid), digit(1);
   while (num != 0) {
     num /= 10;
     if (num != 0) ++digit;
   }
   char thidString[digit];
-  sprintf(thidString, "%d", thid); 
-  for (int i = 0; i < val_size;) {
-    for (int j = 0; j < digit; ++j) {
+  sprintf(thidString, "%ld", thid); 
+  for (size_t i = 0; i < val_size;) {
+    for (uint j = 0; j < digit; ++j) {
       writeVal[i] = thidString[j];
       ++i;
       if (i == val_size - 2) {

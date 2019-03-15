@@ -51,10 +51,10 @@ chkArg(const int argc, const char *argv[])
   chkInt(argv[3]);
 
   THREAD_NUM = atoi(argv[1]);
-  if (THREAD_NUM < 2) {
-    cout << "THREAD_NUM must be larger than 1" << endl;
-    ERR;
-  }
+  //if (THREAD_NUM < 2) {
+  //  cout << "THREAD_NUM must be larger than 1" << endl;
+  //  ERR;
+  //}
 
   CLOCK_PER_US = atof(argv[2]);
   if (CLOCK_PER_US < 100) {
@@ -63,33 +63,22 @@ chkArg(const int argc, const char *argv[])
   }
 
   EXTIME = atoi(argv[3]);
-
-  try {
-    if (posix_memalign((void**)&CounterIncrements, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  } catch (bad_alloc) {
-    ERR;
-  }
-
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    CounterIncrements[i].obj = 0;
-  }
 }
 
-static void
-prtRslt(uint64_t &bgn, uint64_t &end)
-{
-  uint64_t diff = end - bgn;
-  //cout << diff << endl;
-  //cout << CLOCK_PER_US * 1000000 << endl;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-  int sum = 0;
-  for (unsigned int i = 0; i < THREAD_NUM; ++i)
-    sum += CounterIncrements[i].obj;
-
-  uint64_t result = (double)sum / (double)sec;
-  cout << (int)result << endl;
-}
+//static void
+//prtRslt(uint64_t &bgn, uint64_t &end)
+//{
+//   現在不使用
+//   now, don't be cared.
+//  
+//  uint64_t diff = end - bgn;
+//  cout << diff << endl;
+//  cout << CLOCK_PER_US * 1000000 << endl;
+//  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
+//  
+//  uint64_t result = (double)sum / (double)sec;
+//  cout << (int)result << endl;
+//}
 
 static void *
 manager_worker(void *arg)
@@ -112,16 +101,19 @@ manager_worker(void *arg)
 
   //spin-wait
   while (Running.load(std::memory_order_acquire) != THREAD_NUM);
-  //-----
   uint64_t bgn, end;
+  //-----
   //Bgn = rdtsc();
   bgn = rdtsc();
   for (;;) {
     //End = rdtsc();
     end = rdtsc();
+    usleep(1000);
     if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) break;
   }
 
+  Bgn = bgn;
+  End = end;
   Finish.store(true, std::memory_order_release);
 
   return nullptr;
@@ -130,14 +122,22 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  int *myid = (int *)arg;
+  int myid = *(int *)arg;
+  uint64_t ctr(0);
+  uint val_size = 64 * 1000;
+  int *obVal;
+  obVal = new int[val_size/4];
 
   pid_t pid;
   cpu_set_t cpu_set;
 
   pid = syscall(SYS_gettid);
   CPU_ZERO(&cpu_set);
-  CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+  //CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+  if (myid == 1)
+    CPU_SET(1, &cpu_set);
+  else if (myid == 2)
+    CPU_SET(28, &cpu_set);
 
   if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) ERR;
   
@@ -152,17 +152,17 @@ worker(void *arg)
   while (Running.load(std::memory_order_acquire) != THREAD_NUM) {
     _mm_pause();
   }
-  
-  uint64_t localctr(0);
+
   for (;;) {
     //Counter.load(std::memory_order_acquire);
-    Counter.store(*myid, std::memory_order_release);
-    //++CounterIncrements[*myid].obj;
-    //localctr++;
+    //Counter.store(myid, std::memory_order_release);
+    //++ctr;
+    //for (uint i = 0; i < val_size/4; ++i)
+    //  obVal[i] = myid;
     if (Finish.load(std::memory_order_relaxed)) break;
   }
 
-  printf("Th #%d\t: %lu\n", *myid, localctr);
+  printf("Th #%d\t: %lu\n", myid, ctr);
   return nullptr;
 }
 
@@ -203,7 +203,7 @@ main(const int argc, const char *argv[])
   for (unsigned int i = 0; i < THREAD_NUM; ++i)
     pthread_join(thread[i], nullptr);
 
-  prtRslt(Bgn, End);
+  //prtRslt(Bgn, End);
 
   return 0;
 }
