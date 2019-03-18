@@ -116,6 +116,7 @@ GarbageCollection::gcVersion(Result &rsob)
   return;
 }
 
+#ifdef CCTR_ON
 void
 GarbageCollection::gcTMTelement(Result &rsob)
 {
@@ -135,4 +136,4 @@ GarbageCollection::gcTMTelement(Result &rsob)
   
   return;
 }
-
+#endif // CCTR_ON

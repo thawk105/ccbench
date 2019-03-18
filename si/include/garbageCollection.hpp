@@ -32,7 +32,9 @@ private:
   static std::atomic<uint32_t> gcThreshold; // share for all object (meaning all thread).
 
 public:
+#ifdef CCTR_ON
   std::queue<TransactionTable *> gcqForTMT;
+#endif // CCTR_ON
   std::queue<GCElement> gcqForVersion;
   uint8_t thid;
 
@@ -58,7 +60,9 @@ public:
   
   // for worker thread
   void gcVersion(Result &rsob);
+#ifdef CCTR_ON
   void gcTMTelement(Result &rsob);
+#endif // CCTR_ON
   // -----
 };
 

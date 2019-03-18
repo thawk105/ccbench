@@ -13,13 +13,13 @@
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL
 GLOBAL std::atomic<bool> Finish(false);
-GLOBAL std::atomic<uint64_t> Lsn(0);
+GLOBAL std::atomic<uint64_t> CCtr(0);
 GLOBAL std::atomic<unsigned int> Running(0);
 
 #else
   #define GLOBAL extern
 GLOBAL std::atomic<bool> Finish;
-GLOBAL std::atomic<uint64_t> Lsn;
+GLOBAL std::atomic<uint64_t> CCtr;
 GLOBAL std::atomic<unsigned int> Running;
 
 #endif

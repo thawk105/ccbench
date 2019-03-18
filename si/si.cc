@@ -101,7 +101,9 @@ RETRY:
         trans.rsobject.sumUpAbortCounts();
         trans.rsobject.sumUpCommitCounts();
         trans.rsobject.sumUpGCVersionCounts();
+#ifdef CCTR_ON
         trans.rsobject.sumUpGCTMTElementsCounts();
+#endif // CCTR_ON
         return nullptr;
       }
 
@@ -131,9 +133,11 @@ RETRY:
       // garbage collection
       uint32_t loadThreshold = trans.gcobject.getGcThreshold();
       if (trans.preGcThreshold != loadThreshold) {
-        trans.gcobject.gcTMTelement(trans.rsobject);
         trans.gcobject.gcVersion(trans.rsobject);
         trans.preGcThreshold = loadThreshold;
+#ifdef CCTR_ON
+        trans.gcobject.gcTMTelement(trans.rsobject);
+#endif // CCTR_ON
       }
     }
   } catch (bad_alloc) {

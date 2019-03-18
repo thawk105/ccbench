@@ -100,9 +100,8 @@ chkArg(const int argc, const char *argv[])
     ERR;
   }
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < THREAD_NUM; ++i)
     TMT[i] = new TransactionTable(0, 0);
-  }
 }
 
 bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)

@@ -5,7 +5,7 @@ KEY_SIZE=4
 VAL_SIZE=4
 
 CC = g++
-BASE_CFLAGS = -c -Wall -Wextra -Wdangling-else -g -O2 -std=c++17 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) -D$(shell uname)
+BASE_CFLAGS = -c -Wall -Wextra -Wdangling-else -g -O2 -std=c++17 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) -D$(shell uname) -DCCTR_ON
 LINUX_CFLAGS = -Wchkp -Winvalid-memory-model
 
 CFLAGS = $(BASE_CFLAGS)

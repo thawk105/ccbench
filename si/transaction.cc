@@ -38,6 +38,7 @@ TxExecutor::searchWriteSet(unsigned int key)
 void
 TxExecutor::tbegin()
 {
+#ifdef CCTR_ON
   TransactionTable *newElement, *tmt;
 
   tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
@@ -68,6 +69,12 @@ TxExecutor::tbegin()
     desired = newElement;
     if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
   }
+#endif // CCTR_ON
+
+#ifdef CCTR_TW
+  this->txid = ++CCtr;
+  TMT[thid]->txid.store(this->txid, std::memory_order_release);
+#endif // CCTR_TW
 
   status = TransactionStatus::inFlight;
 }
@@ -170,7 +177,7 @@ TxExecutor::twrite(unsigned int key)
 void
 TxExecutor::commit()
 {
-  this->cstamp = ++Lsn;
+  this->cstamp = ++CCtr;
   status = TransactionStatus::committed;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -186,6 +193,10 @@ TxExecutor::commit()
   writeSet.clear();
 
   ++rsobject.localCommitCounts;
+
+#ifdef CCTR_TW
+  TMT[thid]->lastcstamp.store(this->cstamp, std::memory_order_release);
+#endif // CCTR_TW
   return;
 }
 
