@@ -21,6 +21,8 @@ enum class TransactionStatus : uint8_t {
   aborted,
 };
 
+extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
+
 class TxExecutor {
 public:
   int thid;

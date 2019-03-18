@@ -21,6 +21,8 @@ enum class TransactionStatus : uint8_t {
 
 using namespace std;
 
+extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
+
 class TxExecutor {
 public:
   uint32_t cstamp = 0;  // Transaction end time, c(T) 
