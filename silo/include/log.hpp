@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string.h>
+
 #include <cstdint>
 
 #define LOGLIST_SIZE 31

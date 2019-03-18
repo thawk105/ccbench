@@ -1,6 +1,9 @@
 PROG = silo.exe
 SOURCES = silo.cc transaction.cc result.cc util.cc 
 
+PROG2 = replayTest.exe
+SOURCES2 = replayTest.cc
+
 KEY_SIZE=4
 VAL_SIZE=4
 
@@ -32,10 +35,16 @@ O2 = transaction.o
 O3 = result.o
 O4 = util.o
 
-all: $(PROG)
+O5 = replayTest.o
+
+all: $(PROG) $(PROG2)
 
 $(PROG) : $(O1) $(O2) $(O3) $(O4)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+$(PROG2) : $(O5)
+	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
 .cc.o:
 	$(CC) $(CFLAGS) $<
 clean:

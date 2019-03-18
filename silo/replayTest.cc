@@ -5,14 +5,13 @@
 #include "include/tuple.hpp"
 #include "include/common.hpp"
 
-#include "../include/check.hpp"
 #include "../include/fileio.hpp"
 
 using std::cout;
 using std::endl;
 
 int
-main(int argc, char *argv[])
+main()
 {
   std::string logpath("/work/tanabe/ccbench/silo/log/log1");
   File loadfile(logpath, O_RDONLY, 0644);

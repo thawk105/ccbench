@@ -4,7 +4,6 @@
 #include <set>
 #include <vector>
 
-#include "../../include/util.hpp"
 #include "../../include/fileio.hpp"
 
 #include "common.hpp"
@@ -16,6 +15,8 @@
 #define LOGSET_SIZE 1000
 
 using namespace std;
+
+extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 
 class TxnExecutor {
 public:

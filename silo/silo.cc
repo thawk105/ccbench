@@ -5,6 +5,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -20,6 +21,7 @@
 #include "../include/fileio.hpp"
 #include "../include/random.hpp"
 #include "../include/tsc.hpp"
+#include "../include/util.hpp"
 #include "../include/zipf.hpp"
 
 using namespace std;
@@ -29,6 +31,7 @@ extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
 extern bool chkEpochLoaded();
 extern void displayDB();
 extern void displayPRO();
+extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
@@ -86,15 +89,10 @@ worker(void *arg)
   TxnExecutor trans(*myid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
-  /*
-  std::string logpath("/work/tanabe/ccbench/silo/log/log");
-  std::string logpath("/dev/sdb1/silo/log");
-  logpath += std::to_string(*myid);
-  cout << logpath << endl;
-  createEmptyFile(logpath);
+  std::string logpath;
+  genLogFile(logpath, *myid);
   trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
   trans.logfile.ftruncate(10^9);
-  */
 
   setThreadAffinity(*myid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
