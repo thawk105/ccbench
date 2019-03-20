@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../../include/string.hpp"
 #include "../../include/util.hpp"
 
 #include "common.hpp"
@@ -16,8 +17,6 @@ enum class TransactionStatus : uint8_t {
   committed,
   aborted,
 };
-
-extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
 public:
@@ -57,7 +56,7 @@ public:
     max_wset.obj = 0;
     this->locknum = locknum;
 
-    writeValGenerator(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
   ReadElement *searchReadSet(unsigned int key);

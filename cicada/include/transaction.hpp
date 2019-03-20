@@ -8,6 +8,7 @@
 #include <queue>
 
 #include "../../include/debug.hpp"
+#include "../../include/string.hpp"
 #include "../../include/util.hpp"
 
 #include "common.hpp"
@@ -25,8 +26,6 @@ enum class TransactionStatus : uint8_t {
   commit,
   abort,
 };
-
-extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
 public:
@@ -71,7 +70,7 @@ public:
     continuingCommit = 0;
     rsobject.thid = thid;
 
-    writeValGenerator(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
 
     start = rdtsc();
     GCstart = start;

@@ -6,14 +6,13 @@
 #include <set>
 #include <vector>
 
+#include "../../include/string.hpp"
 #include "../../include/util.hpp"
 #include "../../include/inline.hpp"
 
 #include "common.hpp"
 #include "procedure.hpp"
 #include "tuple.hpp"
-
-using namespace std;
 
 enum class TransactionStatus : uint8_t {
   inFlight,
@@ -43,7 +42,7 @@ public:
     writeSet.reserve(MAX_OPE);
     cll.reserve(MAX_OPE);
 
-    writeValGenerator(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
   void tbegin();

@@ -5,15 +5,19 @@
 #include "include/tuple.hpp"
 #include "include/common.hpp"
 
+#include "../include/debug.hpp"
 #include "../include/fileio.hpp"
 
 using std::cout;
 using std::endl;
 
+extern void genLogFile(std::string &logpath, const int thid);
+
 int
 main()
 {
-  std::string logpath("/work/tanabe/ccbench/silo/log/log1");
+  std::string logpath;
+  genLogFileName(logpath, 1);
   File loadfile(logpath, O_RDONLY, 0644);
 
   LogHeader loadhd;

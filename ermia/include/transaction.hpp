@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "../../include/string.hpp"
 #include "../../include/util.hpp"
 
 #include "garbageCollection.hpp"
@@ -21,8 +22,6 @@ enum class TransactionStatus : uint8_t {
 };
 
 using namespace std;
-
-extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
 public:
@@ -50,7 +49,7 @@ public:
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);
 
-    writeValGenerator(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
   SetElement *searchReadSet(unsigned int key);

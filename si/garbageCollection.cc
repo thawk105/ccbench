@@ -23,8 +23,8 @@ GarbageCollection::chkSecondRange()
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid.load(std::memory_order_acquire);
-    smin = min(smin, tmptxid);
-    smax = max(smax, tmptxid);
+    smin = std::min(smin, tmptxid);
+    smax = std::max(smax, tmptxid);
   }
 
   //cout << "fmin, fmax : " << fmin << ", " << fmax << endl;
@@ -45,8 +45,8 @@ GarbageCollection::decideFirstRange()
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid.load(std::memory_order_acquire);
-    fmin = min(fmin, tmptxid);
-    fmax = max(fmax, tmptxid);
+    fmin = std::min(fmin, tmptxid);
+    fmax = std::max(fmax, tmptxid);
   }
 
   return;
@@ -98,7 +98,7 @@ GarbageCollection::gcVersion(Result &rsob)
     // the thread detaches the rest of the version list from v
     gcqForVersion.front().ver->committed_prev->prev = nullptr;
     // updates record.min_wts
-    Table[gcqForVersion.front().key].min_cstamp.store(gcqForVersion.front().ver->committed_prev->cstamp, memory_order_release);
+    Table[gcqForVersion.front().key].min_cstamp.store(gcqForVersion.front().ver->committed_prev->cstamp, std::memory_order_release);
 
     while (delTarget != nullptr) {
       //next pointer escape

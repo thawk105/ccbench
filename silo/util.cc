@@ -168,19 +168,7 @@ displayPRO(Procedure *pro)
 void
 genLogFile(std::string &logpath, const int thid)
 {
-  // 変数定義
-  const int PATHNAME_SIZE = 512;
-  char pathname[PATHNAME_SIZE];
-
-  // 変数初期化
-  memset(pathname, '\0', PATHNAME_SIZE);
-
-  // カレントディレクトリ取得
-  if (getcwd(pathname, PATHNAME_SIZE) == NULL) ERR;
-
-  logpath = pathname;
-  logpath += "/log/log" + to_string(thid);
-
+  genLogFileName(logpath, thid);
   createEmptyFile(logpath);
 }
 
@@ -260,28 +248,4 @@ waitForReadyOfAllThread()
 
   while (Running.load(std::memory_order_acquire) != THREAD_NUM);
   return;
-}
-
-void
-writeValGenerator(char *writeVal, size_t val_size, size_t thid)
-{
-  // generate write value for this thread.
-  uint num(thid), digit(1);
-  while (num != 0) {
-    num /= 10;
-    if (num != 0) ++digit;
-  }
-  char thidString[digit];
-  sprintf(thidString, "%ld", thid); 
-  for (size_t i = 0; i < val_size;) {
-    for (uint j = 0; j < digit; ++j) {
-      writeVal[i] = thidString[j];
-      ++i;
-      if (i == val_size - 2) {
-        break;
-      }
-    }
-  }
-  writeVal[val_size - 1] = '\0';
-  // -----
 }

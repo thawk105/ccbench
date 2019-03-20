@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "../../include/string.hpp"
 #include "../../include/util.hpp"
 
 #include "garbageCollection.hpp"
@@ -19,16 +20,12 @@ enum class TransactionStatus : uint8_t {
   aborted,
 };
 
-using namespace std;
-
-extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
-
 class TxExecutor {
 public:
   uint32_t cstamp = 0;  // Transaction end time, c(T) 
   TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
-  vector<SetElement> readSet;
-  vector<SetElement> writeSet;
+  std::vector<SetElement> readSet;
+  std::vector<SetElement> writeSet;
   GarbageCollection gcobject;
   uint32_t preGcThreshold = 0;
   Result rsobject;
@@ -44,7 +41,7 @@ public:
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);
 
-    writeValGenerator(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
   SetElement *searchReadSet(unsigned int key);

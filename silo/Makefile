@@ -42,7 +42,7 @@ all: $(PROG) $(PROG2)
 $(PROG) : $(O1) $(O2) $(O3) $(O4)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-$(PROG2) : $(O5)
+$(PROG2) : $(O5) 
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .cc.o:

@@ -62,9 +62,9 @@ chkArg(const int argc, const char *argv[])
   MAX_OPE = atoi(argv[2]);
   THREAD_NUM = atoi(argv[3]);
   RRATIO = atoi(argv[4]);
-  string argrmw = argv[5];
+  std::string argrmw = argv[5];
   ZIPF_SKEW = atof(argv[6]);
-  string argst = argv[7];
+  std::string argst = argv[7];
   CLOCK_PER_US = atof(argv[8]);
   EXTIME = atoi(argv[9]);
 
@@ -96,7 +96,7 @@ chkArg(const int argc, const char *argv[])
 
   try {
     TMT = new TransactionTable*[THREAD_NUM];
-  } catch (bad_alloc) {
+  } catch (std::bad_alloc) {
     ERR;
   }
 
@@ -182,7 +182,7 @@ makeDB()
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       if (posix_memalign((void**)&Table[i].latest, 64, sizeof(Version)) != 0) ERR;
     }
-  } catch (bad_alloc) {
+  } catch (std::bad_alloc) {
     ERR;
   }
 
@@ -232,7 +232,7 @@ naiveGarbageCollection()
   uint32_t mintxID = UINT32_MAX;
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
-    mintxID = min(mintxID, tmt->txid.load(std::memory_order_acquire));
+    mintxID = std::min(mintxID, tmt->txid.load(std::memory_order_acquire));
   }
 
   if (mintxID == 0) return;
@@ -248,16 +248,16 @@ naiveGarbageCollection()
       }
       // -----
 
-      verTmp = Table[i].latest.load(memory_order_acquire);
-      if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
+      verTmp = Table[i].latest.load(std::memory_order_acquire);
+      if (verTmp->status.load(std::memory_order_acquire) != VersionStatus::committed) 
         verTmp = verTmp->committed_prev;
       // この時点で， verTmp はコミット済み最新バージョン
 
-      uint64_t verCstamp = verTmp->cstamp.load(memory_order_acquire);
+      uint64_t verCstamp = verTmp->cstamp.load(std::memory_order_acquire);
       while (mintxID < (verCstamp >> 1)) {
         verTmp = verTmp->committed_prev;
         if (verTmp == nullptr) break;
-        verCstamp = verTmp->cstamp.load(memory_order_acquire);
+        verCstamp = verTmp->cstamp.load(std::memory_order_acquire);
       }
       if (verTmp == nullptr) continue;
       // verTmp は mintxID によって到達可能．
@@ -309,28 +309,4 @@ waitForReadyOfAllThread()
 
   while (Running.load(std::memory_order_acquire) != THREAD_NUM);
   return;
-}
-
-void
-writeValGenerator(char *writeVal, size_t val_size, size_t thid)
-{
-  // generate write value for this thread.
-  uint num(thid), digit(1);
-  while (num != 0) {
-    num /= 10;
-    if (num != 0) ++digit;
-  }
-  char thidString[digit];
-  sprintf(thidString, "%ld", thid); 
-  for (size_t i = 0; i < val_size;) {
-    for (uint j = 0; j < digit; ++j) {
-      writeVal[i] = thidString[j];
-      ++i;
-      if (i == val_size - 2) {
-        break;
-      }
-    }
-  }
-  writeVal[val_size - 1] = '\0';
-  // -----
 }

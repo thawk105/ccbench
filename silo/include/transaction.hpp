@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../../include/fileio.hpp"
+#include "../../include/string.hpp"
 
 #include "common.hpp"
 #include "log.hpp"
@@ -15,8 +16,6 @@
 #define LOGSET_SIZE 1000
 
 using namespace std;
-
-extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 
 class TxnExecutor {
 public:
@@ -49,7 +48,7 @@ public:
     max_rset.obj = 0;
     max_wset.obj = 0;
 
-    writeValGenerator(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
   void tbegin();

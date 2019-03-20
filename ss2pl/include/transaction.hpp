@@ -3,11 +3,10 @@
 #include <vector>
 
 #include "../../include/rwlock.hpp"
+#include "../../include/string.hpp"
 #include "../../include/util.hpp"
 
 #include "tuple.hpp"
-
-using namespace std;
 
 enum class TransactionStatus : uint8_t {
   inFlight,
@@ -36,7 +35,7 @@ public:
     r_lockList.reserve(MAX_OPE);
     w_lockList.reserve(MAX_OPE);
 
-    writeValGenerator(writeVal, VAL_SIZE, thid); 
+    genStringRepeatedNumber(writeVal, VAL_SIZE, thid); 
   }
 
   SetElement *searchReadSet(unsigned int key);
