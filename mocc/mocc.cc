@@ -10,15 +10,16 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "../include/debug.hpp"
-#include "../include/int64byte.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
+
+#include "../include/cpu.hpp"
+#include "../include/debug.hpp"
+#include "../include/int64byte.hpp"
+#include "../include/tsc.hpp"
+#include "../include/zipf.hpp"
 
 using namespace std;
 
@@ -30,7 +31,6 @@ extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 bool

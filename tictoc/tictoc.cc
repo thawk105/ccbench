@@ -13,16 +13,15 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 
-using namespace std;
+#include "../include/cpu.hpp"
+#include "../include/debug.hpp"
+#include "../include/random.hpp"
+#include "../include/tsc.hpp"
+#include "../include/zipf.hpp"
 
 extern void chkArg(const int argc, char *argv[]);
 extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
@@ -31,7 +30,6 @@ extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 static void *

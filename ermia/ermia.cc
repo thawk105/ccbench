@@ -12,17 +12,17 @@
 
 #define GLOBAL_VALUE_DEFINE
 
+#include "include/common.hpp"
+#include "include/garbageCollection.hpp"
+#include "include/result.hpp"
+#include "include/transaction.hpp"
+
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/random.hpp"
 #include "../include/tsc.hpp"
 #include "../include/zipf.hpp"
-
-#include "include/common.hpp"
-#include "include/garbageCollection.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
 
 using namespace std;
 
@@ -32,7 +32,6 @@ extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void naiveGarbageCollection();
-extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 static void *

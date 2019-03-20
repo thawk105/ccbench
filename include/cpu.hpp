@@ -1,4 +1,8 @@
+#pragma once
+
 #include <cpuid.h>
+
+#include "debug.hpp"
 
 #define CPUID(INFO, LEAF, SUBLEAF) __cpuid_count(LEAF, SUBLEAF, INFO[0], INFO[1], INFO[2], INFO[3])
 
@@ -17,3 +21,20 @@
         }                                              \
         if (CPU < 0) CPU = 0;                          \
       }
+
+#ifdef Linux
+static void
+setThreadAffinity(const int myid)
+{
+  pid_t pid = syscall(SYS_gettid);
+  cpu_set_t cpu_set;
+
+  CPU_ZERO(&cpu_set);
+  CPU_SET(myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+
+  if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
+    ERR;
+
+  return;
+}
+#endif // Linux

@@ -382,23 +382,6 @@ makeDB(uint64_t *initial_wts)
 }
 
 void
-setThreadAffinity(int myid)
-{
-#ifdef Linux
-  pid_t pid = syscall(SYS_gettid);
-  cpu_set_t cpu_set;
-
-  CPU_ZERO(&cpu_set);
-  CPU_SET(myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-  if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
-    ERR;
-#endif // Linux
-
-  return;
-}
-
-void
 waitForReadyOfAllThread()
 {
   unsigned int expected, desired;

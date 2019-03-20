@@ -11,6 +11,7 @@
 #include <string> //string
 
 #define GLOBAL_VALUE_DEFINE
+#include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/random.hpp"
@@ -30,7 +31,6 @@ extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void naiveGarbageCollection();
-extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 static void *

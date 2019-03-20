@@ -34,10 +34,6 @@ extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void waitForReadyOfAllThread();
 
-#ifdef Linux
-extern void setThreadAffinity(int myid);
-#endif // Linux
-
 static void *
 manager_worker(void *arg)
 {

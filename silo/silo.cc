@@ -17,6 +17,7 @@
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 
+#include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/fileio.hpp"
 #include "../include/random.hpp"
@@ -35,7 +36,6 @@ extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void setThreadAffinity(int myid);
 extern void waitForReadyOfAllThread();
 
 void threadEndProcess(int *myid);
