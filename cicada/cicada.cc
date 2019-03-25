@@ -43,6 +43,7 @@ manager_worker(void *arg)
   makeDB(&initial_wts);
   MinWts.store(initial_wts + 2, memory_order_release);
   Result rsobject;
+  uint64_t bgn, end;
 
 #ifdef Linux
   int *myid = (int *)arg;
@@ -53,12 +54,14 @@ manager_worker(void *arg)
   waitForReadyOfAllThread();
   while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
-  rsobject.Bgn = rdtsc();
+  bgn = rdtsc();
   // leader work
   for(;;) {
-    rsobject.End = rdtsc();
-    if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+    end = rdtsc();
+    if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
       rsobject.Finish.store(true, std::memory_order_release);
+      rsobject.Bgn = bgn;
+      rsobject.End = end;
       return nullptr;
     }
 

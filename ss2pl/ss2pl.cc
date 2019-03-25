@@ -42,6 +42,7 @@ worker(void *arg)
   TxExecutor trans(*myid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  uint64_t bgn, end;
 
 #ifdef Linux
   setThreadAffinity(*myid);
@@ -51,7 +52,7 @@ worker(void *arg)
 
   waitForReadyOfAllThread();
   
-  if (*myid == 0) rsobject.Bgn = rdtsc();
+  if (*myid == 0) bgn = rdtsc();
 
   try {
     //start work (transaction)
@@ -67,11 +68,13 @@ RETRY:
       if (*myid == 0) {
 
         // finish judge
-        rsobject.End = rdtsc();
-        if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+        end = rdtsc();
+        if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
           rsobject.Finish.store(true, std::memory_order_release);
           rsobject.sumUpCommitCounts();
           rsobject.sumUpAbortCounts();
+          rsobject.Bgn = bgn;
+          rsobject.End = end;
           return nullptr;
         }
       } else {

@@ -42,13 +42,14 @@ worker(void *arg)
   TxExecutor trans(*myid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  uint64_t bgn, end;
 
   setThreadAffinity(*myid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
   waitForReadyOfAllThread();
   
-  if (*myid == 0) rsobject.Bgn = rdtsc();
+  if (*myid == 0) bgn = rdtsc();
 
   try {
     for (;;) {
@@ -62,11 +63,13 @@ RETRY:
 
       // finish judge
       if (*myid == 0) {
-        rsobject.End = rdtsc();
-        if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME*1000*1000 * CLOCK_PER_US)) {
+        end = rdtsc();
+        if (chkClkSpan(bgn, end, EXTIME*1000*1000 * CLOCK_PER_US)) {
           rsobject.Finish.store(true, std::memory_order_release);
           rsobject.sumUpCommitCounts();
           rsobject.sumUpAbortCounts();
+          rsobject.Bgn = bgn;
+          rsobject.End = end;
           return nullptr;
         }
       } else {

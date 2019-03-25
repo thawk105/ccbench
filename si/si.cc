@@ -40,6 +40,7 @@ manager_worker(void *arg)
   int *myid = (int *)arg;
   GarbageCollection gcobject;
   Result rsobject;
+  uint64_t bgn, end;
  
 #ifdef Linux 
   setThreadAffinity(*myid);
@@ -50,12 +51,14 @@ manager_worker(void *arg)
   // end, initial work
   
   
-  rsobject.Bgn = rdtsc();
+  bgn = rdtsc();
   for (;;) {
     usleep(1);
-    rsobject.End = rdtsc();
-    if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+    end = rdtsc();
+    if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
       Finish.store(true, std::memory_order_release);
+      rsobject.Bgn = bgn;
+      rsobject.End = end;
       return nullptr;
     }
 

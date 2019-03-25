@@ -50,6 +50,7 @@ epoch_worker(void *arg)
   int *myid = (int *)arg;
   uint64_t EpochTimerStart, EpochTimerStop;
   Result rsobject;
+  uint64_t bgn, end;
 
 #ifdef Linux
   setThreadAffinity(*myid);
@@ -57,13 +58,15 @@ epoch_worker(void *arg)
 
   waitForReadyOfAllThread();
 
-  rsobject.Bgn = rdtsc();
+  bgn = rdtsc();
   EpochTimerStart = rdtsc();
   for (;;) {
     usleep(1);
-    rsobject.End = rdtsc();
-    if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+    end = rdtsc();
+    if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
       rsobject.Finish.store(true, memory_order_release);
+      rsobject.Bgn = bgn;
+      rsobject.End = end;
       return nullptr;
     }
 
