@@ -6,46 +6,42 @@
 using std::cout, std::endl, std::fixed, std::setprecision;
 
 void 
-Result::displayAbortCounts()
+Result::display_totalAbortCounts()
 {
-  cout << "Abort counts : " << AbortCounts << endl;
+  cout << "totalAbortCounts :\t" << totalAbortCounts << endl;
 }
 
 void
-Result::displayAbortRate()
+Result::display_abortRate()
 {
-  long double ave_rate = (double)AbortCounts / (double)(CommitCounts + AbortCounts);
-  cout << fixed << setprecision(4) << "AbortRate\t" << ave_rate << endl;
+  long double ave_rate = (double)totalAbortCounts / (double)(totalCommitCounts + totalAbortCounts);
+  cout << fixed << setprecision(4) << "abortRate :\t\t" << ave_rate << endl;
 }
 
 void
-Result::displayTPS()
+Result::display_totalCommitCounts()
 {
-  uint64_t diff = End - Bgn;
+  cout << "totalCommitCounts :\t" << totalCommitCounts << endl;
+}
+
+void
+Result::display_tps()
+{
+  uint64_t diff = end - bgn;
   uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
 
-  uint64_t result = (double)CommitCounts / (double)sec;
-  std::cout << "Throughput(tps)\t" << (int)result << std::endl;
+  uint64_t result = (double)totalCommitCounts / (double)sec;
+  std::cout << "Throughput(tps) :\t" << (int)result << std::endl;
 }
 void
-Result::sumUpAbortCounts()
+Result::add_localAbortCounts(uint64_t acount)
 {
-  uint64_t expected, desired;
-  expected = AbortCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localAbortCounts;
-    if (AbortCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  totalAbortCounts += acount;
 }
 
 void
-Result::sumUpCommitCounts()
+Result::add_localCommitCounts(uint64_t ccount)
 {
-  uint64_t expected, desired;
-  expected = CommitCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localCommitCounts;
-    if (CommitCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  totalCommitCounts += ccount;
 }
 

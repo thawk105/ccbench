@@ -3,28 +3,24 @@
 #include <atomic>
 
 class Result {
-private:
-  static std::atomic<uint64_t> AbortCounts;
-  static std::atomic<uint64_t> CommitCounts;
-
 public:
-  static uint64_t Bgn;
-  static uint64_t End;
   static std::atomic<bool> Finish;
-  uint32_t localAbortCounts = 0;
-  uint32_t localCommitCounts = 0;
+  uint64_t bgn;
+  uint64_t end;
+  uint64_t localAbortCounts = 0;
+  uint64_t localCommitCounts = 0;
+  uint64_t totalAbortCounts = 0;
+  uint64_t totalCommitCounts = 0;
+  uint32_t thid = 0;
 
-  void displayAbortCounts();
-  void displayAbortRate();
-  void displayTPS();
-  void sumUpAbortCounts();
-  void sumUpCommitCounts();
+  void display_totalAbortCounts();
+  void display_abortRate();
+  void display_totalCommitCounts();
+  void display_tps();
+  void add_localAbortCounts(uint64_t acount);
+  void add_localCommitCounts(uint64_t ccount);
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
-std::atomic<uint64_t> Result::AbortCounts(0);
-std::atomic<uint64_t> Result::CommitCounts(0);
 std::atomic<bool> Result::Finish(false);
-uint64_t Result::Bgn(0);
-uint64_t Result::End(0);
 #endif 

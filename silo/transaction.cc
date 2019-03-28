@@ -143,7 +143,6 @@ void TxnExecutor::abort()
 
   readSet.clear();
   writeSet.clear();
-  ++rsobject.localAbortCounts;
 }
 
 void TxnExecutor::wal(uint64_t ctid)
@@ -203,7 +202,7 @@ void TxnExecutor::writePhase()
   maxtid.latest = 1;
   mrctid = maxtid;
 
-  wal(maxtid.obj);
+  //wal(maxtid.obj);
 
   //write(record, commit-tid)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -214,7 +213,6 @@ void TxnExecutor::writePhase()
 
   readSet.clear();
   writeSet.clear();
-  ++rsobject.localCommitCounts;
 }
 
 void TxnExecutor::lockWriteSet()
