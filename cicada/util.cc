@@ -77,7 +77,7 @@ chkArg(const int argc, char *argv[])
   string argycsb = argv[7];
   string argwal = argv[8];
   string arggrpc = argv[9];
-  CLOCK_PER_US = atof(argv[10]);
+  CLOCKS_PER_US = atof(argv[10]);
   IO_TIME_NS = atof(argv[11]);
   GROUP_COMMIT_TIMEOUT_US = atoi(argv[12]);
   GC_INTER_US = atoi(argv[13]);
@@ -142,7 +142,7 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
     exit(0);
   }
 
-  if (CLOCK_PER_US < 100) {
+  if (CLOCKS_PER_US < 100) {
     printf("CPU_MHZ is less than 100. are you really?\n");
     exit(0);
   }

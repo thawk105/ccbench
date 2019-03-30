@@ -1,5 +1,8 @@
-PROG = cicada.exe
-SOURCES = cicada.cc transaction.cc util.cc result.cc
+PROG1 = cicada.exe
+CICADA_SRCS1 := cicada.cc transaction.cc util.cc cicada_result.cc
+
+REL := ../common/
+include $(REL)Makefile
 
 KEY_SIZE=4
 VAL_SIZE=4
@@ -27,16 +30,15 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = cicada.o
-O2 = transaction.o
-O3 = util.o
-O4 = result.o
+OBJS1 = $(CICADA_SRCS1:.cc=.o)
 
-all: $(PROG)
+all: $(PROG1)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4) 
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
 .cc.o:
-	$(CC) $(CFLAGS) $<
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
 	rm -f *~ *.o *.exe *.stackdump

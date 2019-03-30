@@ -42,26 +42,22 @@ manager_worker(void *arg)
   uint64_t initial_wts;
   makeDB(&initial_wts);
   MinWts.store(initial_wts + 2, memory_order_release);
-  Result rsobject;
-  uint64_t bgn, end;
+  CicadaResult &res = *(CicadaResult *)(arg);
 
 #ifdef Linux
-  int *myid = (int *)arg;
-  setThreadAffinity(*myid);
+  setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 #endif // Linux
 
   waitForReadyOfAllThread();
   while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
-  bgn = rdtsc();
+  res.bgn = rdtsc();
   // leader work
   for(;;) {
-    end = rdtsc();
-    if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
-      rsobject.Finish.store(true, std::memory_order_release);
-      rsobject.Bgn = bgn;
-      rsobject.End = end;
+    res.end = rdtsc();
+    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
+      res.Finish.store(true, std::memory_order_release);
       return nullptr;
     }
 
@@ -113,15 +109,15 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  int *myid = (int *)arg;
+  CicadaResult &res = *(CicadaResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   Procedure pro[MAX_OPE];
-  TxExecutor trans(*myid);
+  TxExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #ifdef Linux
-  setThreadAffinity(*myid);
+  setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
@@ -146,13 +142,8 @@ worker(void *arg)
 
       asm volatile ("" ::: "memory");
 RETRY:
-      if (trans.rsobject.Finish.load(std::memory_order_acquire)) {
-        trans.rsobject.sumUpAbortCounts();
-        trans.rsobject.sumUpCommitCounts();
-        trans.rsobject.sumUpGCCounts();
-        //trans.rsobject.displayLocalCommitCounts();
+      if (res.Finish.load(std::memory_order_acquire))
         return nullptr;
-      }
 
       trans.tbegin(pro[0].ronly);
 
@@ -171,6 +162,7 @@ RETRY:
 
         if (trans.status == TransactionStatus::abort) {
           trans.earlyAbort();
+          ++res.localAbortCounts;
           goto RETRY;
         }
       }
@@ -178,15 +170,16 @@ RETRY:
       //read onlyトランザクションはread setを集めず、validationもしない。
       //write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
       if (trans.ronly) {
-        ++trans.rsobject.localCommitCounts;
+        trans.mainte(res);
         ++trans.continuingCommit;
-        trans.mainte();
+        ++res.localCommitCounts;
         continue;
       }
 
       //Validation phase
       if (!trans.validation()) {
         trans.abort();
+        ++res.localAbortCounts;
         goto RETRY;
       }
 
@@ -197,7 +190,9 @@ RETRY:
       //Schedule garbage collection
       //Declare quiescent state
       //Collect garbage created by prior transactions
-      trans.mainte();
+      trans.mainte(res);
+      ++trans.continuingCommit;
+      ++res.localCommitCounts;
     }
   } catch (bad_alloc) {
     ERR;
@@ -206,51 +201,36 @@ RETRY:
   return nullptr;
 }
 
-static pthread_t
-threadCreate(int id)
-{
-  pthread_t t;
-  int *myid;
-
-  try {
-    myid = new int;
-  } catch (bad_alloc) {
-    ERR;
-  }
-  *myid = id;
-
-  if (id == 0) {
-    if (pthread_create(&t, nullptr, manager_worker, (void *)myid)) ERR;
-    return t;
-  }
-  else {
-    if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
-    return t;
-  }
-}
-
 int 
 main(int argc, char *argv[]) 
 {
-  Result rsobject;
   chkArg(argc, argv);
 
+  CicadaResult rsob[THREAD_NUM];
+  CicadaResult &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
-
-  for (unsigned int i = 0; i < THREAD_NUM; i++) {
-    thread[i] = threadCreate(i);
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+    int ret;
+    rsob[i].thid = i;
+    if (i == 0)
+      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
+    else
+      ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
+    if (ret) ERR;
   }
 
-  for (unsigned int i = 0; i < THREAD_NUM; i++) {
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
+    rsroot.add_localCommitCounts(rsob[i].localCommitCounts);
+    rsroot.add_localAbortCounts(rsob[i].localAbortCounts);
+    rsroot.add_localGCCounts(rsob[i].localGCCounts);
   }
 
-  rsobject.displayTPS();
-  rsobject.displayAbortRate();
-
-  //rsobject.displayCommitCounts();
-  //rsobject.displayAbortCounts();
-  //rsobject.displayGCCounts();
+  rsroot.display_totalCommitCounts();
+  rsroot.display_totalAbortCounts();
+  rsroot.display_totalGCCounts();
+  rsroot.display_tps(CLOCKS_PER_US);
+  rsroot.display_abortRate();
 
   return 0;
 }

@@ -46,7 +46,7 @@ void TxExecutor::tbegin(bool ronly)
   // often occurs and degrade throughput.
   /* 
   stop = rdtsc();
-  if (chkClkSpan(start, stop, 100 * CLOCK_PER_US)) {
+  if (chkClkSpan(start, stop, 100 * CLOCKS_PER_US)) {
     uint64_t maxwts;
       maxwts = __atomic_load_n(&(ThreadWtsArray[1].obj), __ATOMIC_ACQUIRE);
     //record the fastest one, and adjust it.
@@ -278,7 +278,7 @@ TxExecutor::swal()
       ++i;
     }
 
-    double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+    double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
     spinstart = rdtsc();
     while ((rdtsc() - spinstart) < threshold) {}  //spin-wait
 
@@ -298,7 +298,7 @@ TxExecutor::swal()
     ++GROUP_COMMIT_COUNTER[0].obj;
 
     if (GROUP_COMMIT_COUNTER[0].obj == GROUP_COMMIT) {
-      double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+      double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
       spinstart = rdtsc();
       while ((rdtsc() - spinstart) < threshold) {}  //spin-wait
 
@@ -320,7 +320,7 @@ TxExecutor::pwal()
     }
 
     // it gives lat ency instead of flush.
-    double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+    double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
     spinstart = rdtsc();
     while ((rdtsc() - spinstart) < threshold) {}  //spin-wait
   } 
@@ -339,7 +339,7 @@ TxExecutor::pwal()
 
     if (GROUP_COMMIT_COUNTER[this->thid].obj == GROUP_COMMIT) {
       // it gives latency instead of flush.
-      double threshold = CLOCK_PER_US * IO_TIME_NS / 1000;
+      double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
       spinstart = rdtsc();
       while ((rdtsc() - spinstart) < threshold) {}  //spin-wait 
 
@@ -402,8 +402,7 @@ TxExecutor::earlyAbort()
     chkGcpvTimeout();
   }
 
-  this->wts.set_clockBoost(CLOCK_PER_US);
-  ++rsobject.localAbortCounts;
+  this->wts.set_clockBoost(CLOCKS_PER_US);
   continuingCommit = 0;
   this->status = TransactionStatus::abort;
 }
@@ -424,8 +423,7 @@ TxExecutor::abort()
   }
 
 
-  this->wts.set_clockBoost(CLOCK_PER_US);
-  ++rsobject.localAbortCounts;
+  this->wts.set_clockBoost(CLOCKS_PER_US);
   continuingCommit = 0;
 }
 
@@ -443,14 +441,14 @@ TxExecutor::chkGcpvTimeout()
 {
   if (P_WAL) {
     grpcmt_stop = rdtsc();
-    if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
+    if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCKS_PER_US)) {
       gcpv();
       return true;
     }
   }
   else if (S_WAL) {
     grpcmt_stop = rdtsc();
-    if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCK_PER_US)) {
+    if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCKS_PER_US)) {
       SwalLock.w_lock();
       gcpv();
       SwalLock.w_unlock();
@@ -462,7 +460,7 @@ TxExecutor::chkGcpvTimeout()
 }
 
 void 
-TxExecutor::mainte()
+TxExecutor::mainte(CicadaResult &res)
 {
   //Maintenance
   //Schedule garbage collection
@@ -474,7 +472,7 @@ TxExecutor::mainte()
   //
 
   if (__atomic_load_n(&(GCExecuteFlag[thid].obj), __ATOMIC_ACQUIRE) == 1) {
-    ++rsobject.localGCCounts;
+    ++res.localGCCounts;
     while (!gcq.empty()) {
       if (gcq.front().wts >= MinRts.load(memory_order_acquire)) break;
     
@@ -518,7 +516,7 @@ TxExecutor::mainte()
   }
 
   this->GCstop = rdtsc();
-  if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US * CLOCK_PER_US)) {
+  if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US * CLOCKS_PER_US)) {
     __atomic_store_n(&(GCFlag[thid].obj),  1, __ATOMIC_RELEASE);
     this->GCstart = this->GCstop;
   }
@@ -542,8 +540,5 @@ TxExecutor::writePhase()
   this->wts.set_clockBoost(0);
   readSet.clear();
   writeSet.clear();
-
-  ++continuingCommit;
-  ++rsobject.localCommitCounts;
 }
 

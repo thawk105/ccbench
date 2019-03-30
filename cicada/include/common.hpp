@@ -43,7 +43,7 @@ GLOBAL bool YCSB;
 GLOBAL bool P_WAL;
 GLOBAL bool S_WAL;
 GLOBAL unsigned int GROUP_COMMIT;
-GLOBAL uint64_t CLOCK_PER_US; // US = micro(µ) seconds 
+GLOBAL uint64_t CLOCKS_PER_US; // US = micro(µ) seconds 
 GLOBAL double IO_TIME_NS; // nano second
 GLOBAL uint64_t GROUP_COMMIT_TIMEOUT_US; // micro seconds
 GLOBAL uint64_t GC_INTER_US; // garbage collection interval

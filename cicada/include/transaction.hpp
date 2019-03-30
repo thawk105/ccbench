@@ -34,7 +34,6 @@ public:
   vector<ReadElement> readSet;
   vector<WriteElement> writeSet;
   queue<GCElement> gcq;
-  Result rsobject;
 
   bool ronly;
   uint8_t thid;
@@ -68,7 +67,6 @@ public:
     writeSet.reserve(MAX_OPE);
 
     continuingCommit = 0;
-    rsobject.thid = thid;
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
 
@@ -91,7 +89,7 @@ public:
   void abort();
   void wSetClean();
   void displayWset();
-  void mainte();  //maintenance
+  void mainte(CicadaResult &res);  //maintenance
 
   // inline
   bool getGCRight(unsigned int key) {
