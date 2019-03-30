@@ -27,7 +27,7 @@ void
 chkArg(const int argc, char *argv[])
 {
   if (argc != 11) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCK_PER_US EPOCH_TIME EXTIME" << endl << endl;
+    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCKS_PER_US EPOCH_TIME EXTIME" << endl << endl;
 
     cout << "example:./main 1000000 10 24 50 off 0 on 2400 40 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
@@ -37,7 +37,7 @@ chkArg(const int argc, char *argv[])
     cout << "RMW : read modify write. on or off."<< endl;
     cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "CLOCK_PER_US: CPU_MHZ" << endl;
+    cout << "CLOCKS_PER_US: CPU_MHZ" << endl;
     cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
     cout << "EXTIME: execution time." << endl << endl;
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -61,7 +61,7 @@ chkArg(const int argc, char *argv[])
   string argrmw = argv[5];
   ZIPF_SKEW = atof(argv[6]);
   string argycsb = argv[7];
-  CLOCK_PER_US = atof(argv[8]);
+  CLOCKS_PER_US = atof(argv[8]);
   EPOCH_TIME = atoi(argv[9]);
   EXTIME = atoi(argv[10]);
   

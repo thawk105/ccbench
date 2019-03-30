@@ -14,13 +14,13 @@
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/procedure.hpp"
-#include "include/result.hpp"
 #include "include/transaction.hpp"
 
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/fileio.hpp"
 #include "../include/random.hpp"
+#include "../include/result.hpp"
 #include "../include/tsc.hpp"
 #include "../include/util.hpp"
 #include "../include/zipf.hpp"
@@ -60,7 +60,7 @@ epoch_worker(void *arg)
   for (;;) {
     usleep(1);
     res.end = rdtsc();
-    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
       rsobject.Finish.store(true, std::memory_order_release);
       return nullptr;
     }
@@ -68,7 +68,7 @@ epoch_worker(void *arg)
     epochTimerStop = rdtsc();
     //chkEpochLoaded は最新のグローバルエポックを
     //全てのワーカースレッドが読み込んだか確認する．
-    if (chkClkSpan(epochTimerStart, epochTimerStop, EPOCH_TIME * CLOCK_PER_US * 1000) && chkEpochLoaded()) {
+    if (chkClkSpan(epochTimerStart, epochTimerStop, EPOCH_TIME * CLOCKS_PER_US * 1000) && chkEpochLoaded()) {
       atomicAddGE();
       epochTimerStart = epochTimerStop;
     }
@@ -88,10 +88,10 @@ worker(void *arg)
   TxnExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
-  std::string logpath;
-  genLogFile(logpath, res.thid);
-  trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
-  trans.logfile.ftruncate(10^9);
+  //std::string logpath;
+  //genLogFile(logpath, res.thid);
+  //trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
+  //trans.logfile.ftruncate(10^9);
 
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());
@@ -177,7 +177,7 @@ main(int argc, char *argv[])
   //displayDB();
   rsroot.display_totalCommitCounts();
   rsroot.display_totalAbortCounts();
-  rsroot.display_tps();
+  rsroot.display_tps(CLOCKS_PER_US);
   rsroot.display_abortRate();
 
   return 0;

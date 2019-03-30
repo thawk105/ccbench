@@ -4,14 +4,14 @@
 #include <set>
 #include <vector>
 
-#include "../../include/fileio.hpp"
-#include "../../include/string.hpp"
-
 #include "common.hpp"
 #include "log.hpp"
 #include "procedure.hpp"
-#include "result.hpp"
 #include "tuple.hpp"
+
+#include "../../include/fileio.hpp"
+#include "../../include/result.hpp"
+#include "../../include/string.hpp"
 
 #define LOGSET_SIZE 1000
 

@@ -1,8 +1,10 @@
-PROG = silo.exe
-SOURCES = silo.cc transaction.cc result.cc util.cc 
-
+PROG1 = silo.exe
+SILO_SRCS1 := silo.cc transaction.cc util.cc 
 PROG2 = replayTest.exe
-SOURCES2 = replayTest.cc
+SRCS2 := replayTest.cc
+
+REL := ../common/
+include $(REL)Makefile
 
 KEY_SIZE=4
 VAL_SIZE=4
@@ -30,22 +32,18 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = silo.o
-O2 = transaction.o
-O3 = result.o
-O4 = util.o
+OBJS1 = $(SILO_SRCS1:.cc=.o)
+OBJS2 = $(SRCS2:.cc=.o)
 
-O5 = replayTest.o
+all: $(PROG1) $(PROG2)
 
-all: $(PROG) $(PROG2)
-
-$(PROG) : $(O1) $(O2) $(O3) $(O4)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-$(PROG2) : $(O5) 
+$(PROG2) : $(OBJS2) 
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .cc.o:
-	$(CC) $(CFLAGS) $<
+	$(CC) $(CFLAGS) -c $< -o $@
 clean:
 	rm -f *~ *.o *.exe *.stackdump

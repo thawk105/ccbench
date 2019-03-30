@@ -1,7 +1,7 @@
-#include "include/common.hpp"
-#include "include/result.hpp"
 #include <iomanip>
 #include <iostream>
+
+#include "../include/result.hpp"
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 
@@ -25,10 +25,10 @@ Result::display_totalCommitCounts()
 }
 
 void
-Result::display_tps()
+Result::display_tps(uint64_t clocks_per_us)
 {
   uint64_t diff = end - bgn;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
+  uint64_t sec = diff / clocks_per_us / 1000 / 1000;
 
   uint64_t result = (double)totalCommitCounts / (double)sec;
   std::cout << "Throughput(tps) :\t" << (int)result << std::endl;
