@@ -55,7 +55,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion(Result &rsob)
+GarbageCollection::gcVersion(ErmiaResult &rsob)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -117,7 +117,7 @@ GarbageCollection::gcVersion(Result &rsob)
 }
 
 void
-GarbageCollection::gcTMTelement(Result &rsob)
+GarbageCollection::gcTMTelement(ErmiaResult &rsob)
 {
   uint32_t threshold = getGcThreshold();
   if (gcqForTMT.empty()) return;

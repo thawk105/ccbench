@@ -12,7 +12,7 @@
 #include "include/transaction.hpp"
 #include "include/version.hpp"
 
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 
 using namespace std;
 
@@ -422,7 +422,6 @@ TxExecutor::ssn_parallel_commit()
 
   readSet.clear();
   writeSet.clear();
-  ++rsobject.localCommitCounts;
   return;
 }
 
@@ -440,7 +439,6 @@ TxExecutor::abort()
     downReadersBits((*itr).ver);
 
   readSet.clear();
-  ++rsobject.localAbortCounts;
 }
 
 void
@@ -454,17 +452,17 @@ TxExecutor::verify_exclusion_or_abort()
 }
 
 void
-TxExecutor::mainte()
+TxExecutor::mainte(ErmiaResult &res)
 {
   gcstop = rdtsc();
-  if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCK_PER_US)) {
+  if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCKS_PER_US)) {
     uint32_t loadThreshold = gcobject.getGcThreshold();
     if (preGcThreshold != loadThreshold) {
-      gcobject.gcTMTelement(rsobject);
-      gcobject.gcVersion(rsobject);
+      gcobject.gcTMTelement(res);
+      gcobject.gcVersion(res);
       preGcThreshold = loadThreshold;
 
-      ++rsobject.localGCCounts;
+      ++res.localGCCounts;
       gcstart = gcstop;
     }
   }

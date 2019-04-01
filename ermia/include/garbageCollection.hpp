@@ -57,8 +57,8 @@ public:
   // -----
   
   // for worker thread
-  void gcVersion(Result &rsob);
-  void gcTMTelement(Result &rsob);
+  void gcVersion(ErmiaResult &rsob);
+  void gcTMTelement(ErmiaResult &rsob);
   // -----
 };
 

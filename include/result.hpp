@@ -15,9 +15,9 @@ public:
   uint64_t totalCommitCounts = 0;
   uint32_t thid = 0;
 
-  void display_totalAbortCounts();
-  void display_abortRate();
-  void display_totalCommitCounts();
+  virtual void display_totalAbortCounts();
+  virtual void display_abortRate();
+  virtual void display_totalCommitCounts();
   void display_tps(uint64_t clocks_per_us);
   virtual void add_localAll(Result &other);
   void add_localAbortCounts(uint64_t acount);

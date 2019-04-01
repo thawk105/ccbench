@@ -33,7 +33,7 @@ GLOBAL unsigned int RRATIO;
 GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
-GLOBAL uint64_t CLOCK_PER_US;
+GLOBAL uint64_t CLOCKS_PER_US;
 GLOBAL uint64_t GC_INTER_US; // garbage collection interval
 GLOBAL uint64_t EXTIME;
 // -----

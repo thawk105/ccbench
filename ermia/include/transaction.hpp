@@ -37,7 +37,6 @@ public:
   uint8_t thid; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
 
-  Result rsobject;
   uint64_t gcstart, gcstop; // counter for garbage collection
 
   char returnVal[VAL_SIZE] = {};
@@ -60,7 +59,7 @@ public:
   void ssn_commit();
   void ssn_parallel_commit();
   void abort();
-  void mainte();
+  void mainte(ErmiaResult &res);
   void verify_exclusion_or_abort();
   void dispWS();
   void dispRS();
