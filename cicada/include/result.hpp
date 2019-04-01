@@ -10,6 +10,8 @@ public:
   uint64_t localGCCounts = 0;
 
   void display_totalGCCounts();
+  void display_AllCicadaResult(const uint64_t clocks_per_us);
+  void add_localAllCicadaResult(CicadaResult &other);
   void add_localGCCounts(uint64_t gcount);
 };
 

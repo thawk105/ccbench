@@ -24,30 +24,38 @@ ErmiaResult::display_totalGCTMTElementsCounts()
 }
 
 void
-ErmiaResult::add_localAll(ErmiaResult &other)
+ErmiaResult::display_AllErmiaResult(const uint64_t clocks_per_us)
 {
-  totalAbortCounts += other.localAbortCounts;
-  totalCommitCounts += other.localCommitCounts;
-  totalGCCounts += other.localGCCounts;
-  totalGCVersionCounts += other.localGCVersionCounts;
-  totalGCTMTElementsCounts += other.localGCTMTElementsCounts;
+  display_totalGCCounts();
+  display_totalGCVersionCounts();
+  display_totalGCTMTElementsCounts();
+  display_AllResult(clocks_per_us);
 }
 
 void
-ErmiaResult::add_localGCCounts(uint64_t gcount)
+ErmiaResult::add_localGCCounts(const uint64_t gcount)
 {
   totalGCCounts += gcount;
 }
 
 void
-ErmiaResult::add_localGCVersionCounts(uint64_t gcount)
+ErmiaResult::add_localGCVersionCounts(const uint64_t gcount)
 {
   totalGCVersionCounts += gcount;
 }
 
 void
-ErmiaResult::add_localGCTMTElementsCounts(uint64_t gcount)
+ErmiaResult::add_localGCTMTElementsCounts(const uint64_t gcount)
 {
   totalGCTMTElementsCounts += gcount;
+}
+
+void
+ErmiaResult::add_localAllErmiaResult(const ErmiaResult &other)
+{
+  add_localAllResult(other);
+  add_localGCCounts(other.localGCCounts);
+  add_localGCVersionCounts(other.localGCVersionCounts);
+  add_localGCTMTElementsCounts(other.localGCTMTElementsCounts);
 }
 

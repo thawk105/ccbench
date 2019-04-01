@@ -221,16 +221,10 @@ main(int argc, char *argv[])
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localCommitCounts(rsob[i].localCommitCounts);
-    rsroot.add_localAbortCounts(rsob[i].localAbortCounts);
-    rsroot.add_localGCCounts(rsob[i].localGCCounts);
+    rsroot.add_localAllCicadaResult(rsob[i]);
   }
 
-  rsroot.display_totalCommitCounts();
-  rsroot.display_totalAbortCounts();
-  rsroot.display_totalGCCounts();
-  rsroot.display_abortRate();
-  rsroot.display_tps(CLOCKS_PER_US);
+  rsroot.display_AllCicadaResult(CLOCKS_PER_US);
 
   return 0;
 }

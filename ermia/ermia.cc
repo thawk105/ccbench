@@ -163,16 +163,10 @@ main(const int argc, const char *argv[])
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAll(rsob[i]);
+    rsroot.add_localAllErmiaResult(rsob[i]);
   }
 
-  rsroot.display_totalCommitCounts();
-  rsroot.display_totalAbortCounts();
-  rsroot.display_abortRate();
-  rsroot.display_totalGCCounts();
-  rsroot.display_totalGCVersionCounts();
-  rsroot.display_totalGCTMTElementsCounts();
-  rsroot.display_tps(CLOCKS_PER_US);
+  rsroot.display_AllErmiaResult(CLOCKS_PER_US);
 
   return 0;
 }

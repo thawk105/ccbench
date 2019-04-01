@@ -25,7 +25,7 @@ Result::display_totalCommitCounts()
 }
 
 void
-Result::display_tps(uint64_t clocks_per_us)
+Result::display_tps(const uint64_t clocks_per_us)
 {
   uint64_t diff = end - bgn;
   uint64_t sec = diff / clocks_per_us / 1000 / 1000;
@@ -35,20 +35,29 @@ Result::display_tps(uint64_t clocks_per_us)
 }
 
 void
-Result::add_localAll(Result &other)
+Result::display_AllResult(const uint64_t clocks_per_us)
+{
+  display_totalCommitCounts();
+  display_totalAbortCounts();
+  display_abortRate();
+  display_tps(clocks_per_us);
+}
+
+void
+Result::add_localAllResult(const Result &other)
 {
   totalAbortCounts += other.localAbortCounts;
   totalCommitCounts += other.localCommitCounts;
 }
 
 void
-Result::add_localAbortCounts(uint64_t acount)
+Result::add_localAbortCounts(const uint64_t acount)
 {
   totalAbortCounts += acount;
 }
 
 void
-Result::add_localCommitCounts(uint64_t ccount)
+Result::add_localCommitCounts(const uint64_t ccount)
 {
   totalCommitCounts += ccount;
 }

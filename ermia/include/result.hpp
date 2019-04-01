@@ -16,9 +16,10 @@ public:
   void display_totalGCCounts();
   void display_totalGCVersionCounts();
   void display_totalGCTMTElementsCounts();
-  void add_localAll(ErmiaResult &other);
-  void add_localGCCounts(uint64_t gcount);
-  void add_localGCVersionCounts(uint64_t gcount);
-  void add_localGCTMTElementsCounts(uint64_t gcount);
+  void display_AllErmiaResult(const uint64_t clocks_per_us);
+  void add_localAllErmiaResult(const ErmiaResult &other);
+  void add_localGCCounts(const uint64_t gcount);
+  void add_localGCVersionCounts(const uint64_t gcount);
+  void add_localGCTMTElementsCounts(const uint64_t gcount);
 };
 

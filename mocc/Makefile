@@ -1,5 +1,8 @@
-PROG = mocc.exe
-SOURCES = mocc.cc transaction.cc lock.cc util.cc result.cc
+PROG1 = mocc.exe
+MOCC_SRCS1 := mocc.cc transaction.cc lock.cc util.cc result.cc
+
+REL := ../common/
+include $(REL)Makefile
 
 KEY_SIZE=4
 VAL_SIZE=4
@@ -28,17 +31,16 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = mocc.o
-O2 = lock.o
-O3 = result.o
-O4 = transaction.o
-O5 = util.o
+OBJS1 = $(MOCC_SRCS1:.cc=.o)
 
-all : $(PROG)
+all : $(PROG1)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
 .cc.o:
-	$(CC) $(CFLAGS) $< 
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
 	rm -f *~ *.o *.exe *.stackdump *.log
+	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump

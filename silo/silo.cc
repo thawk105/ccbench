@@ -169,15 +169,12 @@ main(int argc, char *argv[])
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], NULL);
-    rsroot.add_localAll(rsob[i]);
+    rsroot.add_localAllResult(rsob[i]);
   }
 
 
   //displayDB();
-  rsroot.display_totalCommitCounts();
-  rsroot.display_totalAbortCounts();
-  rsroot.display_abortRate();
-  rsroot.display_tps(CLOCKS_PER_US);
+  rsroot.display_AllResult(CLOCKS_PER_US);
 
   return 0;
 }
