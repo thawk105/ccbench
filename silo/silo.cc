@@ -28,7 +28,7 @@
 using namespace std;
 
 extern void chkArg(const int argc, char *argv[]);
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern bool chkEpochLoaded();
 extern void displayDB();
 extern void displayPRO();
@@ -36,7 +36,7 @@ extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void waitForReadyOfAllThread();
+extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
 
 static void *
 epoch_worker(void *arg)
@@ -52,7 +52,7 @@ epoch_worker(void *arg)
 
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());
-  waitForReadyOfAllThread();
+  waitForReadyOfAllThread(Running, THREAD_NUM);
 
   res.bgn = rdtsc();
   epochTimerStart = rdtsc();
@@ -96,7 +96,7 @@ worker(void *arg)
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
-  waitForReadyOfAllThread();
+  waitForReadyOfAllThread(Running, THREAD_NUM);
   
   try {
     //start work(transaction)
@@ -169,8 +169,7 @@ main(int argc, char *argv[])
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], NULL);
-    rsroot.add_localCommitCounts(rsob[i].localCommitCounts);
-    rsroot.add_localAbortCounts(rsob[i].localAbortCounts);
+    rsroot.add_localAll(rsob[i]);
   }
 
 

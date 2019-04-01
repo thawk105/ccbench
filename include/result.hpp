@@ -19,6 +19,7 @@ public:
   void display_abortRate();
   void display_totalCommitCounts();
   void display_tps(uint64_t clocks_per_us);
+  virtual void add_localAll(Result &other);
   void add_localAbortCounts(uint64_t acount);
   void add_localCommitCounts(uint64_t ccount);
 };

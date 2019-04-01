@@ -33,6 +33,14 @@ Result::display_tps(uint64_t clocks_per_us)
   uint64_t result = (double)totalCommitCounts / (double)sec;
   std::cout << "Throughput(tps) :\t" << (int)result << std::endl;
 }
+
+void
+Result::add_localAll(Result &other)
+{
+  totalAbortCounts += other.localAbortCounts;
+  totalCommitCounts += other.localCommitCounts;
+}
+
 void
 Result::add_localAbortCounts(uint64_t acount)
 {

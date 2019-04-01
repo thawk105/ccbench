@@ -47,3 +47,4 @@ $(PROG2) : $(OBJS2)
 	$(CC) $(CFLAGS) -c $< -o $@
 clean:
 	rm -f *~ *.o *.exe *.stackdump
+	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump

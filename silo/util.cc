@@ -100,24 +100,6 @@ So you have to set THREAD_NUM >= 2.\n\n");
 }
 
 bool
-chkSpan(struct timeval &start, struct timeval &stop, long threshold)
-{
-  long diff = 0;
-  diff += (stop.tv_sec - start.tv_sec) * 1000 * 1000 + (stop.tv_usec - start.tv_usec);
-  if (diff > threshold) return true;
-  else return false;
-}
-
-bool
-chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
-{
-  uint64_t diff = 0;
-  diff = stop - start;
-  if (diff > threshold) return true;
-  else return false;
-}
-
-bool
 chkEpochLoaded()
 {
   uint64_t nowepo = atomicLoadGE();
@@ -220,15 +202,3 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
   }
 }
 
-void
-waitForReadyOfAllThread()
-{
-  unsigned int expected, desired;
-  expected = Running.load(std::memory_order_acquire);
-  do {
-    desired = expected + 1;
-  } while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
-
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM);
-  return;
-}

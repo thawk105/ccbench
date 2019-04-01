@@ -1,4 +1,5 @@
 
+#include <stdio.h>
 #include <sys/time.h>
 
 #include <atomic>
@@ -31,5 +32,7 @@ waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int t
   } while (!running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
 
   while (running.load(std::memory_order_acquire) != thnum);
+  //printf("Running %d\n", desired);
+
   return;
 }
