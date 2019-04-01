@@ -8,7 +8,7 @@ using std::cout, std::endl;
 void
 CicadaResult::display_totalGCCounts()
 {
-  cout << "totalGCCounts :\t\t" << totalGCCounts << endl;
+  cout << "totalGCCounts :\t\t\t" << totalGCCounts << endl;
 }
 
 void

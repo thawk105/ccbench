@@ -229,8 +229,8 @@ main(int argc, char *argv[])
   rsroot.display_totalCommitCounts();
   rsroot.display_totalAbortCounts();
   rsroot.display_totalGCCounts();
-  rsroot.display_tps(CLOCKS_PER_US);
   rsroot.display_abortRate();
+  rsroot.display_tps(CLOCKS_PER_US);
 
   return 0;
 }
