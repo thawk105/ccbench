@@ -27,12 +27,12 @@
 using namespace std;
 
 extern void chkArg(const int argc, char *argv[]);
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void makeDB(uint64_t *initial_wts);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void waitForReadyOfAllThread();
+extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, unsigned int thnum);
 
 static void *
 manager_worker(void *arg)
@@ -49,7 +49,7 @@ manager_worker(void *arg)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 #endif // Linux
 
-  waitForReadyOfAllThread();
+  waitForReadyOfAllThread(Running, THREAD_NUM);
   while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
   res.bgn = rdtsc();
@@ -128,7 +128,7 @@ worker(void *arg)
   //printf("Thread %d on CPU %d\n", *myid, nowcpu);
 #endif // Darwin
 
-  waitForReadyOfAllThread();
+  waitForReadyOfAllThread(Running, THREAD_NUM);
 
   //printf("%s\n", trans.writeVal);
 

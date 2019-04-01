@@ -42,3 +42,4 @@ $(PROG1) : $(OBJS1)
 
 clean:
 	rm -f *~ *.o *.exe *.stackdump
+	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump

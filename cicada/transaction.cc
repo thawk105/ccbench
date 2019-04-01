@@ -17,8 +17,7 @@
 #include "include/timeStamp.hpp"
 #include "include/version.hpp"
 
-extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern void displaySLogSet();
 extern void displayDB();
 
