@@ -1,8 +1,11 @@
-#include <iostream>
+
 #include <stdio.h>
 #include <sys/time.h>
-#include "include/tsc.hpp"
-#include "include/random.hpp"
+
+#include <iostream>
+
+#include "../include/tsc.hpp"
+#include "../include/random.hpp"
 
 using namespace std;
 
@@ -11,7 +14,6 @@ main()
 {
   Xoroshiro128Plus rnd;
   rnd.init();
-  struct timeval bgn, end;
 
   uint64_t start, stop;
 

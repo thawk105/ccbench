@@ -1,6 +1,9 @@
 #pragma once
 
+#include <unistd.h>
+#include <sys/types.h>
 #include <cpuid.h>
+#include <sys/syscall.h>
 
 #include "debug.hpp"
 
