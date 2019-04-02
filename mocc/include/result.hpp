@@ -5,6 +5,7 @@
 #include "../../include/result.hpp"
 
 class MoccResult : public Result {
+public:
   uint64_t totalAbortByOperation = 0;
   uint64_t totalAbortByValidation = 0;
   uint64_t totalValidationFailureByWriteLock = 0;
@@ -19,8 +20,12 @@ class MoccResult : public Result {
   void display_totalAbortByValidationRate(); // abort by validation rate;
   void display_totalValidationFailureByWriteLockRate();
   void display_totalValidationFailureByTIDRate();
+  void display_AllMoccResult(const uint64_t clocks_per_us);
 
   void add_localAbortByOperation(uint64_t abo);
+  void add_localAbortByValidation(uint64_t abv);
+  void add_localValidationFailureByWriteLock(uint64_t vfbwl);
+  void add_localValidationFailureByTID(uint64_t vfbtid);
+  void add_localAllMoccResult(MoccResult &other);
 };
 
-#endif // GLOBAL_VALUE_DEFINE

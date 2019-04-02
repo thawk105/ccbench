@@ -72,7 +72,7 @@ chkArg(const int argc, char *argv[])
   string argrmw = argv[5];
   ZIPF_SKEW = atof(argv[6]);
   string argycsb = argv[7];
-  CLOCK_PER_US = atof(argv[8]);
+  CLOCKS_PER_US = atof(argv[8]);
   EPOCH_TIME = atoi(argv[9]);
   EXTIME = atoi(argv[10]);
 
@@ -99,7 +99,7 @@ chkArg(const int argc, char *argv[])
     YCSB = false;
   else ERR;
 
-  if (CLOCK_PER_US < 100) {
+  if (CLOCKS_PER_US < 100) {
     cout << "CPU_MHZ is less than 100. are your really?" << endl;
     ERR;
   }
@@ -172,15 +172,6 @@ displayPRO(Procedure *pro)
   }
 }
 
-bool
-chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
-{
-  uint64_t diff = 0;
-  diff = stop - start;
-  if (diff > threshold) return true;
-  else return false;
-}
-
 void makeDB() {
   Tuple *tmp;
   Xoroshiro128Plus rnd;
@@ -232,15 +223,3 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf)
   }
 }
 
-void
-waitForReadyOfAllThread()
-{
-  unsigned int expected, desired;
-  expected = Running.load(std::memory_order_acquire);
-  do {
-    desired = expected + 1;
-  } while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
-
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM);
-  return;
-}

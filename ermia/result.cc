@@ -8,19 +8,19 @@ using std::cout, std::endl, std::fixed, std::setprecision;
 void
 ErmiaResult::display_totalGCCounts()
 {
-  cout << "totalGCCounts :\t\t\t" << totalGCCounts << endl;
+  cout << "totalGCCounts :\t\t" << totalGCCounts << endl;
 }
 
 void
 ErmiaResult::display_totalGCVersionCounts()
 {
-  cout << "totalGCVersionCounts :\t\t" << totalGCVersionCounts << endl;
+  cout << "totalGC\nVersionCounts :\t\t" << totalGCVersionCounts << endl;
 }
 
 void
 ErmiaResult::display_totalGCTMTElementsCounts()
 {
-  cout << "totalGCTMTElementsCounts :\t" << totalGCTMTElementsCounts << endl;
+  cout << "totalGC\nTMTElementsCounts :\t" << totalGCTMTElementsCounts << endl;
 }
 
 void

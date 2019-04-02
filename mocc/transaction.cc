@@ -423,7 +423,7 @@ TxExecutor::construct_RLL()
 }
 
 bool
-TxExecutor::commit()
+TxExecutor::commit(MoccResult &res)
 {
   Tuple *tuple;
   Tidword expected, desired;
@@ -452,9 +452,7 @@ TxExecutor::commit()
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
-#ifdef DEBUG
-      ++rsob.localValidationFailureByTID;
-#endif // DEBUG
+      ++res.localValidationFailureByTID;
       return false;
     }
 
@@ -466,9 +464,7 @@ TxExecutor::commit()
       //if the rwlock is already acquired and the owner isn't me, abort.
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
-#ifdef DEBUG
-      ++rsob.localValidationFailureByWriteLock;
-#endif // DEBUG
+      ++res.localValidationFailureByWriteLock;
 
       return false;
     }
@@ -490,7 +486,6 @@ TxExecutor::abort()
   readSet.clear();
   writeSet.clear();
 
-  ++rsob.localAbortCounts;
   return;
 }
 
@@ -549,8 +544,6 @@ TxExecutor::writePhase()
   RLL.clear();
   readSet.clear();
   writeSet.clear();
-
-  ++rsob.localCommitCounts;
 }
 
 void

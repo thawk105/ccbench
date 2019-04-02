@@ -5,121 +5,75 @@
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 
-void 
-Result::displayAbortCounts()
+void
+MoccResult::display_totalAbortByOperationRate()
 {
-  cout << "Abort counts : " << AbortCounts << endl;
+  long double out = (double)totalAbortByOperation / (double)totalAbortCounts;
+  cout << "totalAbort\nByOperationRate :\t" << out << endl;
 }
 
 void
-Result::displayAbortRate()
+MoccResult::display_totalAbortByValidationRate()
 {
-  long double ave_rate = (double)AbortCounts / (double)(CommitCounts + AbortCounts);
-  cout << fixed << setprecision(4) << "AbortRate\t" << ave_rate << endl;
+  long double out = (double)totalAbortByValidation / (double)totalAbortCounts;
+  cout << "totalAbort\nByValidationRate :\t" << out << endl;
 }
 
 void
-Result::displayTPS()
+MoccResult::display_totalValidationFailureByWriteLockRate()
 {
-  uint64_t diff = End - Bgn;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-  uint64_t result = (double)CommitCounts / (double)sec;
-  std::cout << "Throughput(tps)\t" << (int)result << std::endl;
+  long double out = (double)totalValidationFailureByWriteLock / (double)totalAbortByValidation;
+  cout << "totalValidationFailure\nByWriteLockRate :\t" << out << endl;
 }
 
 void
-Result::sumUpAbortCounts()
+MoccResult::display_totalValidationFailureByTIDRate()
 {
-  uint64_t expected, desired;
-  expected = AbortCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localAbortCounts;
-    if (AbortCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  long double out = (double)totalValidationFailureByTID / (double)totalAbortByValidation;
+  cout << "totalValidationFailure\nByTIDRate :\t\t" << out << endl;
 }
 
 void
-Result::sumUpCommitCounts()
+MoccResult::display_AllMoccResult(const uint64_t clocks_per_us)
 {
-  uint64_t expected, desired;
-  expected = CommitCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localCommitCounts;
-    if (CommitCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
-}
-
-#ifdef DEBUG
-void
-Result::displayAbortByOperationRate()
-{
-  long double out = (double)AbortByOperation / (double)AbortCounts;
-  cout << "AbortByOperationRate\t\t" << out << endl;
+  display_totalAbortByOperationRate();
+  display_totalAbortByValidationRate();
+  display_totalValidationFailureByWriteLockRate();
+  display_totalValidationFailureByTIDRate();
+  display_AllResult(clocks_per_us);
 }
 
 void
-Result::displayAbortByValidationRate()
+MoccResult::add_localAbortByOperation(uint64_t abo)
 {
-  long double out = (double)AbortByValidation / (double)AbortCounts;
-  cout << "AbortByValidationRate\t\t\t" << out << endl;
+  totalAbortByOperation += abo;
 }
 
 void
-Result::displayValidationFailureByWriteLockRate()
+MoccResult::add_localAbortByValidation(uint64_t abv)
 {
-  long double out = (double)ValidationFailureByWriteLock / (double)AbortByValidation;
-  cout << "ValidationFailureByWriteLockRate\t" << out << endl;
+  totalAbortByValidation += abv;
 }
 
 void
-Result::displayValidationFailureByTIDRate()
+MoccResult::add_localValidationFailureByWriteLock(uint64_t vfbwl)
 {
-  long double out = (double)ValidationFailureByTID / (double)AbortByValidation;
-  cout << "ValidationFailureByTIDRate\t\t" << out << endl;
+  totalValidationFailureByWriteLock += vfbwl;
 }
 
 void
-Result::sumUpAbortByOperation()
+MoccResult::add_localValidationFailureByTID(uint64_t vfbtid)
 {
-  uint64_t expected, desired;
-  expected = AbortByOperation.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localAbortByOperation;
-    if (AbortByOperation.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  totalValidationFailureByTID += vfbtid;
 }
 
 void
-Result::sumUpAbortByValidation()
+MoccResult::add_localAllMoccResult(MoccResult &other)
 {
-  uint64_t expected, desired;
-  expected = AbortByValidation.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localAbortByValidation;
-    if (AbortByValidation.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  add_localAllResult(other);
+  add_localAbortByOperation(other.localAbortByOperation);
+  add_localAbortByValidation(other.localAbortByValidation);
+  add_localValidationFailureByWriteLock(other.localValidationFailureByWriteLock);
+  add_localValidationFailureByTID(other.localValidationFailureByTID);
 }
 
-void
-Result::sumUpValidationFailureByWriteLock()
-{
-  uint64_t expected, desired;
-  expected = ValidationFailureByWriteLock.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localValidationFailureByWriteLock;
-    if (ValidationFailureByWriteLock.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
-}
-
-void
-Result::sumUpValidationFailureByTID()
-{
-  uint64_t expected, desired;
-  expected = ValidationFailureByTID.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localValidationFailureByTID;
-    if (ValidationFailureByTID.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
-}
-#endif // DEBUG

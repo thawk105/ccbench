@@ -39,7 +39,6 @@ public:
   Xoroshiro128Plus *rnd;
   int locknum; // corresponding to index of MQLNodeList.
 
-  Result rsob;
   char writeVal[VAL_SIZE] = {};
   char returnVal[VAL_SIZE] = {};
 
@@ -69,7 +68,7 @@ public:
   void lock(unsigned int key, Tuple *tuple, bool mode);
   void construct_RLL(); // invoked on abort;
   void unlockCLL();
-  bool commit();
+  bool commit(MoccResult &res);
   void abort();
   void writePhase();
   void dispCLL();

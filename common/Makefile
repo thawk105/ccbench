@@ -11,3 +11,7 @@ SILO_SRCS1+=\
 $(REL)result.cc\
 $(REL)util.cc\
 
+MOCC_SRCS1+=\
+$(REL)result.cc\
+$(REL)util.cc\
+

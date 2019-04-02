@@ -10,11 +10,10 @@ VAL_SIZE=4
 CC = g++
 BASE_CFLAGS = -c -Wall -Wextra -Wdangling-else -g -O2 -std=c++17 -DRWLOCK -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) -D$(shell uname)
 LINUX_CFLAGS = -Wchkp -Winvalid-memory-model 
-TYPE = -DDEBUG
 
 CFLAGS = $(BASE_CFLAGS)
 ifeq ($(shell uname), Linux)
-CFLAGS = $(BASE_CFLAGS) $(LINUX_CFLAGS) $(TYPE)
+CFLAGS = $(BASE_CFLAGS) $(LINUX_CFLAGS)
 endif
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
