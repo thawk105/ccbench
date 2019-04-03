@@ -130,12 +130,24 @@ void
 rdtscBench()
 {
   uint64_t start, stop;
-  start = rdtsc();
+  start = rdtscp();
   for (int i = 0; i < LOOP*LOOP; ++i)
     rdtsc();
-  stop = rdtsc();
+  stop = rdtscp();
 
   cout << "rdtscBench[clocks] :\t" << (stop - start)/LOOP/LOOP << endl;
+}
+
+void
+rdtscpBench()
+{
+  uint64_t start, stop;
+  start = rdtscp();
+  for (int i = 0; i < LOOP*LOOP; ++i)
+    rdtscp();
+  stop = rdtscp();
+
+  cout << "rdtscpBench[clocks] :\t" << (stop - start)/LOOP/LOOP << endl;
 }
 
 void *
@@ -157,7 +169,8 @@ main(int argc, char *argv[])
   TH_NUM = atoi(argv[1]);
   Result res[TH_NUM];
   //xoroshiro128PlusBench();
-  //rdtscBench();
+  rdtscBench();
+  rdtscpBench();
   //
   pthread_t thread[TH_NUM];
   for (unsigned int i = 0; i < TH_NUM; ++i) {
