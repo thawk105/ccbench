@@ -24,6 +24,8 @@
 #include "include/result.hpp"
 #include "include/tuple.hpp"
 
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+
 void
 chkArg(const int argc, const char *argv[])
 {
@@ -65,7 +67,7 @@ chkArg(const int argc, const char *argv[])
   std::string argrmw = argv[5];
   ZIPF_SKEW = atof(argv[6]);
   std::string argst = argv[7];
-  CLOCK_PER_US = atof(argv[8]);
+  CLOCKS_PER_US = atof(argv[8]);
   EXTIME = atoi(argv[9]);
 
   if (THREAD_NUM < 2) {
@@ -89,7 +91,7 @@ chkArg(const int argc, const char *argv[])
   else 
     ERR;
 
-  if (CLOCK_PER_US < 100) {
+  if (CLOCKS_PER_US < 100) {
     cout << "CPU_MHZ is less than 100. are your really?" << endl;
     ERR;
   }
@@ -102,14 +104,6 @@ chkArg(const int argc, const char *argv[])
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i)
     TMT[i] = new TransactionTable(0, 0);
-}
-
-bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
-{
-  uint64_t diff = 0;
-  diff = stop - start;
-  if (diff > threshold) return true;
-  else return false;
 }
 
 void
@@ -224,10 +218,9 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf)
 }
 
 void
-naiveGarbageCollection() 
+naiveGarbageCollection(SIResult &res) 
 {
   TransactionTable *tmt;
-  Result rsobject;
 
   uint32_t mintxID = UINT32_MAX;
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -241,8 +234,8 @@ naiveGarbageCollection()
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       // 時間がかかるので，離脱条件チェック
-      rsobject.End = rdtsc();
-      if (chkClkSpan(rsobject.Bgn, rsobject.End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+      res.end = rdtsc();
+      if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
         Finish.store(true, std::memory_order_release);
         return;
       }
@@ -281,15 +274,3 @@ naiveGarbageCollection()
   }
 }
 
-void
-waitForReadyOfAllThread()
-{
-  unsigned int expected, desired;
-  expected = Running.load(std::memory_order_acquire);
-  do {
-    desired = expected + 1;
-  } while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
-
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM);
-  return;
-}

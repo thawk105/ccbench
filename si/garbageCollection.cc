@@ -55,7 +55,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion(Result &rsob)
+GarbageCollection::gcVersion(SIResult &rsob)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -118,7 +118,7 @@ GarbageCollection::gcVersion(Result &rsob)
 
 #ifdef CCTR_ON
 void
-GarbageCollection::gcTMTelement(Result &rsob)
+GarbageCollection::gcTMTelement(SIResult &rsob)
 {
   uint32_t threshold = getGcThreshold();
   if (gcqForTMT.empty()) return;

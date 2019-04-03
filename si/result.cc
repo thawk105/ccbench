@@ -1,95 +1,61 @@
 
-#include <iomanip>
 #include <iostream>
 
-#include "include/common.hpp"
 #include "include/result.hpp"
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 
-void 
-Result::displayAbortCounts()
+void
+SIResult::display_totalGCCounts()
 {
-  cout << "Abort counts " << AbortCounts << endl;
+  cout << "totalGCCounts :\t\t" << totalGCCounts << endl;
 }
 
 void
-Result::displayAbortRate()
+SIResult::display_totalGCVersionCounts()
 {
-  long double ave_rate = (double)AbortCounts / (double)(CommitCounts + AbortCounts);
-  cout << fixed << setprecision(4) << "AbortRate " << ave_rate << endl;
+  cout << "totalGC\nVersionCounts :\t\t" << totalGCVersionCounts << endl;
 }
 
 void
-Result::displayGCVersionCountsPS()
+SIResult::display_totalGCTMTElementsCounts()
 {
-  uint64_t diff = End - Bgn;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-  uint64_t result = (double)GCVersionCounts / (double)sec;
-  std::cout << "GCVersionCountsPS " << (int)result << std::endl;
+  cout << "totalGC\nTMTElementsCounts :\t" << totalGCTMTElementsCounts << endl;
 }
 
 void
-Result::displayGCTMTElementsCountsPS()
+SIResult::display_AllSIResult(const uint64_t clocks_per_us)
 {
-  uint64_t diff = End - Bgn;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-  uint64_t result = (double)GCTMTElementsCounts / (double)sec;
-  std::cout << "GCTMTElementsCountsPS " << (int)result << std::endl;
+  display_totalGCCounts();
+  display_totalGCVersionCounts();
+  display_totalGCTMTElementsCounts();
+  display_AllResult(clocks_per_us);
 }
 
 void
-Result::displayTPS()
+SIResult::add_localGCCounts(const uint64_t gcount)
 {
-  uint64_t diff = End - Bgn;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-  uint64_t result = (double)CommitCounts / (double)sec;
-  std::cout << "Throughput(tps) " << (int)result << std::endl;
-}
-void
-Result::sumUpAbortCounts()
-{
-  uint64_t expected, desired;
-  expected = AbortCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localAbortCounts;
-    if (AbortCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  totalGCCounts += gcount;
 }
 
 void
-Result::sumUpCommitCounts()
+SIResult::add_localGCVersionCounts(const uint64_t gcount)
 {
-  uint64_t expected, desired;
-  expected = CommitCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localCommitCounts;
-    if (CommitCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  totalGCVersionCounts += gcount;
 }
 
 void
-Result::sumUpGCVersionCounts()
+SIResult::add_localGCTMTElementsCounts(const uint64_t gcount)
 {
-  uint64_t expected, desired;
-  expected = GCVersionCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localGCVersionCounts;
-    if (GCVersionCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  totalGCTMTElementsCounts += gcount;
 }
 
 void
-Result::sumUpGCTMTElementsCounts()
+SIResult::add_localAllSIResult(const SIResult &other)
 {
-  uint64_t expected, desired;
-  expected = GCTMTElementsCounts.load(std::memory_order_acquire);
-  for (;;) {
-    desired = expected + localGCTMTElementsCounts;
-    if (GCTMTElementsCounts.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
-  }
+  add_localAllResult(other);
+  add_localGCCounts(other.localGCCounts);
+  add_localGCVersionCounts(other.localGCVersionCounts);
+  add_localGCTMTElementsCounts(other.localGCTMTElementsCounts);
 }
 

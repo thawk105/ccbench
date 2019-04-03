@@ -49,10 +49,10 @@ manager_worker(void *arg)
   // end, initial work
   
   
-  res.bgn = rdtsc();
+  res.bgn = rdtscp();
   for (;;) {
     usleep(1);
-    res.end = rdtsc();
+    res.end = rdtscp();
     if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
       Finish.store(true, std::memory_order_release);
       return nullptr;
@@ -86,7 +86,7 @@ worker(void *arg)
 
   waitForReadyOfAllThread(Running, THREAD_NUM);
 
-  trans.gcstart = rdtsc();
+  trans.gcstart = rdtscp();
   //start work (transaction)
   try {
     //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());

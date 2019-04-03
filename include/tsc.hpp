@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-static uint64_t rdtsc() {
+[[maybe_unused]] static uint64_t rdtsc() {
   uint64_t rax;
   uint64_t rdx;
 
@@ -15,7 +15,7 @@ static uint64_t rdtsc() {
   return (rdx << 32) | rax;
 }
 
-static uint64_t rdtscp() {
+[[maybe_unused]] static uint64_t rdtscp() {
   uint64_t rax;
   uint64_t rdx;
   uint32_t aux;

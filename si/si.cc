@@ -26,39 +26,34 @@
 using namespace std;
 
 extern void chkArg(const int argc, const char *argv[]);
-extern bool chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void naiveGarbageCollection();
-extern void waitForReadyOfAllThread();
+extern void naiveGarbageCollection(SIResult &res);
+extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
 
 static void *
 manager_worker(void *arg)
 {
-  // start, inital work
-  int *myid = (int *)arg;
+  SIResult &res = *(SIResult *)(arg);
   GarbageCollection gcobject;
-  Result rsobject;
-  uint64_t bgn, end;
  
 #ifdef Linux 
-  setThreadAffinity(*myid);
+  setThreadAffinity(res.thid);
 #endif // Linux
 
   gcobject.decideFirstRange();
-  waitForReadyOfAllThread();
+  waitForReadyOfAllThread(Running, THREAD_NUM);
   // end, initial work
   
   
-  bgn = rdtsc();
+  res.bgn = rdtscp();
   for (;;) {
     usleep(1);
-    end = rdtsc();
-    if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
+    res.end = rdtscp();
+    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
       Finish.store(true, std::memory_order_release);
-      rsobject.Bgn = bgn;
-      rsobject.End = end;
       return nullptr;
     }
 
@@ -75,20 +70,20 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  int *myid = (int *)arg;
-  TxExecutor trans(*myid, MAX_OPE);
+  SIResult &res = *(SIResult *)(arg);
+  TxExecutor trans(res.thid, MAX_OPE);
   Procedure pro[MAX_OPE];
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
 #ifdef Linux
-  setThreadAffinity(*myid);
+  setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
 
-  waitForReadyOfAllThread();
+  waitForReadyOfAllThread(Running, THREAD_NUM);
   
   //start work (transaction)
   try {
@@ -101,12 +96,6 @@ worker(void *arg)
 RETRY:
 
       if (Finish.load(std::memory_order_acquire)) {
-        trans.rsobject.sumUpAbortCounts();
-        trans.rsobject.sumUpCommitCounts();
-        trans.rsobject.sumUpGCVersionCounts();
-#ifdef CCTR_ON
-        trans.rsobject.sumUpGCTMTElementsCounts();
-#endif // CCTR_ON
         return nullptr;
       }
 
@@ -126,21 +115,24 @@ RETRY:
 
         if (trans.status == TransactionStatus::aborted) {
           trans.abort();
+          ++res.localAbortCounts;
           goto RETRY;
         }
       }
 
       trans.commit();
+      ++res.localCommitCounts;
 
       // maintenance phase
       // garbage collection
       uint32_t loadThreshold = trans.gcobject.getGcThreshold();
       if (trans.preGcThreshold != loadThreshold) {
-        trans.gcobject.gcVersion(trans.rsobject);
+        trans.gcobject.gcVersion(res);
         trans.preGcThreshold = loadThreshold;
 #ifdef CCTR_ON
-        trans.gcobject.gcTMTelement(trans.rsobject);
+        trans.gcobject.gcTMTelement(res);
 #endif // CCTR_ON
+        ++res.localGCCounts;
       }
     }
   } catch (bad_alloc) {
@@ -150,55 +142,31 @@ RETRY:
   return nullptr;
 }
 
-static pthread_t
-threadCreate(int id)
-{
-  pthread_t t;
-  int *myid;
-
-  try {
-    myid = new int;
-  } catch (bad_alloc) {
-    ERR;
-  }
-  *myid = id;
-
-  if (*myid == 0) {
-    if (pthread_create(&t, nullptr, manager_worker, (void *)myid)) ERR;
-  } else {
-    if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
-  }
-
-  return t;
-}
-
 int
 main(const int argc, const char *argv[])
 {
-  Result rsobject;
   chkArg(argc, argv);
   makeDB();
 
-  //displayDB();
-  //displayPRO();
-
+  SIResult rsob[THREAD_NUM];
+  SIResult &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
-
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    thread[i] = threadCreate(i);
+    int ret;
+    rsob[i].thid = i;
+    if (i == 0)
+      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
+    else
+      ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
+    if (ret) ERR;
   }
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
+    rsroot.add_localAllSIResult(rsob[i]);
   }
 
-  //displayDB();
-
-  rsobject.displayTPS();
-  rsobject.displayAbortRate();
-  //rsobject.displayAbortCounts();
-  //rsobject.displayGCVersionCountsPS();
-  //rsobject.displayGCTMTElementsCountsPS();
+  rsroot.display_AllSIResult(CLOCKS_PER_US);
 
   return 0;
 }

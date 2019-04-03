@@ -1,5 +1,8 @@
-PROG = si.exe
-SOURCES = si.cc transaction.cc util.cc garbageCollection.cc result.cc
+PROG1 = si.exe
+SI_SRCS1 = si.cc transaction.cc util.cc garbageCollection.cc result.cc
+
+REL := ../common/
+include $(REL)Makefile
 
 KEY_SIZE=4
 VAL_SIZE=4
@@ -27,19 +30,16 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = si.o
-O2 = transaction.o
-O3 = util.o
-O4 = garbageCollection.o
-O5 = result.o
+OBJS1 = $(SI_SRCS1:.cc=.o)
 
-all: $(PROG)
+all: $(PROG1)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4) $(O5)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
 .cc.o:
-	$(CC) $(CFLAGS) $<
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
 	rm -f *~ *.o *.exe *.stackdump
-
 
