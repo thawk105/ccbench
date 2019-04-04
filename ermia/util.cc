@@ -259,7 +259,7 @@ naiveGarbageCollection(ErmiaResult &res)
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       // 時間がかかるので，離脱条件チェック
-      res.end = rdtsc();
+      res.end = rdtscp();
       if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
         Finish.store(true, std::memory_order_release);
         return;

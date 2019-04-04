@@ -25,13 +25,13 @@ public:
   }
 
   inline void generateTimeStampFirst(unsigned char tid) {
-    localClock = rdtsc();
+    localClock = rdtscp();
     ts = (localClock << 8) | tid;
     thid = tid;
   }
   
   inline void generateTimeStamp(unsigned char tid) {
-    uint64_t tmp = rdtsc();
+    uint64_t tmp = rdtscp();
     uint64_t elapsedTime = tmp - localClock;
     if (tmp < localClock) elapsedTime = 0;
     

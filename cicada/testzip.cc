@@ -32,16 +32,16 @@ main()
   for (int i = 0; i < 100; ++i)
     start = rnd.next();
 
-  start = rdtsc();
+  start = rdtscp();
   for (int i = 0; i < 1000000; ++i)
     rnd.next();
-  stop = rdtsc();
+  stop = rdtscp();
 
   cout << "xoroshiro : " << (stop - start) / 1000000 << endl;
 
-  start = rdtsc();
+  start = rdtscp();
   zipf();
-  stop = rdtsc();
+  stop = rdtscp();
 
   cout << "zipf() : " << stop - start << endl;
 

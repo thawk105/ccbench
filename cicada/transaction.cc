@@ -44,7 +44,7 @@ void TxExecutor::tbegin(bool ronly)
   // After that, by transaction processing, cache line invalidation
   // often occurs and degrade throughput.
   /* 
-  stop = rdtsc();
+  stop = rdtscp();
   if (chkClkSpan(start, stop, 100 * CLOCKS_PER_US)) {
     uint64_t maxwts;
       maxwts = __atomic_load_n(&(ThreadWtsArray[1].obj), __ATOMIC_ACQUIRE);
@@ -278,8 +278,8 @@ TxExecutor::swal()
     }
 
     double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
-    spinstart = rdtsc();
-    while ((rdtsc() - spinstart) < threshold) {}  //spin-wait
+    spinstart = rdtscp();
+    while ((rdtscp() - spinstart) < threshold) {}  //spin-wait
 
     SwalLock.w_unlock();
   }
@@ -291,15 +291,15 @@ TxExecutor::swal()
     }
 
     if (GROUP_COMMIT_COUNTER[0].obj == 0) {
-      grpcmt_start = rdtsc(); // it can also initialize.
+      grpcmt_start = rdtscp(); // it can also initialize.
     }
 
     ++GROUP_COMMIT_COUNTER[0].obj;
 
     if (GROUP_COMMIT_COUNTER[0].obj == GROUP_COMMIT) {
       double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
-      spinstart = rdtsc();
-      while ((rdtsc() - spinstart) < threshold) {}  //spin-wait
+      spinstart = rdtscp();
+      while ((rdtscp() - spinstart) < threshold) {}  //spin-wait
 
       //group commit pending version.
       gcpv();
@@ -320,8 +320,8 @@ TxExecutor::pwal()
 
     // it gives lat ency instead of flush.
     double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
-    spinstart = rdtsc();
-    while ((rdtsc() - spinstart) < threshold) {}  //spin-wait
+    spinstart = rdtscp();
+    while ((rdtscp() - spinstart) < threshold) {}  //spin-wait
   } 
   else {
     for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -330,7 +330,7 @@ TxExecutor::pwal()
     }
 
     if (GROUP_COMMIT_COUNTER[this->thid].obj == 0) {
-      grpcmt_start = rdtsc(); // it can also initialize.
+      grpcmt_start = rdtscp(); // it can also initialize.
       ThreadRtsArrayForGroup[this->thid].obj = this->rts;
     }
 
@@ -339,8 +339,8 @@ TxExecutor::pwal()
     if (GROUP_COMMIT_COUNTER[this->thid].obj == GROUP_COMMIT) {
       // it gives latency instead of flush.
       double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
-      spinstart = rdtsc();
-      while ((rdtsc() - spinstart) < threshold) {}  //spin-wait 
+      spinstart = rdtscp();
+      while ((rdtscp() - spinstart) < threshold) {}  //spin-wait 
 
       gcpv();
     } 
@@ -439,14 +439,14 @@ bool
 TxExecutor::chkGcpvTimeout()
 {
   if (P_WAL) {
-    grpcmt_stop = rdtsc();
+    grpcmt_stop = rdtscp();
     if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCKS_PER_US)) {
       gcpv();
       return true;
     }
   }
   else if (S_WAL) {
-    grpcmt_stop = rdtsc();
+    grpcmt_stop = rdtscp();
     if (chkClkSpan(grpcmt_start, grpcmt_stop, GROUP_COMMIT_TIMEOUT_US * CLOCKS_PER_US)) {
       SwalLock.w_lock();
       gcpv();
@@ -514,7 +514,7 @@ TxExecutor::mainte(CicadaResult &res)
     __atomic_store_n(&(GCExecuteFlag[thid].obj), 0, __ATOMIC_RELEASE);
   }
 
-  this->GCstop = rdtsc();
+  this->GCstop = rdtscp();
   if (chkClkSpan(this->GCstart, this->GCstop, GC_INTER_US * CLOCKS_PER_US)) {
     __atomic_store_n(&(GCFlag[thid].obj),  1, __ATOMIC_RELEASE);
     this->GCstart = this->GCstop;

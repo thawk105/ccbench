@@ -70,7 +70,7 @@ public:
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
 
-    start = rdtsc();
+    start = rdtscp();
     GCstart = start;
   }
 

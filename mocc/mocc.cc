@@ -56,18 +56,18 @@ manager_worker(void *arg)
 
   waitForReadyOfAllThread(Running, THREAD_NUM);
 
-  res.bgn = rdtsc();
-  epochTimerStart = rdtsc();
+  res.bgn = rdtscp();
+  epochTimerStart = rdtscp();
   for (;;) {
     usleep(1);
-    res.end = rdtsc();
+    res.end = rdtscp();
     if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
       res.Finish.store(true, memory_order_release);
       return nullptr;
     }
 
     //Epoch Control
-    epochTimerStop = rdtsc();
+    epochTimerStop = rdtscp();
     //chkEpochLoaded は最新のグローバルエポックを
     //全てのワーカースレッドが読み込んだか確認する．
     if (chkClkSpan(epochTimerStart, epochTimerStop, EPOCH_TIME * CLOCKS_PER_US * 1000) && chkEpochLoaded()) {

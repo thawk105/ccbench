@@ -117,10 +117,10 @@ manager_worker(void *arg)
   //spin-wait
   while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
   //-----
-  Bgn = rdtsc();
+  Bgn = rdtscp();
   
   for (;;) {
-    End = rdtsc();
+    End = rdtscp();
     if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) break;
   }
 

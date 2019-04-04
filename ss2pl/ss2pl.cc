@@ -52,7 +52,7 @@ worker(void *arg)
 
   waitForReadyOfAllThread();
   
-  if (*myid == 0) bgn = rdtsc();
+  if (*myid == 0) bgn = rdtscp();
 
   try {
     //start work (transaction)
@@ -68,7 +68,7 @@ RETRY:
       if (*myid == 0) {
 
         // finish judge
-        end = rdtsc();
+        end = rdtscp();
         if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) {
           rsobject.Finish.store(true, std::memory_order_release);
           rsobject.sumUpCommitCounts();

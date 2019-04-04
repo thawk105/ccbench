@@ -19,15 +19,15 @@ main()
 
   //初回から数回は重いので，とりあえず100回ほど実行して肩を暖めます．
   for (int i = 0; i < 100; ++i) {
-    rdtsc();
+    rdtscp();
   }
 
-  start = rdtsc();
+  start = rdtscp();
   //gettimeofday(&bgn, NULL);
   for (int i = 0; i < 100000000; ++i) {
     rnd.next();
   }
-  stop = rdtsc();
+  stop = rdtscp();
   //gettimeofday(&end, NULL);
 
   //auto timerval_calibration = ((end.tv_sec - bgn.tv_sec) + (end.tv_usec - bgn.tv_usec) * 0.000001) / (stop - start);

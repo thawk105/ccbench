@@ -454,7 +454,7 @@ TxExecutor::verify_exclusion_or_abort()
 void
 TxExecutor::mainte(ErmiaResult &res)
 {
-  gcstop = rdtsc();
+  gcstop = rdtscp();
   if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCKS_PER_US)) {
     uint32_t loadThreshold = gcobject.getGcThreshold();
     if (preGcThreshold != loadThreshold) {

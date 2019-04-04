@@ -103,11 +103,11 @@ manager_worker(void *arg)
   while (Running.load(std::memory_order_acquire) != THREAD_NUM);
   uint64_t bgn, end;
   //-----
-  //Bgn = rdtsc();
-  bgn = rdtsc();
+  //Bgn = rdtscp();
+  bgn = rdtscp();
   for (;;) {
-    //End = rdtsc();
-    end = rdtsc();
+    //End = rdtscp();
+    end = rdtscp();
     usleep(1000);
     if (chkClkSpan(bgn, end, EXTIME * 1000 * 1000 * CLOCK_PER_US)) break;
   }

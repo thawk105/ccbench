@@ -52,10 +52,10 @@ manager_worker(void *arg)
   waitForReadyOfAllThread(Running, THREAD_NUM);
   while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
-  res.bgn = rdtsc();
+  res.bgn = rdtscp();
   // leader work
   for(;;) {
-    res.end = rdtsc();
+    res.end = rdtscp();
     if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
       res.Finish.store(true, std::memory_order_release);
       return nullptr;

@@ -49,7 +49,7 @@ worker(void *arg)
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
   waitForReadyOfAllThread();
   
-  if (*myid == 0) bgn = rdtsc();
+  if (*myid == 0) bgn = rdtscp();
 
   try {
     for (;;) {
@@ -63,7 +63,7 @@ RETRY:
 
       // finish judge
       if (*myid == 0) {
-        end = rdtsc();
+        end = rdtscp();
         if (chkClkSpan(bgn, end, EXTIME*1000*1000 * CLOCK_PER_US)) {
           rsobject.Finish.store(true, std::memory_order_release);
           rsobject.sumUpCommitCounts();

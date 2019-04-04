@@ -59,13 +59,13 @@ sequentialReadBench(unsigned int thid)
   // キャッシュサイズの二倍程度でアレイサイズを確保する．
   uint64_t start, stop;
 
-  start = rdtsc();
+  start = rdtscp();
   for (int h = 0; h < LOOP; ++h) {
     for (int i = 0; i < LEN; i+=8) {
       memcpy(&Rec[0], &Array[i], 64);
     }
   }
-  stop = rdtsc();
+  stop = rdtscp();
 
   double readbytesPerLoop = LEN * 8;
   double readMbytesPerLoop = readbytesPerLoop / 1000.0 / 1000.0;
@@ -95,13 +95,13 @@ sequentialWriteBench(unsigned int thid)
 
   uint64_t start, stop;
 
-  start = rdtsc();
+  start = rdtscp();
   for (int h = 0; h < LOOP; ++h) {
     for (int i = 0; i < LEN; i+=8) {
       memcpy(&Array[i], Rec, 64);
     }
   }
-  stop = rdtsc();
+  stop = rdtscp();
 
   double writebytesPerLoop = LEN * 8;
   double writeMbytesPerLoop = writebytesPerLoop / 1000.0 / 1000.0;
@@ -118,10 +118,10 @@ xoroshiro128PlusBench()
   rnd.init();
   
   uint64_t start, stop;
-  start = rdtsc();
+  start = rdtscp();
   for (int i = 0; i < LOOP*LOOP*LOOP; ++i)
     rnd.next();
-  stop = rdtsc();
+  stop = rdtscp();
 
   cout << "xoroshiro128PlusBench[ns] :\t" << (double)(stop - start)/(double)(LOOP*LOOP*LOOP)/(double)(CLOCKS_PER_US / 1000) << endl;
 }
@@ -132,7 +132,7 @@ rdtscBench()
   uint64_t start, stop;
   start = rdtscp();
   for (int i = 0; i < LOOP*LOOP; ++i)
-    rdtsc();
+    rdtscp();
   stop = rdtscp();
 
   cout << "rdtscBench[clocks] :\t" << (stop - start)/LOOP/LOOP << endl;
