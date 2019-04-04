@@ -1,5 +1,8 @@
-PROG = ss2pl.exe
-SOURCES = ss2pl.cc transaction.cc result.cc util.cc
+PROG1 = ss2pl.exe
+SS2PL_SRCS1 := ss2pl.cc transaction.cc util.cc
+
+REL := ../common/
+include $(REL)Makefile
 
 KEY_SIZE=4
 VAL_SIZE=4
@@ -27,18 +30,18 @@ LIBS = -lpthread
 endif
 endif
 
-O1 = ss2pl.o
-O2 = transaction.o
-O3 = result.o
-O4 = util.o
+OBJS1 = $(SS2PL_SRCS1:.cc=.o)
 
-all: $(PROG)
+all: $(PROG1)
 
-$(PROG) : $(O1) $(O2) $(O3) $(O4)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
 .cc.o:
-	$(CC) $(CFLAGS) $<
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
 	rm -f *~ *.o *.exe *.stackdump
+	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump
 
 
