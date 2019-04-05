@@ -32,7 +32,7 @@ GLOBAL unsigned int RRATIO;
 GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
-GLOBAL uint64_t CLOCK_PER_US;
+GLOBAL uint64_t CLOCKS_PER_US;
 GLOBAL unsigned int EXTIME;
 
 alignas(64) GLOBAL Tuple *Table;

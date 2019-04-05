@@ -28,7 +28,7 @@ void
 chkArg(const int argc, char *argv[])
 {
   if (argc != 10) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCK_PER_US EXTIME" << endl << endl;
+    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCKS_PER_US EXTIME" << endl << endl;
 
     cout << "example:./main 200 10 24 50 on 0 on 2400 3" << endl << endl;
 
@@ -39,7 +39,7 @@ chkArg(const int argc, char *argv[])
     cout << "RMW : read modify write. on or off." << endl;
     cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "CLOCK_PER_US: CPU_MHZ" << endl;
+    cout << "CLOCKS_PER_US: CPU_MHZ" << endl;
     cout << "EXTIME: execution time." << endl << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -62,7 +62,7 @@ chkArg(const int argc, char *argv[])
   string argrmw = argv[5];
   ZIPF_SKEW = atof(argv[6]);
   string argycsb = argv[7];
-  CLOCK_PER_US = atof(argv[8]);
+  CLOCKS_PER_US = atof(argv[8]);
   EXTIME = atoi(argv[9]);
 
   if (RRATIO > 100) {
@@ -90,24 +90,6 @@ chkArg(const int argc, char *argv[])
     ERR;
 
   return;
-}
-
-bool
-chkSpan(struct timeval &start, struct timeval &stop, long threshold)
-{
-  long diff = 0;
-  diff += (stop.tv_sec - start.tv_sec) * 1000 * 1000 + (stop.tv_usec - start.tv_usec);
-  if (diff > threshold) return true;
-  else return false;
-}
-
-bool
-chkClkSpan(uint64_t &start, uint64_t &stop, uint64_t threshold)
-{
-  uint64_t diff = 0;
-  diff = stop - start;
-  if (diff > threshold) return true;
-  else return false;
 }
 
 void 
@@ -194,15 +176,3 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
   }
 }
 
-void
-waitForReadyOfAllThread()
-{
-  unsigned int expected, desired;
-  expected = Running.load(std::memory_order_acquire);
-  do {
-    desired = expected + 1;
-  } while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
-
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM);
-  return;
-}
