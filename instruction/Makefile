@@ -1,17 +1,11 @@
 PROG1 = fetch_add.exe
 INST_SRCS1 = fetch_add.cc
 
-PROG2 = xoroshiro.exe
-INST_SRCS2 = xoroshiro.cc
+PROG2 = cache-test.exe
+INST_SRCS2 = cache-test.cc
 
-PROG3 = cache-test.exe
-INST_SRCS3 = cache-test.cc
-
-PROG4 = membench.exe
-INST_SRCS4 = membench.cc
-
-PROG5 = xoroshiro2.exe
-INST_SRCS5 = xoroshiro2.cc
+PROG3 = membench.exe
+INST_SRCS3 = membench.cc
 
 REL := ../common/
 include $(REL)Makefile
@@ -36,10 +30,8 @@ endif
 OBJS1 = $(INST_SRCS1:.cc=.o)
 OBJS2 = $(INST_SRCS2:.cc=.o)
 OBJS3 = $(INST_SRCS3:.cc=.o)
-OBJS4 = $(INST_SRCS4:.cc=.o)
-OBJS5 = $(INST_SRCS5:.cc=.o)
 
-all: $(PROG1) $(PROG2) $(PROG3) $(PROG4) $(PROG5)
+all: $(PROG1) $(PROG2) $(PROG3)
 
 $(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
@@ -50,13 +42,6 @@ $(PROG2) : $(OBJS2)
 $(PROG3) : $(OBJS3)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-$(PROG4) : $(OBJS4)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
-
-$(PROG5) : $(OBJS5)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
-
-.cc.o:
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
 
