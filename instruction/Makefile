@@ -10,6 +10,9 @@ INST_SRCS3 = membench.cc
 PROG4 = rdtscBench.exe
 INST_SRCS4 = rdtscBench.cc
 
+PROG5 = xoroshiro.exe
+INST_SRCS5 = xoroshiro.cc
+
 REL := ../common/
 include $(REL)Makefile
 
@@ -34,8 +37,9 @@ OBJS1 = $(INST_SRCS1:.cc=.o)
 OBJS2 = $(INST_SRCS2:.cc=.o)
 OBJS3 = $(INST_SRCS3:.cc=.o)
 OBJS4 = $(INST_SRCS4:.cc=.o)
+OBJS5 = $(INST_SRCS5:.cc=.o)
 
-all: $(PROG1) $(PROG2) $(PROG3) $(PROG4)
+all: $(PROG1) $(PROG2) $(PROG3) $(PROG4) $(PROG5)
 
 $(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
@@ -47,6 +51,9 @@ $(PROG3) : $(OBJS3)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 $(PROG4) : $(OBJS4)
+	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+$(PROG5) : $(OBJS5)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .cc.o:
