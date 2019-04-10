@@ -6,11 +6,20 @@
   uint64_t rax;
   uint64_t rdx;
 
-  asm volatile("cpuid" ::: "rax","rbx","rcx","rdx");
   asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
   // store higher bits to rdx, lower bits to rax.
   // シリアライズ命令でないため，全ての先行命令を待機せずに
   // カウンタ値を読み込む．同様に後続命令が読み取り命令を追い越すことを許容する．
+
+  return (rdx << 32) | rax;
+}
+
+[[maybe_unused]] static uint64_t rdtsc_serial() {
+  uint64_t rax;
+  uint64_t rdx;
+
+  asm volatile("cpuid" ::: "rax","rbx","rcx","rdx");
+  asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
 
   return (rdx << 32) | rax;
 }

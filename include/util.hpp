@@ -23,6 +23,31 @@
 
 inline void compiler_fence() { asm volatile("" ::: "memory");}
 
+[[maybe_unused]]
+inline
+static
+bool
+chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold)
+{
+  uint64_t diff = 0;
+  diff = stop - start;
+  if (diff > threshold) return true;
+  else return false;
+}
+
+[[maybe_unused]]
+inline
+static
+bool
+chkClkSpanSec(const uint64_t start, const uint64_t stop, const unsigned int clocks_per_us, const uint64_t sec)
+{
+  uint64_t diff = 0;
+  diff = stop - start;
+  diff = diff / clocks_per_us / 1000 / 1000;
+  if (diff > sec) return true;
+  else return false;
+}
+
 class LibcError : public std::exception
 {
 private:

@@ -38,6 +38,7 @@ setThreadAffinity(const int myid)
   if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0)
     ERR;
 
+  //printf("thread affinity (id==%d) [ok]\n", myid);
   return;
 }
 #endif // Linux
