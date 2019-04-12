@@ -1,303 +1,235 @@
 
 #include <pthread.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <atomic>
+#include <cstring>
 #include <iostream>
+#include <thread>
+#include <vector>
 
+#include "../include/atomic_wrapper.hpp"
 #include "../include/cache_line_size.hpp"
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/random.hpp"
 #include "../include/tsc.hpp"
+#include "../include/util.hpp"
 
 #define GiB 1073741824
 #define MiB 1048576
 #define KiB  1024
 
-#define CLOCKS_PER_US 2100
-// マイクロ秒あたりのクロック数. CPU MHz.
-#define EX_TIME 3
-// 実行時間. 3 seconds.
-
-#define LOOP 1000
-
 using std::cout;
 using std::endl;
 
-class Result {
+const uint64_t WORK_MEM_PER_THREAD = 256UL << 20; // 256 MBytes.
+const size_t PAGE_SIZE = 4096;
+
+void
+sleepMs(size_t ms)
+{
+  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+class AlignedMemory
+{
+  void *mem_;
+  size_t size_;
 public:
-  uint64_t seqReadMemband = 0;
-  uint64_t seqWriteMemband = 0;
-  uint64_t ranReadMemband = 0;
-  uint64_t ranWriteMemband = 0;
-  int thid = 0;
+  AlignedMemory(size_t alignedSize, size_t allocateSize) {
+    size_ = allocateSize;
+    if (::posix_memalign(&mem_, alignedSize, allocateSize) != 0) {
+      throw std::runtime_error("posix_memalign failed.");
+    }
+  }
+  ~AlignedMemory() noexcept {
+    ::free(mem_);
+  }
+  char* data() { return (char*)mem_; }
+  const char* data() const { return (const char*)mem_; }
+  size_t size() const { return size_;}
 };
 
-unsigned int TH_NUM;
-unsigned int MALLOC_SIZE; // GiB
-
-std::atomic<unsigned int> RunRanReadBench(0);
-std::atomic<unsigned int> RunRanWriteBench(0);
-std::atomic<unsigned int> RunSeqReadBench(0);
-std::atomic<unsigned int> RunSeqWriteBench(0);
-
-std::atomic<bool> FinRanReadBench(false);
-std::atomic<bool> FinRanWriteBench(false);
-std::atomic<bool> FinSeqReadBench(false);
-std::atomic<bool> FinSeqWriteBench(false);
-
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
-
-uint64_t
-seqReadBench(unsigned int thid, char *Array, char *Rec)
+void
+fillArray(void* data, size_t size)
 {
-  const uint64_t max = MALLOC_SIZE * GiB;
-  uint64_t i = 0;
-  for (uint64_t i = 0; i < max; i+=CACHE_LINE_SIZE)
-    memcpy(&Rec[0], &Array[i], CACHE_LINE_SIZE);
+  assert(size % CACHE_LINE_SIZE == 0);
+  char *p = (char *)data;
+  char *goal = p + size;
+  alignas(CACHE_LINE_SIZE) const uint64_t buf[8] = {1, 0, 0, 0, 0, 0, 0, 0};
+  while (p < goal) {
+    memcpy(p, &buf[0], sizeof(buf));
+    p += sizeof(buf);
+  }
+}
 
-  uint64_t nr_cl = 0;
-  i = 0;
-  waitForReadyOfAllThread(RunSeqReadBench, TH_NUM+1);
-  for (;;) {
-    memcpy(&Rec[0], &Array[i], CACHE_LINE_SIZE);
-    ++nr_cl;
-    if (FinSeqReadBench.load()) break;
-    i += 64;
-    if (i == max) {
-      i = 0;
+void
+writeFromCacheline(void* dst, const void* src, size_t size)
+{
+  char *p = (char *)dst;
+  while (size > CACHE_LINE_SIZE) {
+    ::memcpy(p, src, CACHE_LINE_SIZE);
+    p += CACHE_LINE_SIZE;
+    size -= CACHE_LINE_SIZE;
+  }
+  ::memcpy(p, src, size);
+}
+
+bool
+isReady(const std::vector<char>& readys)
+{
+  for (const char& b : readys) {
+    if (!loadAcquire(b)) return false;
+  }
+  return true;
+}
+
+void
+waitForReady(const std::vector<char>& readys)
+{
+  while (!isReady(readys)) {
+    _mm_pause();
+  }
+}
+
+struct Config
+{
+  size_t nr_threads;
+  size_t run_sec;
+  const char *workload;
+  size_t bulk_size;
+};
+
+enum class WorkloadType {
+  Unknown,
+  SeqRead,
+  SeqWrite,
+  RndRead,
+  RndWrite,
+};
+
+WorkloadType
+getWorkloadType(const char *name)
+{
+  struct {
+    WorkloadType type;
+    const char *name;
+  } tbl[] = {
+    {WorkloadType::Unknown, "unknown"},
+    {WorkloadType::SeqRead, "seq_read"},
+    {WorkloadType::SeqWrite, "seq_write"},
+    {WorkloadType::RndRead, "rnd_read"},
+    {WorkloadType::RndWrite, "rnd_write"},
+  };
+
+  for (size_t i = 0; i < sizeof(tbl) / sizeof(tbl[0]); ++i) {
+    if (::strncmp(tbl[i].name, name, 20) == 0) {
+      return tbl[i].type;
     }
   }
-
-  double readMebiBytes = (nr_cl * CACHE_LINE_SIZE) / (double)MiB;
-  double exsec = EX_TIME;
-  uint64_t mibps = readMebiBytes / exsec;
-  printf("sequentialReadBW[MiB/s],Th#%d:\t%lu\n", thid, mibps);
-  return mibps;
+  return WorkloadType::Unknown;
 }
 
-uint64_t
-seqWriteBench(unsigned int thid, char *Array, char *Rec)
+void seqReadWorker(size_t idx, size_t bulk_size, char& ready, const bool& start, const bool& quit, uint64_t& count) try
 {
-  const uint64_t max = MALLOC_SIZE * GiB;
-  uint64_t i = 0;
-  for (uint64_t i = 0; i < max; i+=CACHE_LINE_SIZE)
-    memcpy(&Rec[0], &Array[i], CACHE_LINE_SIZE);
+  setThreadAffinity(idx);
 
-  uint64_t nr_cl = 0;
-  i = 0;
-  waitForReadyOfAllThread(RunSeqWriteBench, TH_NUM+1);
-  for (;;) {
-    memcpy(&Array[i], Rec, CACHE_LINE_SIZE);
-    ++nr_cl;
-    if (FinSeqWriteBench.load()) break;
-    i += 64;
-    if (i == max) {
-      i = 0;
+  const uint64_t size = WORK_MEM_PER_THREAD;
+  assert(size % bulk_size == 0);
+  
+  AlignedMemory mem(PAGE_SIZE, size);
+  fillArray(mem.data(), mem.size());
+
+  uint64_t transferred = 0;
+  AlignedMemory buf(PAGE_SIZE, bulk_size);
+  uint64_t buf2 = 0;
+  const char *p = (const char *)mem.data();
+  const char *goal = p + size;
+
+  storeRelease(ready, 1);
+  while (!loadAcquire(start)) _mm_pause();
+
+  while (!loadAcquire(quit)) {
+    ::memcpy(buf.data(), p, bulk_size);
+    transferred += bulk_size;
+
+    p += bulk_size;
+    if (p >= goal) p = (const char *)mem.data();
+  }
+
+  storeRelease(count, transferred);
+} catch (std::exception& e) {
+  ::fprintf(::stderr, "seqReadWorker error: %s\n", e.what());
+}
+
+void
+runExpr(const Config& cfg)
+{
+  bool start = false;
+  bool quit = false;
+  std::vector<char> readys(cfg.nr_threads);
+  std::vector<uint64_t> counts(cfg.nr_threads);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < cfg.nr_threads; ++i) {
+    switch (getWorkloadType(cfg.workload)) {
+      case WorkloadType::SeqRead:
+        thv.emplace_back(seqReadWorker, i, cfg.bulk_size, std::ref(readys[i]), std::ref(start), std::ref(quit), std::ref(counts[i]));
+        break;
+      default:
+        throw std::runtime_error("unknown worklaod");
     }
   }
+  waitForReady(readys);
+  storeRelease(start, true);
+  for (size_t i = 0; i < cfg.run_sec; ++i) {
+    sleepMs(1000);
+  }
+  storeRelease(quit, true);
+  for (auto& th : thv) th.join();
 
-  double writeMebiBytes = (nr_cl * CACHE_LINE_SIZE) / (double)MiB;
-  double exsec = EX_TIME;
-  uint64_t mibps = writeMebiBytes / exsec;
-  printf("sequentialWriteBW[MiB],Th#%d:\t%lu\n", thid, mibps);
-  return mibps;
+  uint64_t total = 0;
+  for (uint64_t c : counts) {
+    total += c;
+  }
+
+  const double latency_ns = (1000000000.0 * cfg.nr_threads * cfg.run_sec * cfg.bulk_size) / (double)(total);
+  ::printf("nr_threads %zu run_sec %zu workload %-10s bulk_size %4zu Bps %15" PRIu64 " ops %15" PRIu64 " latency_ns %5.3f\n"
+      , cfg.nr_threads, cfg.run_sec, cfg.workload, cfg.bulk_size
+      , total / cfg.run_sec, total / cfg.bulk_size / cfg.run_sec, latency_ns);
+  ::fflush(::stdout);
 }
 
 void
-xoroshiro128PlusBench()
+put8(const uint64_t* p)
 {
-  Xoroshiro128Plus rnd;
-  rnd.init();
-  
-  uint64_t start, stop;
-  start = rdtscp();
-  for (;;) {
-    for (int i = 0; i < LOOP; ++i)
-      rnd.next();
-    stop = rdtscp();
-    if (chkClkSpan(start, stop, CLOCKS_PER_US * 1000 * 1000 * EX_TIME)) goto STOP;
+  for (size_t i = 0; i < 24; ++i) {
+    ::printf("%" PRIu64 "", p[i]);
   }
-STOP:
-
-  cout << "xoroshiro128PlusBench[ns] :\t" << (double)(stop - start)/(double)(LOOP*LOOP*LOOP)/(double)(CLOCKS_PER_US / 1000) << endl;
-}
-
-uint64_t
-ranReadBench(unsigned int thid, char *Array, char *Rec)
-{
-  Xoroshiro128Plus rnd;
-  rnd.init();
-  memcpy(&Rec[0], &Array[rnd.next() >> 34], 64);
-
-  const uint64_t max = MALLOC_SIZE * GiB;
-  for (uint64_t i = 0; i < max; i+=CACHE_LINE_SIZE)
-    memcpy(&Rec[0], &Array[i], CACHE_LINE_SIZE);
-
-  uint64_t nr_cl = 0;
-  uint8_t sw = 34 + (MALLOC_SIZE / 2);
-  waitForReadyOfAllThread(RunRanReadBench, TH_NUM+1);
-  for (;;) {
-    memcpy(&Rec[0], &Array[rnd.next() >> sw], CACHE_LINE_SIZE);
-    ++nr_cl;
-    if (FinRanReadBench.load()) break;
-  }
-
-  double readMebiBytes = (nr_cl * CACHE_LINE_SIZE) / (double)MiB;
-  double exsec = EX_TIME;
-  uint64_t mibps = readMebiBytes / exsec;
-  printf("randomeReadBW[MiB/s],Th#%d:\t%lu\n", thid, mibps);
-  return mibps;
-}
-
-uint64_t
-ranWriteBench(unsigned int thid, char *Array, char *Rec)
-{
-  Xoroshiro128Plus rnd;
-  rnd.init();
-
-  const uint64_t max = MALLOC_SIZE * GiB;
-  for (uint64_t i = 0; i < max; i+=CACHE_LINE_SIZE)
-    memcpy(&Rec[0], &Array[i], CACHE_LINE_SIZE);
-
-  uint64_t nr_cl = 0;
-  uint8_t sw = 34 + (MALLOC_SIZE / 2);
-  waitForReadyOfAllThread(RunRanWriteBench, TH_NUM+1);
-  for (;;) {
-    memcpy(&Array[rnd.next() >> sw], Rec, CACHE_LINE_SIZE);
-    ++nr_cl;
-    if (FinRanWriteBench.load()) break;
-  }
-
-  double writeMebiBytes = (nr_cl * CACHE_LINE_SIZE) / (double)MiB;
-  double exsec = EX_TIME;
-  uint64_t mibps = writeMebiBytes / exsec;
-  printf("randomWriteBW[MiB],Th#%d:\t%lu\n", thid, mibps);
-  return mibps;
-}
-
-void
-rdtscBench()
-{
-  uint64_t start, stop;
-  uint64_t max = MiB;
-  start = rdtscp();
-  for (uint64_t i = 0; i < max; ++i)
-    rdtsc();
-  stop = rdtscp();
-
-  cout << "rdtscBench[clocks] :\t" << (stop - start)/max << endl;
-}
-
-void
-rdtscpBench()
-{
-  uint64_t start, stop;
-  uint64_t max = MiB;
-  start = rdtscp();
-  for (unsigned int i = 0; i < max; ++i)
-    rdtscp();
-  stop = rdtscp();
-
-  cout << "rdtscpBench[clocks] :\t" << (stop - start)/max << endl;
-}
-
-void *
-leader(void *args)
-{
-  waitForReadyOfAllThread(RunSeqReadBench, TH_NUM+1);
-  sleep(EX_TIME);
-  FinSeqReadBench.store(true, std::memory_order_release);
-
-  waitForReadyOfAllThread(RunSeqWriteBench, TH_NUM+1);
-  sleep(EX_TIME);
-  FinSeqWriteBench.store(true, std::memory_order_release);
-
-  waitForReadyOfAllThread(RunRanReadBench, TH_NUM+1);
-  sleep(EX_TIME);
-  FinRanReadBench.store(true, std::memory_order_release);
-
-  waitForReadyOfAllThread(RunRanWriteBench, TH_NUM+1);
-  sleep(EX_TIME);
-  FinRanWriteBench.store(true, std::memory_order_release);
-
-  return args;
-  // 何を返しても良い
-  // -Wunused-parameter による
-  // warning を抑えるため．
-}
-
-void *
-worker(void *args)
-{
-  Result &res = *(Result *)(args);
-  setThreadAffinity(res.thid);
-  
-  char *Array;
-  char *Rec; // read を受け取るためのアレイ．
-
-  try {
-    if (posix_memalign((void**)&Array, CACHE_LINE_SIZE, GiB * MALLOC_SIZE * sizeof(char)) != 0) ERR;
-    if (posix_memalign((void**)&Rec, CACHE_LINE_SIZE, CACHE_LINE_SIZE) != 0) ERR;
-  } catch (std::bad_alloc) {
-    ERR;
-  }
-
-  res.seqReadMemband = seqReadBench(res.thid, Array, Rec);
-  res.seqWriteMemband = seqWriteBench(res.thid, Array, Rec);
-  res.ranReadMemband = ranReadBench(res.thid, Array, Rec);
-  res.ranWriteMemband = ranWriteBench(res.thid, Array, Rec);
-
-  free(Array);
-  free(Rec);
-  return nullptr;
+  ::printf("\n");
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char *argv[]) try
 {
-  if (argc != 3) ERR;
-  TH_NUM = atoi(argv[1]);
-  MALLOC_SIZE = atoi(argv[2]);
+  if (argc != 2) ERR;
+  size_t nr_threads = atoi(argv[1]);
 
-  Result res[TH_NUM];
-  xoroshiro128PlusBench();
-  rdtscBench();
-  rdtscpBench();
+  size_t run_sec = 3;
+  size_t nr_loop = 3;
   
-  pthread_t lth;
-  if (pthread_create(&lth, NULL, leader, NULL))
-    ERR;
-
-  pthread_t thread[TH_NUM];
-  for (unsigned int i = 0; i < TH_NUM; ++i) {
-    int ret;
-    res[i].thid = i;
-    ret = pthread_create(&thread[i], NULL, worker, (void *)(&res[i]));
-    if (ret) ERR;
+  //for (const char *workload : {"seq_read", "seq_write", "rnd_read", "rnd_write"}) {
+  for (const char *workload : {"seq_read"}) {
+    for (size_t bulk_size : {8, 64, 1024, 4096}) {
+      assert(bulk_size % sizeof(uint64_t) == 0);
+      for (size_t i = 0; i < nr_loop; ++i) {
+        runExpr({nr_threads, run_sec, workload, bulk_size});
+      }
+    }
   }
-
-  pthread_join(lth, NULL);
-  for (unsigned int i = 0; i < TH_NUM; ++i) {
-    pthread_join(thread[i], NULL);
-  }
-
-  uint64_t membandSum[4] = {};
-  for (unsigned int i = 0; i < TH_NUM; ++i) {
-    membandSum[0] += res[i].seqReadMemband;
-    membandSum[1] += res[i].seqWriteMemband;
-    membandSum[2] += res[i].ranReadMemband;
-    membandSum[3] += res[i].ranWriteMemband;
-  }
-
-  cout << "sequentialReadMemband[MiB/s]:\t" << membandSum[0] << endl;
-  cout << "sequentialWriteMemband[MiB/s]:\t" << membandSum[1] << endl;
-  cout << "randomReadMemband[MiB/s]:\t" << membandSum[2] << endl;
-  cout << "randomWriteMemband[MiB/s]:\t" << membandSum[3] << endl;
-
-  return 0;
+} catch (std::exception& e) {
+  ::fprintf(::stderr, "main error: %s\n", e.what());
+  ::exit(1);
 }
+
