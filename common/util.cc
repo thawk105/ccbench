@@ -35,7 +35,7 @@ waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int t
     desired = expected + 1;
   } while (!running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
 
-  while (running.load(std::memory_order_acquire) != thnum) _mm_pause;
+  while (running.load(std::memory_order_acquire) != thnum) _mm_pause();
 
   return;
 }

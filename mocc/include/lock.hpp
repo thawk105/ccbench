@@ -9,7 +9,6 @@
 
 #define LOCK_TIMEOUT_US 5
 // 5 us.
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 
 enum class SentinelValue : uint32_t {
   None = 0,
