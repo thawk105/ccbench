@@ -4,6 +4,9 @@
 #include <xmmintrin.h>
 
 #include <atomic>
+#include <vector>
+
+#include "../include/atomic_wrapper.hpp"
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
@@ -36,3 +39,21 @@ waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int t
 
   return;
 }
+
+bool
+isReady(const std::vector<char>& readys)
+{
+  for (const char& b : readys) {
+    if (!loadAcquire(b)) return false;
+  }
+  return true;
+}
+
+void
+waitForReady(const std::vector<char>& readys)
+{
+  while (!isReady(readys)) {
+    _mm_pause();
+  }
+}
+

@@ -28,6 +28,9 @@ using std::endl;
 const uint64_t WORK_MEM_PER_THREAD = 256UL << 20; // 256 MBytes.
 const size_t PAGE_SIZE = 4096;
 
+bool isReady(const std::vector<char>& readys);
+void waitForReady(const std::vector<char>& readys);
+
 void
 sleepMs(size_t ms)
 {
@@ -76,23 +79,6 @@ writeFromCacheline(void* dst, const void* src, size_t size)
     size -= CACHE_LINE_SIZE;
   }
   ::memcpy(p, src, size);
-}
-
-bool
-isReady(const std::vector<char>& readys)
-{
-  for (const char& b : readys) {
-    if (!loadAcquire(b)) return false;
-  }
-  return true;
-}
-
-void
-waitForReady(const std::vector<char>& readys)
-{
-  while (!isReady(readys)) {
-    _mm_pause();
-  }
 }
 
 struct Config
