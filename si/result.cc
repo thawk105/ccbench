@@ -8,27 +8,27 @@ using std::cout, std::endl, std::fixed, std::setprecision;
 void
 SIResult::display_totalGCCounts()
 {
-  cout << "totalGCCounts :\t\t" << totalGCCounts << endl;
+  cout << "totalGCCounts:\t\t" << totalGCCounts << endl;
 }
 
 void
-SIResult::display_totalGCVersionCounts()
+SIResult::display_totalGCVersions()
 {
-  cout << "totalGC\nVersionCounts :\t\t" << totalGCVersionCounts << endl;
+  cout << "totalGCVersions:\t" << totalGCVersions << endl;
 }
 
 void
-SIResult::display_totalGCTMTElementsCounts()
+SIResult::display_totalGCTMTElements()
 {
-  cout << "totalGC\nTMTElementsCounts :\t" << totalGCTMTElementsCounts << endl;
+  cout << "totalGCTMTElements:\t" << totalGCTMTElements << endl;
 }
 
 void
 SIResult::display_AllSIResult(const uint64_t clocks_per_us)
 {
   display_totalGCCounts();
-  display_totalGCVersionCounts();
-  display_totalGCTMTElementsCounts();
+  display_totalGCVersions();
+  display_totalGCTMTElements();
   display_AllResult(clocks_per_us);
 }
 
@@ -39,15 +39,15 @@ SIResult::add_localGCCounts(const uint64_t gcount)
 }
 
 void
-SIResult::add_localGCVersionCounts(const uint64_t gcount)
+SIResult::add_localGCVersions(const uint64_t vcount)
 {
-  totalGCVersionCounts += gcount;
+  totalGCVersions += vcount;
 }
 
 void
-SIResult::add_localGCTMTElementsCounts(const uint64_t gcount)
+SIResult::add_localGCTMTElements(const uint64_t ecount)
 {
-  totalGCTMTElementsCounts += gcount;
+  totalGCTMTElements += ecount;
 }
 
 void
@@ -55,7 +55,7 @@ SIResult::add_localAllSIResult(const SIResult &other)
 {
   add_localAllResult(other);
   add_localGCCounts(other.localGCCounts);
-  add_localGCVersionCounts(other.localGCVersionCounts);
-  add_localGCTMTElementsCounts(other.localGCTMTElementsCounts);
+  add_localGCVersions(other.localGCVersions);
+  add_localGCTMTElements(other.localGCTMTElements);
 }
 

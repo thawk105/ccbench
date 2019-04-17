@@ -130,7 +130,7 @@ RETRY:
         trans.gcobject.gcVersion(res);
         trans.preGcThreshold = loadThreshold;
 #ifdef CCTR_ON
-        trans.gcobject.gcTMTelement(res);
+        trans.gcobject.gcTMTElements(res);
 #endif // CCTR_ON
         ++res.localGCCounts;
       }

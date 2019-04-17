@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "../include/debug.hpp"
+#include "../include/util.hpp"
 
 #include "include/common.hpp"
 #include "include/garbageCollection.hpp"
@@ -67,7 +68,7 @@ GarbageCollection::gcVersion(SIResult &rsob)
     uint8_t zero = 0;
     if (!Table[gcqForVersion.front().key].gClock.compare_exchange_strong(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
-      gcqForVersion.pop();
+      gcqForVersion.pop_front();
       continue;
     }
 
@@ -77,7 +78,7 @@ GarbageCollection::gcVersion(SIResult &rsob)
     if (gcqForVersion.front().cstamp <= Table[gcqForVersion.front().key].min_cstamp) {
       // releases the lock
       Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
-      gcqForVersion.pop();
+      gcqForVersion.pop_front();
       continue;
     }
     // this pointer may be dangling.
@@ -85,13 +86,13 @@ GarbageCollection::gcVersion(SIResult &rsob)
     Version *delTarget = gcqForVersion.front().ver->committed_prev;
     if (delTarget == nullptr) {
       Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
-      gcqForVersion.pop();
+      gcqForVersion.pop_front();
       continue;
     }
     delTarget = delTarget->prev;
     if (delTarget == nullptr) {
       Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
-      gcqForVersion.pop();
+      gcqForVersion.pop_front();
       continue;
     }
  
@@ -105,12 +106,12 @@ GarbageCollection::gcVersion(SIResult &rsob)
       Version *tmp = delTarget->prev;
       delete delTarget;
       delTarget = tmp;
-      ++rsob.localGCVersionCounts;
+      ++rsob.localGCVersions;
     }
 
     // releases the lock
     Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
-    gcqForVersion.pop();
+    gcqForVersion.pop_front();
   }
 
   return;
@@ -118,18 +119,20 @@ GarbageCollection::gcVersion(SIResult &rsob)
 
 #ifdef CCTR_ON
 void
-GarbageCollection::gcTMTelement(SIResult &rsob)
+GarbageCollection::gcTMTElements(SIResult &rsob)
 {
   uint32_t threshold = getGcThreshold();
-  if (gcqForTMT.empty()) return;
 
   for (;;) {
     TransactionTable *tmt = gcqForTMT.front();
+    if (tmt == nullptr) {
+      NNN;
+      return;
+    }
     if (tmt->txid < threshold) {
-      gcqForTMT.pop();
+      gcqForTMT.pop_front();
       delete tmt;
-      ++rsob.localGCTMTElementsCounts;
-      if (gcqForTMT.empty()) break;
+      ++rsob.localGCTMTElements;
     }
     else break;
   }

@@ -5,8 +5,11 @@
 
 #include "../../include/inline.hpp"
 
+#include "common.hpp"
 #include "result.hpp"
 #include "version.hpp"
+
+#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 // forward declaration
 class TransactionTable;
@@ -17,11 +20,21 @@ public:
   Version *ver;
   uint32_t cstamp;
 
+  GCElement() : key(0), ver(nullptr), cstamp(0) {}
+
   GCElement(unsigned int key, Version *ver, uint32_t cstamp) {
     this->key = key;
     this->ver = ver;
     this->cstamp = cstamp;
   }
+};
+
+class GCTMTElement {
+public:
+  TransactionTable *tmt;
+
+  GCTMTElement() : tmt(nullptr) {}
+  GCTMTElement(TransactionTable *tmt_) : tmt(tmt_) {}
 };
 
 class GarbageCollection {
@@ -33,10 +46,17 @@ private:
 
 public:
 #ifdef CCTR_ON
-  std::queue<TransactionTable *> gcqForTMT;
+  std::deque<TransactionTable *, tbb::scalable_allocator<TransactionTable *>> gcqForTMT;
 #endif // CCTR_ON
-  std::queue<GCElement> gcqForVersion;
+  std::deque<GCElement, tbb::scalable_allocator<GCElement>> gcqForVersion;
   uint8_t thid;
+
+  GarbageCollection() {
+//#ifdef CCTR_ON
+//    gcqForTMT.resize(1000);
+//#endif // CCTR_ON
+//    gcqForVersion.resize(1000);
+  }
 
   // for all thread
   INLINE uint32_t getGcThreshold() {
@@ -61,7 +81,7 @@ public:
   // for worker thread
   void gcVersion(SIResult &rsob);
 #ifdef CCTR_ON
-  void gcTMTelement(SIResult &rsob);
+  void gcTMTElements(SIResult &rsob);
 #endif // CCTR_ON
   // -----
 };

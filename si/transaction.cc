@@ -64,7 +64,8 @@ TxExecutor::tbegin()
   TransactionTable *expected, *desired;
   tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
   expected = tmt;
-  gcobject.gcqForTMT.push(expected);
+  gcobject.gcqForTMT.push_back(expected);
+
   for (;;) {
     desired = newElement;
     if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
@@ -184,7 +185,7 @@ TxExecutor::commit()
     (*itr).ver->cstamp.store(this->cstamp, memory_order_release);
     memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, cstamp));
+    gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).ver, cstamp));
   }
 
   //logging
@@ -207,7 +208,7 @@ TxExecutor::abort()
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid));
+    gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).ver, this->txid));
   }
 
   readSet.clear();

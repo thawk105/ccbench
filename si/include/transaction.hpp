@@ -10,6 +10,8 @@
 #include "garbageCollection.hpp"
 #include "version.hpp"
 
+#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
+
 // forward declaration
 class TransactionTable;
 
@@ -24,8 +26,8 @@ class TxExecutor {
 public:
   uint32_t cstamp = 0;  // Transaction end time, c(T) 
   TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
-  std::vector<SetElement> readSet;
-  std::vector<SetElement> writeSet;
+  std::vector<SetElement, tbb::scalable_allocator<SetElement>> readSet;
+  std::vector<SetElement, tbb::scalable_allocator<SetElement>> writeSet;
   GarbageCollection gcobject;
   uint32_t preGcThreshold = 0;
   Result rsobject;
