@@ -123,6 +123,8 @@ public:
   Version *ver;
   uint64_t wts;
 
+  GCElement() : key(0), ver(nullptr), wts(0) {}
+
   GCElement(unsigned int key, Version *ver, uint64_t wts) {
     this->key = key;
     this->ver = ver;

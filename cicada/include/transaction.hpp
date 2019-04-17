@@ -18,7 +18,7 @@
 #include "version.hpp"
 #include "result.hpp"
 
-using namespace std;
+#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 enum class TransactionStatus : uint8_t {
   invalid,
@@ -27,13 +27,14 @@ enum class TransactionStatus : uint8_t {
   abort,
 };
 
+
 class TxExecutor {
 public:
   TransactionStatus status = TransactionStatus::invalid;
   TimeStamp wts;
-  vector<ReadElement> readSet;
-  vector<WriteElement> writeSet;
-  queue<GCElement> gcq;
+  std::vector<ReadElement, tbb::scalable_allocator<ReadElement>> readSet;
+  std::vector<WriteElement, tbb::scalable_allocator<WriteElement>> writeSet;
+  std::deque<GCElement, tbb::scalable_allocator<GCElement>> gcq;
 
   bool ronly;
   uint8_t thid;
@@ -65,6 +66,7 @@ public:
 
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
+    //gcq.resize(MAX_OPE);
 
     continuingCommit = 0;
 

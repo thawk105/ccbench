@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -351,11 +352,12 @@ inline void
 TxExecutor::cpv()  //commit pending versions
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    gcq.push(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
+    gcq.push_back(GCElement((*itr).key, (*itr).newObject, (*itr).newObject->wts));
     memcpy((*itr).newObject->val, writeVal, VAL_SIZE);
     (*itr).newObject->status.store(VersionStatus::committed, std::memory_order_release);
   }
 
+  //std::cout << gcq.size() << std::endl;
 }
   
 void 
@@ -478,7 +480,7 @@ TxExecutor::mainte(CicadaResult &res)
       // (a) acquiring the garbage collection lock succeeds
       if (getGCRight(gcq.front().key) == false) {
         // fail acquiring the lock
-        gcq.pop();
+        gcq.pop_front();
         continue;
       }
 
@@ -486,7 +488,7 @@ TxExecutor::mainte(CicadaResult &res)
       if (gcq.front().wts <= Table[gcq.front().key].min_wts) {
         // releases the lock
         Table[gcq.front().key].gClock.store(0, memory_order_release);
-        gcq.pop();
+        gcq.pop_front();
         continue;
       }
       //this pointer may be dangling.
@@ -503,12 +505,13 @@ TxExecutor::mainte(CicadaResult &res)
         Version *tmp = delTarget->next.load(std::memory_order_acquire);
         if (delTarget != &Table[gcq.front().key].inlineVersion) delete delTarget;
         else returnInlineVersionRight(gcq.front().key);
+        ++res.localGCVersions;
         delTarget = tmp;
       }
       
       // releases the lock
       returnGCRight(gcq.front().key);
-      gcq.pop();
+      gcq.pop_front();
     }
 
     __atomic_store_n(&(GCExecuteFlag[thid].obj), 0, __ATOMIC_RELEASE);
