@@ -24,12 +24,12 @@ ErmiaResult::display_totalGCTMTElementsCounts()
 }
 
 void
-ErmiaResult::display_AllErmiaResult(const uint64_t clocks_per_us)
+ErmiaResult::display_AllErmiaResult()
 {
   display_totalGCCounts();
   display_totalGCVersionCounts();
   display_totalGCTMTElementsCounts();
-  display_AllResult(clocks_per_us);
+  display_AllResult();
 }
 
 void

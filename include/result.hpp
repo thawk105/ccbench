@@ -14,12 +14,13 @@ public:
   uint64_t totalAbortCounts = 0;
   uint64_t totalCommitCounts = 0;
   uint32_t thid = 0;
+  size_t extime = 0;
 
   void display_totalAbortCounts();
   void display_abortRate();
   void display_totalCommitCounts();
-  void display_tps(const uint64_t clocks_per_us);
-  void display_AllResult(const uint64_t clocks_per_us);
+  void display_tps();
+  void display_AllResult();
   void add_localAllResult(const Result &other);
   void add_localAbortCounts(const uint64_t acount);
   void add_localCommitCounts(const uint64_t ccount);

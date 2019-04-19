@@ -16,7 +16,7 @@ public:
   void display_totalGCCounts();
   void display_totalGCVersions();
   void display_totalGCTMTElements();
-  void display_AllSIResult(const uint64_t clocks_per_us);
+  void display_AllSIResult();
   void add_localAllSIResult(const SIResult &other);
   void add_localGCCounts(const uint64_t gcount);
   void add_localGCVersions(const uint64_t vcount);

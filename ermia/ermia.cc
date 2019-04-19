@@ -32,7 +32,9 @@ extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void naiveGarbageCollection();
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void sleepMs(size_t);
 
 static void *
 manager_worker(void *arg)
@@ -45,19 +47,15 @@ manager_worker(void *arg)
 #endif // Linux
 
   gcobject.decideFirstRange();
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   // end, initial work
   
   
-  res.bgn = rdtscp();
   for (;;) {
-    usleep(1);
-    res.end = rdtscp();
-    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-      Finish.store(true, std::memory_order_release);
+    if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
-    }
 
+    usleep(1);
     if (gcobject.chkSecondRange()) {
       gcobject.decideGcThreshold();
       gcobject.mvSecondRangeToFirstRange();
@@ -84,7 +82,7 @@ worker(void *arg)
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
   trans.gcstart = rdtscp();
   //start work (transaction)
@@ -96,8 +94,7 @@ worker(void *arg)
 
       asm volatile ("" ::: "memory");
 RETRY:
-
-      if (Finish.load(std::memory_order_acquire))
+      if (res.Finish.load(std::memory_order_acquire))
         return nullptr;
 
       //-----
@@ -161,12 +158,19 @@ main(const int argc, const char *argv[])
     if (ret) ERR;
   }
 
+  waitForReadyOfAllThread(Running, THREAD_NUM);
+  for (size_t i = 0; i < EXTIME; ++i) {
+    sleepMs(1000);
+  }
+  Result::Finish.store(true, std::memory_order_release);
+
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllErmiaResult(rsob[i]);
   }
 
-  rsroot.display_AllErmiaResult(CLOCKS_PER_US);
+  rsroot.extime = EXTIME;
+  rsroot.display_AllErmiaResult();
 
   return 0;
 }

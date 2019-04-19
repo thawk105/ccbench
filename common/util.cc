@@ -4,6 +4,7 @@
 #include <xmmintrin.h>
 
 #include <atomic>
+#include <thread>
 #include <vector>
 
 #include "../include/atomic_wrapper.hpp"
@@ -27,15 +28,18 @@ chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold)
 }
 
 void
-waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum)
+ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm)
 {
-  unsigned int expected, desired;
-  expected = running.load(std::memory_order_acquire);
-  do {
-    desired = expected + 1;
-  } while (!running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire));
+  running++;
+  while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
 
-  while (running.load(std::memory_order_acquire) != thnum) _mm_pause();
+  return;
+}
+
+void
+waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm)
+{
+  while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
 
   return;
 }
@@ -55,5 +59,11 @@ waitForReady(const std::vector<char>& readys)
   while (!isReady(readys)) {
     _mm_pause();
   }
+}
+
+void
+sleepMs(size_t ms)
+{
+  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 

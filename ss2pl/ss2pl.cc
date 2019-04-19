@@ -31,7 +31,9 @@ extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
+extern void sleepMs(size_t ms);
 
 static void *
 worker(void *arg)
@@ -49,10 +51,8 @@ worker(void *arg)
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
-  if (res.thid == 0) res.bgn = rdtscp();
-
   try {
     //start work (transaction)
     for (;;) {
@@ -64,16 +64,8 @@ RETRY:
       trans.tbegin();
 
       //End judgment
-      if (res.thid == 0) {
-        res.end = rdtscp();
-        if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-          res.Finish.store(true, std::memory_order_release);
+      if (Result::Finish.load(std::memory_order_acquire))
           return nullptr;
-        }
-      } else {
-        if (res.Finish.load(std::memory_order_acquire))
-          return nullptr;
-      }
       //-----
       
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
@@ -128,12 +120,19 @@ main(const int argc, const char *argv[])
     if (ret) ERR;
   }
 
-  for (unsigned int i = 0; i < THREAD_NUM; i++) {
+  waitForReadyOfAllThread(Running, THREAD_NUM);
+  for (size_t i = 0; i < EXTIME; ++i) {
+    sleepMs(1000);
+  }
+  Result::Finish.store(true, std::memory_order_release);
+
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllResult(rsob[i]);
   }
 
-  rsroot.display_AllResult(CLOCKS_PER_US);
+  rsroot.extime = EXTIME;
+  rsroot.display_AllResult();
 
   return 0;
 }

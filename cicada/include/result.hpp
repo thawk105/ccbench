@@ -13,7 +13,7 @@ public:
 
   void display_totalGCCounts();
   void display_totalGCVersions();
-  void display_AllCicadaResult(const uint64_t clocks_per_us);
+  void display_AllCicadaResult();
   void add_localAllCicadaResult(CicadaResult &other);
   void add_localGCCounts(uint64_t gcount);
   void add_localGCVersions(uint64_t vcount);

@@ -31,7 +31,9 @@ extern void displayPRO();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void sleepMs(size_t ms);
 
 bool
 chkEpochLoaded()
@@ -54,17 +56,15 @@ manager_worker(void *arg)
   setThreadAffinity(res.thid);
 #endif
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
   res.bgn = rdtscp();
   epochTimerStart = rdtscp();
   for (;;) {
-    usleep(1);
-    res.end = rdtscp();
-    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-      res.Finish.store(true, memory_order_release);
+    if (res.Finish.load(memory_order_acquire))
       return nullptr;
-    }
+
+    usleep(1);
 
     //Epoch Control
     epochTimerStop = rdtscp();
@@ -101,7 +101,7 @@ worker(void *arg)
   setThreadAffinity(res.thid);
 #endif // Linux
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   try {
     //start work (transaction)
@@ -171,13 +171,20 @@ main(int argc, char *argv[])
       ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;
   }
-  
+ 
+ waitForReadyOfAllThread(Running, THREAD_NUM);
+ for (size_t i = 0; i < EXTIME; ++i) {
+   sleepMs(1000);
+ }
+ Result::Finish.store(true, std::memory_order_release);
+
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllMoccResult(rsob[i]);
   }
 
-  rsroot.display_AllMoccResult(CLOCKS_PER_US);
+  rsroot.extime = EXTIME;
+  rsroot.display_AllMoccResult();
 
   return 0;
 }

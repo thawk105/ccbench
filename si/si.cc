@@ -31,7 +31,9 @@ extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
 extern void naiveGarbageCollection(SIResult &res);
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void sleepMs(size_t ms);
 
 static void *
 manager_worker(void *arg)
@@ -44,18 +46,10 @@ manager_worker(void *arg)
 #endif // Linux
 
   gcobject.decideFirstRange();
-  waitForReadyOfAllThread(Running, THREAD_NUM);
-  // end, initial work
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
-  
-  res.bgn = rdtscp();
   for (;;) {
     usleep(1);
-    res.end = rdtscp();
-    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-      Finish.store(true, std::memory_order_release);
-      return nullptr;
-    }
 
     if (gcobject.chkSecondRange()) {
       gcobject.decideGcThreshold();
@@ -83,7 +77,7 @@ worker(void *arg)
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   //start work (transaction)
   try {
@@ -161,12 +155,19 @@ main(const int argc, const char *argv[])
     if (ret) ERR;
   }
 
+  waitForReadyOfAllThread(Running, THREAD_NUM);
+  for (size_t i = 0; i < EXTIME; ++i) {
+    sleepMs(1000);
+  }
+  Result::Finish.store(true, std::memory_order_release);
+
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllSIResult(rsob[i]);
   }
 
-  rsroot.display_AllSIResult(CLOCKS_PER_US);
+  rsroot.extime = EXTIME;
+  rsroot.display_AllSIResult();
 
   return 0;
 }

@@ -14,26 +14,26 @@
   #define GLOBAL
 GLOBAL std::atomic<bool> Finish(false);
 GLOBAL std::atomic<uint64_t> CCtr(0);
-GLOBAL std::atomic<unsigned int> Running(0);
+GLOBAL std::atomic<size_t> Running(0);
 
 #else
   #define GLOBAL extern
 GLOBAL std::atomic<bool> Finish;
 GLOBAL std::atomic<uint64_t> CCtr;
-GLOBAL std::atomic<unsigned int> Running;
+GLOBAL std::atomic<size_t> Running;
 
 #endif
 
 // run-time args
-GLOBAL unsigned int TUPLE_NUM;
-GLOBAL unsigned int MAX_OPE;
-GLOBAL unsigned int THREAD_NUM;
-GLOBAL unsigned int RRATIO;
+GLOBAL size_t TUPLE_NUM;
+GLOBAL size_t MAX_OPE;
+GLOBAL size_t THREAD_NUM;
+GLOBAL size_t RRATIO;
 GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
-GLOBAL uint64_t CLOCKS_PER_US;
-GLOBAL unsigned int EXTIME;
+GLOBAL size_t CLOCKS_PER_US;
+GLOBAL size_t EXTIME;
 // -----
 
 alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;

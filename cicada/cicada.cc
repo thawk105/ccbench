@@ -32,7 +32,9 @@ extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold)
 extern void makeDB(uint64_t *initial_wts);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, unsigned int thnum);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void sleepMs(size_t ms);
 
 static void *
 manager_worker(void *arg)
@@ -49,17 +51,13 @@ manager_worker(void *arg)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 #endif // Linux
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
 
-  res.bgn = rdtscp();
   // leader work
   for(;;) {
-    res.end = rdtscp();
-    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-      res.Finish.store(true, std::memory_order_release);
+    if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
-    }
 
     bool gc_update = true;
     for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -128,7 +126,7 @@ worker(void *arg)
   //printf("Thread %d on CPU %d\n", *myid, nowcpu);
 #endif // Darwin
 
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
   //printf("%s\n", trans.writeVal);
 
@@ -219,12 +217,20 @@ main(int argc, char *argv[])
     if (ret) ERR;
   }
 
+  waitForReadyOfAllThread(Running, THREAD_NUM);
+  for (size_t i = 0; i < EXTIME; ++i) {
+    sleepMs(1000);
+  }
+  Result::Finish.store(true, std::memory_order_release);
+
+
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllCicadaResult(rsob[i]);
   }
 
-  rsroot.display_AllCicadaResult(CLOCKS_PER_US);
+  rsroot.extime = EXTIME;
+  rsroot.display_AllCicadaResult();
 
   return 0;
 }

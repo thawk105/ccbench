@@ -34,13 +34,13 @@ MoccResult::display_totalValidationFailureByTIDRate()
 }
 
 void
-MoccResult::display_AllMoccResult(const uint64_t clocks_per_us)
+MoccResult::display_AllMoccResult()
 {
   display_totalAbortByOperationRate();
   display_totalAbortByValidationRate();
   display_totalValidationFailureByWriteLockRate();
   display_totalValidationFailureByTIDRate();
-  display_AllResult(clocks_per_us);
+  display_AllResult();
 }
 
 void

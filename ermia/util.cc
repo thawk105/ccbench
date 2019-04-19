@@ -261,7 +261,7 @@ naiveGarbageCollection(ErmiaResult &res)
       // 時間がかかるので，離脱条件チェック
       res.end = rdtscp();
       if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-        Finish.store(true, std::memory_order_release);
+        res.Finish.store(true, std::memory_order_release);
         return;
       }
       // -----

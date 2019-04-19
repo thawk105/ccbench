@@ -18,11 +18,11 @@ CicadaResult::display_totalGCVersions()
 }
 
 void
-CicadaResult::display_AllCicadaResult(const uint64_t clocks_per_us)
+CicadaResult::display_AllCicadaResult()
 {
   display_totalGCCounts();
   display_totalGCVersions();
-  display_AllResult(clocks_per_us);
+  display_AllResult();
 }
 
 void

@@ -20,7 +20,7 @@ public:
   void display_totalAbortByValidationRate(); // abort by validation rate;
   void display_totalValidationFailureByWriteLockRate();
   void display_totalValidationFailureByTIDRate();
-  void display_AllMoccResult(const uint64_t clocks_per_us);
+  void display_AllMoccResult();
 
   void add_localAbortByOperation(uint64_t abo);
   void add_localAbortByValidation(uint64_t abv);

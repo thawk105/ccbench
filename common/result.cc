@@ -25,22 +25,19 @@ Result::display_totalCommitCounts()
 }
 
 void
-Result::display_tps(const uint64_t clocks_per_us)
+Result::display_tps()
 {
-  uint64_t diff = end - bgn;
-  uint64_t sec = diff / clocks_per_us / 1000 / 1000;
-
-  uint64_t result = (double)totalCommitCounts / (double)sec;
-  std::cout << "Throughput(tps):\t" << (int)result << std::endl;
+  uint64_t result = totalCommitCounts / extime;
+  std::cout << "Throughput(tps):\t" << result << std::endl;
 }
 
 void
-Result::display_AllResult(const uint64_t clocks_per_us)
+Result::display_AllResult()
 {
   display_totalCommitCounts();
   display_totalAbortCounts();
   display_abortRate();
-  display_tps(clocks_per_us);
+  display_tps();
 }
 
 void

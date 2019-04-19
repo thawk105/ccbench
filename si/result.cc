@@ -24,12 +24,12 @@ SIResult::display_totalGCTMTElements()
 }
 
 void
-SIResult::display_AllSIResult(const uint64_t clocks_per_us)
+SIResult::display_AllSIResult()
 {
   display_totalGCCounts();
   display_totalGCVersions();
   display_totalGCTMTElements();
-  display_AllResult(clocks_per_us);
+  display_AllResult();
 }
 
 void

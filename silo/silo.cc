@@ -36,7 +36,9 @@ extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void waitForReadyOfAllThread(std::atomic<unsigned int> &running, const unsigned int thnum);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void sleepMs(size_t ms);
 
 static void *
 epoch_worker(void *arg)
@@ -52,18 +54,15 @@ epoch_worker(void *arg)
 
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
-  res.bgn = rdtscp();
   epochTimerStart = rdtscp();
 
   for (;;) {
-    usleep(1);
-    res.end = rdtscp();
-    if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-      rsobject.Finish.store(true, std::memory_order_release);
+    if (Result::Finish.load(memory_order_acquire))
       return nullptr;
-    }
+
+    usleep(1);
 
     epochTimerStop = rdtscp();
     //chkEpochLoaded は最新のグローバルエポックを
@@ -96,7 +95,7 @@ worker(void *arg)
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   try {
     //start work(transaction)
@@ -109,7 +108,7 @@ worker(void *arg)
       asm volatile ("" ::: "memory");
 RETRY:
       trans.tbegin();
-      if (trans.rsobject.Finish.load(memory_order_acquire))
+      if (Result::Finish.load(memory_order_acquire))
         return nullptr;
 
       //Read phase
@@ -167,14 +166,19 @@ main(int argc, char *argv[])
     if (ret) ERR;
   }
 
+  waitForReadyOfAllThread(Running, THREAD_NUM);
+  for (size_t i = 0; i < EXTIME; ++i) {
+    sleepMs(1000);
+  }
+  Result::Finish.store(true, std::memory_order_release);
+
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], NULL);
     rsroot.add_localAllResult(rsob[i]);
   }
 
-
-  //displayDB();
-  rsroot.display_AllResult(CLOCKS_PER_US);
+  rsroot.extime = EXTIME;
+  rsroot.display_AllResult();
 
   return 0;
 }
