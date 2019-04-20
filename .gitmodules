@@ -1,0 +1,3 @@
+[submodule "masstree"]
+	path = masstree
+	url = ../masstree-beta
