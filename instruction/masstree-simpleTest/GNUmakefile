@@ -2,9 +2,9 @@ AR = ar
 CC = gcc
 CXX = g++
 CPPFLAGS = 
-CXXFLAGS = -g -W -Wall -O3
+CXXFLAGS = -g -W -Wall -O3 -pipe
 DEPSDIR := .deps
-DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
+DEPCFLAGS = #-MD -MF $(DEPSDIR)/$*.d -MP
 ifeq ($(strip $(MEMMGR)), )
   MEMMGR = 
 endif
@@ -22,21 +22,21 @@ LDFLAGS =
 
 all: unit-mt
 
-%.o: %.c config.h $(DEPSDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
+%.o: %.c ../../masstree/config.h #$(DEPSDIR)/stamp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include ../../masstree/config.h -c -o $@ $<
 
-%.o: %.cc config.h $(DEPSDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
+%.o: %.cc ../../masstree/config.h #$(DEPSDIR)/stamp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include ../../masstree/config.h -c -o $@ $<
 
 %.S: %.o
 	objdump -S $< > $@
 
-libjson.a: json.o string.o straccum.o str.o msgpack.o \
-	clp.o kvrandom.o compiler.o memdebug.o kvthread.o
+../../masstree/libjson.a: ../../masstree/json.o ../../masstree/string.o ../../masstree/straccum.o ../../masstree/str.o ../../masstree/msgpack.o \
+	../../masstree/clp.o ../../masstree/kvrandom.o ../../masstree/compiler.o ../../masstree/memdebug.o ../../masstree/kvthread.o
 	@/bin/rm -f $@
 	$(AR) cru $@ $^
 
-unit-mt: unit-mt.o compiler.o misc.o libjson.a
+unit-mt: unit-mt.o ../../masstree/compiler.o ../../masstree/misc.o ../../masstree/libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 $(DEPSDIR)/stamp:
