@@ -2,7 +2,9 @@ AR = ar
 CC = gcc
 CXX = g++
 CPPFLAGS = 
-CXXFLAGS = -g -W -Wall -O3 -pipe
+CXXFLAGS = -g -W -Wall -O2 -pipe
+CXXFLAGS += -march=native
+
 DEPSDIR := .deps
 DEPCFLAGS = #-MD -MF $(DEPSDIR)/$*.d -MP
 ifeq ($(strip $(MEMMGR)), )
@@ -36,7 +38,7 @@ all: unit-mt
 	@/bin/rm -f $@
 	$(AR) cru $@ $^
 
-unit-mt: unit-mt.o ../../masstree/compiler.o ../../masstree/misc.o ../../masstree/libjson.a
+unit-mt: unit-mt.o ../../masstree/compiler.o ../../masstree/misc.o ../../masstree/libjson.a ../../common/util.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 $(DEPSDIR)/stamp:
@@ -46,6 +48,7 @@ $(DEPSDIR)/stamp:
 clean:
 	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a
 	rm -rf .deps
+	rm ../../common/*.o
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)
 ifneq ($(DEPFILES),)
