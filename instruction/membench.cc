@@ -28,14 +28,9 @@ using std::endl;
 const uint64_t WORK_MEM_PER_THREAD = 256UL << 20; // 256 MBytes.
 const size_t PAGE_SIZE = 4096;
 
-bool isReady(const std::vector<char>& readys);
-void waitForReady(const std::vector<char>& readys);
-
-void
-sleepMs(size_t ms)
-{
-  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
+extern bool isReady(const std::vector<char>& readys);
+extern void waitForReady(const std::vector<char>& readys);
+extern void sleepMs(size_t ms);
 
 class AlignedMemory
 {
