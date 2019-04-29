@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <vector>
@@ -23,6 +24,21 @@
 #include "../../include/atomic_wrapper.hpp"
 #include "../../include/debug.hpp"
 #include "../../include/util.hpp"
+
+#ifdef dbs11
+#include <concurrent_hash_map.h>
+#define HASHSIZE 2^30
+struct MyHashCompare {
+  static size_t hash(const uint64_t& x) {
+    return x & (HASHSIZE);
+  }
+  static bool equal(const uint64_t& a, const uint64_t& b) {
+    return a==b;
+  }
+};
+typedef tbb::concurrent_hash_map<uint64_t, uint64_t, MyHashCompare> UintHashTable;
+UintHashTable HashTable;
+#endif
 
 extern bool isReady(const std::vector<char>& readys);
 extern void waitForReady(const std::vector<char>& readys);
@@ -121,6 +137,26 @@ public:
     //printf("Th#%zu:\t%lu\n", thid, count);
   }
 
+  void insert_test_hashTable(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
+    uint64_t lcount(0);
+    uint64_t lkey_gen(thid);
+
+    storeRelease(ready, 1);
+    while (!loadAcquire(start)) _mm_pause();
+    while (!loadAcquire(quit)) {
+
+      auto int_key = lkey_gen;
+      lkey_gen += NUM_THREADS;
+
+      UintHashTable::accessor a;
+      HashTable.insert(a, int_key);
+      ++lcount;
+    }
+
+    storeRelease(count, lcount);
+    //printf("Th#%zu:\t%lu\n", thid, count);
+  }
+
   void remove_test() {
       while (1) {
           auto int_key = fetch_and_add(&key_gen_, 1);
@@ -209,7 +245,9 @@ volatile bool recovering = false;
 
 void test_thread(MasstreeWrapper* mt, size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     mt->thread_init(thid);
-    mt->insert_test(thid, ready, start, quit, count);
+    //mt->insert_test(thid, ready, start, quit, count);
+    mt->put_test(thid, ready, start, quit, count);
+    //mt->insert_test_hashTable(thid, ready, start, quit, count);
     //mt->insert_remove_test(thread_id);
 }
 
@@ -246,6 +284,6 @@ main([[maybe_unused]]int argc, char *argv[])
   }
 
   //mt->table_print();
-  cout << sum/EX_TIME << endl;
+  cout << std::fixed << std::setprecision(2) << (double)(sum / EX_TIME) / 1000000.0 << endl;
   return 0;
 }
