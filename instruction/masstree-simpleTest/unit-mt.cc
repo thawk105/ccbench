@@ -24,13 +24,16 @@
 #include "../../include/atomic_wrapper.hpp"
 #include "../../include/debug.hpp"
 #include "../../include/util.hpp"
+#include "../../include/random.hpp"
 
 #ifdef dbs11
 #include <concurrent_hash_map.h>
-#define HASHSIZE 2^30
+
+size_t hashsize = pow(2, 30) - 1;
+
 struct MyHashCompare {
   static size_t hash(const uint64_t& x) {
-    return x & (HASHSIZE);
+    return x & (hashsize);
   }
   static bool equal(const uint64_t& a, const uint64_t& b) {
     return a==b;
@@ -131,6 +134,46 @@ public:
       fence();
       lp.finish(1, *ti);
       ++lcount;
+    }
+
+    storeRelease(count, lcount);
+    //printf("Th#%zu:\t%lu\n", thid, count);
+  }
+
+  void get_test(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
+    uint64_t lcount(0);
+    Str key;
+    Xoroshiro128Plus rand;
+    rand.init();
+    size_t max = pow(2,27); // 128Mi
+    size_t mask = max-1;
+    size_t key_buf;
+
+    if (thid == 0) {
+      for (uint64_t i = 0; i < max; ++i) {
+        key = make_key(i, key_buf);
+
+        cursor_type lp(table_, key);
+        bool found = lp.find_insert(*ti);
+        always_assert(!found, "this key already appeared.");
+
+        lp.value() = 39;
+
+        fence();
+        lp.finish(1, *ti);
+      }
+    }
+
+    storeRelease(ready, 1);
+    while (!loadAcquire(start)) _mm_pause();
+    while (!loadAcquire(quit)) {
+      key = make_key(rand() & mask, key_buf);
+      unlocked_cursor_type lp(table_, key);
+      bool found = lp.find_unlocked(*ti);
+      if (found) {
+        //printf("%lu\n", lp.value());
+        ++lcount;
+      }
     }
 
     storeRelease(count, lcount);
@@ -246,7 +289,7 @@ volatile bool recovering = false;
 void test_thread(MasstreeWrapper* mt, size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     mt->thread_init(thid);
     //mt->insert_test(thid, ready, start, quit, count);
-    mt->put_test(thid, ready, start, quit, count);
+    mt->get_test(thid, ready, start, quit, count);
     //mt->insert_test_hashTable(thid, ready, start, quit, count);
     //mt->insert_remove_test(thread_id);
 }
