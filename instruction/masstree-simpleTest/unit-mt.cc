@@ -140,6 +140,25 @@ public:
     //printf("Th#%zu:\t%lu\n", thid, count);
   }
 
+  void make_tree() {
+    Str key;
+    size_t max = pow(2,27); // 128Mi
+    size_t key_buf;
+
+    for (uint64_t i = 0; i < max; ++i) {
+      key = make_key(i, key_buf);
+
+      cursor_type lp(table_, key);
+      bool found = lp.find_insert(*ti);
+      always_assert(!found, "this key already appeared.");
+
+      lp.value() = 39;
+
+      fence();
+      lp.finish(1, *ti);
+    }
+  }
+
   void get_test(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     uint64_t lcount(0);
     Str key;
@@ -150,18 +169,7 @@ public:
     size_t key_buf;
 
     if (thid == 0) {
-      for (uint64_t i = 0; i < max; ++i) {
-        key = make_key(i, key_buf);
-
-        cursor_type lp(table_, key);
-        bool found = lp.find_insert(*ti);
-        always_assert(!found, "this key already appeared.");
-
-        lp.value() = 39;
-
-        fence();
-        lp.finish(1, *ti);
-      }
+      make_tree();
     }
 
     storeRelease(ready, 1);
