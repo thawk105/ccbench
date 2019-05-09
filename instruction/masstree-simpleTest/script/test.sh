@@ -1,5 +1,5 @@
 
-result=result_masstree_insertion.dat
+result=result_masstree_put.dat
 rm $result
 epoch=3
 thread=1

@@ -159,6 +159,42 @@ public:
     }
   }
 
+  void put_test(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
+    uint64_t lcount(0);
+    Str key;
+    Xoroshiro128Plus rand;
+    rand.init();
+    size_t max = pow(2,27); // 128Mi
+    size_t mask = max-1;
+    size_t key_buf;
+
+    if (thid == 0) {
+      make_tree();
+    }
+
+    storeRelease(ready, 1);
+    while (!loadAcquire(start)) _mm_pause();
+    while (!loadAcquire(quit)) {
+      key = make_key(rand() & mask, key_buf);
+      cursor_type lp(table_, key);
+
+      bool found = lp.find_locked(*ti);
+      if (!found) {
+        ERR;
+      } else {
+        lp.value() = thid;
+        ++lcount;
+        //printf("%lu\n", lp.value());
+      }
+      
+      fence();
+      lp.finish(0, *ti);
+    }
+
+    storeRelease(count, lcount);
+    //printf("Th#%zu:\t%lu\n", thid, count);
+  }
+
   void get_test(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     uint64_t lcount(0);
     Str key;
@@ -297,7 +333,8 @@ volatile bool recovering = false;
 void test_thread(MasstreeWrapper* mt, size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     mt->thread_init(thid);
     //mt->insert_test(thid, ready, start, quit, count);
-    mt->get_test(thid, ready, start, quit, count);
+    //mt->get_test(thid, ready, start, quit, count);
+    mt->put_test(thid, ready, start, quit, count);
     //mt->insert_test_hashTable(thid, ready, start, quit, count);
     //mt->insert_remove_test(thread_id);
 }
