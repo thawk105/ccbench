@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "../../include/cache_line_size.hpp"
+#include "../../include/inline.hpp"
 #include "../../include/rwlock.hpp"
 
 using namespace std;

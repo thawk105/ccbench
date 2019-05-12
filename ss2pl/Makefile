@@ -8,12 +8,14 @@ KEY_SIZE=4
 VAL_SIZE=4
 
 CC = g++
-BASE_CFLAGS = -c -pipe -Wall -Wextra -Wdangling-else -g -O2 -std=c++17 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) -march=native -D$(shell uname)
-LINUX_CFLAGS = -Wchkp -Winvalid-memory-model 
+BASE_CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native 
+WARNINGS = -Wall -Wextra -Wdangling-else 
+LINUX_CFLAGS = -Wchkp -Winvalid-memory-model
+DEFINES = -D$(shell uname) -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) -DMASSTREE_USE=1
 
 CFLAGS = $(BASE_CFLAGS)
 ifeq ($(shell uname), Linux)
-CFLAGS = $(BASE_CFLAGS) $(LINUX_CFLAGS)
+CFLAGS = $(BASE_CFLAGS) $(WARNINGS) $(LINUX_CFLAGS) $(DEFINES)
 endif
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)

@@ -46,4 +46,8 @@ public:
   void commit();
   void abort();
   void unlock_list();
+
+  Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
+  }
 };

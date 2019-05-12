@@ -18,6 +18,7 @@
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
+#include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
 #include "../include/result.hpp"
 #include "../include/tsc.hpp"

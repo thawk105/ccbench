@@ -12,7 +12,7 @@
 using namespace std;
 
 inline
-SetElement *
+SetElement*
 TxExecutor::searchReadSet(unsigned int key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -23,7 +23,7 @@ TxExecutor::searchReadSet(unsigned int key)
 }
 
 inline
-SetElement *
+SetElement*
 TxExecutor::searchWriteSet(unsigned int key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -72,13 +72,15 @@ TxExecutor::tread(unsigned int key)
   SetElement *inR = searchReadSet(key);
   if (inR != nullptr) return inR->val;
 
-  if (Table[key].lock.r_trylock()) {
-    r_lockList.emplace_back(&Table[key].lock);
-    readSet.emplace_back(key, Table[key].val);
+  Tuple *tuple = get_tuple(Table, key);
+
+  if (tuple->lock.r_trylock()) {
+    r_lockList.emplace_back(&tuple->lock);
+    readSet.emplace_back(key, tuple->val);
     
     // for fairness
     // ultimately, it is wasteful in prototype system
-    memcpy(returnVal, Table[key].val, VAL_SIZE);
+    memcpy(returnVal, tuple->val, VAL_SIZE);
 
     return returnVal;
   } else {
@@ -94,18 +96,20 @@ TxExecutor::twrite(unsigned int key)
   SetElement *inW = searchWriteSet(key);
   if (inW) return;
 
+  Tuple *tuple = get_tuple(Table, key);
+
   for (auto rItr = readSet.begin(); rItr != readSet.end(); ++rItr) {
     if ((*rItr).key == key) { // hit
-      if (!Table[key].lock.tryupgrade()) {
+      if (!tuple->lock.tryupgrade()) {
         this->status = TransactionStatus::aborted;
         return;
       }
 
       // upgrade success
       for (auto lItr = r_lockList.begin(); lItr != r_lockList.end(); ++lItr) {
-        if (*lItr == &(Table[key].lock)) {
+        if (*lItr == &(tuple->lock)) {
           r_lockList.erase(lItr);
-          w_lockList.emplace_back(&Table[key].lock);
+          w_lockList.emplace_back(&tuple->lock);
           writeSet.emplace_back(key, writeVal);
           break;
         }
@@ -117,12 +121,12 @@ TxExecutor::twrite(unsigned int key)
   }
 
   // trylock
-  if (!Table[key].lock.w_trylock()) {
+  if (!tuple->lock.w_trylock()) {
     this->status = TransactionStatus::aborted;
     return;
   }
 
-  w_lockList.emplace_back(&Table[key].lock);
+  w_lockList.emplace_back(&tuple->lock);
   writeSet.emplace_back(key, writeVal);
   return;
 }
