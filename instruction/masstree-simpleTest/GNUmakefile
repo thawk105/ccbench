@@ -42,7 +42,7 @@ ifeq ($(shell hostname), dbs11)
 LDFLAGS += -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release
 endif
 
-all: unit-mt
+all: unit-mt unit-mt2
 
 %.o: %.c ../../masstree/config.h #$(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) $(INCLUDE) $(DEFINE) -c -o $@ $<
@@ -59,6 +59,9 @@ all: unit-mt
 	$(AR) cru $@ $^
 
 unit-mt: unit-mt.o ../../masstree/compiler.o ../../masstree/misc.o ../../masstree/libjson.a ../../common/util.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
+unit-mt2: unit-mt2.o ../../masstree/compiler.o ../../masstree/misc.o ../../masstree/libjson.a ../../common/util.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 $(DEPSDIR)/stamp:
