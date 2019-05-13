@@ -1,0 +1,41 @@
+
+MASSOBJ = ../masstree/compiler.o ../masstree/misc.o ../masstree/libjson.a
+
+DEPSDIR := .deps
+DEPCFLAGS = #-MD -MF $(DEPSDIR)/$*.d -MP
+ifeq ($(strip $(MEMMGR)), )
+  MEMMGR = 
+endif
+ifneq ($(strip $(KEYSWAP)), )
+  CPPFLAGS += -DKEYSWAP
+endif
+ifneq ($(strip $(NOPREFETCH)), )
+  CPPFLAGS += -DNOPREFETCH
+endif
+ifneq ($(strip $(NOSUPERPAGE)), )
+  CPPFLAGS += -DNOSUPERPAGE
+endif
+
+%.o: %.c ../masstree/config.h #$(DEPSDIR)/stamp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CFLAGS) $(DEPCFLAGS) $(DEFINES) -c -o $@ $<
+
+%.o: %.cc ../masstree/config.h #$(DEPSDIR)/stamp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CFLAGS) $(DEPCFLAGS) $(DEFINES) -c -o $@ $<
+
+%.S: %.o
+	objdump -S $< > $@
+
+../masstree/libjson.a: ../masstree/json.o ../masstree/string.o ../masstree/straccum.o ../masstree/str.o ../masstree/msgpack.o \
+	../masstree/clp.o ../masstree/kvrandom.o ../masstree/compiler.o ../masstree/memdebug.o ../masstree/kvthread.o
+	@/bin/rm -f $@
+	$(AR) cru $@ $^
+
+$(DEPSDIR)/stamp:
+	mkdir -p $(DEPSDIR)
+	touch $@
+
+DEPFILES := $(wildcard $(DEPSDIR)/*.d)
+ifneq ($(DEPFILES),)
+include $(DEPFILES)
+endif
+
