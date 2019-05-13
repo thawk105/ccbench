@@ -9,7 +9,8 @@
 #include "inline.hpp"
 #include "random.hpp"
 
-using std::cout, std::endl;
+using std::cout; 
+using std::endl;
 
 // Fast zipf distribution by Jim Gray et al.
 class FastZipf

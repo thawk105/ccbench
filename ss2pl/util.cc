@@ -11,14 +11,15 @@
 #include <iostream>
 #include <limits>
 
-#include "../include/check.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/tuple.hpp"
+
+#include "../include/check.hpp"
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
 
 void
 chkArg(const int argc, const char *argv[])
@@ -133,9 +134,19 @@ makeDB()
     ERR;
   }
 
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(THREAD_NUM));
+  // worker id は 0 ~ (THREAD_NUM - 1)
+  // 重複しないように、 THREAD_NUM を指定。
+#endif
+
   for (unsigned int i = 0; i < TUPLE_NUM; i++) {
     tmp = &Table[i];
     tmp->val[0] = 'a'; tmp->val[1] = '\0';
+
+#if MASSTREE_USE
+    MT.insert_value(i, tmp);
+#endif
   }
 }
 

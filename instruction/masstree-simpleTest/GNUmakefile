@@ -71,7 +71,7 @@ $(DEPSDIR)/stamp:
 clean:
 	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a
 	rm -rf .deps
-	rm ../../common/*.o
+	rm -f ../../common/*.o
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)
 ifneq ($(DEPFILES),)

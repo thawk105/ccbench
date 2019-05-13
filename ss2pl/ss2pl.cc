@@ -46,6 +46,10 @@ worker(void *arg)
   TxExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+#endif
+
 #ifdef Linux
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());

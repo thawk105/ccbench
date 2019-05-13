@@ -13,7 +13,7 @@ public:
   uint64_t localCommitCounts = 0;
   uint64_t totalAbortCounts = 0;
   uint64_t totalCommitCounts = 0;
-  uint32_t thid = 0;
+  uint64_t thid = 0;
   size_t extime = 0;
 
   void display_totalAbortCounts();

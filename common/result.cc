@@ -3,7 +3,10 @@
 
 #include "../include/result.hpp"
 
-using std::cout, std::endl, std::fixed, std::setprecision;
+using std::cout; 
+using std::endl; 
+using std::fixed; 
+using std::setprecision;
 
 void 
 Result::display_totalAbortCounts()
