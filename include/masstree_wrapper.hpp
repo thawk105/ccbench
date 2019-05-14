@@ -69,7 +69,7 @@ public:
   }
 
   void table_init() {
-    printf("masstree table_init()\n");
+    //printf("masstree table_init()\n");
     if (ti == nullptr)
       ti = threadinfo::make(threadinfo::TI_MAIN, -1);
     table_.initialize(*ti);
@@ -97,6 +97,8 @@ public:
     key = make_key(keyid, key_buf);
     cursor_type lp(table_, key);
     bool found = lp.find_insert(*ti);
+    //if (!found) ERR;
+    always_assert(!found, "keys should all be unique");
     lp.value() = value;
     fence();
     lp.finish(1, *ti);
@@ -108,6 +110,7 @@ public:
     key = make_key(keyid, key_buf);
     unlocked_cursor_type lp(table_, key);
     bool found = lp.find_unlocked(*ti);
+    if (!found) ERR;
     return lp.value();
   }
 

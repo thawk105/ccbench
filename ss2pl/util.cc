@@ -7,9 +7,11 @@
 #include <atomic>
 #include <bitset>
 #include <cstdint>
+#include <thread>
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <vector>
 
 #include "include/common.hpp"
 #include "include/procedure.hpp"
@@ -43,6 +45,7 @@ chkArg(const int argc, const char *argv[])
     cout << "RWLock size " << sizeof(RWLock) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
+    cout << "std::thread::hardware_concurrency()=" << std::thread::hardware_concurrency() << endl;
     exit(0);
   }
 
@@ -97,7 +100,6 @@ displayDB()
     cout << "------------------------------" << endl; // - 30
     cout << "key: " << i << endl;
     cout << "val: " << tuple->val << endl;
-    cout << endl;
   }
 }
 
@@ -122,32 +124,52 @@ displayPRO(Procedure *pro)
 }
 
 void
+part_table_init(size_t thid, uint64_t start, uint64_t end)
+{
+  //printf("part_table_init(...): thid %zu : %lu : %lu\n", thid, start, end);
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
+
+  for (auto i = start; i <= end; ++i) {
+    Table[i].val[0] = 'a';
+    Table[i].val[1] = '\0';
+
+#if MASSTREE_USE
+    MT.insert_value(i, &Table[i]);
+#endif
+  }
+}
+
+void
 makeDB()
 {
-  Tuple *tmp;
-  Xoroshiro128Plus rnd;
-  rnd.init();
-
   try {
     if (posix_memalign((void**)&Table, 64, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
   } catch (bad_alloc) {
     ERR;
   }
 
-#if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(THREAD_NUM));
-  // worker id は 0 ~ (THREAD_NUM - 1)
-  // 重複しないように、 THREAD_NUM を指定。
-#endif
+  std::vector<std::thread> thv;
+  size_t maxthread = std::thread::hardware_concurrency();
 
-  for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-    tmp = &Table[i];
-    tmp->val[0] = 'a'; tmp->val[1] = '\0';
-
-#if MASSTREE_USE
-    MT.insert_value(i, tmp);
-#endif
+  // maxthread は masstree 構築の最大並行スレッド数。
+  // 初期値はハードウェア最大値。
+  // TUPLE_NUM を均等に分割できる最大スレッド数を求める。
+  for (size_t i = maxthread; i > 0; --i) {
+    if (TUPLE_NUM % i == 0) {
+      maxthread = i;
+      break;
+    }
+    if (i == 1) ERR;
+    // 1 thred でも剰余 0 は自明に ERR.
   }
+
+  //cout << "masstree 並列構築スレッド数 " << maxthread << endl;
+  for (size_t i = 0; i < maxthread; ++i) {
+    thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  }
+  for (auto& th : thv) th.join();
 }
 
 void

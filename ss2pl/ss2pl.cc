@@ -111,8 +111,8 @@ main(const int argc, const char *argv[])
 {
   chkArg(argc, argv);
   makeDB();
-
   //displayDB();
+
   //displayPRO();
 
   Result rsob[THREAD_NUM];
@@ -138,6 +138,8 @@ main(const int argc, const char *argv[])
 
   rsroot.extime = EXTIME;
   rsroot.display_AllResult();
+
+  //displayDB();
 
   return 0;
 }

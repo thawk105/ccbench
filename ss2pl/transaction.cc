@@ -72,7 +72,11 @@ TxExecutor::tread(unsigned int key)
   SetElement *inR = searchReadSet(key);
   if (inR != nullptr) return inR->val;
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
   Tuple *tuple = get_tuple(Table, key);
+#endif
 
   if (tuple->lock.r_trylock()) {
     r_lockList.emplace_back(&tuple->lock);
@@ -96,7 +100,11 @@ TxExecutor::twrite(unsigned int key)
   SetElement *inW = searchWriteSet(key);
   if (inW) return;
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
   Tuple *tuple = get_tuple(Table, key);
+#endif
 
   for (auto rItr = readSet.begin(); rItr != readSet.end(); ++rItr) {
     if ((*rItr).key == key) { // hit
