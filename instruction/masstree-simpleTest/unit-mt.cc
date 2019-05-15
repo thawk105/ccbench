@@ -48,6 +48,7 @@ extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
 size_t NUM_THREADS = 0;
+size_t TUPLE_NUM = 0;
 #define EX_TIME 3
 
 using std::cout;
@@ -140,42 +141,17 @@ public:
     //printf("Th#%zu:\t%lu\n", thid, count);
   }
 
-  void make_tree() {
-    Str key;
-    size_t max = pow(2,27); // 128Mi
-    size_t key_buf;
-
-    for (uint64_t i = 0; i < max; ++i) {
-      key = make_key(i, key_buf);
-
-      cursor_type lp(table_, key);
-      bool found = lp.find_insert(*ti);
-      always_assert(!found, "this key already appeared.");
-
-      lp.value() = 39;
-
-      fence();
-      lp.finish(1, *ti);
-    }
-  }
-
   void put_test(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     uint64_t lcount(0);
     Str key;
     Xoroshiro128Plus rand;
     rand.init();
-    size_t max = pow(2,27); // 128Mi
-    size_t mask = max-1;
     size_t key_buf;
-
-    if (thid == 0) {
-      make_tree();
-    }
 
     storeRelease(ready, 1);
     while (!loadAcquire(start)) _mm_pause();
     while (!loadAcquire(quit)) {
-      key = make_key(rand() & mask, key_buf);
+      key = make_key(rand() % TUPLE_NUM, key_buf);
       cursor_type lp(table_, key);
 
       bool found = lp.find_locked(*ti);
@@ -195,23 +171,17 @@ public:
     //printf("Th#%zu:\t%lu\n", thid, count);
   }
 
-  void get_test(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
+  void get_test([[maybe_unused]]size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count) {
     uint64_t lcount(0);
     Str key;
     Xoroshiro128Plus rand;
     rand.init();
-    size_t max = pow(2,27); // 128Mi
-    size_t mask = max-1;
     size_t key_buf;
-
-    if (thid == 0) {
-      make_tree();
-    }
 
     storeRelease(ready, 1);
     while (!loadAcquire(start)) _mm_pause();
     while (!loadAcquire(quit)) {
-      key = make_key(rand() & mask, key_buf);
+      key = make_key(rand() & TUPLE_NUM, key_buf);
       unlocked_cursor_type lp(table_, key);
       bool found = lp.find_unlocked(*ti);
       if (found) {
@@ -310,16 +280,16 @@ public:
       Masstree::json_stats(table_, ti).unparse(lcdf::Json::indent_depth(1000)).c_str());
   }
 
-private:
-    table_type table_;
-    uint64_t key_gen_;
-    static bool stopping;
-    static uint32_t printing;
+  static inline Str make_key(uint64_t int_key, uint64_t& key_buf) {
+      key_buf = __builtin_bswap64(int_key);
+      return Str((const char *)&key_buf, sizeof(key_buf));
+  }
 
-    static inline Str make_key(uint64_t int_key, uint64_t& key_buf) {
-        key_buf = __builtin_bswap64(int_key);
-        return Str((const char *)&key_buf, sizeof(key_buf));
-    }
+   table_type table_;
+private:
+   uint64_t key_gen_;
+   static bool stopping;
+   static uint32_t printing;
 };
 
 __thread typename MasstreeWrapper::table_params::threadinfo_type* MasstreeWrapper::ti = nullptr;
@@ -339,10 +309,53 @@ void test_thread(MasstreeWrapper* mt, size_t thid, char& ready, const bool& star
     //mt->insert_remove_test(thread_id);
 }
 
+void part_make_tree(MasstreeWrapper* mt, size_t thid, uint64_t start, uint64_t end) {
+  mt->thread_init(thid);
+  MasstreeWrapper::Str key;
+  size_t key_buf;
+
+  for (uint64_t i = start; i <= end; ++i) {
+    key = mt->make_key(i, key_buf);
+
+    MasstreeWrapper::cursor_type lp(mt->table_, key);
+    bool found = lp.find_insert(*(mt->ti));
+    always_assert(!found, "this key already appeared.");
+
+    lp.value() = 0;
+
+    fence();
+    lp.finish(1, *(mt->ti));
+  }
+}
+
+void pre_make_tree(MasstreeWrapper *mt) {
+  /* 
+   * maxthread は masstree 構築の最大並行スレッド数．
+   * 初期値はハードウェア最大値
+   * TUPLE_NUM を均等に分割できる最大スレッド数を求める．
+   */
+  size_t maxthread = std::thread::hardware_concurrency();
+  for (size_t i = maxthread; i > 0; --i) {
+    if (TUPLE_NUM % i == 0) {
+      maxthread = i;
+      break;
+    }
+    if (i == 1) ERR;
+    // 1 thread でも剰余 0 は自明にERR
+  }
+
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i) {
+    thv.emplace_back(part_make_tree, mt, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  }
+  for (auto& th : thv) th.join();
+}
+
 int 
 main([[maybe_unused]]int argc, char *argv[])
 {
   NUM_THREADS = atoi(argv[1]); 
+  TUPLE_NUM = atoi(argv[2]); 
   bool start = false;
   bool quit = false;
   std::vector<char> readys(NUM_THREADS);
@@ -350,6 +363,7 @@ main([[maybe_unused]]int argc, char *argv[])
 
   auto mt = new MasstreeWrapper();
   mt->keygen_reset();
+  pre_make_tree(mt);
 
   std::vector<std::thread> ths;
 
