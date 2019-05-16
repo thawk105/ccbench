@@ -12,19 +12,22 @@
 #include <sys/types.h> // syscall(SYS_gettid),
 #include <unistd.h> // syscall(SYS_gettid),
 
-#include "../include/cache_line_size.hpp"
-#include "../include/check.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/timeStamp.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
 
+#include "../include/cache_line_size.hpp"
+#include "../include/check.hpp"
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
+
 using std::cout, std::endl;
+
+extern size_t decide_parallel_build_number(size_t tuplenum);
 
 void 
 chkArg(const int argc, char *argv[])
@@ -55,6 +58,7 @@ chkArg(const int argc, char *argv[])
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
     cout << "CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE)) : " << CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE)) << endl;
     cout << "CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) : " << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
+    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
 
@@ -334,12 +338,30 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
 }
 
 void
+part_table_init([[maybe_unused]]size_t thid, uint64_t initts, uint64_t start, uint64_t end)
+{
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
+
+  for (uint64_t i = start; i <= end; ++i) {
+    Tuple *tuple;
+    tuple = TxExecutor::get_tuple(Table, i);
+    tuple->min_wts = initts;
+    tuple->gClock.store(0, std::memory_order_release);
+    tuple->latest = &tuple->inlineVersion;
+    tuple->inlineVersion.set(0, initts, nullptr, VersionStatus::committed);
+    tuple->inlineVersion.val[0] = 'a';
+    tuple->inlineVersion.val[1] = '\0';
+#if MASSTREE_USE
+    MT.insert_value(i, tuple);
+#endif
+  }
+}
+
+void
 makeDB(uint64_t *initial_wts)
 {
-  Tuple *tuple;
-  Xoroshiro128Plus rnd;
-  rnd.init();
-
   try {
     if (posix_memalign((void**)&Table, CACHE_LINE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
     for (unsigned int i = 0; i < TUPLE_NUM; i++) {
@@ -352,13 +374,11 @@ makeDB(uint64_t *initial_wts)
   TimeStamp tstmp;
   tstmp.generateTimeStampFirst(0);
   *initial_wts = tstmp.ts;
-  for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-    tuple = &Table[i];
-    tuple->min_wts = tstmp.ts;
-    tuple->gClock.store(0, std::memory_order_release);
-    tuple->latest = &tuple->inlineVersion;
-    tuple->inlineVersion.set(0, tstmp.ts, nullptr, VersionStatus::committed);
-    tuple->inlineVersion.val[0] = 'a';
-    tuple->inlineVersion.val[1] = '\0';
-  }
+  
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(part_table_init, i, tstmp.ts,
+        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto& th : thv) th.join();
 }

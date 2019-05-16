@@ -7,16 +7,17 @@
 #include <map>
 #include <queue>
 
-#include "../../include/debug.hpp"
-#include "../../include/string.hpp"
-#include "../../include/util.hpp"
-
 #include "common.hpp"
 #include "procedure.hpp"
 #include "tuple.hpp"
 #include "timeStamp.hpp"
 #include "version.hpp"
 #include "result.hpp"
+
+#include "../../include/debug.hpp"
+#include "../../include/inline.hpp"
+#include "../../include/string.hpp"
+#include "../../include/util.hpp"
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
@@ -119,5 +120,9 @@ public:
 
   void returnInlineVersionRight(unsigned int key) {
     Table[key].inlineVersion.status.store(VersionStatus::unused, std::memory_order_release);
+  }
+
+  static INLINE Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
   }
 };

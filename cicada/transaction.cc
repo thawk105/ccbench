@@ -10,13 +10,14 @@
 #include <string>
 #include <vector>
 
-#include "../include/debug.hpp"
-#include "../include/tsc.hpp"
-
 #include "include/transaction.hpp"
 #include "include/common.hpp"
 #include "include/timeStamp.hpp"
 #include "include/version.hpp"
+
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/tsc.hpp"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern void displaySLogSet();
@@ -93,8 +94,14 @@ TxExecutor::tread(unsigned int key)
   else  trts = this->wts.ts;
   //-----
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
+
   //Search version
-  Version *version = Table[key].ldAcqLatest();
+  Version *version = tuple->ldAcqLatest();
   if (version->ldAcqStatus() == VersionStatus::pending) {
     if (version->ldAcqWts() < trts)
       while (version->ldAcqStatus() == VersionStatus::pending);
@@ -129,7 +136,12 @@ TxExecutor::twrite(unsigned int key)
     }
   }
     
-  Version *version = Table[key].ldAcqLatest();
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
+  Version *version = tuple->ldAcqLatest();
 
   //Search version (for early abort check)
   //search latest (committed or pending) version and use for early abort check
@@ -153,8 +165,8 @@ TxExecutor::twrite(unsigned int key)
   }
   
   if (getInlineVersionRight(key)) {
-    Table[key].inlineVersion.set(0, this->wts.ts);
-    writeSet.emplace_back(key, &Table[key].inlineVersion);
+    tuple->inlineVersion.set(0, this->wts.ts);
+    writeSet.emplace_back(key, &tuple->inlineVersion);
   }
   else {
     Version *newObject;
@@ -179,7 +191,12 @@ TxExecutor::validation()
     // Pre-check version consistency
     // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
     for (auto itr = writeSet.begin(); itr != writeSet.begin() + (writeSet.size() / 2); ++itr) {
-      Version *version = Table[(*itr).key].ldAcqLatest();
+#if MASSTREE_USE
+      Tuple *tuple = MT.get_value((*itr).key);
+#else
+      Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+      Version *version = tuple->ldAcqLatest();
       while (version->ldAcqStatus() != VersionStatus::committed)
         version = version->ldAcqNext();
 
@@ -190,8 +207,13 @@ TxExecutor::validation()
   //Install pending version
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     Version *expected, *version;
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
     for (;;) {
-      version = expected = Table[(*itr).key].ldAcqLatest();
+      version = expected = tuple->ldAcqLatest();
 
       if (version->ldAcqStatus() == VersionStatus::pending) {
         if (this->wts.ts < version->ldAcqWts()) return false;
@@ -210,10 +232,9 @@ TxExecutor::validation()
       if (this->wts.ts < version->ldAcqWts()) return false;
 
       (*itr).newObject->status.store(VersionStatus::pending, memory_order_release);
-      (*itr).newObject->strRelNext(Table[(*itr).key].ldAcqLatest());
-      if (Table[(*itr).key].latest.compare_exchange_strong(expected, (*itr).newObject, memory_order_acq_rel, memory_order_acquire)) break;
+      (*itr).newObject->strRelNext(tuple->ldAcqLatest());
+      if (tuple->latest.compare_exchange_strong(expected, (*itr).newObject, memory_order_acq_rel, memory_order_acquire)) break;
     }
-
     (*itr).finishVersionInstall = true;
   }
 
@@ -232,7 +253,12 @@ TxExecutor::validation()
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     Version *version, *init;
     for (;;) {
-      version  = init = Table[(*itr).key].ldAcqLatest();
+#if MASSTREE_USE
+      Tuple *tuple = MT.get_value((*itr).key);
+#else
+     Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+      version  = init = tuple->ldAcqLatest();
 
       if (version->ldAcqStatus() == VersionStatus::pending
           && version->ldAcqWts() < this->wts.ts) {
@@ -250,7 +276,7 @@ TxExecutor::validation()
 
       if ((*itr).ver != version) return false;
 
-      if (init == Table[(*itr).key].ldAcqLatest()) break;
+      if (init == tuple->ldAcqLatest()) break;
       // else, the validation was interrupted.
     }
   }
@@ -383,10 +409,16 @@ void
 TxExecutor::wSetClean()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+   Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+
     if ((*itr).finishVersionInstall)
       (*itr).newObject->status.store(VersionStatus::aborted, std::memory_order_release);
     else
-      if ((*itr).newObject != &Table[(*itr).key].inlineVersion) delete (*itr).newObject;
+      if ((*itr).newObject != &tuple->inlineVersion) delete (*itr).newObject;
       else returnInlineVersionRight((*itr).key);
   }
 
@@ -484,10 +516,15 @@ TxExecutor::mainte(CicadaResult &res)
         continue;
       }
 
+#if MASSTREE_USE
+      Tuple *tuple = MT.get_value(gcq.front().key);
+#else
+      Tuple *tuple = get_tuple(Table, gcq.front().key);
+#endif
       // (b) v.wts > record.min_wts
-      if (gcq.front().wts <= Table[gcq.front().key].min_wts) {
+      if (gcq.front().wts <= tuple->min_wts) {
         // releases the lock
-        Table[gcq.front().key].gClock.store(0, memory_order_release);
+        tuple->gClock.store(0, memory_order_release);
         gcq.pop_front();
         continue;
       }
@@ -498,12 +535,12 @@ TxExecutor::mainte(CicadaResult &res)
       // the thread detaches the rest of the version list from v
       gcq.front().ver->next.store(nullptr, std::memory_order_release);
       // updates record.min_wts
-      Table[gcq.front().key].min_wts.store(gcq.front().ver->wts, memory_order_release);
+      tuple->min_wts.store(gcq.front().ver->wts, memory_order_release);
 
       while (delTarget != nullptr) {
         //nextポインタ退避
         Version *tmp = delTarget->next.load(std::memory_order_acquire);
-        if (delTarget != &Table[gcq.front().key].inlineVersion) delete delTarget;
+        if (delTarget != &tuple->inlineVersion) delete delTarget;
         else returnInlineVersionRight(gcq.front().key);
         ++res.localGCVersions;
         delTarget = tmp;
