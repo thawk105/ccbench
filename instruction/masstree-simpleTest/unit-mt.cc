@@ -181,7 +181,7 @@ public:
     storeRelease(ready, 1);
     while (!loadAcquire(start)) _mm_pause();
     while (!loadAcquire(quit)) {
-      key = make_key(rand() & TUPLE_NUM, key_buf);
+      key = make_key(rand() % TUPLE_NUM, key_buf);
       unlocked_cursor_type lp(table_, key);
       bool found = lp.find_unlocked(*ti);
       if (found) {
