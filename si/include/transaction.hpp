@@ -4,11 +4,12 @@
 #include <map>
 #include <vector>
 
+#include "garbageCollection.hpp"
+#include "tuple.hpp"
+#include "version.hpp"
+
 #include "../../include/string.hpp"
 #include "../../include/util.hpp"
-
-#include "garbageCollection.hpp"
-#include "version.hpp"
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
@@ -55,6 +56,10 @@ public:
   void abort();
   void dispWS();
   void dispRS();
+
+  static Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
+  }
 };
 
 // for MVCC SSN

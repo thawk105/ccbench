@@ -30,7 +30,7 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
-extern void naiveGarbageCollection(SIResult &res);
+extern void naiveGarbageCollection();
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
@@ -55,6 +55,7 @@ manager_worker(void *arg)
       gcobject.decideGcThreshold();
       gcobject.mvSecondRangeToFirstRange();
     }
+    if (Result::Finish.load(std::memory_order_acquire)) return nullptr;
   }
 
   return nullptr;
@@ -70,7 +71,11 @@ worker(void *arg)
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
-  
+ 
+#if MASSTREE_USE
+ MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+#endif
+
 #ifdef Linux
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -89,7 +94,7 @@ worker(void *arg)
       asm volatile ("" ::: "memory");
 RETRY:
 
-      if (Finish.load(std::memory_order_acquire)) {
+      if (Result::Finish.load(std::memory_order_acquire)) {
         return nullptr;
       }
 
@@ -117,6 +122,7 @@ RETRY:
       trans.commit();
       ++res.localCommitCounts;
 
+#if 1
       // maintenance phase
       // garbage collection
       uint32_t loadThreshold = trans.gcobject.getGcThreshold();
@@ -128,6 +134,7 @@ RETRY:
 #endif // CCTR_ON
         ++res.localGCCounts;
       }
+#endif
     }
   } catch (bad_alloc) {
     ERR;

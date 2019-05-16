@@ -13,18 +13,20 @@
 #include <iostream>
 #include <limits>
 
-#include "../include/check.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/result.hpp"
 #include "include/tuple.hpp"
 
+#include "../include/check.hpp"
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/random.hpp"
+#include "../include/tsc.hpp"
+#include "../include/zipf.hpp"
+
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern size_t decide_parallel_build_number(size_t tuplenum);
 
 void
 chkArg(const int argc, const char *argv[])
@@ -113,7 +115,7 @@ displayDB()
   Version *version;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tuple = &Table[i];
+    tuple = TxExecutor::get_tuple(Table, i);
     cout << "------------------------------" << endl; // - 30
     cout << "key: " << i << endl;
 
@@ -162,15 +164,32 @@ displayPRO(Procedure *pro)
       << ", " << pro[i].val << ")" << endl;
   }
 }
+void
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
+{
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
+
+  for (auto i = start; i <= end; ++i) {
+    Tuple *tmp;
+    Version *verTmp;
+    tmp = TxExecutor::get_tuple(Table, i);
+    tmp->min_cstamp = 0;
+    verTmp = tmp->latest.load(std::memory_order_acquire);
+    verTmp->cstamp = 0;
+    verTmp->prev = nullptr;
+    verTmp->committed_prev = nullptr;
+    verTmp->status.store(VersionStatus::committed, std::memory_order_release);
+#if MASSTREE_USE
+    MT.insert_value(i, tmp);
+#endif
+  }
+}
 
 void
 makeDB()
 {
-  Tuple *tmp;
-  Version *verTmp;
-  Xoroshiro128Plus rnd;
-  rnd.init();
-
   try {
     if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
@@ -180,15 +199,12 @@ makeDB()
     ERR;
   }
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tmp = &Table[i];
-    tmp->min_cstamp = 0;
-    verTmp = tmp->latest.load(std::memory_order_acquire);
-    verTmp->cstamp = 0;
-    verTmp->prev = nullptr;
-    verTmp->committed_prev = nullptr;
-    verTmp->status.store(VersionStatus::committed, std::memory_order_release);
-  }
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
+
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto& th : thv) th.join();
 }
 
 void
@@ -218,7 +234,7 @@ makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf)
 }
 
 void
-naiveGarbageCollection(SIResult &res) 
+naiveGarbageCollection() 
 {
   TransactionTable *tmt;
 
@@ -233,15 +249,15 @@ naiveGarbageCollection(SIResult &res)
     //mintxIDから到達不能なバージョンを削除する
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-      // 時間がかかるので，離脱条件チェック
-      res.end = rdtscp();
-      if (chkClkSpan(res.bgn, res.end, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-        Finish.store(true, std::memory_order_release);
-        return;
-      }
-      // -----
+      if (Result::Finish.load(std::memory_order_acquire)) return;
 
-      verTmp = Table[i].latest.load(std::memory_order_acquire);
+#if MASSTREE_USE
+      Tuple *tuple = MT.get_value(i);
+#else
+      Tuple *tuple = TxExecutor::get_tuple(Table, i);
+#endif
+
+      verTmp = tuple->latest.load(std::memory_order_acquire);
       if (verTmp->status.load(std::memory_order_acquire) != VersionStatus::committed) 
         verTmp = verTmp->committed_prev;
       // この時点で， verTmp はコミット済み最新バージョン

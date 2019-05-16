@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cstdint>
 
+#include "../../include/cache_line_size.hpp"
+
 enum class VersionStatus : uint8_t {
   inFlight,
   committed,

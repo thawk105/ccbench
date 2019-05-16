@@ -91,8 +91,14 @@ TxExecutor::tread(unsigned int key)
   SetElement *inR = searchReadSet(key);
   if (inR) return inR->ver->val;
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
+
   // if v not in t.writes:
-  Version *ver = Table[key].latest.load(std::memory_order_acquire);
+  Version *ver = tuple->latest.load(std::memory_order_acquire);
   if (ver->status.load(memory_order_acquire) != VersionStatus::committed) {
     ver = ver->committed_prev;
   }
@@ -132,8 +138,14 @@ TxExecutor::twrite(unsigned int key)
   desired->cstamp.store(this->txid, memory_order_release);  // storing before CAS because it will be accessed from read operation, write operation and garbage collection.
   desired->status.store(VersionStatus::inFlight, memory_order_release);
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
+
   Version *vertmp;
-  expected = Table[key].latest.load(std::memory_order_acquire);
+  expected = tuple->latest.load(std::memory_order_acquire);
   for (;;) {
     // w-w conflict with concurrent transactions.
     if (expected->status.load(memory_order_acquire) == VersionStatus::inFlight) {
@@ -147,7 +159,7 @@ TxExecutor::twrite(unsigned int key)
         return;
       }
 
-      expected = Table[key].latest.load(std::memory_order_acquire);
+      expected = tuple->latest.load(std::memory_order_acquire);
       continue;
     }
     
@@ -169,7 +181,7 @@ TxExecutor::twrite(unsigned int key)
 
     desired->prev = expected;
     desired->committed_prev = vertmp;
-    if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+    if (tuple->latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
 
   writeSet.emplace_back(key, desired);
