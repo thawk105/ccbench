@@ -20,6 +20,7 @@
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
+#include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
 #include "../include/tsc.hpp"
 #include "../include/zipf.hpp"
@@ -52,7 +53,7 @@ manager_worker(void *arg)
   
   
   for (;;) {
-    if (res.Finish.load(std::memory_order_acquire))
+    if (ErmiaResult::Finish.load(std::memory_order_acquire))
       return nullptr;
 
     usleep(1);
@@ -76,6 +77,10 @@ worker(void *arg)
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+#endif
+
 #ifdef Linux
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
@@ -94,7 +99,7 @@ worker(void *arg)
 
       asm volatile ("" ::: "memory");
 RETRY:
-      if (res.Finish.load(std::memory_order_acquire))
+      if (ErmiaResult::Finish.load(std::memory_order_acquire))
         return nullptr;
 
       //-----
@@ -162,7 +167,7 @@ main(const int argc, const char *argv[])
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish.store(true, std::memory_order_release);
+  ErmiaResult::Finish.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);

@@ -3,6 +3,8 @@
 #include <atomic>
 #include <cstdint>
 
+#include "../../include/cache_line_size.hpp"
+
 #define TIDFLAG 1
 
 enum class VersionStatus : uint8_t {

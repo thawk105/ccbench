@@ -4,12 +4,13 @@
 #include <map>
 #include <vector>
 
-#include "../../include/string.hpp"
-#include "../../include/util.hpp"
-
 #include "garbageCollection.hpp"
 #include "result.hpp"
+#include "tuple.hpp"
 #include "version.hpp"
+
+#include "../../include/string.hpp"
+#include "../../include/util.hpp"
 
 // forward declaration
 class TransactionTable;
@@ -86,6 +87,10 @@ RETRY_DRB:
       if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
       else goto RETRY_DRB;
     }
+  }
+
+  static INLINE Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
   }
 };
 

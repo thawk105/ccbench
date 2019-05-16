@@ -5,12 +5,13 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../include/debug.hpp"
-#include "../include/tsc.hpp"
-
 #include "include/common.hpp"
 #include "include/transaction.hpp"
 #include "include/version.hpp"
+
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/tsc.hpp"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 
@@ -93,8 +94,14 @@ TxExecutor::ssn_tread(unsigned int key)
     return inR->ver->val;
   }
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
+
   // if v not in t.writes:
-  Version *ver = Table[key].latest.load(std::memory_order_acquire);
+  Version *ver = tuple->latest.load(std::memory_order_acquire);
   if (ver->status.load(memory_order_acquire) != VersionStatus::committed) {
     ver = ver->committed_prev;
   }
@@ -149,8 +156,14 @@ TxExecutor::ssn_twrite(unsigned int key)
   tmptid |= 1;
   desired->cstamp.store(tmptid, memory_order_release);  // read operation, write operation, ガベコレからアクセスされるので， CAS 前に格納
 
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
+
   Version *vertmp;
-  expected = Table[key].latest.load(std::memory_order_acquire);
+  expected = tuple->latest.load(std::memory_order_acquire);
   for (;;) {
     // w-w conflict
     // first updater wins rule
@@ -183,7 +196,7 @@ TxExecutor::ssn_twrite(unsigned int key)
 
     desired->prev = expected;
     desired->committed_prev = vertmp;
-    if (Table[key].latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+    if (tuple->latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
 
   //ver->committed_prev->sstamp に TID を入れる

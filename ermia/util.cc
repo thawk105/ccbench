@@ -13,19 +13,21 @@
 #include <iostream>
 #include <limits>
 
-#include "../include/check.hpp"
-#include "../include/cache_line_size.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/result.hpp"
 #include "include/tuple.hpp"
 
+#include "../include/check.hpp"
+#include "../include/cache_line_size.hpp"
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/random.hpp"
+#include "../include/tsc.hpp"
+#include "../include/zipf.hpp"
+
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern size_t decide_parallel_build_number(size_t tuplenum);
 
 void 
 chkArg(const int argc, const char *argv[])
@@ -52,7 +54,7 @@ chkArg(const int argc, const char *argv[])
     cout << "TransactionTable " << sizeof(TransactionTable) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
-
+    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
   
@@ -180,23 +182,15 @@ displayPRO(Procedure *pro)
 }
 
 void
-makeDB()
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
-  Tuple *tmp;
-  Version *verTmp;
-  Xoroshiro128Plus rnd;
-  rnd.init();
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
 
-  try {
-    if (posix_memalign((void**)&Table, CACHE_LINE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
-    for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-      if (posix_memalign((void**)&Table[i].latest, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
-    }
-  } catch (bad_alloc) {
-    ERR;
-  }
-
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+  for (uint64_t i = start; i <= end; ++i) {
+    Tuple *tmp;
+    Version *verTmp;
     tmp = &Table[i];
     tmp->min_cstamp = 0;
     verTmp = tmp->latest.load(std::memory_order_acquire);
@@ -211,7 +205,30 @@ makeDB()
     verTmp->committed_prev = nullptr;
     verTmp->status.store(VersionStatus::committed, std::memory_order_release);
     verTmp->readers.store(0, std::memory_order_release);
+#if MASSTREE_USE
+    MT.insert_value(i, tmp);
+#endif
   }
+}
+
+void
+makeDB()
+{
+  try {
+    if (posix_memalign((void**)&Table, CACHE_LINE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+    for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+      if (posix_memalign((void**)&Table[i].latest, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
+    }
+  } catch (bad_alloc) {
+    ERR;
+  }
+
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(part_table_init, i,
+        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto& th : thv) th.join();
 }
 
 void

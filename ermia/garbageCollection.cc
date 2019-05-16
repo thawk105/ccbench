@@ -2,13 +2,14 @@
 #include <algorithm>
 #include <iostream>
 
-#include "../include/debug.hpp"
-
 #include "include/common.hpp"
 #include "include/garbageCollection.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 #include "include/version.hpp"
+
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
 
 using std::cout, std::endl;
 
@@ -65,7 +66,12 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
-    if (!Table[gcqForVersion.front().key].gClock.compare_exchange_strong(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value(gcqForVersion.front().key);
+#else
+    Tuple *tuple = TxExecutor::get_tuple(Table, gcqForVersion.front().key);
+#endif
+    if (!tuple->gClock.compare_exchange_strong(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcqForVersion.pop();
       continue;
@@ -74,9 +80,9 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
     // (b) v.cstamp > record.min_cstamp
     // If not satisfy this condition, (cstamp <= min_cstamp)
     // the version was cleaned by other threads
-    if (gcqForVersion.front().cstamp <= Table[gcqForVersion.front().key].min_cstamp) {
+    if (gcqForVersion.front().cstamp <= tuple->min_cstamp) {
       // releases the lock
-      Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+      tuple->gClock.store(0, std::memory_order_release);
       gcqForVersion.pop();
       continue;
     }
@@ -84,13 +90,13 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
        
     Version *delTarget = gcqForVersion.front().ver->committed_prev;
     if (delTarget == nullptr) {
-      Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+      tuple->gClock.store(0, std::memory_order_release);
       gcqForVersion.pop();
       continue;
     }
     delTarget = delTarget->prev;
     if (delTarget == nullptr) {
-      Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+      tuple->gClock.store(0, std::memory_order_release);
       gcqForVersion.pop();
       continue;
     }
@@ -98,7 +104,7 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
     // the thread detaches the rest of the version list from v
     gcqForVersion.front().ver->committed_prev->prev = nullptr;
     // updates record.min_wts
-    Table[gcqForVersion.front().key].min_cstamp.store(gcqForVersion.front().ver->committed_prev->cstamp, memory_order_release);
+    tuple->min_cstamp.store(gcqForVersion.front().ver->committed_prev->cstamp, memory_order_release);
 
     while (delTarget != nullptr) {
       //next pointer escape
@@ -109,7 +115,7 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
     }
 
     // releases the lock
-    Table[gcqForVersion.front().key].gClock.store(0, std::memory_order_release);
+    tuple->gClock.store(0, std::memory_order_release);
     gcqForVersion.pop();
   }
 
