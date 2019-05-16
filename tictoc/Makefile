@@ -8,13 +8,11 @@ KEY_SIZE=4
 VAL_SIZE=4
 
 CC = g++
-BASE_CFLAGS = -c -pipe -Wall -Wextra -Wdangling-else -g -O2 -std=c++17 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) -march=native -D$(shell uname)
-LINUX_CFLAGS = -Wchkp -Winvalid-memory-model 
-
-CFLAGS = $(BASE_CFLAGS)
-ifeq ($(shell uname), Linux)
-CFLAGS = $(BASE_CFLAGS) $(LINUX_CFLAGS)
-endif
+CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
+				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
+				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
+				 -D$(shell uname) \
+				 -DMASSTREE_USE=1 \
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
@@ -32,10 +30,10 @@ endif
 endif
 
 OBJS1 = $(TICTOC_SRCS1:.cc=.o)
-
 all: $(PROG1)
 
-$(PROG1) : $(OBJS1)
+include ../include/MakefileForMasstreeUse
+$(PROG1) : $(OBJS1) $(MASSOBJ)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .cc.o:
@@ -44,3 +42,4 @@ $(PROG1) : $(OBJS1)
 clean:
 	rm -f *~ *.o *.exe *.stackdump
 	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump
+	rm -rf .deps

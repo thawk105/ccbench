@@ -18,6 +18,7 @@
 
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
 #include "../include/result.hpp"
 #include "../include/tsc.hpp"
@@ -44,6 +45,10 @@ worker(void *arg)
   TxExecutor trans(res.thid);
   Result rsobject;
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+#endif
 
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());

@@ -56,4 +56,8 @@ public:
   SetElement *searchWriteSet(unsigned int key);
   SetElement *searchReadSet(unsigned int key);
   void dispWS();
+
+  Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
+  }
 };

@@ -10,6 +10,8 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <thread>
+#include <vector>
 
 #include "../include/check.hpp"
 #include "../include/inline.hpp"
@@ -46,6 +48,7 @@ chkArg(const int argc, char *argv[])
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
+    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
   chkInt(argv[1]);
@@ -130,25 +133,50 @@ displayPRO(Procedure *pro)
 }
 
 void
+part_table_init(size_t thid, uint64_t start, uint64_t end)
+{
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
+
+  for (auto i = start; i <= end; ++i) {
+    Tuple *tmp = &Table[i];
+    tmp->tsw.obj = 0;
+    tmp->pre_tsw.obj = 0;
+    tmp->val[0] = 'a'; 
+    tmp->val[1] = '\0';
+
+#if MASSTREE_USE
+    MT.insert_value(i, tmp);
+#endif
+  }
+}
+
+void
 makeDB() 
 {
-  Tuple *tmp;
-  Xoroshiro128Plus rnd;
-  rnd.init();
-
   try {
     if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
   } catch (bad_alloc) {
     ERR;
   }
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tmp = &Table[i];
-    tmp->tsw.obj = 0;
-    tmp->pre_tsw.obj = 0;
-    tmp->val[0] = 'a'; tmp->val[1] = '\0';
+  /*
+   * TUPLE_NUM を均等に分割できる最大スレッド数を求める。
+   */
+  size_t maxthread = 0;
+  for (size_t i = std::thread::hardware_concurrency(); i > 0; --i) {
+    if (TUPLE_NUM % i == 0) {
+      maxthread = i;
+      break;
+    }
+    if (i == 1) ERR;
   }
 
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto& th : thv) th.join();
 }
 
 void 
