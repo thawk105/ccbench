@@ -2,25 +2,28 @@
 
 #include <atomic>
 
-#include "../../include/cache_line_size.hpp"
-#include "../../include/int64byte.hpp"
-#include "../../include/random.hpp"
-
 #include "procedure.hpp"
 #include "tuple.hpp"
 
+#include "../../include/cache_line_size.hpp"
+#include "../../include/int64byte.hpp"
+#include "../../include/masstree_wrapper.hpp"
+#include "../../include/random.hpp"
+
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL
-
-GLOBAL std::atomic<size_t> Running(0);
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch(1);
-
+  GLOBAL std::atomic<size_t> Running(0);
+  alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch(1);
+  #if MASSTREE_USE
+    alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
+  #endif
 #else
   #define GLOBAL extern
-
-GLOBAL std::atomic<size_t> Running;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch;
-
+  GLOBAL std::atomic<size_t> Running;
+  alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch;
+  #if MASSTREE_USE
+    alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
+  #endif
 #endif
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;

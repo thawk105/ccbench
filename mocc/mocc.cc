@@ -17,6 +17,7 @@
 
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/tsc.hpp"
 #include "../include/zipf.hpp"
@@ -61,7 +62,7 @@ manager_worker(void *arg)
   res.bgn = rdtscp();
   epochTimerStart = rdtscp();
   for (;;) {
-    if (res.Finish.load(memory_order_acquire))
+    if (Result::Finish.load(memory_order_acquire))
       return nullptr;
 
     usleep(1);
@@ -97,6 +98,10 @@ worker(void *arg)
   TxExecutor trans(res.thid, &rnd, locknum);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+#endif
+
 #ifdef Linux
   setThreadAffinity(res.thid);
 #endif // Linux
@@ -113,7 +118,7 @@ worker(void *arg)
 
       asm volatile ("" ::: "memory");
 RETRY:
-      if (res.Finish.load(memory_order_acquire))
+      if (Result::Finish.load(memory_order_acquire))
         return nullptr;
 
       trans.begin();

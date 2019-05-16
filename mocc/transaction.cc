@@ -70,7 +70,11 @@ TxExecutor::begin()
 char*
 TxExecutor::read(unsigned int key)
 {
-  Tuple *tuple = &Table[key];
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
 
   // tuple exists in write set.
   unsigned int *inW = searchWriteSet(key);
@@ -154,7 +158,11 @@ TxExecutor::write(unsigned int key)
   unsigned int *inw = searchWriteSet(key);
   if (inw) return;
 
-  Tuple *tuple = &Table[key];
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
 
   Epotemp loadepot;
   loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
@@ -356,12 +364,17 @@ TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
 void
 TxExecutor::construct_RLL()
 {
-  Tuple *tuple;
   RLL.clear();
   
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value(*itr);
+#else
+    Tuple *tuple = get_tuple(Table, *itr);
+#endif
+
 #ifdef RWLOCK
-    RLL.emplace_back((*itr), &(Table[(*itr)].rwlock), true);
+    RLL.emplace_back((*itr), &(tuple->rwlock), true);
 #endif // RWLOCK
 #ifdef MQLOCK
     RLL.push_back(LockElement<MQLock>((*itr).key, &(Table[(*itr).key].mqlock), true));
@@ -381,7 +394,11 @@ TxExecutor::construct_RLL()
     // if temprature >= threshold
     //  || r failed verification
     Epotemp loadepot;
-    tuple = &Table[(*itr).key];
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
     loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
     if (loadepot.temp >= TEMP_THRESHOLD 
         || (*itr).failedVerification) {
@@ -425,13 +442,16 @@ TxExecutor::construct_RLL()
 bool
 TxExecutor::commit(MoccResult &res)
 {
-  Tuple *tuple;
   Tidword expected, desired;
 
   // phase 1 lock write set.
   sort(writeSet.begin(), writeSet.end());
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    tuple = &Table[(*itr)];
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value(*itr);
+#else
+    Tuple *tuple = get_tuple(Table, *itr);
+#endif
 
     lock((*itr), tuple, true);
     if (this->status == TransactionStatus::aborted) {
@@ -447,7 +467,11 @@ TxExecutor::commit(MoccResult &res)
 
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     Tidword check;
-    tuple = &Table[(*itr).key];
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
     check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       (*itr).failedVerification = true;
@@ -536,8 +560,13 @@ TxExecutor::writePhase()
   //write (record, commit-tid)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //update and down lockBit
-    memcpy(Table[(*itr)].val, writeVal, VAL_SIZE);
-    __atomic_store_n(&(Table[(*itr)].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value(*itr);
+#else
+    Tuple *tuple = get_tuple(Table, *itr);
+#endif
+    memcpy(tuple->val, writeVal, VAL_SIZE);
+    __atomic_store_n(&(tuple->tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
   }
 
   unlockCLL();

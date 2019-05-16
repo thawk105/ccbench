@@ -15,16 +15,19 @@
 #include <limits>
 #include <random>
 
-#include "../include/check.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/tuple.hpp"
 
+#include "../include/check.hpp"
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
+
 using namespace std;
+
+extern size_t decide_parallel_build_number(size_t tuplenum);
 
 void
 chkArg(const int argc, char *argv[])
@@ -52,7 +55,7 @@ chkArg(const int argc, char *argv[])
     cout << "pthread_mutex_t" << sizeof(pthread_mutex_t) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
-
+    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
 
@@ -172,29 +175,44 @@ displayPRO(Procedure *pro)
   }
 }
 
-void makeDB() {
-  Tuple *tmp;
-  Xoroshiro128Plus rnd;
-  rnd.init();
+void
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
+{
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
 
+  for (uint64_t i = start; i <= end; ++i) {
+    Tuple *tmp;
+    tmp = &Table[i];
+    tmp->tidword.epoch = 1;
+    tmp->tidword.tid = 0;
+    tmp->epotemp.epoch = 1;
+    tmp->epotemp.temp = 0;
+    tmp->val[0] = 'a'; 
+    tmp->val[1] = '\0';
+#if MASSTREE_USE
+    MT.insert_value(i, tmp);
+#endif
+  }
+}
+
+void 
+makeDB() 
+{
   try {
     if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
   } catch (bad_alloc) {
     ERR;
   }
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tmp = &Table[i];
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 
-    tmp->tidword.epoch = 1;
-    tmp->tidword.tid = 0;
-
-    tmp->epotemp.epoch = 1;
-    tmp->epotemp.temp = 0;
-
-    tmp->val[0] = 'a'; tmp->val[1] = '\0';
-  }
-
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(part_table_init, i,
+        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto& th : thv) th.join();
 }
 
 void 

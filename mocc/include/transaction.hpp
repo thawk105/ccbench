@@ -74,5 +74,9 @@ public:
   void dispCLL();
   void dispRLL();
   void dispWS();
+
+  Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
+  }
 };
 

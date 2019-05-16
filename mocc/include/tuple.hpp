@@ -6,6 +6,8 @@
 
 #include "lock.hpp"
 
+#include "../../include/cache_line_size.hpp"
+
 #define TEMP_THRESHOLD 5
 #define TEMP_MAX 20
 #define TEMP_RESET_US 100
