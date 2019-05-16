@@ -19,6 +19,7 @@
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/fileio.hpp"
+#include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
 #include "../include/result.hpp"
 #include "../include/tsc.hpp"
@@ -91,6 +92,10 @@ worker(void *arg)
   //genLogFile(logpath, res.thid);
   //trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
   //trans.logfile.ftruncate(10^9);
+
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+#endif
 
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());

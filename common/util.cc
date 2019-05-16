@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../include/atomic_wrapper.hpp"
+#include "../include/debug.hpp"
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
@@ -25,6 +26,19 @@ chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold)
   diff = stop - start;
   if (diff > threshold) return true;
   else return false;
+}
+
+size_t
+decide_parallel_build_number(size_t tuplenum)
+{
+  for (size_t i = std::thread::hardware_concurrency(); i > 0; --i) {
+    if (tuplenum % i == 0) {
+      return i;
+    }
+    if (i == 1) ERR;
+  }
+
+  return 0;
 }
 
 void

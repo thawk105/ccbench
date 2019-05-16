@@ -10,18 +10,23 @@
 #include <iostream>
 #include <limits>
 #include <fstream>
-
-#include "../include/check.hpp"
-#include "../include/cache_line_size.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+#include <thread>
+#include <vector>
 
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
 #include "include/procedure.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
+
+#include "../include/check.hpp"
+#include "../include/cache_line_size.hpp"
+#include "../include/debug.hpp"
+#include "../include/masstree_wrapper.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
+
+extern size_t decide_parallel_build_number(size_t tuplenum);
 
 void 
 chkArg(const int argc, char *argv[])
@@ -44,6 +49,7 @@ chkArg(const int argc, char *argv[])
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
+    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
   chkInt(argv[1]);
@@ -154,27 +160,43 @@ genLogFile(std::string &logpath, const int thid)
   createEmptyFile(logpath);
 }
 
+void
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
+{
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(thid);
+#endif
+
+  for (auto i = start; i <= end; ++i) {
+    Tuple *tmp;
+    tmp = &Table[i];
+    tmp->tidword.epoch = 1;
+    tmp->tidword.latest = 1;
+    tmp->tidword.lock = 0;
+    tmp->val[0] = 'a';
+    tmp->val[1] = '\0';
+
+#if MASSTREE_USE
+    MT.insert_value(i, tmp);
+#endif
+  }
+}
+
 void 
 makeDB() 
 {
-  Tuple *tmp;
-  Xoroshiro128Plus rnd;
-  rnd.init();
-
   try {
     if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
   } catch (bad_alloc) {
     ERR;
   }
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tmp = &Table[i];
-    tmp->tidword.epoch = 1;
-    tmp->tidword.latest = 1;
-    tmp->tidword.lock = 0;
-    tmp->val[0] = 'a'; tmp->val[1] = '\0';
-  }
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto& th : thv) th.join();
 }
 
 void 

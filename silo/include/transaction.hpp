@@ -62,4 +62,8 @@ public:
   void unlockWriteSet();
   ReadElement *searchReadSet(unsigned int key);
   WriteElement *searchWriteSet(unsigned int key);
+
+  Tuple* get_tuple(Tuple *table, uint64_t key) {
+    return &table[key];
+  }
 };

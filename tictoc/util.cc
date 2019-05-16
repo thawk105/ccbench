@@ -26,6 +26,8 @@
 
 using namespace std;
 
+extern size_t decide_parallel_build_number(size_t tuplenum);
+
 void 
 chkArg(const int argc, char *argv[])
 {
@@ -161,17 +163,7 @@ makeDB()
     ERR;
   }
 
-  /*
-   * TUPLE_NUM を均等に分割できる最大スレッド数を求める。
-   */
-  size_t maxthread = 0;
-  for (size_t i = std::thread::hardware_concurrency(); i > 0; --i) {
-    if (TUPLE_NUM % i == 0) {
-      maxthread = i;
-      break;
-    }
-    if (i == 1) ERR;
-  }
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)

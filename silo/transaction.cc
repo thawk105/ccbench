@@ -11,8 +11,10 @@
 #include "include/common.hpp"
 #include "include/log.hpp"
 #include "include/transaction.hpp"
+
 #include "../include/debug.hpp"
 #include "../include/fileio.hpp"
+#include "../include/masstree_wrapper.hpp"
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void displayDB();
@@ -49,7 +51,11 @@ TxnExecutor::searchReadSet(unsigned int key)
 char*
 TxnExecutor::tread(unsigned int key)
 {
-  Tuple *tuple = &Table[key];
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
 
   //w
   WriteElement *inW = searchWriteSet(key);
@@ -121,7 +127,13 @@ bool TxnExecutor::validationPhase()
   Tidword check;
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     //1
-    check.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+
+    check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       return false;
     }
@@ -207,8 +219,14 @@ void TxnExecutor::writePhase()
   //write(record, commit-tid)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //update and unlock
-    memcpy(Table[(*itr).key].val, writeVal, VAL_SIZE);
-    __atomic_store_n(&(Table[(*itr).key].tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+
+    memcpy(tuple->val, writeVal, VAL_SIZE);
+    __atomic_store_n(&(tuple->tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
   }
 
   readSet.clear();
@@ -217,11 +235,15 @@ void TxnExecutor::writePhase()
 
 void TxnExecutor::lockWriteSet()
 {
-  Tuple *tuple;
   Tidword expected, desired;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    tuple = &Table[(*itr).key];
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+
     expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     for (;;) {
       if (expected.lock) {
@@ -242,9 +264,15 @@ void TxnExecutor::unlockWriteSet()
   Tidword expected, desired;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    expected.obj = __atomic_load_n(&(Table[(*itr).key].tidword.obj), __ATOMIC_ACQUIRE);
+#if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+#else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+#endif
+
+    expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     desired = expected;
     desired.lock = 0;
-    __atomic_store_n(&(Table[(*itr).key].tidword.obj), desired.obj, __ATOMIC_RELEASE);
+    __atomic_store_n(&(tuple->tidword.obj), desired.obj, __ATOMIC_RELEASE);
   }
 }

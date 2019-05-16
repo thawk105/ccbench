@@ -23,6 +23,8 @@
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
 
+extern size_t decide_parallel_build_number(size_t tuplenum);
+
 void
 chkArg(const int argc, const char *argv[])
 {
@@ -150,21 +152,13 @@ makeDB()
     ERR;
   }
 
-  std::vector<std::thread> thv;
-  size_t maxthread = std::thread::hardware_concurrency();
 
   // maxthread は masstree 構築の最大並行スレッド数。
   // 初期値はハードウェア最大値。
   // TUPLE_NUM を均等に分割できる最大スレッド数を求める。
-  for (size_t i = maxthread; i > 0; --i) {
-    if (TUPLE_NUM % i == 0) {
-      maxthread = i;
-      break;
-    }
-    if (i == 1) ERR;
-    // 1 thred でも剰余 0 は自明に ERR.
-  }
+  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 
+  std::vector<std::thread> thv;
   //cout << "masstree 並列構築スレッド数 " << maxthread << endl;
   for (size_t i = 0; i < maxthread; ++i) {
     thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
