@@ -1,3 +1,6 @@
+
+#include <cmath>
+#include <cfloat>
 #include <iomanip>
 #include <iostream>
 #include <random>
@@ -30,7 +33,6 @@
 #include <concurrent_hash_map.h>
 
 size_t hashsize = pow(2, 30) - 1;
-
 struct MyHashCompare {
   static size_t hash(const uint64_t& x) {
     return x & (hashsize);
@@ -48,7 +50,7 @@ extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
 size_t NUM_THREADS = 0;
-size_t TUPLE_NUM = 0;
+size_t TUPLE_NUM_2exponent = 0;
 #define EX_TIME 3
 
 using std::cout;
@@ -147,11 +149,12 @@ public:
     Xoroshiro128Plus rand;
     rand.init();
     size_t key_buf;
+    size_t mask = pow(2, TUPLE_NUM_2exponent) - 1;
 
     storeRelease(ready, 1);
     while (!loadAcquire(start)) _mm_pause();
     while (!loadAcquire(quit)) {
-      key = make_key(rand() % TUPLE_NUM, key_buf);
+      key = make_key(rand() & mask, key_buf);
       cursor_type lp(table_, key);
 
       bool found = lp.find_locked(*ti);
@@ -177,11 +180,12 @@ public:
     Xoroshiro128Plus rand;
     rand.init();
     size_t key_buf;
+    size_t mask = pow(2, TUPLE_NUM_2exponent) - 1;
 
     storeRelease(ready, 1);
     while (!loadAcquire(start)) _mm_pause();
     while (!loadAcquire(quit)) {
-      key = make_key(rand() % TUPLE_NUM, key_buf);
+      key = make_key(rand() & mask, key_buf);
       unlocked_cursor_type lp(table_, key);
       bool found = lp.find_unlocked(*ti);
       if (found) {
@@ -332,11 +336,12 @@ void pre_make_tree(MasstreeWrapper *mt) {
   /* 
    * maxthread は masstree 構築の最大並行スレッド数．
    * 初期値はハードウェア最大値
-   * TUPLE_NUM を均等に分割できる最大スレッド数を求める．
+   * pow(2, TUPLE_NUM_2exponent) を均等に分割できる最大スレッド数を求める．
    */
-  size_t maxthread = std::thread::hardware_concurrency();
-  for (size_t i = maxthread; i > 0; --i) {
-    if (TUPLE_NUM % i == 0) {
+  //cout << DBL_MAX << endl;
+  size_t maxthread = 0;
+  for (size_t i = std::thread::hardware_concurrency(); i > 0; --i) {
+    if ((size_t)pow(2, TUPLE_NUM_2exponent) % i == 0) {
       maxthread = i;
       break;
     }
@@ -346,7 +351,8 @@ void pre_make_tree(MasstreeWrapper *mt) {
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i) {
-    thv.emplace_back(part_make_tree, mt, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(part_make_tree, mt, i
+        , i * (pow(2, TUPLE_NUM_2exponent) / maxthread), (i + 1) * (pow(2, TUPLE_NUM_2exponent) / maxthread) - 1);
   }
   for (auto& th : thv) th.join();
 }
@@ -355,7 +361,8 @@ int
 main([[maybe_unused]]int argc, char *argv[])
 {
   NUM_THREADS = atoi(argv[1]); 
-  TUPLE_NUM = atoi(argv[2]); 
+  TUPLE_NUM_2exponent = atoi(argv[2]); 
+  if (pow(2, TUPLE_NUM_2exponent) == HUGE_VAL) ERR;
   bool start = false;
   bool quit = false;
   std::vector<char> readys(NUM_THREADS);
