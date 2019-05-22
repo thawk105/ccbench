@@ -46,7 +46,13 @@ void
 TxExecutor::commit()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    memcpy(Table[(*itr).key].val, writeVal, VAL_SIZE);
+  #if MASSTREE_USE
+    Tuple *tuple = MT.get_value((*itr).key);
+  #else
+    Tuple *tuple = get_tuple(Table, (*itr).key);
+  #endif
+
+    memcpy(tuple->val, writeVal, VAL_SIZE);
   }
 
   unlock_list();
