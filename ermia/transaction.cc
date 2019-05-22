@@ -18,7 +18,7 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t
 using namespace std;
 
 inline
-SetElement *
+SetElement<Tuple> *
 TxExecutor::searchReadSet(unsigned int key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -29,7 +29,7 @@ TxExecutor::searchReadSet(unsigned int key)
 }
 
 inline
-SetElement *
+SetElement<Tuple> *
 TxExecutor::searchWriteSet(unsigned int key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
@@ -85,11 +85,11 @@ TxExecutor::ssn_tread(unsigned int key)
   
   //if it already access the key object once.
   // w
-  SetElement *inW = searchWriteSet(key);
+  SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return writeVal;
   // tanabe の実験ではスレッドごとに書き込む新しい値が決まっている．
 
-  SetElement *inR = searchReadSet(key);
+  SetElement<Tuple> *inR = searchReadSet(key);
   if (inR) {
     return inR->ver->val;
   }
@@ -120,7 +120,7 @@ TxExecutor::ssn_tread(unsigned int key)
 
   if (ver->psstamp.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
     // no overwrite yet
-    readSet.emplace_back(key, ver);
+    readSet.emplace_back(key, tuple, ver);
   else 
     // update pi with r:w edge
     this->sstamp = min(this->sstamp, (ver->psstamp.atomicLoadSstamp() >> TIDFLAG));
@@ -138,7 +138,7 @@ void
 TxExecutor::ssn_twrite(unsigned int key)
 {
   // if it already wrote the key object once.
-  SetElement *inW = searchWriteSet(key);
+  SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return;
   // tanabe の実験では，スレッドごとに書き込む新しい値が決まっている．
   // であれば，コミットが確定し，version status を committed にして other worker に visible になるときに
@@ -207,7 +207,7 @@ TxExecutor::ssn_twrite(unsigned int key)
 
   // update eta with w:r edge
   this->pstamp = max(this->pstamp, desired->committed_prev->psstamp.atomicLoadPstamp());
-  writeSet.emplace_back(key, desired);
+  writeSet.emplace_back(key, tuple, desired);
   
   //  avoid false positive
   auto itr = readSet.begin();
@@ -427,7 +427,7 @@ TxExecutor::ssn_parallel_commit()
     (*itr).ver->psstamp.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, verCstamp));
+    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).rcdptr, (*itr).ver, verCstamp));
   }
 
   //logging
@@ -444,7 +444,7 @@ TxExecutor::abort()
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->committed_prev->psstamp.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     (*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
-    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).ver, this->txid << TIDFLAG));
+    gcobject.gcqForVersion.push(GCElement((*itr).key, (*itr).rcdptr, (*itr).ver, this->txid << TIDFLAG));
   }
   writeSet.clear();
 

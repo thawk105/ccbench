@@ -101,18 +101,3 @@ public:
   }
 };
 
-class SetElement {
-public:
-  unsigned int key;
-  Version *ver;
-
-  SetElement(unsigned int key, Version *ver) {
-    this->key = key;
-    this->ver = ver;
-  }
-
-  bool operator<(const SetElement& right) const {
-    return this->key < right.key;
-  }
-};
-

@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "ermia_op_element.hpp"
 #include "garbageCollection.hpp"
 #include "result.hpp"
 #include "tuple.hpp"
@@ -30,8 +31,8 @@ public:
   TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
   uint32_t pstamp = 0;  // Predecessor high-water mark, η (T)
   uint32_t sstamp = UINT32_MAX; // Successor low-water mark, pi (T)
-  vector<SetElement> readSet;
-  vector<SetElement> writeSet;
+  vector<SetElement<Tuple>> readSet;
+  vector<SetElement<Tuple>> writeSet;
   GarbageCollection gcobject;
   uint32_t preGcThreshold = 0;
 
@@ -52,8 +53,8 @@ public:
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
-  SetElement *searchReadSet(unsigned int key);
-  SetElement *searchWriteSet(unsigned int key);
+  SetElement<Tuple> *searchReadSet(unsigned int key);
+  SetElement<Tuple> *searchWriteSet(unsigned int key);
   void tbegin();
   char* ssn_tread(unsigned int key);
   void ssn_twrite(unsigned int key);

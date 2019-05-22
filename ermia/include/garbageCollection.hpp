@@ -4,25 +4,15 @@
 #include <queue>
 
 #include "../../include/inline.hpp"
+#include "../../include/op_element.hpp"
 
+#include "ermia_op_element.hpp"
 #include "result.hpp"
+#include "tuple.hpp"
 #include "version.hpp"
 
 // forward declaration
 class TransactionTable;
-
-class GCElement {
-public:
-  unsigned int key;
-  Version *ver;
-  uint32_t cstamp;
-
-  GCElement(unsigned int key, Version *ver, uint32_t cstamp) {
-    this->key = key;
-    this->ver = ver;
-    this->cstamp = cstamp;
-  }
-};
 
 class GarbageCollection {
 private:
@@ -33,7 +23,7 @@ private:
 
 public:
   std::queue<TransactionTable *> gcqForTMT;
-  std::queue<GCElement> gcqForVersion;
+  std::queue<GCElement<Tuple>> gcqForVersion;
   uint8_t thid;
 
   // for all thread
