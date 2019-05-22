@@ -7,6 +7,7 @@
 #include <map>
 #include <queue>
 
+#include "cicada_op_element.hpp"
 #include "common.hpp"
 #include "procedure.hpp"
 #include "tuple.hpp"
@@ -33,9 +34,9 @@ class TxExecutor {
 public:
   TransactionStatus status = TransactionStatus::invalid;
   TimeStamp wts;
-  std::vector<ReadElement, tbb::scalable_allocator<ReadElement>> readSet;
-  std::vector<WriteElement, tbb::scalable_allocator<WriteElement>> writeSet;
-  std::deque<GCElement, tbb::scalable_allocator<GCElement>> gcq;
+  std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>> readSet;
+  std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> writeSet;
+  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq;
 
   bool ronly;
   uint8_t thid;
@@ -93,34 +94,6 @@ public:
   void wSetClean();
   void displayWset();
   void mainte(CicadaResult &res);  //maintenance
-
-  // inline
-  bool getGCRight(unsigned int key) {
-    uint8_t expected, desired(thid);
-    expected = Table[key].gClock.load(std::memory_order_acquire);
-    for (;;) {
-      if (expected != 0) return false;
-      if (Table[key].gClock.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
-        return true;
-    }
-  }
-
-  void returnGCRight(unsigned int key) {
-    Table[key].gClock.store(0, std::memory_order_release);
-  }
-
-  bool getInlineVersionRight(unsigned int key) {
-    VersionStatus expected, desired(VersionStatus::pending);
-    expected = Table[key].inlineVersion.status.load(std::memory_order_acquire);
-    for (;;) {
-      if (expected != VersionStatus::unused) return false;
-      if (Table[key].inlineVersion.status.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
-    }
-  }
-
-  void returnInlineVersionRight(unsigned int key) {
-    Table[key].inlineVersion.status.store(VersionStatus::unused, std::memory_order_release);
-  }
 
   static INLINE Tuple* get_tuple(Tuple *table, uint64_t key) {
     return &table[key];

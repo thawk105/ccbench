@@ -7,6 +7,7 @@
 #include <cstdint>
 
 #include "../../include/cache_line_size.hpp"
+#include "../../include/op_element.hpp"
 
 #include "timeStamp.hpp"
 
@@ -79,55 +80,3 @@ public:
   }
 };
 
-class ElementSet {
-public:
-  Version *sourceObject = nullptr;
-  Version *newObject = nullptr;
-};
-
-class ReadElement {
-public:
-  unsigned int key;
-  Version *ver;
-
-  ReadElement(unsigned int key, Version *ver) {
-    this->key = key;
-    this->ver = ver;
-  }
-
-  bool operator<(const ReadElement& right) const {
-    return this->key < right.key;
-  }
-};
-
-class WriteElement {
-public:
-  unsigned int key;
-  Version *newObject;
-  bool finishVersionInstall;
-
-  WriteElement(unsigned int key, Version *newOb) {
-    this->key = key;
-    this->newObject = newOb;
-    finishVersionInstall = false;
-  }
-
-  bool operator<(const WriteElement& right) const {
-    return this->key < right.key;
-  }
-};
-
-class GCElement {
-public:
-  unsigned int key;
-  Version *ver;
-  uint64_t wts;
-
-  GCElement() : key(0), ver(nullptr), wts(0) {}
-
-  GCElement(unsigned int key, Version *ver, uint64_t wts) {
-    this->key = key;
-    this->ver = ver;
-    this->wts = wts;
-  }
-};
