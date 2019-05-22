@@ -14,7 +14,7 @@
 
 using namespace std;
 
-ReadElement *
+ReadElement<Tuple> *
 TxExecutor::searchReadSet(unsigned int key)
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -24,11 +24,11 @@ TxExecutor::searchReadSet(unsigned int key)
   return nullptr;
 }
 
-unsigned int *
+WriteElement<Tuple> *
 TxExecutor::searchWriteSet(unsigned int key)
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    if ((*itr) == key) return &(*itr);
+    if ((*itr).key == key) return &(*itr);
   }
 
   return nullptr;
@@ -77,12 +77,12 @@ TxExecutor::read(unsigned int key)
 #endif
 
   // tuple exists in write set.
-  unsigned int *inW = searchWriteSet(key);
+  WriteElement<Tuple> *inW = searchWriteSet(key);
   //if (inW) return inW->val;
   if (inW) return returnVal;
 
   // tuple exists in read set.
-  ReadElement *inR = searchReadSet(key);
+  ReadElement<Tuple> *inR = searchReadSet(key);
   if (inR) return inR->val;
 
   // tuple doesn't exist in read/write set.
@@ -127,7 +127,7 @@ TxExecutor::read(unsigned int key)
         
         if (key < CLL.back().key) {
           status = TransactionStatus::aborted;
-          readSet.emplace_back(key);
+          readSet.emplace_back(key, tuple);
           return nullptr;
         }
         else 
@@ -147,7 +147,7 @@ TxExecutor::read(unsigned int key)
     memcpy(returnVal, tuple->val, VAL_SIZE); // read
   }
 
-  readSet.emplace_back(expected, key, returnVal);
+  readSet.emplace_back(expected, key, tuple, returnVal);
   return returnVal;
 }
 
@@ -155,7 +155,7 @@ void
 TxExecutor::write(unsigned int key)
 {
   // tuple exists in write set.
-  unsigned int *inw = searchWriteSet(key);
+  WriteElement<Tuple> *inw = searchWriteSet(key);
   if (inw) return;
 
 #if MASSTREE_USE
@@ -179,7 +179,7 @@ TxExecutor::write(unsigned int key)
   if (this->status == TransactionStatus::aborted) return;
   
   //writeSet.emplace_back(key, writeVal);
-  writeSet.emplace_back(key);
+  writeSet.emplace_back(key, tuple);
   return;
 }
 
@@ -367,14 +367,8 @@ TxExecutor::construct_RLL()
   RLL.clear();
   
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value(*itr);
-#else
-    Tuple *tuple = get_tuple(Table, *itr);
-#endif
-
 #ifdef RWLOCK
-    RLL.emplace_back((*itr), &(tuple->rwlock), true);
+    RLL.emplace_back((*itr).key, &((*itr).rcdptr->rwlock), true);
 #endif // RWLOCK
 #ifdef MQLOCK
     RLL.push_back(LockElement<MQLock>((*itr).key, &(Table[(*itr).key].mqlock), true));
@@ -394,19 +388,14 @@ TxExecutor::construct_RLL()
     // if temprature >= threshold
     //  || r failed verification
     Epotemp loadepot;
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value((*itr).key);
-#else
-    Tuple *tuple = get_tuple(Table, (*itr).key);
-#endif
-    loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+    loadepot.obj = __atomic_load_n(&((*itr).rcdptr->epotemp.obj), __ATOMIC_ACQUIRE);
     if (loadepot.temp >= TEMP_THRESHOLD 
         || (*itr).failedVerification) {
 #ifdef RWLOCK
-      RLL.emplace_back((*itr).key, &(tuple->rwlock), false);
+      RLL.emplace_back((*itr).key, &((*itr).rcdptr->rwlock), false);
 #endif // RWLOCK
 #ifdef MQLOCK
-      RLL.push_back(LockElement<MQLock>((*itr).key, &(tuple->mqlock), false));
+      RLL.push_back(LockElement<MQLock>((*itr).key, &((*itr).rcdptr->mqlock), false));
 #endif // MQLOCK
     }
 
@@ -414,13 +403,13 @@ TxExecutor::construct_RLL()
     if ((*itr).failedVerification) {
       Epotemp expected, desired;
       uint64_t nowepo;
-      expected.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+      expected.obj = __atomic_load_n(&((*itr).rcdptr->epotemp.obj), __ATOMIC_ACQUIRE);
       nowepo = (loadAcquireGE()).obj;
 
       if (expected.epoch != nowepo) {
         desired.epoch = nowepo;
         desired.temp = 0;
-        __atomic_store_n(&(tuple->epotemp.obj), desired.obj, __ATOMIC_RELEASE);
+        __atomic_store_n(&((*itr).rcdptr->epotemp.obj), desired.obj, __ATOMIC_RELEASE);
       }
 
       for (;;) {
@@ -429,7 +418,7 @@ TxExecutor::construct_RLL()
           desired = expected;
           desired.temp = expected.temp + 1;
         } else break;
-        if (__atomic_compare_exchange_n(&(tuple->epotemp.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+        if (__atomic_compare_exchange_n(&((*itr).rcdptr->epotemp.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
       }
     }
   }
@@ -447,18 +436,12 @@ TxExecutor::commit(MoccResult &res)
   // phase 1 lock write set.
   sort(writeSet.begin(), writeSet.end());
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value(*itr);
-#else
-    Tuple *tuple = get_tuple(Table, *itr);
-#endif
-
-    lock((*itr), tuple, true);
+    lock((*itr).key, (*itr).rcdptr, true);
     if (this->status == TransactionStatus::aborted) {
       return false;
     }
 
-    this->max_wset = max(this->max_wset, tuple->tidword);
+    this->max_wset = max(this->max_wset, (*itr).rcdptr->tidword);
   }
 
   asm volatile ("" ::: "memory");
@@ -467,12 +450,7 @@ TxExecutor::commit(MoccResult &res)
 
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     Tidword check;
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value((*itr).key);
-#else
-    Tuple *tuple = get_tuple(Table, (*itr).key);
-#endif
-    check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+    check.obj = __atomic_load_n(&((*itr).rcdptr->tidword.obj), __ATOMIC_ACQUIRE);
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
@@ -482,7 +460,7 @@ TxExecutor::commit(MoccResult &res)
 
     // Silo protocol
 #ifdef RWLOCK
-    if (tuple->rwlock.ldAcqCounter() == W_LOCKED
+    if ((*itr).rcdptr->rwlock.ldAcqCounter() == W_LOCKED
         && searchWriteSet((*itr).key) == nullptr) {
 #endif // RWLOCK
       //if the rwlock is already acquired and the owner isn't me, abort.
@@ -493,7 +471,7 @@ TxExecutor::commit(MoccResult &res)
       return false;
     }
 
-    this->max_rset = max(this->max_rset, tuple->tidword);
+    this->max_rset = max(this->max_rset, (*itr).rcdptr->tidword);
   }
 
   return true;
@@ -560,13 +538,8 @@ TxExecutor::writePhase()
   //write (record, commit-tid)
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //update and down lockBit
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value(*itr);
-#else
-    Tuple *tuple = get_tuple(Table, *itr);
-#endif
-    memcpy(tuple->val, writeVal, VAL_SIZE);
-    __atomic_store_n(&(tuple->tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
+    memcpy((*itr).rcdptr->val, writeVal, VAL_SIZE);
+    __atomic_store_n(&((*itr).rcdptr->tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
   }
 
   unlockCLL();
@@ -602,10 +575,8 @@ TxExecutor::dispRLL()
 void
 TxExecutor::dispWS()
 {
-  cout << "th " << this->thid << ": write set: ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    //cout << "(" << (*itr).key << ", " << (*itr).val << "), ";
-    cout << "(" << (*itr) << ", " << writeVal << "), ";
+    cout << "(" << (*itr).key << ", " << (*itr).rcdptr << ")" << endl;
   }
   cout << endl;
 }

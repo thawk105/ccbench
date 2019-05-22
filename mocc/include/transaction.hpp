@@ -6,6 +6,7 @@
 #include "../../include/util.hpp"
 
 #include "common.hpp"
+#include "mocc_op_element.hpp"
 #include "lock.hpp"
 #include "result.hpp"
 #include "tuple.hpp"
@@ -20,8 +21,8 @@ enum class TransactionStatus : uint8_t {
 
 class TxExecutor {
 public:
-  vector<ReadElement> readSet;
-  vector<unsigned int> writeSet;
+  vector<ReadElement<Tuple>> readSet;
+  vector<WriteElement<Tuple>> writeSet;
 #ifdef RWLOCK
   vector<LockElement<RWLock>> RLL;
   vector<LockElement<RWLock>> CLL;
@@ -58,8 +59,8 @@ public:
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
-  ReadElement *searchReadSet(unsigned int key);
-  unsigned int *searchWriteSet(unsigned int key);
+  ReadElement<Tuple> *searchReadSet(unsigned int key);
+  WriteElement<Tuple> *searchWriteSet(unsigned int key);
   template <typename T> T *searchRLL(unsigned int key);
   void removeFromCLL(unsigned int key);
   void begin();

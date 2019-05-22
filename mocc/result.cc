@@ -9,28 +9,28 @@ void
 MoccResult::display_totalAbortByOperationRate()
 {
   long double out = (double)totalAbortByOperation / (double)totalAbortCounts;
-  cout << "totalAbort\nByOperationRate :\t" << out << endl;
+  cout << setprecision(6) << "totalAbort\nByOperationRate :\t" << out << endl;
 }
 
 void
 MoccResult::display_totalAbortByValidationRate()
 {
   long double out = (double)totalAbortByValidation / (double)totalAbortCounts;
-  cout << "totalAbort\nByValidationRate :\t" << out << endl;
+  cout << setprecision(6) << "totalAbort\nByValidationRate :\t" << out << endl;
 }
 
 void
 MoccResult::display_totalValidationFailureByWriteLockRate()
 {
   long double out = (double)totalValidationFailureByWriteLock / (double)totalAbortByValidation;
-  cout << "totalValidationFailure\nByWriteLockRate :\t" << out << endl;
+  cout << setprecision(6) << "totalValidationFailure\nByWriteLockRate :\t" << out << endl;
 }
 
 void
 MoccResult::display_totalValidationFailureByTIDRate()
 {
   long double out = (double)totalValidationFailureByTID / (double)totalAbortByValidation;
-  cout << "totalValidationFailure\nByTIDRate :\t\t" << out << endl;
+  cout << setprecision(6) << "totalValidationFailure\nByTIDRate :\t\t" << out << endl;
 }
 
 void
