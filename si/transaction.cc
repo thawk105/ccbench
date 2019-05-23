@@ -14,8 +14,8 @@
 using namespace std;
 
 inline
-SetElement *
-TxExecutor::searchReadSet(unsigned int key) 
+SetElement<Tuple> *
+TxExecutor::searchReadSet(uint64_t key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -25,8 +25,8 @@ TxExecutor::searchReadSet(unsigned int key)
 }
 
 inline
-SetElement *
-TxExecutor::searchWriteSet(unsigned int key) 
+SetElement<Tuple> *
+TxExecutor::searchWriteSet(uint64_t key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -81,14 +81,14 @@ TxExecutor::tbegin()
 }
 
 char*
-TxExecutor::tread(unsigned int key)
+TxExecutor::tread(uint64_t key)
 {
   //if it already access the key object once.
   // w
-  SetElement *inW = searchWriteSet(key);
+  SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return writeVal;
 
-  SetElement *inR = searchReadSet(key);
+  SetElement<Tuple> *inR = searchReadSet(key);
   if (inR) return inR->ver->val;
 
 #if MASSTREE_USE
@@ -112,7 +112,7 @@ TxExecutor::tread(unsigned int key)
     }
   }
 
-  readSet.emplace_back(key, ver);
+  readSet.emplace_back(key, tuple, ver);
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
@@ -122,10 +122,10 @@ TxExecutor::tread(unsigned int key)
 }
 
 void
-TxExecutor::twrite(unsigned int key)
+TxExecutor::twrite(uint64_t key)
 {
   // if it already wrote the key object once.
-  SetElement *inW = searchWriteSet(key);
+  SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return;
 
   // if v not in t.writes:
@@ -184,7 +184,7 @@ TxExecutor::twrite(unsigned int key)
     if (tuple->latest.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
 
-  writeSet.emplace_back(key, desired);
+  writeSet.emplace_back(key, tuple, desired);
 }
 
 void
@@ -197,7 +197,7 @@ TxExecutor::commit()
     (*itr).ver->cstamp.store(this->cstamp, memory_order_release);
     memcpy((*itr).ver->val, writeVal, VAL_SIZE);
     (*itr).ver->status.store(VersionStatus::committed, memory_order_release);
-    gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).ver, cstamp));
+    gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).rcdptr, (*itr).ver, cstamp));
   }
 
   //logging
@@ -220,7 +220,7 @@ TxExecutor::abort()
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     (*itr).ver->status.store(VersionStatus::aborted, memory_order_release);
-    gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).ver, this->txid));
+    gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).rcdptr, (*itr).ver, this->txid));
   }
 
   readSet.clear();

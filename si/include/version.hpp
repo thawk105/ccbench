@@ -5,6 +5,8 @@
 
 #include "../../include/cache_line_size.hpp"
 
+#include "si_op_element.hpp"
+
 enum class VersionStatus : uint8_t {
   inFlight,
   committed,
@@ -92,21 +94,6 @@ public:
 
   Version() {
     status.store(VersionStatus::inFlight, std::memory_order_release);
-  }
-};
-
-class SetElement {
-public:
-  unsigned int key;
-  Version *ver;
-
-  SetElement(unsigned int key, Version *ver) {
-    this->key = key;
-    this->ver = ver;
-  }
-
-  bool operator<(const SetElement& right) const {
-    return this->key < right.key;
   }
 };
 

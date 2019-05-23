@@ -27,8 +27,8 @@ class TxExecutor {
 public:
   uint32_t cstamp = 0;  // Transaction end time, c(T) 
   TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
-  std::vector<SetElement, tbb::scalable_allocator<SetElement>> readSet;
-  std::vector<SetElement, tbb::scalable_allocator<SetElement>> writeSet;
+  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> readSet;
+  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> writeSet;
   GarbageCollection gcobject;
   uint32_t preGcThreshold = 0;
   Result rsobject;
@@ -47,11 +47,11 @@ public:
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
-  SetElement *searchReadSet(unsigned int key);
-  SetElement *searchWriteSet(unsigned int key);
+  SetElement<Tuple> *searchReadSet(uint64_t key);
+  SetElement<Tuple> *searchWriteSet(uint64_t key);
   void tbegin();
-  char* tread(unsigned int key);
-  void twrite(unsigned int key);
+  char* tread(uint64_t key);
+  void twrite(uint64_t key);
   void commit();
   void abort();
   void dispWS();

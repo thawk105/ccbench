@@ -7,35 +7,14 @@
 
 #include "common.hpp"
 #include "result.hpp"
+#include "si_op_element.hpp"
+#include "tuple.hpp"
 #include "version.hpp"
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 // forward declaration
 class TransactionTable;
-
-class GCElement {
-public:
-  unsigned int key;
-  Version *ver;
-  uint32_t cstamp;
-
-  GCElement() : key(0), ver(nullptr), cstamp(0) {}
-
-  GCElement(unsigned int key, Version *ver, uint32_t cstamp) {
-    this->key = key;
-    this->ver = ver;
-    this->cstamp = cstamp;
-  }
-};
-
-class GCTMTElement {
-public:
-  TransactionTable *tmt;
-
-  GCTMTElement() : tmt(nullptr) {}
-  GCTMTElement(TransactionTable *tmt_) : tmt(tmt_) {}
-};
 
 class GarbageCollection {
 private:
@@ -48,7 +27,7 @@ public:
 #ifdef CCTR_ON
   std::deque<TransactionTable *, tbb::scalable_allocator<TransactionTable *>> gcqForTMT;
 #endif // CCTR_ON
-  std::deque<GCElement, tbb::scalable_allocator<GCElement>> gcqForVersion;
+  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcqForVersion;
   uint8_t thid;
 
   GarbageCollection() {
