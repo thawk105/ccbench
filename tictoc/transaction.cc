@@ -21,8 +21,8 @@ extern void displayDB();
 
 using namespace std;
 
-SetElement *
-TxExecutor::searchWriteSet(unsigned int key)
+SetElement<Tuple> *
+TxExecutor::searchWriteSet(uint64_t key)
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -31,8 +31,8 @@ TxExecutor::searchWriteSet(unsigned int key)
   return nullptr;
 }
 
-SetElement *
-TxExecutor::searchReadSet(unsigned int key)
+SetElement<Tuple> *
+TxExecutor::searchReadSet(uint64_t key)
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -50,9 +50,9 @@ TxExecutor::tbegin()
 }
 
 char*
-TxExecutor::tread(unsigned int key)
+TxExecutor::tread(uint64_t key)
 {
-  SetElement *result;
+  SetElement<Tuple> *result;
 
   result = searchWriteSet(key);
   if (result != nullptr) return writeVal;
@@ -91,15 +91,15 @@ TxExecutor::tread(unsigned int key)
   } 
 
   this->appro_commit_ts = max(this->appro_commit_ts, v1.wts);
-  readSet.emplace_back(key, returnVal, v1);
+  readSet.emplace_back(key, tuple, returnVal, v1);
 
   return returnVal;
 }
 
 void 
-TxExecutor::twrite(unsigned int key)
+TxExecutor::twrite(uint64_t key)
 {
-  SetElement *result;
+  SetElement<Tuple> *result;
 
   result = searchWriteSet(key);
   if (result != nullptr) return;
@@ -113,7 +113,7 @@ TxExecutor::twrite(unsigned int key)
 
   tsword.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
   this->appro_commit_ts = max(this->appro_commit_ts, tsword.rts() + 1);
-  writeSet.emplace_back(key, tsword);
+  writeSet.emplace_back(key, tuple, tsword);
 }
 
 bool 
@@ -137,22 +137,17 @@ TxExecutor::validationPhase()
   // step3, validate the read set.
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     TsWord v1, v2;
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value((*itr).key);
-#else
-    Tuple *tuple = get_tuple(Table, (*itr).key);
-#endif
 
-    v1.obj  = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
+    v1.obj  = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
     for (;;) {
       if ((*itr).tsw.wts != v1.wts) {
         TsWord pre_v1;
-        pre_v1.obj = __atomic_load_n(&(tuple->pre_tsw.obj), __ATOMIC_ACQUIRE);
+        pre_v1.obj = __atomic_load_n(&((*itr).rcdptr->pre_tsw.obj), __ATOMIC_ACQUIRE);
         if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) break;
         else return false;
       }
 
-      SetElement *inW = searchWriteSet((*itr).key);
+      SetElement<Tuple> *inW = searchWriteSet((*itr).key);
       if ((v1.rts()) < commit_ts && v1.lock) {
         if (inW == nullptr) return false;
       }
@@ -166,7 +161,7 @@ TxExecutor::validationPhase()
         v2.obj = v1.obj;
         v2.wts = v2.wts + shift;
         v2.delta = delta - shift;
-        if (__atomic_compare_exchange_n(&(tuple->tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
           break;
         else continue;
       } else {
@@ -194,17 +189,12 @@ TxExecutor::writePhase()
   TsWord result;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value((*itr).key);
-#else
-    Tuple *tuple = get_tuple(Table, (*itr).key);
-#endif
-    memcpy(tuple->val, writeVal, VAL_SIZE);
+    memcpy((*itr).rcdptr->val, writeVal, VAL_SIZE);
     result.wts = this->commit_ts;
     result.delta = 0;
     result.lock = 0;
-    __atomic_store_n(&(tuple->pre_tsw.obj), (*itr).tsw.obj, __ATOMIC_RELAXED);
-    __atomic_store_n(&(tuple->tsw.obj), result.obj, __ATOMIC_RELEASE);
+    __atomic_store_n(&((*itr).rcdptr->pre_tsw.obj), (*itr).tsw.obj, __ATOMIC_RELAXED);
+    __atomic_store_n(&((*itr).rcdptr->tsw.obj), result.obj, __ATOMIC_RELEASE);
 
   }
 
@@ -220,13 +210,7 @@ TxExecutor::lockWriteSet()
 
   sort(writeSet.begin(), writeSet.end());
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value((*itr).key);
-#else
-    Tuple *tuple = get_tuple(Table, (*itr).key);
-#endif
-
-    expected.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
+    expected.obj = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
     for (;;) {
       //no-wait locking in validation
       //ロックオブジェクトを作ってデストラクタで解放
@@ -238,11 +222,11 @@ TxExecutor::lockWriteSet()
       }
       desired = expected;
       desired.lock = 1;
-      if (__atomic_compare_exchange_n(&(tuple->tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
+      if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
     }
 
     commit_ts = max(commit_ts, desired.rts() + 1);
-    cll.push_back((*itr).key);
+    cll.emplace_back((*itr).key, (*itr).rcdptr);
   }
 }
 
@@ -252,16 +236,10 @@ TxExecutor::unlockCLL()
   TsWord expected, desired;
 
   for (auto itr = cll.begin(); itr != cll.end(); ++itr) {
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value(*itr);
-#else
-    Tuple *tuple = get_tuple(Table, (*itr));
-#endif
-
-    expected.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
+    expected.obj = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
     desired.obj = expected.obj;
     desired.lock = 0;
-    __atomic_store_n(&(tuple->tsw.obj), desired.obj, __ATOMIC_RELEASE);
+    __atomic_store_n(&((*itr).rcdptr->tsw.obj), desired.obj, __ATOMIC_RELEASE);
   }
 }
 

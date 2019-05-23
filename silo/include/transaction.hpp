@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "log.hpp"
 #include "procedure.hpp"
+#include "silo_op_element.hpp"
 #include "tuple.hpp"
 
 #include "../../include/fileio.hpp"
@@ -19,8 +20,8 @@ using namespace std;
 
 class TxnExecutor {
 public:
-  vector<ReadElement> readSet;
-  vector<WriteElement> writeSet;
+  vector<ReadElement<Tuple>> readSet;
+  vector<WriteElement<Tuple>> writeSet;
 
   vector<LogRecord> logSet;
   LogHeader latestLogHeader;
@@ -52,16 +53,16 @@ public:
   }
 
   void tbegin();
-  char* tread(unsigned int key);
-  void twrite(unsigned int key);
+  char* tread(uint64_t key);
+  void twrite(uint64_t key);
   bool validationPhase();
   void abort();
   void writePhase();
   void wal(uint64_t ctid);
   void lockWriteSet();
   void unlockWriteSet();
-  ReadElement *searchReadSet(unsigned int key);
-  WriteElement *searchWriteSet(unsigned int key);
+  ReadElement<Tuple> *searchReadSet(uint64_t key);
+  WriteElement<Tuple> *searchWriteSet(uint64_t key);
 
   Tuple* get_tuple(Tuple *table, uint64_t key) {
     return &table[key];

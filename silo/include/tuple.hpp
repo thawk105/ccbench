@@ -48,31 +48,3 @@ public:
 
 };
 
-class ReadElement {
-public:
-  Tidword tidword;
-  unsigned int key;
-  char val[VAL_SIZE];
-
-  ReadElement(unsigned int newkey, char* newval, Tidword newtidword) : key(newkey) {
-    tidword.obj = newtidword.obj;
-    memcpy(this->val, newval, VAL_SIZE);
-  }
-
-  bool operator<(const ReadElement& right) const {
-    return this->key < right.key;
-  }
-};
-
-class WriteElement {
-public:
-  unsigned int key;
-
-  WriteElement(unsigned int key) {
-    this->key = key;
-  }
-
-  bool operator<(const WriteElement& right) const {
-    return this->key < right.key;
-  }
-};

@@ -7,11 +7,11 @@
 template <typename T>
 class SetElement : public Op_element<T> {
 public:
+  using Op_element<T>::Op_element;
+
   Version *ver;
 
-  SetElement(uint64_t key, T *rcdptr, Version *ver) {
-    this->key = key;
-    this->rcdptr = rcdptr;
+  SetElement(uint64_t key, T *rcdptr, Version *ver) : Op_element<T>::Op_element(key, rcdptr) {
     this->ver = ver;
   }
 
@@ -23,12 +23,12 @@ public:
 template <typename T>
 class GCElement : public Op_element<T> {
 public:
+  using Op_element<T>::Op_element;
+
   Version *ver;
   uint32_t cstamp;
 
-  GCElement(uint64_t key, T *rcdptr, Version *ver, uint32_t cstamp) {
-    this->key = key;
-    this->rcdptr = rcdptr;
+  GCElement(uint64_t key, T *rcdptr, Version *ver, uint32_t cstamp) : Op_element<T>::Op_element(key, rcdptr) {
     this->ver = ver;
     this->cstamp = cstamp;
   }

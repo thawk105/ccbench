@@ -12,8 +12,8 @@
 using namespace std;
 
 inline
-SetElement*
-TxExecutor::searchReadSet(unsigned int key) 
+SetElement<Tuple> *
+TxExecutor::searchReadSet(uint64_t key) 
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -23,8 +23,8 @@ TxExecutor::searchReadSet(unsigned int key)
 }
 
 inline
-SetElement*
-TxExecutor::searchWriteSet(unsigned int key) 
+SetElement<Tuple> *
+TxExecutor::searchWriteSet(uint64_t key) 
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -46,13 +46,7 @@ void
 TxExecutor::commit()
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-  #if MASSTREE_USE
-    Tuple *tuple = MT.get_value((*itr).key);
-  #else
-    Tuple *tuple = get_tuple(Table, (*itr).key);
-  #endif
-
-    memcpy(tuple->val, writeVal, VAL_SIZE);
+    memcpy((*itr).rcdptr->val, writeVal, VAL_SIZE);
   }
 
   unlock_list();
@@ -68,14 +62,14 @@ TxExecutor::tbegin()
 }
 
 char*
-TxExecutor::tread(unsigned int key)
+TxExecutor::tread(uint64_t key)
 {
   //if it already access the key object once.
   // w
-  SetElement *inW = searchWriteSet(key);
+  SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW != nullptr) return writeVal;
 
-  SetElement *inR = searchReadSet(key);
+  SetElement<Tuple> *inR = searchReadSet(key);
   if (inR != nullptr) return inR->val;
 
 #if MASSTREE_USE
@@ -86,12 +80,8 @@ TxExecutor::tread(unsigned int key)
 
   if (tuple->lock.r_trylock()) {
     r_lockList.emplace_back(&tuple->lock);
-    readSet.emplace_back(key, tuple->val);
+    readSet.emplace_back(key, tuple, tuple->val);
     
-    // for fairness
-    // ultimately, it is wasteful in prototype system
-    memcpy(returnVal, tuple->val, VAL_SIZE);
-
     return returnVal;
   } else {
     this->status = TransactionStatus::aborted;
@@ -100,10 +90,10 @@ TxExecutor::tread(unsigned int key)
 }
 
 void
-TxExecutor::twrite(unsigned int key)
+TxExecutor::twrite(uint64_t key)
 {
   // if it already wrote the key object once.
-  SetElement *inW = searchWriteSet(key);
+  SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return;
 
 #if MASSTREE_USE
@@ -124,7 +114,7 @@ TxExecutor::twrite(unsigned int key)
         if (*lItr == &(tuple->lock)) {
           r_lockList.erase(lItr);
           w_lockList.emplace_back(&tuple->lock);
-          writeSet.emplace_back(key, writeVal);
+          writeSet.emplace_back(key);
           break;
         }
       }
@@ -141,7 +131,7 @@ TxExecutor::twrite(unsigned int key)
   }
 
   w_lockList.emplace_back(&tuple->lock);
-  writeSet.emplace_back(key, writeVal);
+  writeSet.emplace_back(key, tuple);
   return;
 }
 

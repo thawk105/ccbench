@@ -12,6 +12,7 @@
 
 #include "common.hpp"
 #include "procedure.hpp"
+#include "tictoc_op_element.hpp"
 #include "tuple.hpp"
 
 enum class TransactionStatus : uint8_t {
@@ -29,9 +30,9 @@ public:
   uint64_t appro_commit_ts;
 
   TransactionStatus status;
-  vector<SetElement> readSet;
-  vector<SetElement> writeSet;
-  vector<unsigned int> cll; // current lock list;
+  vector<SetElement<Tuple>> readSet;
+  vector<SetElement<Tuple>> writeSet;
+  vector<Op_element<Tuple>> cll; // current lock list;
   //use for lockWriteSet() to record locks;
 
   char writeVal[VAL_SIZE];
@@ -46,15 +47,15 @@ public:
   }
 
   void tbegin();
-  char* tread(unsigned int key);
-  void twrite(unsigned int key);
+  char* tread(uint64_t key);
+  void twrite(uint64_t key);
   bool validationPhase();
   void abort();
   void writePhase();
   void lockWriteSet();
   void unlockCLL();
-  SetElement *searchWriteSet(unsigned int key);
-  SetElement *searchReadSet(unsigned int key);
+  SetElement<Tuple> *searchWriteSet(uint64_t key);
+  SetElement<Tuple> *searchReadSet(uint64_t key);
   void dispWS();
 
   Tuple* get_tuple(Tuple *table, uint64_t key) {

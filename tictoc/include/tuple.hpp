@@ -58,29 +58,3 @@ public:
 #endif // SHAVE_REC
 };
 
-class SetElement {
-public:
-  unsigned int key;
-  char val[VAL_SIZE];
-  TsWord tsw;
-
-  SetElement(unsigned int newkey, char *newval, TsWord tsw) : key(newkey) {
-    memcpy(val, newval, VAL_SIZE);
-    this->tsw.obj = tsw.obj;
-  }
-
-  SetElement(unsigned int newkey, TsWord tsw) : key(newkey) {
-    this->tsw.obj = tsw.obj;
-  }
-
-  bool operator<(const SetElement& right) const {
-    return this->key < right.key;
-  }
-};
-
-class LockElement {
-public:
-  unsigned int key;
-
-  LockElement(unsigned int newkey) : key(newkey) {}
-};

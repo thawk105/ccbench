@@ -5,11 +5,11 @@
 template <typename T>
 class ReadElement : public Op_element<T> {
 public:
+  using Op_element<T>::Op_element;
+
   Version *ver;
 
-  ReadElement(uint64_t key, T *rcdptr, Version *ver) {
-    this->key = key;
-    this->rcdptr = rcdptr;
+  ReadElement(uint64_t key, T *rcdptr, Version *ver) : Op_element<T>::Op_element(key, rcdptr) {
     this->ver = ver;
   }
 
@@ -21,12 +21,12 @@ public:
 template <typename T>
 class WriteElement : public Op_element<T> {
 public:
+  using Op_element<T>::Op_element;
+
   Version *newObject;
   bool finishVersionInstall;
 
-  WriteElement(uint64_t key, T *rcdptr, Version *newOb) {
-    this->key = key;
-    this->rcdptr = rcdptr;
+  WriteElement(uint64_t key, T *rcdptr, Version *newOb) : Op_element<T>::Op_element(key, rcdptr) {
     this->newObject = newOb;
     finishVersionInstall = false;
   }
@@ -39,6 +39,8 @@ public:
 template <typename T>
 class GCElement : public Op_element<T> {
 public:
+  using Op_element<T>::Op_element;
+
   Version *ver;
   uint64_t wts;
 
@@ -46,9 +48,7 @@ public:
     this->key = 0;
   }
 
-  GCElement(uint64_t key, T *rcdptr, Version *ver, uint64_t wts) {
-    this->key = key;
-    this->rcdptr = rcdptr;
+  GCElement(uint64_t key, T *rcdptr, Version *ver, uint64_t wts) : Op_element<T>::Op_element(key, rcdptr) {
     this->ver = ver;
     this->wts = wts;
   }

@@ -135,7 +135,7 @@ displayPRO(Procedure *pro)
 }
 
 void
-part_table_init(size_t thid, uint64_t start, uint64_t end)
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);

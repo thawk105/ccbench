@@ -6,6 +6,7 @@
 #include "../../include/string.hpp"
 #include "../../include/util.hpp"
 
+#include "ss2pl_op_element.hpp"
 #include "tuple.hpp"
 
 enum class TransactionStatus : uint8_t {
@@ -23,8 +24,8 @@ public:
   std::vector<RWLock*> w_lockList;
   TransactionStatus status = TransactionStatus::inFlight;
 
-  vector<SetElement> readSet;
-  vector<SetElement> writeSet;
+  vector<SetElement<Tuple>> readSet;
+  vector<SetElement<Tuple>> writeSet;
 
   char writeVal[VAL_SIZE];
   char returnVal[VAL_SIZE];
@@ -38,11 +39,11 @@ public:
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid); 
   }
 
-  SetElement *searchReadSet(unsigned int key);
-  SetElement *searchWriteSet(unsigned int key);
+  SetElement<Tuple> *searchReadSet(uint64_t key);
+  SetElement<Tuple> *searchWriteSet(uint64_t key);
   void tbegin();
-  char* tread(unsigned int key);
-  void twrite(unsigned int key);
+  char* tread(uint64_t key);
+  void twrite(uint64_t key);
   void commit();
   void abort();
   void unlock_list();
