@@ -102,6 +102,5 @@ do
   echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
   echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
   echo ""
-  thout=`echo "$thread - 1" | bc`
-  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA" >> $result
+  echo "$tuple $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA" >> $result
 done
