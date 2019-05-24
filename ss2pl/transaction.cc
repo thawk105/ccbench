@@ -96,25 +96,19 @@ TxExecutor::twrite(uint64_t key)
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return;
 
-#if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
-#else
-  Tuple *tuple = get_tuple(Table, key);
-#endif
-
   for (auto rItr = readSet.begin(); rItr != readSet.end(); ++rItr) {
     if ((*rItr).key == key) { // hit
-      if (!tuple->lock.tryupgrade()) {
+      if (!(*rItr).rcdptr->lock.tryupgrade()) {
         this->status = TransactionStatus::aborted;
         return;
       }
 
       // upgrade success
       for (auto lItr = r_lockList.begin(); lItr != r_lockList.end(); ++lItr) {
-        if (*lItr == &(tuple->lock)) {
+        if (*lItr == &((*rItr).rcdptr->lock)) {
+          writeSet.emplace_back(key, (*rItr).rcdptr);
+          w_lockList.emplace_back(&(*rItr).rcdptr->lock);
           r_lockList.erase(lItr);
-          w_lockList.emplace_back(&tuple->lock);
-          writeSet.emplace_back(key);
           break;
         }
       }
@@ -123,6 +117,12 @@ TxExecutor::twrite(uint64_t key)
       return;
     }
   }
+
+#if MASSTREE_USE
+  Tuple *tuple = MT.get_value(key);
+#else
+  Tuple *tuple = get_tuple(Table, key);
+#endif
 
   // trylock
   if (!tuple->lock.w_trylock()) {
