@@ -1,15 +1,11 @@
-#ycsbB-xrs.sh(cicada)
+#ycsbA-xrs-cache.sh(si)
 maxope=10
+thread=224
 rratio=95
 rmw=off
 skew=0
 ycsb=on
-wal=off
-group_commit=off
-cpu_mhz=2400
-io_time_ns=5
-group_commit_timeout_us=2
-gci=10
+cpumhz=2400
 extime=3
 epoch=3
 
@@ -20,18 +16,17 @@ dbs11="dbs11"
 #basically
 thread=24
 if  test $host = $dbs11 ; then
-  thread=224
+thread=224
 fi
 
-result=result_cicada_ycsbB_tuple1000-100m.dat
+result=result_si_ycsbB_tuple1000-100m.dat
 rm $result
-echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime" >> $result
+echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
 for ((tuple=1000; tuple<=100000000; tuple*=10))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime"
-  echo "Thread number $thread"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   
   sumTH=0
   sumAR=0
@@ -39,16 +34,16 @@ do
   maxTH=0
   maxAR=0
   maxCA=0
-  minTH=0 
+  minTH=0
   minAR=0
   minCA=0
   for ((i = 1; i <= epoch; ++i))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -93,6 +88,7 @@ do
     if test $flag -eq 1 ; then
       minCA=$tmpCA
     fi
+  
   done
   avgTH=`echo "$sumTH / $epoch" | bc`
   avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
@@ -102,6 +98,5 @@ do
   echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
   echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
   echo ""
-  thout=`echo "$thread - 1" | bc`
-  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA" >> $result
+  echo "$tuple $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
 done

@@ -1,6 +1,6 @@
 # ycsb-xrs.sh(tictoc)
 maxope=10
-rratio=50
+rratio=95
 rmw=off
 skew=0
 ycsb=on
@@ -18,12 +18,12 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_tictoc_ycsbA_tuple100-10m.dat
+result=result_tictoc_ycsbB_tuple1000-100m.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
-for ((tuple=100; tuple<=10000000; tuple*=10))
+for ((tuple=1000; tuple<=100000000; tuple*=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   echo "Thread number $thread"
@@ -47,7 +47,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
