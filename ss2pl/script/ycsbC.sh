@@ -1,6 +1,6 @@
-#ycsbA.sh(si)
+#ycsbC.sh(ss2pl)
 maxope=10
-rratio=50
+rratio=100
 rmw=off
 skew=0
 ycsb=on
@@ -23,13 +23,13 @@ inc=28
 fi
 
 tuple=500
-result=result_si_ycsbA_tuple500_masstree.dat
+result=result_ss2pl_ycsbC_tuple500_masstree.dat
 rm $result
-echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
-thread=2
+echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
+thread=1
 
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
 echo "Thread number $thread"
 
 sumTH=0
@@ -41,13 +41,13 @@ maxCA=0
 minTH=0
 minAR=0
 minCA=0
-for ((i=1; i <= epoch; ++i))
+for ((i=1; i <= epoch; i++))
 do
   if test $host = $dbs11 ; then
-    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
   fi
   if test $host = $chris41 ; then
-    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
   fi
 
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -107,7 +107,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   echo "Thread number $thread"
   
   sumTH=0
@@ -119,13 +119,13 @@ do
   minTH=0
   minAR=0
   minCA=0
-  for ((i=1; i <= epoch; ++i))
+  for ((i=1; i <= epoch; i++))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -185,13 +185,13 @@ do
 done
 
 tuple=500000
-result=result_si_ycsbA_tuple500k_masstree.dat
+result=result_ss2pl_ycsbC_tuple500k_masstree.dat
 rm $result
-echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
-thread=2
+echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
+thread=1
 
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
 echo "Thread number $thread"
 
 sumTH=0
@@ -203,13 +203,13 @@ maxCA=0
 minTH=0
 minAR=0
 minCA=0
-for ((i=1; i <= epoch; ++i))
+for ((i=1; i <= epoch; i++))
 do
   if test $host = $dbs11 ; then
-    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
   fi
   if test $host = $chris41 ; then
-    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
   fi
 
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -269,7 +269,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   echo "Thread number $thread"
   
   sumTH=0
@@ -281,13 +281,13 @@ do
   minTH=0
   minAR=0
   minCA=0
-  for ((i=1; i <= epoch; ++i))
+  for ((i=1; i <= epoch; i++))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -347,13 +347,13 @@ do
 done
 
 tuple=5000000
-result=result_si_ycsbA_tuple5m_masstree.dat
+result=result_ss2pl_ycsbC_tuple5m_masstree.dat
 rm $result
-echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
-thread=2
+echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
+thread=1
 
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
 echo "Thread number $thread"
 
 sumTH=0
@@ -365,13 +365,13 @@ maxCA=0
 minTH=0
 minAR=0
 minCA=0
-for ((i=1; i <= epoch; ++i))
+for ((i=1; i <= epoch; i++))
 do
   if test $host = $dbs11 ; then
-    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
   fi
   if test $host = $chris41 ; then
-    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
   fi
 
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -431,7 +431,7 @@ echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >>
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   echo "Thread number $thread"
   
   sumTH=0
@@ -443,13 +443,13 @@ do
   minTH=0
   minAR=0
   minCA=0
-  for ((i=1; i <= epoch; ++i))
+  for ((i=1; i <= epoch; i++))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`

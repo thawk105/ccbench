@@ -1,6 +1,6 @@
-#ycsbA.sh(si)
+#ycsbB.sh(si)
 maxope=10
-rratio=50
+rratio=95
 rmw=off
 skew=0
 ycsb=on
@@ -23,7 +23,7 @@ inc=28
 fi
 
 tuple=500
-result=result_si_ycsbA_tuple500_masstree.dat
+result=result_si_ycsbB_tuple500_masstree.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
@@ -185,7 +185,7 @@ do
 done
 
 tuple=500000
-result=result_si_ycsbA_tuple500k_masstree.dat
+result=result_si_ycsbB_tuple500k_masstree.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
@@ -347,7 +347,7 @@ do
 done
 
 tuple=5000000
-result=result_si_ycsbA_tuple5m_masstree.dat
+result=result_si_ycsbB_tuple5m_masstree.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
