@@ -6,20 +6,30 @@
 #include <sys/types.h>  //syscall(SYS_gettid),
 #include <time.h>
 #include <unistd.h> //syscall(SYS_gettid), 
+#include <xmmintrin.h>
 
+#include <atomic>
 #include <iostream>
 #include <string> //string
+#include <thread>
+#include <vector>
 
+#include "../include/atomic_wrapper.hpp"
+#include "../include/cache_line_size.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/tsc.hpp"
-
-#define GLOBAL_VALUE_DEFINE
-#include "include/common.hpp"
+#include "../include/util.hpp"
 
 using namespace std;
 
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern bool isReady(const std::vector<char>& readys);
+extern void waitForReady(const std::vector<char>& readys);
+extern void sleepMs(size_t ms);
+
+alignas(CACHE_LINE_SIZE) size_t THREAD_NUM;
+alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> Cent_ctr(0);
+#define EXTIME 3
 
 static bool
 chkInt(const char *arg)
@@ -36,157 +46,48 @@ chkInt(const char *arg)
 static void
 chkArg(const int argc, const char *argv[])
 {
-  if (argc != 4) {
-    cout << "usage: ./a.out THREAD_NUM CPU_MHZ EXTIME" << endl;
-    cout << "example: ./a.out 24 2400 3" << endl;
+  if (argc != 2) {
+    cout << "usage: ./a.out THREAD_NUM" << endl;
+    cout << "example: ./a.out 24" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-    cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
-    cout << "EXTIME: execution time [sec]" << endl;
+    cout << "argc == " << argc << endl;
 
     exit(0);
   }
   
   chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
 
   THREAD_NUM = atoi(argv[1]);
-  if (THREAD_NUM < 2) {
-    cout << "THREAD_NUM must be larger than 1" << endl;
+  if (THREAD_NUM < 1) {
+    cout << "THREAD_NUM must be larger than 0" << endl;
     ERR;
-  }
-
-  CLOCK_PER_US = atof(argv[2]);
-  if (CLOCK_PER_US < 100) {
-    cout << "CPU_MHZ is less than 100. are your really?" << endl;
-    ERR;
-  }
-
-  EXTIME = atoi(argv[3]);
-
-  try {
-    if (posix_memalign((void**)&CounterIncrements, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  } catch (bad_alloc) {
-    ERR;
-  }
-
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    CounterIncrements[i].obj = 0;
   }
 }
 
-static void
-prtRslt(uint64_t &bgn, uint64_t &end)
+void
+worker(size_t thid, char& ready, const bool& start, const bool& quit, uint64_t& count)
 {
-  uint64_t diff = end - bgn;
-  //cout << diff << endl;
-  //cout << CLOCK_PER_US * 1000000 << endl;
-  uint64_t sec = diff / CLOCK_PER_US / 1000 / 1000;
-
-  int sum = 0;
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    sum += CounterIncrements[i].obj;
-  }
-
-  uint64_t result = (double)sum / (double)sec;
-  cout << (int)result << endl;
-}
-
-static void *
-manager_worker(void *arg)
-{
-  int *myid = (int *)arg;
-  pid_t pid = syscall(SYS_gettid);
-  cpu_set_t cpu_set;
-  
-  CPU_ZERO(&cpu_set);
-  CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
-
-  if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
-    ERR;
-  }
-
-  unsigned int expected, desired;
-  do {
-    expected = Running.load(std::memory_order_acquire);
-    desired = expected + 1;
-  } while (!Running.compare_exchange_weak(expected, desired, std::memory_order_acq_rel));
-
-  //spin-wait
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-  //-----
-  Bgn = rdtscp();
-  
-  for (;;) {
-    End = rdtscp();
-    if (chkClkSpan(Bgn, End, EXTIME * 1000 * 1000 * CLOCK_PER_US)) break;
-  }
-
-  Finish.store(true, std::memory_order_release);
-
-  return nullptr;
-}
-
-static void *
-worker(void *arg)
-{
-  int *myid = (int *)arg;
-
-  //----------
   pid_t pid;
   cpu_set_t cpu_set;
 
   pid = syscall(SYS_gettid);
   CPU_ZERO(&cpu_set);
-  CPU_SET(*myid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
+  CPU_SET(thid % sysconf(_SC_NPROCESSORS_CONF), &cpu_set);
 
   if (sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set) != 0) {
     ERR;
   }
-  //check-test
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-  //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
-  //----------
   
-  //-----
-  unsigned int expected, desired;
-  do {
-    expected = Running.load();
-    desired = expected + 1;
-  } while (!Running.compare_exchange_weak(expected, desired));
-  
-  //spin wait
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM) {}
-  //-----
-  
-  while (!Finish.load(std::memory_order_acquire)) {
-    Counter.fetch_add(1);
-    ++CounterIncrements[*myid].obj;
+  uint64_t lcount(0);
+  storeRelease(ready, 1);
+  while (!loadAcquire(start)) _mm_pause();
+  while (!loadAcquire(quit)) {
+    Cent_ctr.fetch_add(1);
+    ++lcount;
   }
 
-  return nullptr;
-}
-
-static pthread_t
-threadCreate(int id)
-{
-  pthread_t t;
-  int *myid;
-
-  try {
-    myid = new int;
-  } catch (bad_alloc) {
-    ERR;
-  }
-  *myid = id;
-
-  if (*myid == 0) {
-    if (pthread_create(&t, nullptr, manager_worker, (void *)myid)) ERR;
-  } else {
-    if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
-  }
-
-  return t;
+  storeRelease(count, lcount);
+  return;
 }
 
 int
@@ -194,17 +95,30 @@ main(const int argc, const char *argv[])
 {
   chkArg(argc, argv);
 
-  pthread_t thread[THREAD_NUM];
+  bool start(false), quit(false);
+  std::vector<std::thread> ths;
+  std::vector<char> readys(THREAD_NUM);
+  std::vector<uint64_t> counts(THREAD_NUM);
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    thread[i] = threadCreate(i);
+  for (size_t i = 0; i < THREAD_NUM; ++i)
+    ths.emplace_back(worker, i, std::ref(readys[i]), std::ref(start), std::ref(quit), std::ref(counts[i]));
+
+  waitForReady(readys);
+  storeRelease(start, true);
+  for (size_t i = 0; i < EXTIME; ++i)
+    sleepMs(1000);
+  storeRelease(quit, true);
+
+  for (auto& t : ths)
+    t.join();
+
+  uint64_t sum(0);
+  for (size_t i = 0; i < THREAD_NUM; ++i) {
+    cout << "cpu#" << i << ":\t" << counts[i] << endl;
+    sum += counts[i];
   }
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(thread[i], nullptr);
-  }
-
-  prtRslt(Bgn, End);
+  cout << sum / EXTIME << endl;
 
   return 0;
 }
