@@ -52,7 +52,7 @@ do
   fi
 
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-  tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+  tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
   tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
   sumTH=`echo "$sumTH + $tmpTH" | bc`
   sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
@@ -130,7 +130,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep AbortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
