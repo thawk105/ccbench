@@ -14,12 +14,12 @@
 #include <vector>
 
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/tuple.hpp"
 
 #include "../include/check.hpp"
 #include "../include/debug.hpp"
 #include "../include/masstree_wrapper.hpp"
+#include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
 
@@ -164,30 +164,5 @@ makeDB()
     thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   }
   for (auto& th : thv) th.join();
-}
-
-void
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd)
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
-    else
-      pro[i].ope = Ope::WRITE;
-
-    pro[i].key = rnd.next() % TUPLE_NUM;
-  }
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
-    else
-      pro[i].ope = Ope::WRITE;
-
-    pro[i].key = zipf() % TUPLE_NUM;
-  }
 }
 

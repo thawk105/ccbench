@@ -2,7 +2,6 @@
 
 #include <atomic>
 
-#include "procedure.hpp"
 #include "tuple.hpp"
 
 #include "../../include/cache_line_size.hpp"

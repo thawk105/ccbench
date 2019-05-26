@@ -9,6 +9,9 @@
 
 #include "../include/atomic_wrapper.hpp"
 #include "../include/debug.hpp"
+#include "../include/procedure.hpp"
+#include "../include/random.hpp"
+#include "../include/zipf.hpp"
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
@@ -39,6 +42,31 @@ decide_parallel_build_number(size_t tuplenum)
   }
 
   return 0;
+}
+
+void
+makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio)
+{
+  for (size_t i = 0; i < max_ope; ++i) {
+    if ((rnd.next() % 100) < rratio)
+      pro[i].ope = Ope::READ;
+    else
+      pro[i].ope = Ope::WRITE;
+
+    pro[i].key = rnd.next() % tuple_num;
+  }
+}
+
+void 
+makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio) {
+  for (size_t i = 0; i < max_ope; ++i) {
+    if ((rnd.next() % 100) < rratio)
+      pro[i].ope = Ope::READ;
+    else
+      pro[i].ope = Ope::WRITE;
+
+    pro[i].key = zipf() % tuple_num;
+  }
 }
 
 void

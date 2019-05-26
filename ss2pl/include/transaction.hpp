@@ -4,6 +4,7 @@
 
 #include "../../include/rwlock.hpp"
 #include "../../include/string.hpp"
+#include "../../include/procedure.hpp"
 #include "../../include/util.hpp"
 
 #include "ss2pl_op_element.hpp"
@@ -26,6 +27,7 @@ public:
 
   vector<SetElement<Tuple>> readSet;
   vector<SetElement<Tuple>> writeSet;
+  vector<Procedure> proSet;
 
   char writeVal[VAL_SIZE];
   char returnVal[VAL_SIZE];
@@ -33,6 +35,7 @@ public:
   TxExecutor(int myid) : thid(myid) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
+    proSet.reserve(MAX_OPE);
     r_lockList.reserve(MAX_OPE);
     w_lockList.reserve(MAX_OPE);
 
