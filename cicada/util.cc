@@ -20,6 +20,7 @@
 
 #include "../include/cache_line_size.hpp"
 #include "../include/check.hpp"
+#include "../include/config.hpp"
 #include "../include/debug.hpp"
 #include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
@@ -363,7 +364,10 @@ void
 makeDB(uint64_t *initial_wts)
 {
   try {
-    if (posix_memalign((void**)&Table, CACHE_LINE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
+    if (posix_memalign((void**)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
+#if dbs11
+    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+#endif
     for (unsigned int i = 0; i < TUPLE_NUM; i++) {
       Table[i].latest = new Version();
     }
