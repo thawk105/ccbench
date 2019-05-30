@@ -232,5 +232,6 @@ main(int argc, char *argv[])
   rsroot.extime = EXTIME;
   rsroot.display_AllCicadaResult();
 
+  //if (system("cat /proc/meminfo | grep HugePages") != 0) ERR;
   return 0;
 }

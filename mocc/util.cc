@@ -19,6 +19,7 @@
 #include "include/procedure.hpp"
 #include "include/tuple.hpp"
 
+#include "../include/config.hpp"
 #include "../include/check.hpp"
 #include "../include/debug.hpp"
 #include "../include/masstree_wrapper.hpp"
@@ -201,7 +202,10 @@ void
 makeDB() 
 {
   try {
-    if (posix_memalign((void**)&Table, 64, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+    if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+#if dbs11
+    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+#endif
   } catch (bad_alloc) {
     ERR;
   }

@@ -19,7 +19,8 @@ include $(REL)Makefile
 CC = g++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else \
-				 -D$(shell uname)
+				 -D$(shell uname) \
+				 -D$(shell hostname) \
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
