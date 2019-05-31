@@ -27,7 +27,6 @@ public:
 
   vector<SetElement<Tuple>> readSet;
   vector<SetElement<Tuple>> writeSet;
-  vector<Procedure> proSet;
 
   char writeVal[VAL_SIZE];
   char returnVal[VAL_SIZE];
@@ -35,7 +34,6 @@ public:
   TxExecutor(int myid) : thid(myid) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
-    proSet.reserve(MAX_OPE);
     r_lockList.reserve(MAX_OPE);
     w_lockList.reserve(MAX_OPE);
 
@@ -51,7 +49,6 @@ public:
   void abort();
   void unlock_list();
 
-  Tuple* get_tuple(Tuple *table, uint64_t key) {
-    return &table[key];
-  }
+  // inline
+  Tuple* get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };

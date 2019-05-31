@@ -45,14 +45,16 @@ decide_parallel_build_number(size_t tuplenum)
 }
 
 void
-display_procedure_vector(std::vector<Procedure>& pro, size_t& max_ope)
+display_procedure_vector(std::vector<Procedure>& pro)
 {
   printf("--------------------\n");
-  for (size_t i = 0; i < max_ope; ++i) {
+  size_t index = 0;
+  for (auto itr = pro.begin(); itr != pro.end(); ++itr) {
     printf("-----\n"
            "op_num\t: %zu\n"
            "key\t: %zu\n"
-           "r/w\t: %d\n", i, pro[i].key, (int)pro[i].ope);
+           "r/w\t: %d\n", index, (*itr).key, (int)((*itr).ope));
+           ++index;
   }
   printf("--------------------\n");
 }
@@ -60,25 +62,25 @@ display_procedure_vector(std::vector<Procedure>& pro, size_t& max_ope)
 void
 makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio)
 {
+  pro.clear();
   for (size_t i = 0; i < max_ope; ++i) {
+    uint64_t tmpkey = rnd.next() % tuple_num;
     if ((rnd.next() % 100) < rratio)
-      pro[i].ope = Ope::READ;
+      pro.emplace_back(Ope::READ, tmpkey);
     else
-      pro[i].ope = Ope::WRITE;
-
-    pro[i].key = rnd.next() % tuple_num;
+      pro.emplace_back(Ope::WRITE, tmpkey);
   }
 }
 
 void 
 makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio) {
+  pro.clear();
   for (size_t i = 0; i < max_ope; ++i) {
+    uint64_t tmpkey = zipf() % tuple_num;
     if ((rnd.next() % 100) < rratio)
-      pro[i].ope = Ope::READ;
+      pro.emplace_back(Ope::READ, tmpkey);
     else
-      pro[i].ope = Ope::WRITE;
-
-    pro[i].key = zipf() % tuple_num;
+      pro.emplace_back(Ope::WRITE, tmpkey);
   }
 }
 

@@ -8,6 +8,7 @@
 #include <bitset>
 #include <cstdint>
 #include <thread>
+#include <type_traits>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -49,6 +50,8 @@ chkArg(const int argc, const char *argv[])
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
     cout << "std::thread::hardware_concurrency()=" << std::thread::hardware_concurrency() << endl;
+    cout << "Procedure : is_move_constructible : " << std::is_move_constructible<Procedure>::value << endl;
+    cout << "Procedure : is_move_assignable : " << std::is_move_assignable<Procedure>::value << endl;
     exit(0);
   }
 

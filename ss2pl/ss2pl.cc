@@ -20,6 +20,7 @@
 #include "../include/fence.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/masstree_wrapper.hpp"
+#include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/result.hpp"
 #include "../include/tsc.hpp"
@@ -28,7 +29,7 @@
 
 extern void chkArg(const int argc, const char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
-extern void display_procedure_vector(std::vector<Procedure>& pro, size_t& max_ope);
+extern void display_procedure_vector(std::vector<Procedure>& pro);
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
@@ -46,6 +47,8 @@ worker(void *arg)
   rnd.init();
   TxExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  vector<Procedure> proSet;
+  proSet.reserve(MAX_OPE);
 
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(res.thid));
@@ -63,15 +66,11 @@ worker(void *arg)
     //start work (transaction)
     for (;;) {
       if (YCSB) 
-        makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
+        makeProcedure(proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
       else
-        makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+        makeProcedure(proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
 #if KEY_SORT
-      printf("before sort\n");   
-      display_procedure_vector(trans.proSet, MAX_OPE);
-      sort(trans.proSet.begin(), trans.proSet.end());
-      printf("after sort\n");   
-      display_procedure_vector(trans.proSet, MAX_OPE);
+      std::sort(proSet.begin(), proSet.end());
 #endif
 
 RETRY:
@@ -83,16 +82,16 @@ RETRY:
       //-----
    
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (trans.proSet[i].ope == Ope::READ) {
-          trans.tread(trans.proSet[i].key);
+        if (proSet[i].ope == Ope::READ) {
+          trans.tread(proSet[i].key);
         } 
-        else if (trans.proSet[i].ope == Ope::WRITE) {
+        else if (proSet[i].ope == Ope::WRITE) {
           if (RMW) {
-            trans.tread(trans.proSet[i].key);
-            trans.twrite(trans.proSet[i].key);
+            trans.tread(proSet[i].key);
+            trans.twrite(proSet[i].key);
           }
           else
-            trans.twrite(trans.proSet[i].key);
+            trans.twrite(proSet[i].key);
         }
         else
           ERR;

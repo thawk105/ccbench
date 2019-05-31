@@ -12,8 +12,14 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
          -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
          -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
          -DMASSTREE_USE=1 \
+         -DKEY_SORT=1 \
+         -DDLR0 \
          -D$(shell uname) \
          -D$(shell hostname) \
+
+# dead lock resolution.
+# DLR0 ... timeout
+# DLR1 ... no-wait
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
