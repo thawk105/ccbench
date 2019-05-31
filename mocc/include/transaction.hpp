@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "../../include/string.hpp"
+#include "../../include/procedure.hpp"
 #include "../../include/util.hpp"
 
 #include "common.hpp"
@@ -23,6 +24,7 @@ class TxExecutor {
 public:
   vector<ReadElement<Tuple>> readSet;
   vector<WriteElement<Tuple>> writeSet;
+  vector<Procedure> proSet;
 #ifdef RWLOCK
   vector<LockElement<RWLock>> RLL;
   vector<LockElement<RWLock>> CLL;
@@ -46,6 +48,7 @@ public:
   TxExecutor(int thid, Xoroshiro128Plus *rnd, int locknum) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
+    proSet.reserve(MAX_OPE);
     RLL.reserve(MAX_OPE);
     CLL.reserve(MAX_OPE);
 

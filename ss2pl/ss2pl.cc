@@ -17,6 +17,7 @@
 
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
+#include "../include/fence.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
@@ -27,6 +28,7 @@
 
 extern void chkArg(const int argc, const char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern void display_procedure_vector(std::vector<Procedure>& pro, size_t& max_ope);
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
@@ -64,6 +66,14 @@ worker(void *arg)
         makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
       else
         makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+#if KEY_SORT
+      printf("before sort\n");   
+      display_procedure_vector(trans.proSet, MAX_OPE);
+      sort(trans.proSet.begin(), trans.proSet.end());
+      printf("after sort\n");   
+      display_procedure_vector(trans.proSet, MAX_OPE);
+#endif
+
 RETRY:
       trans.tbegin();
 
@@ -71,7 +81,7 @@ RETRY:
       if (Result::Finish.load(std::memory_order_acquire))
           return nullptr;
       //-----
-      
+   
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
         if (trans.proSet[i].ope == Ope::READ) {
           trans.tread(trans.proSet[i].key);

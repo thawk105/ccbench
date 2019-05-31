@@ -21,8 +21,6 @@
 #include <sstream>
 #include <vector>
 
-inline void compiler_fence() { asm volatile("" ::: "memory");}
-
 [[maybe_unused]]
 inline
 static

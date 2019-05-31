@@ -16,13 +16,13 @@
 #include <random>
 
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/tuple.hpp"
 
 #include "../include/config.hpp"
 #include "../include/check.hpp"
 #include "../include/debug.hpp"
 #include "../include/masstree_wrapper.hpp"
+#include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
 
@@ -156,26 +156,6 @@ displayLockedTuple()
   }
 }
 
-void 
-displayPRO(Procedure *pro)
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    cout << "(ope, key, val) = (";
-    switch (pro[i].ope) {
-      case Ope::READ:
-      cout << "READ";
-        break;
-      case Ope::WRITE:
-        cout << "WRITE";
-        break;
-      default:
-      break;
-    }
-    cout << ", " << pro[i].key
-      << ", " << pro[i].val << ")" << endl;
-  }
-}
-
 void
 part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
@@ -217,31 +197,5 @@ makeDB()
     thv.emplace_back(part_table_init, i,
         i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto& th : thv) th.join();
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) 
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
-    else
-      pro[i].ope = Ope::WRITE;
-    
-    pro[i].key = rnd.next() % TUPLE_NUM;
-  }
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf)
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
-    else
-      pro[i].ope = Ope::WRITE;
-
-    pro[i].key = zipf() % TUPLE_NUM;
-  }
 }
 

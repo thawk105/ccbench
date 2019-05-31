@@ -85,7 +85,7 @@ public:
   }
 
   // Upgrae, read -> write
-  void update() {
+  void upgrade() {
     int expected, desired(-1);
     expected = counter.load(memory_order_acquire);
     for (;;) {

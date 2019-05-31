@@ -15,7 +15,6 @@
 
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
 
@@ -24,6 +23,7 @@
 #include "../include/config.hpp"
 #include "../include/debug.hpp"
 #include "../include/masstree_wrapper.hpp"
+#include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
 
@@ -134,26 +134,6 @@ displayDB()
   }
 }
 
-void 
-displayPRO(Procedure *pro) 
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      cout << "(ope, key, val) = (";
-    switch(pro[i].ope){
-      case Ope::TREAD:
-        cout << "TREAD";
-        break;
-      case Ope::TWRITE:
-        cout << "TWRITE";
-        break;
-      default:
-        break;
-    }
-      cout << ", " << pro[i].key
-      << ", " << pro[i].val << ")" << endl;
-  }
-}
-
 void
 genLogFile(std::string &logpath, const int thid)
 {
@@ -201,30 +181,5 @@ makeDB()
   for (size_t i = 0; i < maxthread; ++i)
     thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto& th : thv) th.join();
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) 
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::TREAD;
-    else
-      pro[i].ope = Ope::TWRITE;
-    
-    pro[i].key = rnd.next() % TUPLE_NUM;
-  }
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::TREAD;
-    else
-      pro[i].ope = Ope::TWRITE;
-
-    pro[i].key = zipf() % TUPLE_NUM;
-  }
 }
 

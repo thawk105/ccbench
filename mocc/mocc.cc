@@ -30,8 +30,8 @@ extern void displayDB();
 extern void displayLockedTuple();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
@@ -87,7 +87,6 @@ worker(void *arg)
   MoccResult &res = *(MoccResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  Procedure pro[MAX_OPE];
   int locknum = res.thid + 2;
   // 0 : None
   // 1 : Acquired
@@ -112,25 +111,27 @@ worker(void *arg)
     //start work (transaction)
     for (;;) {
       if (YCSB)
-        makeProcedure(pro, rnd, zipf);
+        makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
       else
-        makeProcedure(pro, rnd);
+        makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+#if KEY_SORT
+      sort(trans.proSet.begin(), trans.proSet.end());
+#endif
 
-      asm volatile ("" ::: "memory");
 RETRY:
       if (Result::Finish.load(memory_order_acquire))
         return nullptr;
 
       trans.begin();
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::READ) {
-          trans.read(pro[i].key);
+        if (trans.proSet[i].ope == Ope::READ) {
+          trans.read(trans.proSet[i].key);
         } else {
           if (RMW) {
-            trans.read(pro[i].key);
-            trans.write(pro[i].key);
+            trans.read(trans.proSet[i].key);
+            trans.write(trans.proSet[i].key);
           } else 
-            trans.write(pro[i].key);
+            trans.write(trans.proSet[i].key);
         }
 
         if (trans.status == TransactionStatus::aborted) {

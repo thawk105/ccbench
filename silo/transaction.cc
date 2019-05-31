@@ -117,8 +117,8 @@ TxnExecutor::twrite(uint64_t key)
 bool 
 TxnExecutor::validationPhase()
 {
-  //Phase 1 
-  // lock writeSet sorted.
+  /* Phase 1 
+   * lock writeSet sorted.*/
   sort(writeSet.begin(), writeSet.end());
   lockWriteSet();
 
@@ -126,10 +126,10 @@ TxnExecutor::validationPhase()
   atomicStoreThLocalEpoch(thid, atomicLoadGE());
   asm volatile("" ::: "memory");
 
-  //Phase 2 abort if any condition of below is satisfied. 
-  //1. tid of readSet changed from it that was got in Read Phase.
-  //2. not latest version
-  //3. the tuple is locked and it isn't included by its write set.
+  /* Phase 2 abort if any condition of below is satisfied. 
+   * 1. tid of readSet changed from it that was got in Read Phase.
+   * 2. not latest version
+   * 3. the tuple is locked and it isn't included by its write set.*/
   
   Tidword check;
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -257,5 +257,15 @@ void TxnExecutor::unlockWriteSet()
     desired = expected;
     desired.lock = 0;
     __atomic_store_n(&((*itr).rcdptr->tidword.obj), desired.obj, __ATOMIC_RELEASE);
+  }
+}
+
+void
+TxnExecutor::display_write_set()
+{
+  printf("display_write_set()\n");
+  printf("--------------------\n");
+  for (auto& ws : writeSet) {
+    printf("key\t:\t%lu\n", ws.key);
   }
 }

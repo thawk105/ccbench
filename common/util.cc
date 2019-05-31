@@ -45,6 +45,19 @@ decide_parallel_build_number(size_t tuplenum)
 }
 
 void
+display_procedure_vector(std::vector<Procedure>& pro, size_t& max_ope)
+{
+  printf("--------------------\n");
+  for (size_t i = 0; i < max_ope; ++i) {
+    printf("-----\n"
+           "op_num\t: %zu\n"
+           "key\t: %zu\n"
+           "r/w\t: %d\n", i, pro[i].key, (int)pro[i].ope);
+  }
+  printf("--------------------\n");
+}
+
+void
 makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio)
 {
   for (size_t i = 0; i < max_ope; ++i) {

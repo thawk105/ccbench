@@ -107,26 +107,6 @@ displayDB()
 }
 
 void
-displayPRO(Procedure *pro)
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    cout << "(ope, key, val) = (";
-    switch (pro[i].ope) {
-      case Ope::READ:
-        cout << "READ";
-        break;
-      case Ope::WRITE:
-        cout << "WRITE";
-        break;
-      default:
-        break;
-  }
-    cout << ", " << pro[i].key
-      << ", " << pro[i].val << ")" << endl;
-  }
-}
-
-void
 part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
   //printf("part_table_init(...): thid %zu : %lu : %lu\n", thid, start, end);

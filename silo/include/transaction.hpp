@@ -6,11 +6,11 @@
 
 #include "common.hpp"
 #include "log.hpp"
-#include "procedure.hpp"
 #include "silo_op_element.hpp"
 #include "tuple.hpp"
 
 #include "../../include/fileio.hpp"
+#include "../../include/procedure.hpp"
 #include "../../include/result.hpp"
 #include "../../include/string.hpp"
 
@@ -22,6 +22,7 @@ class TxnExecutor {
 public:
   vector<ReadElement<Tuple>> readSet;
   vector<WriteElement<Tuple>> writeSet;
+  vector<Procedure> proSet;
 
   vector<LogRecord> logSet;
   LogHeader latestLogHeader;
@@ -42,6 +43,7 @@ public:
   TxnExecutor(int newthid) : thid(newthid) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
+    proSet.reserve(MAX_OPE);
     //logSet.reserve(LOGSET_SIZE);
 
     //latestLogHeader.init();
@@ -52,6 +54,7 @@ public:
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
+  void display_write_set();
   void tbegin();
   char* tread(uint64_t key);
   void twrite(uint64_t key);

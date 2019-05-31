@@ -5,11 +5,14 @@
 #include <atomic>
 
 #include "../include/debug.hpp"
+#include "../include/procedure.hpp"
 
 #include "include/common.hpp"
 #include "include/transaction.hpp"
 
 using namespace std;
+
+extern void display_procedure_vector(std::vector<Procedure>& pro);
 
 inline
 SetElement<Tuple> *
@@ -78,15 +81,21 @@ TxExecutor::tread(uint64_t key)
   Tuple *tuple = get_tuple(Table, key);
 #endif
 
+#ifdef DLR0
+  tuple->lock.r_lock();
+  r_lockList.emplace_back(&tuple->lock);
+  readSet.emplace_back(key, tuple, tuple->val);
+#elif defined ( DLR1 )
   if (tuple->lock.r_trylock()) {
     r_lockList.emplace_back(&tuple->lock);
     readSet.emplace_back(key, tuple, tuple->val);
-    
-    return returnVal;
   } else {
     this->status = TransactionStatus::aborted;
     return nullptr;
   }
+#endif
+
+  return returnVal;
 }
 
 void
@@ -98,10 +107,14 @@ TxExecutor::twrite(uint64_t key)
 
   for (auto rItr = readSet.begin(); rItr != readSet.end(); ++rItr) {
     if ((*rItr).key == key) { // hit
+#if DLR0
+      (*rItr).rcdptr->lock.upgrade();
+#elif defined ( DLR1 )
       if (!(*rItr).rcdptr->lock.tryupgrade()) {
         this->status = TransactionStatus::aborted;
         return;
       }
+#endif
 
       // upgrade success
       for (auto lItr = r_lockList.begin(); lItr != r_lockList.end(); ++lItr) {
@@ -124,11 +137,14 @@ TxExecutor::twrite(uint64_t key)
   Tuple *tuple = get_tuple(Table, key);
 #endif
 
-  // trylock
+#if DLR0
+  tuple->lock.w_lock();
+#elif defined ( DLR1 )
   if (!tuple->lock.w_trylock()) {
     this->status = TransactionStatus::aborted;
     return;
   }
+#endif
 
   w_lockList.emplace_back(&tuple->lock);
   writeSet.emplace_back(key, tuple);

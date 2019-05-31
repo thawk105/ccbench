@@ -13,7 +13,6 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/transaction.hpp"
 
 #include "../include/cpu.hpp"
@@ -35,8 +34,8 @@ extern void displayDB();
 extern void displayPRO();
 extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
@@ -84,7 +83,6 @@ worker(void *arg)
   Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  Procedure pro[MAX_OPE];
   TxnExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
@@ -106,9 +104,9 @@ worker(void *arg)
     //start work(transaction)
     for (;;) {
       if (YCSB)
-        makeProcedure(pro, rnd, zipf);
+        makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
       else
-        makeProcedure(pro, rnd);
+        makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
 
       asm volatile ("" ::: "memory");
 RETRY:
@@ -118,16 +116,16 @@ RETRY:
 
       //Read phase
       for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::TREAD) {
-            trans.tread(pro[i].key);
+        if (trans.proSet[i].ope == Ope::READ) {
+            trans.tread(trans.proSet[i].key);
         }
         else {
           if (RMW) {
-            trans.tread(pro[i].key);
-            trans.twrite(pro[i].key);
+            trans.tread(trans.proSet[i].key);
+            trans.twrite(trans.proSet[i].key);
           }
           else
-            trans.twrite(pro[i].key);
+            trans.twrite(trans.proSet[i].key);
         }
       }
       
