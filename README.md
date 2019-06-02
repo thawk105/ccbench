@@ -3,6 +3,12 @@
 ---
 
 ## Snapshot Isolation
+snapshot isolation.  
+### Implemented
+- modify
+  - rapid garbage collection from Cicada's paper.
+
+---
 
 ## SS2PL
 Strong Strict 2 Phase Lock.  
@@ -11,7 +17,8 @@ Strong Strict 2 Phase Lock.
   - reader/writer lock  
 
 - Deadlock resolution  
-  - No-Wait
+  - nothing ... dlr0
+  - No-Wait ... dlr1
 
 ---
 
@@ -19,6 +26,7 @@ Strong Strict 2 Phase Lock.
 It was proposed at SOSP'2013 by Stephen Tu.
 - modify
   - reduce roop in concurrency control protocol
+
 ---
 
 ## ERMIA (SI + SSN)
@@ -33,6 +41,7 @@ Latch-free SSN was proposed at VLDB'2017 by Tianzheng Wang.
     - Leveraging existing infrastructure
 - modify
   - Garbage Collection for Transaction Mapping Table
+  - rapid garbage collection from Cicada's paper.
 
 ---
 
@@ -76,7 +85,7 @@ Cicada was proposed at SIGMOD'2017 by Hyeontaek Lim.
 * fetch\_add
 * xoroshiro128+
 * memory benchmark
-
+* masstree unit test
 ---
 
 ## Data Structure
@@ -85,6 +94,7 @@ This is a submodule.
 usage:  
 `git submodule init`  
 `git submodule update`  
+tanabe's wrapper is include/masstree\_wrapper.hpp
 
 ---
 
