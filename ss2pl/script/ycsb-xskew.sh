@@ -3,7 +3,7 @@ tuple=100000000
 maxope=10
 rratio=95
 rmw=off
-skewarray=(0 0.4 0.6 0.8 0.9 0.95 0.99)
+skew=0
 ycsb=on
 cpu_mhz=2400
 extime=3
@@ -19,13 +19,15 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_ss2pl_ycsbB_tuple100m_skew0-099.dat
+result=result_ss2pl-dlr1_ycsbB_tuple100m_skew06-085.dat
 rm $result
 echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
 
-for skew in ${skewarray[@]}
+for ((tmpskew = 60; tmpskew <= 85; tmpskew += 5))
 do
+  skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
+
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   
   sumTH=0

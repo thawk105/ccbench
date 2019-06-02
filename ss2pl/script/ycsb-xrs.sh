@@ -18,12 +18,12 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_ss2pl_ycsbB_tuple1000-100m.dat
+result=result_ss2pl_ycsbB_tuple1000-1m_val4ki.dat
 rm $result
 echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
 
-for ((tuple=1000; tuple<=100000000; tuple*=10))
+for ((tuple=1000; tuple<=1000000; tuple*=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   

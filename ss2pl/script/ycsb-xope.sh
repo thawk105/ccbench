@@ -1,12 +1,11 @@
-#ycsb-xrs.sh(silo)
+#ycsb-xrs.sh(ss2pl)
 tuple=100000000
 maxope=10
 rratio=95
 rmw=off
-skewarray=(0 0.4 0.6 0.8 0.9 0.95 0.99)
+skew=0.8
 ycsb=on
-cpumhz=2400
-epochtime=40
+cpu_mhz=2400
 extime=3
 epoch=3
 
@@ -20,14 +19,14 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_silo_ycsbB_tuple100m_skew0-099_val4ki.dat
+result=result_ss2pl-dlr1_ycsbB_tuple100m_skew08_ope10-100.dat
 rm $result
-echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
+echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
 
-for skew in ${skewarray[@]}
+for ((maxope=10; maxope<=100; maxope+=10))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   
   sumTH=0
   sumAR=0
@@ -38,13 +37,13 @@ do
   minTH=0
   minAR=0
   minCA=0
-  for ((i = 1; i <= epoch; ++i))
+  for ((i=1; i <= epoch; i++))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
@@ -99,5 +98,5 @@ do
   echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
   echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
   echo ""
-  echo "$skew $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
+  echo "$maxope $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
 done

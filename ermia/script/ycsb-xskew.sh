@@ -21,7 +21,7 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_ermia_ycsbB_tuple100m_skew0-099.dat
+result=result_ermia_ycsbB_tuple100m_skew0-099_val4ki.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result

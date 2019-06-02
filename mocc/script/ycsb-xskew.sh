@@ -3,12 +3,12 @@ tuple=100000000
 maxope=10
 rratio=95
 rmw=off
-skewarray=(0 0.4 0.6 0.8 0.9 0.95 0.99)
+skew=0
 ycsb=on
 cpumhz=2400
 epochtime=40
-extime=3
-epoch=3
+extime=1
+epoch=1
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -20,13 +20,15 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_mocc_ycsbB_tuple100m_skew0-099.dat
+result=result_mocc_ycsbB_tuple100m_skew0-099_val4ki.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 
-for skew in ${skewarray[@]}
+for ((tmpskew = 60; tmpskew <= 85; tmpskew += 5))
 do
+  skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
+
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
   
   sumTH=0
