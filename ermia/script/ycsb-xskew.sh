@@ -1,9 +1,9 @@
 #ycsb-xrs.sh(ermia)
 tuple=100000000
 maxope=10
-rratio=95
+rratio=50
 rmw=off
-skewarray=(0 0.4 0.6 0.8 0.9 0.95 0.99)
+skew=0
 ycsb=on
 cpu_mhz=2400
 gci=10
@@ -21,13 +21,21 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_ermia_ycsbB_tuple100m_skew0-099_val4ki.dat
+result=result_ermia_ycsbA_tuple100m_skew0-099.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
 
-for skew in ${skewarray[@]}
+for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
 do
+  if test $tmpskew = 100 ; then
+    tmpskew=95
+  fi
+  if test $tmpskew = 105 ; then
+    tmpskew=99
+  fi
+  skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
+
   echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
   echo "Thread number $thread"
   

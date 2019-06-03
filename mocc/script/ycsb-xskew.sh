@@ -1,14 +1,14 @@
 #ycsb-xrs.sh(mocc)
 tuple=100000000
 maxope=10
-rratio=95
+rratio=50
 rmw=off
 skew=0
 ycsb=on
 cpumhz=2400
 epochtime=40
-extime=1
-epoch=1
+extime=3
+epoch=3
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -20,13 +20,19 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_mocc_ycsbB_tuple100m_skew0-099_val4ki.dat
+result=result_mocc_ycsbA_tuple100m_skew0-099.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 
-for ((tmpskew = 60; tmpskew <= 85; tmpskew += 5))
+for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
 do
+  if test $tmpskew = 100 ; then
+    tmpskew=95
+  fi
+  if test $tmpskew = 105 ; then
+    tmpskew=99
+  fi
   skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
 
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
