@@ -194,7 +194,7 @@ makeDB()
   try {
     if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
 #if dbs11
-    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       if (posix_memalign((void**)&Table[i].latest, 64, sizeof(Version)) != 0) ERR;
