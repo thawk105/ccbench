@@ -368,9 +368,6 @@ makeDB(uint64_t *initial_wts)
 #if dbs11
     if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-    for (unsigned int i = 0; i < TUPLE_NUM; i++) {
-      Table[i].latest = new Version();
-    }
   } catch (bad_alloc) {
     ERR;
   }
