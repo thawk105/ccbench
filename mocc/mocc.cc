@@ -107,60 +107,56 @@ worker(void *arg)
 
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
-  try {
-    //start work (transaction)
-    for (;;) {
-      if (YCSB)
-        makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
-      else
-        makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+  //start work (transaction)
+  for (;;) {
+    if (YCSB)
+      makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
+    else
+      makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
 #if KEY_SORT
-      sort(trans.proSet.begin(), trans.proSet.end());
+    sort(trans.proSet.begin(), trans.proSet.end());
 #endif
 
 RETRY:
-      if (Result::Finish.load(memory_order_acquire))
-        return nullptr;
+    if (Result::Finish.load(memory_order_acquire))
+      return nullptr;
 
-      trans.begin();
-      for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (trans.proSet[i].ope == Ope::READ) {
+    trans.begin();
+    for (unsigned int i = 0; i < MAX_OPE; ++i) {
+      if (trans.proSet[i].ope == Ope::READ) {
+        trans.read(trans.proSet[i].key);
+      } else {
+        if (RMW) {
           trans.read(trans.proSet[i].key);
-        } else {
-          if (RMW) {
-            trans.read(trans.proSet[i].key);
-            trans.write(trans.proSet[i].key);
-          } else 
-            trans.write(trans.proSet[i].key);
-        }
-
-        if (trans.status == TransactionStatus::aborted) {
-          trans.abort();
-          ++res.localAbortByOperation;
-          ++res.localAbortCounts;
-          goto RETRY;
-        }
+          trans.write(trans.proSet[i].key);
+        } else 
+          trans.write(trans.proSet[i].key);
       }
 
-      if (!(trans.commit(res))) {
+      if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.localAbortByValidation;
+        ++res.localAbortByOperation;
         ++res.localAbortCounts;
         goto RETRY;
       }
-
-      trans.writePhase();
-      ++res.localCommitCounts;
     }
-  } catch (bad_alloc) {
-    ERR;
+
+    if (!(trans.commit(res))) {
+      trans.abort();
+      ++res.localAbortByValidation;
+      ++res.localAbortCounts;
+      goto RETRY;
+    }
+
+    trans.writePhase();
+    ++res.localCommitCounts;
   }
 
   return nullptr;
 }
 
 int
-main(int argc, char *argv[]) 
+main(int argc, char *argv[])  try
 {
   chkArg(argc, argv);
   makeDB();
@@ -193,4 +189,6 @@ main(int argc, char *argv[])
   rsroot.display_AllMoccResult();
 
   return 0;
+} catch (bad_alloc) {
+  ERR;
 }

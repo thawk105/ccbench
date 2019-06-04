@@ -108,19 +108,15 @@ chkArg(const int argc, char *argv[])
     ERR;
   }
 
-  try {
-    if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
 #ifdef MQLOCK
-    //if (posix_memalign((void**)&MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
-    MQLNodeTable = new MQLNode*[THREAD_NUM + 3];
-    for (unsigned int i = 0; i < THREAD_NUM + 3; ++i)
-      MQLNodeTable[i] = new MQLNode[TUPLE_NUM];
+  //if (posix_memalign((void**)&MQLNodeList, 64, (THREAD_NUM + 3) * sizeof(MQLNode)) != 0) ERR;
+  MQLNodeTable = new MQLNode*[THREAD_NUM + 3];
+  for (unsigned int i = 0; i < THREAD_NUM + 3; ++i)
+    MQLNodeTable[i] = new MQLNode[TUPLE_NUM];
 #endif // MQLOCK
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     ThLocalEpoch[i].obj = 0;
@@ -181,14 +177,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 void 
 makeDB() 
 {
-  try {
-    if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
 #if dbs11
-    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 

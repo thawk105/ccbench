@@ -91,60 +91,56 @@ worker(void *arg)
 
   trans.gcstart = rdtscp();
   //start work (transaction)
-  try {
-    //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-    for(;;) {
-      if (YCSB) makeProcedure(pro, rnd, zipf);
-      else makeProcedure(pro, rnd);
+  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  for(;;) {
+    if (YCSB) makeProcedure(pro, rnd, zipf);
+    else makeProcedure(pro, rnd);
 
-      asm volatile ("" ::: "memory");
+    asm volatile ("" ::: "memory");
 RETRY:
-      if (ErmiaResult::Finish.load(std::memory_order_acquire))
-        return nullptr;
+    if (ErmiaResult::Finish.load(std::memory_order_acquire))
+      return nullptr;
 
-      //-----
-      //transaction begin
-      trans.tbegin();
-      for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::READ) {
+    //-----
+    //transaction begin
+    trans.tbegin();
+    for (unsigned int i = 0; i < MAX_OPE; ++i) {
+      if (pro[i].ope == Ope::READ) {
+        trans.ssn_tread(pro[i].key);
+      } else {
+        if (RMW) {
           trans.ssn_tread(pro[i].key);
-        } else {
-          if (RMW) {
-            trans.ssn_tread(pro[i].key);
-            trans.ssn_twrite(pro[i].key);
-          } else 
-            trans.ssn_twrite(pro[i].key);
-        }
-
-        if (trans.status == TransactionStatus::aborted) {
-          trans.abort();
-          ++res.localAbortCounts;
-          goto RETRY;
-        }
+          trans.ssn_twrite(pro[i].key);
+        } else 
+          trans.ssn_twrite(pro[i].key);
       }
-
-      trans.ssn_parallel_commit();
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
         ++res.localAbortCounts;
         goto RETRY;
       }
-
-      // maintenance phase
-      // garbage collection
-      trans.mainte(res);
-      ++res.localCommitCounts;
     }
-  } catch (bad_alloc) {
-    ERR;
+
+    trans.ssn_parallel_commit();
+
+    if (trans.status == TransactionStatus::aborted) {
+      trans.abort();
+      ++res.localAbortCounts;
+      goto RETRY;
+    }
+
+    // maintenance phase
+    // garbage collection
+    trans.mainte(res);
+    ++res.localCommitCounts;
   }
 
   return nullptr;
 }
 
 int
-main(const int argc, const char *argv[])
+main(const int argc, const char *argv[]) try
 {
   chkArg(argc, argv);
   makeDB();
@@ -178,4 +174,6 @@ main(const int argc, const char *argv[])
   rsroot.display_AllErmiaResult();
 
   return 0;
+} catch (bad_alloc) {
+  ERR;
 }

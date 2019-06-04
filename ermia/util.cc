@@ -191,10 +191,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tmp;
-    Version *verTmp;
     tmp = &Table[i];
     tmp->min_cstamp = 0;
-    verTmp = tmp->latest.load(std::memory_order_acquire);
+    if (posix_memalign((void**)&tmp->latest, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
+    Version *verTmp = tmp->latest.load(std::memory_order_acquire);
     verTmp->cstamp = 0;
     //verTmp->pstamp = 0;
     //verTmp->sstamp = UINT64_MAX & ~(1);
@@ -215,17 +215,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 void
 makeDB()
 {
-  try {
-    if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
 #if dbs11
-    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-    for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-      if (posix_memalign((void**)&Table[i].latest, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
-    }
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
   std::vector<std::thread> thv;

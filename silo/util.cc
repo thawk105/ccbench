@@ -93,12 +93,8 @@ chkArg(const int argc, char *argv[])
 So you have to set THREAD_NUM >= 2.\n\n");
   }
 
-  try {
-    if (posix_memalign((void**)&ThLocalEpoch, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;  //[0]は使わない
-    if (posix_memalign((void**)&CTIDW, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR; //[0]は使わない
-  } catch (bad_alloc) {
-    ERR;
-  }
+  if (posix_memalign((void**)&ThLocalEpoch, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;  //[0]は使わない
+  if (posix_memalign((void**)&CTIDW, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR; //[0]は使わない
   //init
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     ThLocalEpoch[i].obj = 0;
@@ -166,14 +162,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 void 
 makeDB() 
 {
-  try {
-    if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
 #if dbs11
-    //if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 

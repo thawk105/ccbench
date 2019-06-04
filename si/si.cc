@@ -85,66 +85,60 @@ worker(void *arg)
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   //start work (transaction)
-  try {
-    //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-    for(;;) {
-      if (YCSB) makeProcedure(pro, rnd, zipf);
-      else makeProcedure(pro, rnd);
-
-      asm volatile ("" ::: "memory");
+  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  for(;;) {
+    if (YCSB) makeProcedure(pro, rnd, zipf);
+    else makeProcedure(pro, rnd);
 RETRY:
 
-      if (Result::Finish.load(std::memory_order_acquire)) {
-        return nullptr;
-      }
+    if (Result::Finish.load(std::memory_order_acquire)) {
+      return nullptr;
+    }
 
-      //-----
-      //transaction begin
-      trans.tbegin();
-      for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::READ) {
+    //-----
+    //transaction begin
+    trans.tbegin();
+    for (unsigned int i = 0; i < MAX_OPE; ++i) {
+      if (pro[i].ope == Ope::READ) {
+        trans.tread(pro[i].key);
+      } else {
+        if (RMW) {
           trans.tread(pro[i].key);
-        } else {
-          if (RMW) {
-            trans.tread(pro[i].key);
-            trans.twrite(pro[i].key);
-          } else
-            trans.twrite(pro[i].key);
-        }
-
-        if (trans.status == TransactionStatus::aborted) {
-          trans.abort();
-          ++res.localAbortCounts;
-          goto RETRY;
-        }
+          trans.twrite(pro[i].key);
+        } else
+          trans.twrite(pro[i].key);
       }
 
-      trans.commit();
-      ++res.localCommitCounts;
+      if (trans.status == TransactionStatus::aborted) {
+        trans.abort();
+        ++res.localAbortCounts;
+        goto RETRY;
+      }
+    }
+
+    trans.commit();
+    ++res.localCommitCounts;
 
 #if 1
-      // maintenance phase
-      // garbage collection
-      uint32_t loadThreshold = trans.gcobject.getGcThreshold();
-      if (trans.preGcThreshold != loadThreshold) {
-        trans.gcobject.gcVersion(res);
-        trans.preGcThreshold = loadThreshold;
+    // maintenance phase
+    // garbage collection
+    uint32_t loadThreshold = trans.gcobject.getGcThreshold();
+    if (trans.preGcThreshold != loadThreshold) {
+      trans.gcobject.gcVersion(res);
+      trans.preGcThreshold = loadThreshold;
 #ifdef CCTR_ON
-        trans.gcobject.gcTMTElements(res);
+      trans.gcobject.gcTMTElements(res);
 #endif // CCTR_ON
-        ++res.localGCCounts;
-      }
+      ++res.localGCCounts;
+    }
 #endif
     }
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   return nullptr;
 }
 
 int
-main(const int argc, const char *argv[])
+main(const int argc, const char *argv[]) try
 {
   chkArg(argc, argv);
   makeDB();
@@ -177,4 +171,6 @@ main(const int argc, const char *argv[])
   rsroot.display_AllSIResult();
 
   return 0;
+} catch (bad_alloc) {
+  ERR;
 }

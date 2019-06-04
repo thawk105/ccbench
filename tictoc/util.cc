@@ -158,14 +158,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 void
 makeDB() 
 {
-  try {
-    if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
 #if dbs11
-    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 

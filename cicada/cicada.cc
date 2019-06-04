@@ -129,78 +129,71 @@ worker(void *arg)
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
   //printf("%s\n", trans.writeVal);
-
-  try {
-    //start work(transaction)
-    for (;;) {
-      if (YCSB) 
-        makeProcedure(pro, rnd, zipf);
-      else 
-        makeProcedure(pro, rnd);
-
-      asm volatile ("" ::: "memory");
+  //start work(transaction)
+  for (;;) {
+    if (YCSB) 
+      makeProcedure(pro, rnd, zipf);
+    else 
+      makeProcedure(pro, rnd);
 RETRY:
-      if (res.Finish.load(std::memory_order_acquire))
-        return nullptr;
+    if (res.Finish.load(std::memory_order_acquire))
+      return nullptr;
 
-      trans.tbegin(pro[0].ronly);
+    trans.tbegin(pro[0].ronly);
 
-      //Read phase
-      //Search versions
-      for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::READ) {
+    //Read phase
+    //Search versions
+    for (unsigned int i = 0; i < MAX_OPE; ++i) {
+      if (pro[i].ope == Ope::READ) {
+        trans.tread(pro[i].key);
+      } else {
+        if (RMW) {
           trans.tread(pro[i].key);
-        } else {
-          if (RMW) {
-            trans.tread(pro[i].key);
-            trans.twrite(pro[i].key);
-          } else 
-            trans.twrite(pro[i].key);
-        }
-
-        if (trans.status == TransactionStatus::abort) {
-          trans.earlyAbort();
-          ++res.localAbortCounts;
-          goto RETRY;
-        }
+          trans.twrite(pro[i].key);
+        } else 
+          trans.twrite(pro[i].key);
       }
 
-      //read onlyトランザクションはread setを集めず、validationもしない。
-      //write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
-      if (trans.ronly) {
-        trans.mainte(res);
-        ++trans.continuingCommit;
-        ++res.localCommitCounts;
-        continue;
-      }
-
-      //Validation phase
-      if (!trans.validation()) {
-        trans.abort();
+      if (trans.status == TransactionStatus::abort) {
+        trans.earlyAbort();
         ++res.localAbortCounts;
         goto RETRY;
       }
+    }
 
-      //Write phase
-      trans.writePhase();
-
-      //Maintenance
-      //Schedule garbage collection
-      //Declare quiescent state
-      //Collect garbage created by prior transactions
+    //read onlyトランザクションはread setを集めず、validationもしない。
+    //write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
+    if (trans.ronly) {
       trans.mainte(res);
       ++trans.continuingCommit;
       ++res.localCommitCounts;
+      continue;
     }
-  } catch (bad_alloc) {
-    ERR;
+
+    //Validation phase
+    if (!trans.validation()) {
+      trans.abort();
+      ++res.localAbortCounts;
+      goto RETRY;
+    }
+
+    //Write phase
+    trans.writePhase();
+
+    //Maintenance
+    //Schedule garbage collection
+    //Declare quiescent state
+    //Collect garbage created by prior transactions
+    trans.mainte(res);
+    ++trans.continuingCommit;
+    ++res.localCommitCounts;
   }
 
   return nullptr;
 }
 
 int 
-main(int argc, char *argv[]) 
+main(int argc, char *argv[]) try
 {
   chkArg(argc, argv);
 
@@ -223,7 +216,6 @@ main(int argc, char *argv[])
   }
   Result::Finish.store(true, std::memory_order_release);
 
-
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllCicadaResult(rsob[i]);
@@ -232,6 +224,7 @@ main(int argc, char *argv[])
   rsroot.extime = EXTIME;
   rsroot.display_AllCicadaResult();
 
-  //if (system("cat /proc/meminfo | grep HugePages") != 0) ERR;
   return 0;
+} catch (bad_alloc) {
+  ERR;
 }

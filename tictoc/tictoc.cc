@@ -55,59 +55,54 @@ worker(void *arg)
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
-  try {
-    for (;;) {
-      if (YCSB)
-        makeProcedure(pro, rnd, zipf);
-      else
-        makeProcedure(pro, rnd);
-
+  for (;;) {
+    if (YCSB)
+      makeProcedure(pro, rnd, zipf);
+    else
+      makeProcedure(pro, rnd);
 RETRY:
-      trans.tbegin();
+    trans.tbegin();
 
-      if (rsobject.Finish.load(std::memory_order_acquire))
-        return nullptr;
+    if (rsobject.Finish.load(std::memory_order_acquire))
+      return nullptr;
 
-      for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (pro[i].ope == Ope::READ) {
+    for (unsigned int i = 0; i < MAX_OPE; ++i) {
+      if (pro[i].ope == Ope::READ) {
+        trans.tread(pro[i].key);
+        if (trans.status == TransactionStatus::aborted) {
+          trans.abort();
+          ++res.localAbortCounts;
+          goto RETRY;
+        }
+      } 
+      else if (pro[i].ope == Ope::WRITE) {
+        if (RMW) {
           trans.tread(pro[i].key);
-          if (trans.status == TransactionStatus::aborted) {
-            trans.abort();
-            ++res.localAbortCounts;
-            goto RETRY;
-          }
-        } 
-        else if (pro[i].ope == Ope::WRITE) {
-          if (RMW) {
-            trans.tread(pro[i].key);
-            trans.twrite(pro[i].key);
-          }
-          else
-            trans.twrite(pro[i].key);
+          trans.twrite(pro[i].key);
         }
         else
-          ERR;
+          trans.twrite(pro[i].key);
       }
-      
-      //Validation phase
-      if (trans.validationPhase()) {
-        trans.writePhase();
-        ++res.localCommitCounts;
-      } else {
-        trans.abort();
-        ++res.localAbortCounts;
-        goto RETRY;
-      }
+      else
+        ERR;
     }
-  } catch (bad_alloc) {
-    ERR;
+    
+    //Validation phase
+    if (trans.validationPhase()) {
+      trans.writePhase();
+      ++res.localCommitCounts;
+    } else {
+      trans.abort();
+      ++res.localAbortCounts;
+      goto RETRY;
+    }
   }
 
   return nullptr;
 }
 
 int 
-main(int argc, char *argv[]) 
+main(int argc, char *argv[]) try
 {
   chkArg(argc, argv);
   makeDB();
@@ -137,4 +132,6 @@ main(int argc, char *argv[])
   rsroot.display_AllResult();
 
   return 0;
+} catch (bad_alloc) {
+  ERR;
 }

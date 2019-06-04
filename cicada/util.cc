@@ -152,24 +152,21 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
     exit(0);
   }
 
-  try {
-    if (posix_memalign((void**)&ThreadRtsArrayForGroup, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&ThreadWtsArray, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&ThreadRtsArray, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&GROUP_COMMIT_INDEX, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&GCFlag, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    if (posix_memalign((void**)&GCExecuteFlag, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-    
-    SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)]; 
-    PLogSet = new Version**[THREAD_NUM];
+  if (posix_memalign((void**)&ThreadRtsArrayForGroup, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&ThreadWtsArray, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&ThreadRtsArray, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&GROUP_COMMIT_INDEX, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&GCFlag, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  if (posix_memalign((void**)&GCExecuteFlag, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
+  
+  SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)]; 
+  PLogSet = new Version**[THREAD_NUM];
 
-    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-      PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
-    }
-  } catch (bad_alloc) {
-    ERR;
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+    PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
   }
+
   //init
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     GCFlag[i].obj = 0;
@@ -363,14 +360,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t initts, uint64_t start, ui
 void
 makeDB(uint64_t *initial_wts)
 {
-  try {
-    if (posix_memalign((void**)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
+  if (posix_memalign((void**)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
 #if dbs11
-    if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-  } catch (bad_alloc) {
-    ERR;
-  }
 
   TimeStamp tstmp;
   tstmp.generateTimeStampFirst(0);

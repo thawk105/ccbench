@@ -62,60 +62,56 @@ worker(void *arg)
 
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
-  try {
-    //start work (transaction)
-    for (;;) {
-      if (YCSB) 
-        makeProcedure(proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
-      else
-        makeProcedure(proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+  //start work (transaction)
+  for (;;) {
+    if (YCSB) 
+      makeProcedure(proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
+    else
+      makeProcedure(proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
 #if KEY_SORT
-      std::sort(proSet.begin(), proSet.end());
+    std::sort(proSet.begin(), proSet.end());
 #endif
 
 RETRY:
-      trans.tbegin();
+    trans.tbegin();
 
-      //End judgment
-      if (Result::Finish.load(std::memory_order_acquire))
-          return nullptr;
-      //-----
-   
-      for (unsigned int i = 0; i < MAX_OPE; ++i) {
-        if (proSet[i].ope == Ope::READ) {
+    //End judgment
+    if (Result::Finish.load(std::memory_order_acquire))
+        return nullptr;
+    //-----
+ 
+    for (unsigned int i = 0; i < MAX_OPE; ++i) {
+      if (proSet[i].ope == Ope::READ) {
+        trans.tread(proSet[i].key);
+      } 
+      else if (proSet[i].ope == Ope::WRITE) {
+        if (RMW) {
           trans.tread(proSet[i].key);
-        } 
-        else if (proSet[i].ope == Ope::WRITE) {
-          if (RMW) {
-            trans.tread(proSet[i].key);
-            trans.twrite(proSet[i].key);
-          }
-          else
-            trans.twrite(proSet[i].key);
+          trans.twrite(proSet[i].key);
         }
         else
-          ERR;
-
-        if (trans.status == TransactionStatus::aborted) {
-          trans.abort();
-          ++res.localAbortCounts;
-          goto RETRY;
-        }
+          trans.twrite(proSet[i].key);
       }
+      else
+        ERR;
 
-      //commit - write phase
-      trans.commit();
-      ++res.localCommitCounts;
+      if (trans.status == TransactionStatus::aborted) {
+        trans.abort();
+        ++res.localAbortCounts;
+        goto RETRY;
+      }
     }
-  } catch (bad_alloc) {
-    ERR;
+
+    //commit - write phase
+    trans.commit();
+    ++res.localCommitCounts;
   }
 
   return nullptr;
 }
 
 int
-main(const int argc, const char *argv[])
+main(const int argc, const char *argv[]) try
 {
   chkArg(argc, argv);
   makeDB();
@@ -150,4 +146,6 @@ main(const int argc, const char *argv[])
   //displayDB();
 
   return 0;
+} catch (bad_alloc) {
+  ERR;
 }
