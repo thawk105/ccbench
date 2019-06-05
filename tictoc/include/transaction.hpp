@@ -12,6 +12,7 @@
 
 #include "common.hpp"
 #include "procedure.hpp"
+#include "result.hpp"
 #include "tictoc_op_element.hpp"
 #include "tuple.hpp"
 
@@ -28,6 +29,7 @@ public:
   int thid;
   uint64_t commit_ts;
   uint64_t appro_commit_ts;
+  TicTocResult* tres;
 
   TransactionStatus status;
   vector<SetElement<Tuple>> readSet;
@@ -38,7 +40,7 @@ public:
   char writeVal[VAL_SIZE];
   char returnVal[VAL_SIZE];
 
-  TxExecutor(int myid) : thid(myid) {
+  TxExecutor(int myid, TicTocResult* tres_) : thid(myid), tres(tres_) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     cll.reserve(MAX_OPE);

@@ -14,6 +14,7 @@
 #define GLOBAL_VALUE_DEFINE
 
 #include "include/common.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 
 #include "../include/cpu.hpp"
@@ -38,12 +39,11 @@ extern void sleepMs(size_t ms);
 static void *
 worker(void *arg)
 {
-  Result &res = *(Result *)(arg);
+  TicTocResult &res = *(TicTocResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   Procedure pro[MAX_OPE];
-  TxExecutor trans(res.thid);
-  Result rsobject;
+  TxExecutor trans(res.thid, &res);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
@@ -63,7 +63,7 @@ worker(void *arg)
 RETRY:
     trans.tbegin();
 
-    if (rsobject.Finish.load(std::memory_order_acquire))
+    if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
 
     for (unsigned int i = 0; i < MAX_OPE; ++i) {
@@ -107,8 +107,8 @@ main(int argc, char *argv[]) try
   chkArg(argc, argv);
   makeDB();
   
-  Result rsob[THREAD_NUM];
-  Result &rsroot = rsob[0];
+  TicTocResult rsob[THREAD_NUM];
+  TicTocResult &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
@@ -121,15 +121,15 @@ main(int argc, char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish.store(true, std::memory_order_release);
+  TicTocResult::Finish.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAllResult(rsob[i]);
+    rsroot.add_local_all_TicTocResult(rsob[i]);
   }
 
   rsroot.extime = EXTIME;
-  rsroot.display_AllResult();
+  rsroot.display_all_TicTocResult();
 
   return 0;
 } catch (bad_alloc) {

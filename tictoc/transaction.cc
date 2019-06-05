@@ -143,8 +143,13 @@ TxExecutor::validationPhase()
       if ((*itr).tsw.wts != v1.wts) {
         TsWord pre_v1;
         pre_v1.obj = __atomic_load_n(&((*itr).rcdptr->pre_tsw.obj), __ATOMIC_ACQUIRE);
-        if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) break;
-        else return false;
+        if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) {
+          ++tres->local_timestamp_history_success_counts;
+          break;
+        } else {
+          ++tres->local_timestamp_history_fail_counts;
+          return false;
+        }
       }
 
       SetElement<Tuple> *inW = searchWriteSet((*itr).key);
