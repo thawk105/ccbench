@@ -29,9 +29,9 @@ CicadaResult::display_total_gc_tics()
 }
 
 void
-CicadaResult::display_gc_time_rate()
+CicadaResult::display_gc_phase_rate()
 {
-  cout << fixed << setprecision(4) << "gc_time_rate:\t\t" 
+  cout << fixed << setprecision(4) << "gc_phase_rate:\t\t" 
     << total_gc_tics / CLOCKS_PER_US / pow(10,6) / EXTIME / (THREAD_NUM - 1) << endl;
   /* (THREAD_NUM - 1) の理由。
    * leader thread がいるから。例として、3秒実験のうち、1秒がgc time だとしたら、1 * THREAD_NUM が
@@ -44,7 +44,7 @@ CicadaResult::display_AllCicadaResult()
   display_totalGCCounts();
   display_totalGCVersions();
   display_total_gc_tics();
-  display_gc_time_rate();
+  display_gc_phase_rate();
   display_AllResult();
 }
 

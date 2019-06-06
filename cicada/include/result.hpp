@@ -16,7 +16,7 @@ public:
   void display_totalGCCounts();
   void display_totalGCVersions();
   void display_total_gc_tics();
-  void display_gc_time_rate();
+  void display_gc_phase_rate();
   void display_AllCicadaResult();
   void add_localAllCicadaResult(CicadaResult &other);
   void add_localGCCounts(uint64_t gcount);
