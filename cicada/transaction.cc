@@ -474,15 +474,17 @@ TxExecutor::chkGcpvTimeout()
 void 
 TxExecutor::mainte(CicadaResult &res)
 {
-  //Maintenance
-  //Schedule garbage collection
-  //Declare quiescent state
-  //Collect garbage created by prior transactions
-  
-  //バージョンリストにおいてMinRtsよりも古いバージョンの中でコミット済み最新のもの
-  //以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
-  //
+  /*Maintenance
+   * Schedule garbage collection
+   * Declare quiescent state
+   * Collect garbage created by prior transactions
+   * バージョンリストにおいてMinRtsよりも古いバージョンの中でコミット済み最新のもの
+   * 以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
+   */
 
+  uint64_t func_gcstart, func_gcstop;
+  func_gcstart = rdtscp();
+  //-----
   if (__atomic_load_n(&(GCExecuteFlag[thid].obj), __ATOMIC_ACQUIRE) == 1) {
     ++res.localGCCounts;
     while (!gcq.empty()) {
@@ -534,6 +536,9 @@ TxExecutor::mainte(CicadaResult &res)
     __atomic_store_n(&(GCFlag[thid].obj),  1, __ATOMIC_RELEASE);
     this->GCstart = this->GCstop;
   }
+  //-----
+  func_gcstop = rdtscp();
+  res.local_gc_tics += (func_gcstop - func_gcstart);
 }
 
 void

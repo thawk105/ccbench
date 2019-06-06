@@ -10,12 +10,17 @@ public:
   uint64_t localGCCounts = 0;
   uint64_t totalGCVersions = 0;
   uint64_t localGCVersions = 0;
+  uint64_t local_gc_tics = 0;
+  uint64_t total_gc_tics = 0;
 
   void display_totalGCCounts();
   void display_totalGCVersions();
+  void display_total_gc_tics();
+  void display_gc_time_rate();
   void display_AllCicadaResult();
   void add_localAllCicadaResult(CicadaResult &other);
   void add_localGCCounts(uint64_t gcount);
   void add_localGCVersions(uint64_t vcount);
+  void add_local_gc_tics(uint64_t tics);
 };
 
