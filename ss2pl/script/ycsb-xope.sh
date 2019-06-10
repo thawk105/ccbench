@@ -1,9 +1,9 @@
-#ycsb-xrs.sh(ss2pl)
-tuple=100000000
+#ycsb-xope.sh(ss2pl)
+tuple=1000000
 maxope=10
 rratio=95
 rmw=off
-skew=0.8
+skew=0.9
 ycsb=on
 cpu_mhz=2400
 extime=3
@@ -19,14 +19,14 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_ss2pl-dlr1_ycsbB_tuple100m_skew08_ope10-100.dat
+result=result_ss2pl-dlr1_ycsbB_tuple1m_val1k_skew09_ope10-100.dat
 rm $result
 echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
 
 for ((maxope=10; maxope<=100; maxope+=10))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
   
   sumTH=0
   sumAR=0
@@ -40,10 +40,10 @@ do
   for ((i=1; i <= epoch; i++))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pln.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
