@@ -35,7 +35,7 @@ chkArg(const int argc, char *argv[])
   if (argc != 10) {
     cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCKS_PER_US EXTIME" << endl << endl;
 
-    cout << "example:./main 200 10 24 50 on 0 on 2400 3" << endl << endl;
+    cout << "example:./main 200 10 24 50 off 0 on 2400 3" << endl << endl;
 
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;

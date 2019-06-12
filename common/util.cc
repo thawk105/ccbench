@@ -65,7 +65,7 @@ display_rusage_ru_maxrss()
 {
   struct rusage r;
   if (getrusage(RUSAGE_SELF, &r) != 0) ERR;
-  printf("maxrss:\t%ld\n kB", r.ru_maxrss);
+  printf("maxrss:\t%ld kB\n", r.ru_maxrss);
 }
 
 void

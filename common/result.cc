@@ -8,6 +8,8 @@ using std::endl;
 using std::fixed; 
 using std::setprecision;
 
+extern void display_rusage_ru_maxrss();
+
 void 
 Result::display_totalAbortCounts()
 {
@@ -37,6 +39,7 @@ Result::display_tps()
 void
 Result::display_AllResult()
 {
+  display_rusage_ru_maxrss();
   display_totalCommitCounts();
   display_totalAbortCounts();
   display_abortRate();
