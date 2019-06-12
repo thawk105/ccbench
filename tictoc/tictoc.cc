@@ -29,6 +29,7 @@ extern void chkArg(const int argc, char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern void displayDB();
 extern void displayPRO();
+extern void display_rusage_ru_maxrss();
 extern void makeDB();
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
 extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
@@ -129,9 +130,11 @@ main(int argc, char *argv[]) try
   }
 
   rsroot.extime = EXTIME;
+  display_rusage_ru_maxrss();
   rsroot.display_all_TicTocResult();
 
   return 0;
 } catch (bad_alloc) {
   ERR;
 }
+

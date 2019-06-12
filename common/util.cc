@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <sys/resource.h>
 #include <sys/time.h>
 #include <xmmintrin.h>
 
@@ -57,6 +58,14 @@ display_procedure_vector(std::vector<Procedure>& pro)
            ++index;
   }
   printf("--------------------\n");
+}
+
+void
+display_rusage_ru_maxrss()
+{
+  struct rusage r;
+  if (getrusage(RUSAGE_SELF, &r) != 0) ERR;
+  printf("maxrss:\t%ld\n kB", r.ru_maxrss);
 }
 
 void

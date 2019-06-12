@@ -32,6 +32,7 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t
 extern bool chkEpochLoaded();
 extern void displayDB();
 extern void displayPRO();
+extern void display_rusage_ru_maxrss();
 extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
 extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
@@ -177,6 +178,7 @@ main(int argc, char *argv[]) try
   }
 
   rsroot.extime = EXTIME;
+  display_rusage_ru_maxrss();
   rsroot.display_AllResult();
 
   return 0;
