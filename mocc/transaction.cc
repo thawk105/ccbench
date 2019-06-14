@@ -454,7 +454,7 @@ TxExecutor::commit(MoccResult &res)
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
-      ++res.localValidationFailureByTID;
+      ++res.local_validation_failure_by_tid;
       return false;
     }
 
@@ -466,7 +466,7 @@ TxExecutor::commit(MoccResult &res)
       //if the rwlock is already acquired and the owner isn't me, abort.
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
-      ++res.localValidationFailureByWriteLock;
+      ++res.local_validation_failure_by_writelock;
 
       return false;
     }

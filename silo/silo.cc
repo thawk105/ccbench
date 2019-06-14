@@ -131,10 +131,10 @@ RETRY:
     //Validation phase
     if (trans.validationPhase()) {
       trans.writePhase();
-      ++res.localCommitCounts;
+      ++res.local_commit_counts;
     } else {
       trans.abort();
-      ++res.localAbortCounts;
+      ++res.local_abort_counts;
       goto RETRY;
     }
 
@@ -173,11 +173,11 @@ main(int argc, char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], NULL);
-    rsroot.add_localAllResult(rsob[i]);
+    rsroot.add_local_all_result(rsob[i]);
   }
 
   rsroot.extime = EXTIME;
-  rsroot.display_AllResult();
+  rsroot.display_all_result();
 
   return 0;
 } catch (bad_alloc) {

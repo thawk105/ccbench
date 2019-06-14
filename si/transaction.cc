@@ -205,7 +205,7 @@ TxExecutor::commit()
   readSet.clear();
   writeSet.clear();
 
-  ++rsobject.localCommitCounts;
+  ++rsobject.local_commit_counts;
 
 #ifdef CCTR_TW
   TMT[thid]->lastcstamp.store(this->cstamp, std::memory_order_release);
@@ -226,7 +226,7 @@ TxExecutor::abort()
   readSet.clear();
   writeSet.clear();
 
-  ++rsobject.localAbortCounts;
+  ++rsobject.local_abort_counts;
 }
 
 void

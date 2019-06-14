@@ -45,7 +45,7 @@ CicadaResult::display_AllCicadaResult()
   display_totalGCVersions();
   display_total_gc_tics();
   display_gc_phase_rate();
-  display_AllResult();
+  display_all_result();
 }
 
 void
@@ -69,7 +69,7 @@ CicadaResult::add_local_gc_tics(uint64_t tics)
 void
 CicadaResult::add_localAllCicadaResult(CicadaResult &other)
 {
-  add_localAllResult(other);
+  add_local_all_result(other);
   add_localGCCounts(other.localGCCounts);
   add_localGCVersions(other.localGCVersions);
   add_local_gc_tics(other.local_gc_tics);

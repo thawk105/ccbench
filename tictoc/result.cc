@@ -21,11 +21,11 @@ TicTocResult::display_total_timestamp_history_fail_counts()
 }
 
 void
-TicTocResult::display_all_TicTocResult()
+TicTocResult::display_all_tictoc_result()
 {
   display_total_timestamp_history_success_counts();
   display_total_timestamp_history_fail_counts();
-  display_AllResult();
+  display_all_result();
 }
 
 void
@@ -41,9 +41,9 @@ TicTocResult::add_local_timestamp_history_fail_counts(const uint64_t gcount)
 }
 
 void
-TicTocResult::add_local_all_TicTocResult(const TicTocResult& other)
+TicTocResult::add_local_all_tictoc_result(const TicTocResult& other)
 {
-  add_localAllResult(other);
+  add_local_all_result(other);
   add_local_timestamp_history_success_counts(other.local_timestamp_history_success_counts);
   add_local_timestamp_history_fail_counts(other.local_timestamp_history_fail_counts);
 }

@@ -6,74 +6,74 @@
 using std::cout, std::endl, std::fixed, std::setprecision;
 
 void
-MoccResult::display_totalAbortByOperationRate()
+MoccResult::display_total_abort_by_operation_rate()
 {
-  long double out = (double)totalAbortByOperation / (double)totalAbortCounts;
-  cout << setprecision(6) << "totalAbort\nByOperationRate :\t" << out << endl;
+  long double out = (double)total_abort_by_operation / (double)total_abort_counts;
+  cout << setprecision(6) << "total_abort_by_operation_rate :\t" << out << endl;
 }
 
 void
-MoccResult::display_totalAbortByValidationRate()
+MoccResult::display_total_abort_by_validation_rate()
 {
-  long double out = (double)totalAbortByValidation / (double)totalAbortCounts;
-  cout << setprecision(6) << "totalAbort\nByValidationRate :\t" << out << endl;
+  long double out = (double)total_abort_by_validation / (double)total_abort_counts;
+  cout << setprecision(6) << "total_abort_by_validationRate :\t" << out << endl;
 }
 
 void
-MoccResult::display_totalValidationFailureByWriteLockRate()
+MoccResult::display_total_validation_failure_by_writelock_rate()
 {
-  long double out = (double)totalValidationFailureByWriteLock / (double)totalAbortByValidation;
-  cout << setprecision(6) << "totalValidationFailure\nByWriteLockRate :\t" << out << endl;
+  long double out = (double)total_validation_failure_by_writelock / (double)total_abort_by_validation;
+  cout << setprecision(6) << "total_validation_failure_by_writelock_rate :\t" << out << endl;
 }
 
 void
-MoccResult::display_totalValidationFailureByTIDRate()
+MoccResult::display_total_validation_failure_by_tid_rate()
 {
-  long double out = (double)totalValidationFailureByTID / (double)totalAbortByValidation;
-  cout << setprecision(6) << "totalValidationFailure\nByTIDRate :\t\t" << out << endl;
+  long double out = (double)total_validation_failure_by_tid / (double)total_abort_by_validation;
+  cout << setprecision(6) << "total_validation_failure_by_tidRate :\t\t" << out << endl;
 }
 
 void
-MoccResult::display_AllMoccResult()
+MoccResult::display_all_mocc_result()
 {
-  display_totalAbortByOperationRate();
-  display_totalAbortByValidationRate();
-  display_totalValidationFailureByWriteLockRate();
-  display_totalValidationFailureByTIDRate();
-  display_AllResult();
+  display_total_abort_by_operation_rate();
+  display_total_abort_by_validation_rate();
+  display_total_validation_failure_by_writelock_rate();
+  display_total_validation_failure_by_tid_rate();
+  display_all_result();
 }
 
 void
-MoccResult::add_localAbortByOperation(uint64_t abo)
+MoccResult::add_local_abort_by_operation(uint64_t abo)
 {
-  totalAbortByOperation += abo;
+  total_abort_by_operation += abo;
 }
 
 void
-MoccResult::add_localAbortByValidation(uint64_t abv)
+MoccResult::add_local_abort_by_validation(uint64_t abv)
 {
-  totalAbortByValidation += abv;
+  total_abort_by_validation += abv;
 }
 
 void
-MoccResult::add_localValidationFailureByWriteLock(uint64_t vfbwl)
+MoccResult::add_local_validation_failure_by_writelock(uint64_t vfbwl)
 {
-  totalValidationFailureByWriteLock += vfbwl;
+  total_validation_failure_by_writelock += vfbwl;
 }
 
 void
-MoccResult::add_localValidationFailureByTID(uint64_t vfbtid)
+MoccResult::add_local_validation_failure_by_tid(uint64_t vfbtid)
 {
-  totalValidationFailureByTID += vfbtid;
+  total_validation_failure_by_tid += vfbtid;
 }
 
 void
-MoccResult::add_localAllMoccResult(MoccResult &other)
+MoccResult::add_local_all_mocc_result(MoccResult &other)
 {
-  add_localAllResult(other);
-  add_localAbortByOperation(other.localAbortByOperation);
-  add_localAbortByValidation(other.localAbortByValidation);
-  add_localValidationFailureByWriteLock(other.localValidationFailureByWriteLock);
-  add_localValidationFailureByTID(other.localValidationFailureByTID);
+  add_local_all_result(other);
+  add_local_abort_by_operation(other.local_abort_by_operation);
+  add_local_abort_by_validation(other.local_abort_by_validation);
+  add_local_validation_failure_by_writelock(other.local_validation_failure_by_writelock);
+  add_local_validation_failure_by_tid(other.local_validation_failure_by_tid);
 }
 

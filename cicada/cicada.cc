@@ -156,7 +156,7 @@ RETRY:
 
       if (trans.status == TransactionStatus::abort) {
         trans.earlyAbort();
-        ++res.localAbortCounts;
+        ++res.local_abort_counts;
         goto RETRY;
       }
     }
@@ -166,14 +166,14 @@ RETRY:
     if (trans.ronly) {
       trans.mainte(res);
       ++trans.continuingCommit;
-      ++res.localCommitCounts;
+      ++res.local_commit_counts;
       continue;
     }
 
     //Validation phase
     if (!trans.validation()) {
       trans.abort();
-      ++res.localAbortCounts;
+      ++res.local_abort_counts;
       goto RETRY;
     }
 
@@ -186,7 +186,7 @@ RETRY:
     //Collect garbage created by prior transactions
     trans.mainte(res);
     ++trans.continuingCommit;
-    ++res.localCommitCounts;
+    ++res.local_commit_counts;
   }
 
   return nullptr;

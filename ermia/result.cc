@@ -29,7 +29,7 @@ ErmiaResult::display_AllErmiaResult()
   display_totalGCCounts();
   display_totalGCVersionCounts();
   display_totalGCTMTElementsCounts();
-  display_AllResult();
+  display_all_result();
 }
 
 void
@@ -53,7 +53,7 @@ ErmiaResult::add_localGCTMTElementsCounts(const uint64_t gcount)
 void
 ErmiaResult::add_localAllErmiaResult(const ErmiaResult &other)
 {
-  add_localAllResult(other);
+  add_local_all_result(other);
   add_localGCCounts(other.localGCCounts);
   add_localGCVersionCounts(other.localGCVersionCounts);
   add_localGCTMTElementsCounts(other.localGCTMTElementsCounts);

@@ -135,21 +135,21 @@ RETRY:
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.localAbortByOperation;
-        ++res.localAbortCounts;
+        ++res.local_abort_by_operation;
+        ++res.local_abort_counts;
         goto RETRY;
       }
     }
 
     if (!(trans.commit(res))) {
       trans.abort();
-      ++res.localAbortByValidation;
-      ++res.localAbortCounts;
+      ++res.local_abort_by_validation;
+      ++res.local_abort_counts;
       goto RETRY;
     }
 
     trans.writePhase();
-    ++res.localCommitCounts;
+    ++res.local_commit_counts;
   }
 
   return nullptr;
@@ -182,11 +182,11 @@ main(int argc, char *argv[])  try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAllMoccResult(rsob[i]);
+    rsroot.add_local_all_mocc_result(rsob[i]);
   }
 
   rsroot.extime = EXTIME;
-  rsroot.display_AllMoccResult();
+  rsroot.display_all_mocc_result();
 
   return 0;
 } catch (bad_alloc) {

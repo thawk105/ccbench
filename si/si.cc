@@ -111,13 +111,13 @@ RETRY:
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.localAbortCounts;
+        ++res.local_abort_counts;
         goto RETRY;
       }
     }
 
     trans.commit();
-    ++res.localCommitCounts;
+    ++res.local_commit_counts;
 
 #if 1
     // maintenance phase

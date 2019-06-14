@@ -117,7 +117,7 @@ RETRY:
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.localAbortCounts;
+        ++res.local_abort_counts;
         goto RETRY;
       }
     }
@@ -126,14 +126,14 @@ RETRY:
 
     if (trans.status == TransactionStatus::aborted) {
       trans.abort();
-      ++res.localAbortCounts;
+      ++res.local_abort_counts;
       goto RETRY;
     }
 
     // maintenance phase
     // garbage collection
     trans.mainte(res);
-    ++res.localCommitCounts;
+    ++res.local_commit_counts;
   }
 
   return nullptr;

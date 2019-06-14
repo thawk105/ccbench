@@ -13,9 +13,9 @@ public:
 
   void display_total_timestamp_history_success_counts();
   void display_total_timestamp_history_fail_counts();
-  void display_all_TicTocResult();
+  void display_all_tictoc_result();
   void add_local_timestamp_history_success_counts(const uint64_t gcount);
   void add_local_timestamp_history_fail_counts(const uint64_t gcount);
-  void add_local_all_TicTocResult(const TicTocResult& other);
+  void add_local_all_tictoc_result(const TicTocResult& other);
 };
 

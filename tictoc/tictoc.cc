@@ -71,7 +71,7 @@ RETRY:
         trans.tread(pro[i].key);
         if (trans.status == TransactionStatus::aborted) {
           trans.abort();
-          ++res.localAbortCounts;
+          ++res.local_abort_counts;
           goto RETRY;
         }
       } 
@@ -90,10 +90,10 @@ RETRY:
     //Validation phase
     if (trans.validationPhase()) {
       trans.writePhase();
-      ++res.localCommitCounts;
+      ++res.local_commit_counts;
     } else {
       trans.abort();
-      ++res.localAbortCounts;
+      ++res.local_abort_counts;
       goto RETRY;
     }
   }
@@ -125,11 +125,11 @@ main(int argc, char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_local_all_TicTocResult(rsob[i]);
+    rsroot.add_local_all_tictoc_result(rsob[i]);
   }
 
   rsroot.extime = EXTIME;
-  rsroot.display_all_TicTocResult();
+  rsroot.display_all_tictoc_result();
 
   return 0;
 } catch (bad_alloc) {

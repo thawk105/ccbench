@@ -29,7 +29,7 @@ SIResult::display_AllSIResult()
   display_totalGCCounts();
   display_totalGCVersions();
   display_totalGCTMTElements();
-  display_AllResult();
+  display_all_result();
 }
 
 void
@@ -53,7 +53,7 @@ SIResult::add_localGCTMTElements(const uint64_t ecount)
 void
 SIResult::add_localAllSIResult(const SIResult &other)
 {
-  add_localAllResult(other);
+  add_local_all_result(other);
   add_localGCCounts(other.localGCCounts);
   add_localGCVersions(other.localGCVersions);
   add_localGCTMTElements(other.localGCTMTElements);
