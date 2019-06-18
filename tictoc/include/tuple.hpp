@@ -35,7 +35,7 @@ struct TsWord {
     else return false;
   }
 
-  uint64_t rts() {
+  uint64_t rts() const {
     return wts + delta;
   }
 

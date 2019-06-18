@@ -52,6 +52,7 @@ public:
   char* tread(uint64_t key);
   void twrite(uint64_t key);
   bool validationPhase();
+  bool preemptive_aborts(const TsWord& v1);
   void abort();
   void writePhase();
   void lockWriteSet();

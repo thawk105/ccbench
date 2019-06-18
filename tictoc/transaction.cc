@@ -49,6 +49,21 @@ TxExecutor::tbegin()
   this->appro_commit_ts = 0;
 }
 
+bool
+TxExecutor::preemptive_aborts(const TsWord& v1)
+{
+  if (v1.rts() < this->appro_commit_ts) {
+    // it must check whether this write set include the tuple,
+    // but it already checked L31 - L33.
+    // so it must abort.
+    this->status = TransactionStatus::aborted;
+    ++tres->local_preemptive_aborts_counts;
+    return true;
+  }
+
+  return false;
+}
+
 char*
 TxExecutor::tread(uint64_t key)
 {
@@ -71,23 +86,18 @@ TxExecutor::tread(uint64_t key)
   v1.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
   for (;;) {
     if (v1.lock) {
-      if ((v1.rts()) < this->appro_commit_ts) {
-        // it must check whether this write set include the tuple,
-        // but it already checked L31 - L33.
-        // so it must abort.
-        this->status = TransactionStatus::aborted;
-        return 0;
-      } else {
-        v1.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
-        continue;
-      }
+#if PREEMPTIVE_ABORTS
+      if (preemptive_aborts(v1)) return 0;
+#endif
+      v1.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
+      continue;
     }
 
     memcpy(returnVal, tuple->val, VAL_SIZE);
 
     v2.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
     if (v1 == v2 && !v1.lock) break;
-    else v1 = v2;
+    v1 = v2;
   } 
 
   this->appro_commit_ts = max(this->appro_commit_ts, v1.wts);
@@ -141,15 +151,16 @@ TxExecutor::validationPhase()
     v1.obj  = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
     for (;;) {
       if ((*itr).tsw.wts != v1.wts) {
+#if TIMESTAMP_HISTORY
         TsWord pre_v1;
         pre_v1.obj = __atomic_load_n(&((*itr).rcdptr->pre_tsw.obj), __ATOMIC_ACQUIRE);
         if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) {
           ++tres->local_timestamp_history_success_counts;
           break;
-        } else {
-          ++tres->local_timestamp_history_fail_counts;
-          return false;
         }
+        ++tres->local_timestamp_history_fail_counts;
+#endif
+        return false;
       }
 
       SetElement<Tuple> *inW = searchWriteSet((*itr).key);
@@ -198,7 +209,9 @@ TxExecutor::writePhase()
     result.wts = this->commit_ts;
     result.delta = 0;
     result.lock = 0;
+#if TIMESTAMP_HISTORY
     __atomic_store_n(&((*itr).rcdptr->pre_tsw.obj), (*itr).tsw.obj, __ATOMIC_RELAXED);
+#endif
     __atomic_store_n(&((*itr).rcdptr->tsw.obj), result.obj, __ATOMIC_RELEASE);
 
   }
