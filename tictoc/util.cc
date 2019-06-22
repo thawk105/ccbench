@@ -14,7 +14,6 @@
 #include <vector>
 
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
 
@@ -51,6 +50,8 @@ chkArg(const int argc, char *argv[])
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
+    cout << "PREEMPTIVE_ABORTS: " << PREEMPTIVE_ABORTS << endl;
+    cout << "TIMESTAMP_HISTORY: " << TIMESTAMP_HISTORY << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
@@ -130,8 +131,7 @@ displayPRO(Procedure *pro)
     default:
         break;
     }
-      cout << ", " << pro[i].key
-      << ", " << pro[i].val << ")" << endl;
+      cout << ", " << pro[i].key << ")" << endl;
   }
 }
 
@@ -169,30 +169,5 @@ makeDB()
   for (size_t i = 0; i < maxthread; ++i)
     thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto& th : thv) th.join();
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) 
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
-    else
-      pro[i].ope = Ope::WRITE;
-    
-    pro[i].key = rnd.next() % TUPLE_NUM;
-  }
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO)
-      pro[i].ope = Ope::READ;
-    else
-      pro[i].ope = Ope::WRITE;
-
-    pro[i].key = zipf() % TUPLE_NUM;
-  }
 }
 

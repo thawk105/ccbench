@@ -147,6 +147,7 @@ TxExecutor::validationPhase()
   // step3, validate the read set.
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     TsWord v1, v2;
+    ++tres->local_rtsupd_chances;
 
     v1.obj  = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
     for (;;) {
@@ -177,8 +178,10 @@ TxExecutor::validationPhase()
         v2.obj = v1.obj;
         v2.wts = v2.wts + shift;
         v2.delta = delta - shift;
-        if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+          ++tres->local_rtsupd;
           break;
+        }
         else continue;
       } else {
         break;
@@ -234,9 +237,11 @@ TxExecutor::lockWriteSet()
       //ロックオブジェクトを作ってデストラクタで解放
       //オブジェクトの中身はtsw へのポインタ
       if (expected.lock) {
-        this->status = TransactionStatus::aborted;
-        unlockCLL();
-        return;
+        if (this->wonly == false) {
+          this->status = TransactionStatus::aborted;
+          unlockCLL();
+          return;
+        }
       }
       desired = expected;
       desired.lock = 1;

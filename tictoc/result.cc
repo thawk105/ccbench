@@ -27,6 +27,13 @@ TicTocResult::display_total_preemptive_aborts_counts()
 }
 
 void
+TicTocResult::display_rtsupd_rate()
+{
+  long double rate = (double)total_rtsupd / ((double)total_rtsupd + (double)total_rtsupd_chances);
+  cout << fixed << setprecision(4) << "rtsupd_rate:\t" << rate << endl;
+}
+
+void
 TicTocResult::display_ratio_of_preemptive_abort_to_total_abort()
 {
   long double pre_rate = (double)total_preemptive_aborts_counts / (double)total_abort_counts;
@@ -40,6 +47,7 @@ TicTocResult::display_all_tictoc_result()
   display_total_timestamp_history_fail_counts();
   display_total_preemptive_aborts_counts();
   display_ratio_of_preemptive_abort_to_total_abort();
+  display_rtsupd_rate();
   display_all_result();
 }
 
@@ -62,11 +70,25 @@ TicTocResult::add_local_preemptive_aborts_counts(const uint64_t acount)
 }
 
 void
+TicTocResult::add_local_rtsupd_chances(const uint64_t rcount)
+{
+  total_rtsupd_chances += rcount;
+}
+
+void
+TicTocResult::add_local_rtsupd(const uint64_t rcount)
+{
+  total_rtsupd += rcount;
+}
+
+void
 TicTocResult::add_local_all_tictoc_result(const TicTocResult& other)
 {
   add_local_all_result(other);
   add_local_timestamp_history_success_counts(other.local_timestamp_history_success_counts);
   add_local_timestamp_history_fail_counts(other.local_timestamp_history_fail_counts);
   add_local_preemptive_aborts_counts(other.local_preemptive_aborts_counts);
+  add_local_rtsupd_chances(other.local_rtsupd_chances);
+  add_local_rtsupd(other.local_rtsupd);
 }
 

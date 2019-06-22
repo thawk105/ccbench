@@ -30,8 +30,9 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedureWithCheckWriteOnly(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio, bool& wonly);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
 extern void sleepMs(size_t ms);
@@ -42,7 +43,6 @@ worker(void *arg)
   TicTocResult &res = *(TicTocResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  Procedure pro[MAX_OPE];
   TxExecutor trans(res.thid, &res);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
@@ -57,31 +57,31 @@ worker(void *arg)
   
   for (;;) {
     if (YCSB)
-      makeProcedure(pro, rnd, zipf);
+      makeProcedureWithCheckWriteOnly(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, trans.wonly);
     else
-      makeProcedure(pro, rnd);
+      makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
 RETRY:
     trans.tbegin();
 
     if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
 
-    for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      if (pro[i].ope == Ope::READ) {
-        trans.tread(pro[i].key);
+    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+      if ((*itr).ope == Ope::READ) {
+        trans.tread((*itr).key);
         if (trans.status == TransactionStatus::aborted) {
           trans.abort();
           ++res.local_abort_counts;
           goto RETRY;
         }
       } 
-      else if (pro[i].ope == Ope::WRITE) {
+      else if ((*itr).ope == Ope::WRITE) {
         if (RMW) {
-          trans.tread(pro[i].key);
-          trans.twrite(pro[i].key);
+          trans.tread((*itr).key);
+          trans.twrite((*itr).key);
         }
         else
-          trans.twrite(pro[i].key);
+          trans.twrite((*itr).key);
       }
       else
         ERR;

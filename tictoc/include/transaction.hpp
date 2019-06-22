@@ -9,9 +9,9 @@
 #include "../../include/string.hpp"
 #include "../../include/util.hpp"
 #include "../../include/inline.hpp"
+#include "../../include/procedure.hpp"
 
 #include "common.hpp"
-#include "procedure.hpp"
 #include "result.hpp"
 #include "tictoc_op_element.hpp"
 #include "tuple.hpp"
@@ -30,6 +30,8 @@ public:
   uint64_t commit_ts;
   uint64_t appro_commit_ts;
   TicTocResult* tres;
+  bool wonly = false;
+  vector<Procedure> proSet;
 
   TransactionStatus status;
   vector<SetElement<Tuple>> readSet;
@@ -44,6 +46,7 @@ public:
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     cll.reserve(MAX_OPE);
+    proSet.reserve(MAX_OPE);
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }

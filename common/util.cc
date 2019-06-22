@@ -94,6 +94,21 @@ makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf
 }
 
 void
+makeProcedureWithCheckWriteOnly(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio, bool& wonly) {
+  pro.clear();
+  wonly = true;
+  for (size_t i = 0; i < max_ope; ++i) {
+    uint64_t tmpkey = zipf() % tuple_num;
+    if ((rnd.next() % 100) < rratio) {
+      pro.emplace_back(Ope::READ, tmpkey);
+      wonly = false;
+    } else {
+      pro.emplace_back(Ope::WRITE, tmpkey);
+    }
+  }
+}
+
+void
 ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm)
 {
   running++;
