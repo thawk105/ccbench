@@ -29,14 +29,22 @@ TicTocResult::display_total_preemptive_aborts_counts()
 void
 TicTocResult::display_rtsupd_rate()
 {
-  long double rate = (double)total_rtsupd / ((double)total_rtsupd + (double)total_rtsupd_chances);
+  long double rate;
+  if (total_rtsupd)
+    rate = (double)total_rtsupd / ((double)total_rtsupd + (double)total_rtsupd_chances);
+  else
+    rate = 0;
   cout << fixed << setprecision(4) << "rtsupd_rate:\t" << rate << endl;
 }
 
 void
 TicTocResult::display_ratio_of_preemptive_abort_to_total_abort()
 {
-  long double pre_rate = (double)total_preemptive_aborts_counts / (double)total_abort_counts;
+  long double pre_rate;
+  if (total_preemptive_aborts_counts)
+    pre_rate = (double)total_preemptive_aborts_counts / (double)total_abort_counts;
+  else
+    pre_rate = 0;
   cout << fixed << setprecision(4) << "ratio_of_preemptive_abort_to_total_abort:\t" << pre_rate << endl;
 }
 

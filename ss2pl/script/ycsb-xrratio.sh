@@ -1,5 +1,5 @@
 #ycsb-xrratio.sh(ss2pl)
-tuple=1000
+tuple=1000000
 maxope=10
 rratio=0
 rmw=off

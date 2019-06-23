@@ -1,12 +1,12 @@
 #ycsbB-xrs.sh(cicada)
 maxope=10
-rratio=95
+rratio=50
 rmw=off
 skew=0
 ycsb=on
 wal=off
 group_commit=off
-cpu_mhz=2400
+cpu_mhz=2100
 io_time_ns=5
 group_commit_timeout_us=2
 gci=10
@@ -23,12 +23,16 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_cicada_ycsbB_tuple1000-1m_val4ki.dat
+cd ../
+make clean all KEY_SIZE=8 VAL_SIZE=4
+cd script/
+
+result=result_cicada_ycsbA_tuple1k-1g.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime" >> $result
 
-for ((tuple=1000; tuple<=1000000; tuple*=10))
+for ((tuple=1000; tuple<=1000000000; tuple*=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime"
   echo "Thread number $thread"
@@ -52,7 +56,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`

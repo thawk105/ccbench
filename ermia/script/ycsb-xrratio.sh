@@ -1,5 +1,5 @@
 #ycsb-xrratio.sh(ermia)
-tuple=1000
+tuple=1000000
 maxope=10
 rratio=0
 rmw=off
@@ -25,7 +25,7 @@ cd ../
 make clean all VAL_SIZE=1000
 cd script/
 
-result=result_ermia_tuple1k_val1k_skew09_rratio0-100.dat
+result=result_ermia_tuple1m_val1k_skew09_rratio0-100.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result

@@ -1,11 +1,11 @@
 #ycsbA-xrs-cache.sh(si)
 maxope=10
 thread=224
-rratio=95
+rratio=50
 rmw=off
 skew=0
 ycsb=on
-cpumhz=2400
+cpumhz=2100
 extime=3
 epoch=3
 
@@ -19,12 +19,16 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_si_ycsbB_tuple1000-1m_val4ki.dat
+cd ../
+make clean all KEY_SIZE=8 VAL_SIZE=4
+cd script/
+
+result=result_si_ycsbA_tuple1k-1g.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
 
-for ((tuple=1000; tuple<=1000000; tuple*=10))
+for ((tuple=1000; tuple<=1000000000; tuple*=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
   
@@ -47,7 +51,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`

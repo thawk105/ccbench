@@ -28,7 +28,7 @@ inc=28
 fi
 
 tuple=500
-result=result_cicada_ycsbA_tuple500_masstree.dat
+result=result_cicada_ycsbA_tuple1k-1g.dat
 rm $result
 echo "#worker thread, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime" >> $result

@@ -1,5 +1,5 @@
 #ycsbB-xrratio.sh(cicada)
-tuple=1000
+tuple=1000000
 maxope=10
 rratio=0
 rmw=off
@@ -28,7 +28,7 @@ cd ../
 make clean all VAL_SIZE=1000
 cd script/
 
-result=result_cicada_tuple1k_val1k_skew09_rratio0-100.dat
+result=result_cicada_tuple1m_val1k_skew09_rratio0-100.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime" >> $result

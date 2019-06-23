@@ -97,14 +97,14 @@ RETRY:
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.localAbortCounts;
+        ++res.local_abort_counts;
         goto RETRY;
       }
     }
 
     //commit - write phase
     trans.commit();
-    ++res.localCommitCounts;
+    ++res.local_commit_counts;
   }
 
   return nullptr;
@@ -137,11 +137,11 @@ main(const int argc, const char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAllResult(rsob[i]);
+    rsroot.add_local_all_result(rsob[i]);
   }
 
   rsroot.extime = EXTIME;
-  rsroot.display_AllResult();
+  rsroot.display_all_result();
 
   //displayDB();
 

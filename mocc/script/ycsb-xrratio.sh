@@ -1,5 +1,5 @@
 #ycsb-xrratio.sh(mocc)
-tuple=1000
+tuple=1000000
 maxope=10
 rratio=0
 rmw=off
@@ -20,7 +20,7 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_mocc_tuple1m_val1k_skew09_ope10-100.dat
+result=result_mocc_tuple1m_val1k_skew09_rratio0-100.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result

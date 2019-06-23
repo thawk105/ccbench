@@ -1,10 +1,10 @@
 #ycsb-xrs.sh(ermia)
 maxope=10
-rratio=95
+rratio=50
 rmw=off
 skew=0
 ycsb=on
-cpu_mhz=2400
+cpu_mhz=2100
 gci=10
 extime=3
 epoch=3
@@ -20,14 +20,18 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_ermia_ycsbB_tuple1000-1m_val4ki.dat
+cd ../
+make clean all KEY_SIZE=8 VAL_SIZE=4
+cd script/
+
+result=result_ermia_ycsbA_tuple1k-1g.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
 
-for ((tuple=1000; tuple<=1000000; tuple*=10))
+for ((tuple=1000; tuple<=1000000000; tuple*=10))
 do
-  echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
+  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -49,7 +53,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`

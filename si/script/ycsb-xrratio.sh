@@ -1,5 +1,5 @@
 #ycsbA-xrratio.sh(si)
-tuple=1000
+tuple=1000000
 maxope=10
 thread=224
 rratio=0
