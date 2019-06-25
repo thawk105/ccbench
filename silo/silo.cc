@@ -13,6 +13,7 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hpp"
 #include "include/common.hpp"
+#include "include/result.hpp"
 #include "include/transaction.hpp"
 
 #include "../include/cpu.hpp"
@@ -20,7 +21,6 @@
 #include "../include/fileio.hpp"
 #include "../include/masstree_wrapper.hpp"
 #include "../include/random.hpp"
-#include "../include/result.hpp"
 #include "../include/tsc.hpp"
 #include "../include/util.hpp"
 #include "../include/zipf.hpp"
@@ -48,9 +48,9 @@ epoch_worker(void *arg)
    * 全ての worker が最新の epoch を読み込んでいる。
    * */
 
-  Result &res = *(Result *)(arg);
+  SiloResult &res = *(SiloResult *)(arg);
   uint64_t epochTimerStart, epochTimerStop;
-  Result rsobject;
+  SiloResult rsobject;
 
   setThreadAffinity(res.thid);
   //printf("Thread #%d: on CPU %d\n", res.thid, sched_getcpu());
@@ -59,7 +59,7 @@ epoch_worker(void *arg)
   epochTimerStart = rdtscp();
 
   for (;;) {
-    if (Result::Finish.load(memory_order_acquire))
+    if (SiloResult::Finish.load(memory_order_acquire))
       return nullptr;
 
     usleep(1);
@@ -80,10 +80,10 @@ epoch_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  Result &res = *(Result *)(arg);
+  SiloResult &res = *(SiloResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxnExecutor trans(res.thid);
+  TxnExecutor trans(res.thid, (SiloResult*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
   //std::string logpath;
@@ -106,30 +106,32 @@ worker(void *arg)
       makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
     else
       makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
-
-    asm volatile ("" ::: "memory");
 RETRY:
     trans.tbegin();
-    if (Result::Finish.load(memory_order_acquire))
+    if (SiloResult::Finish.load(memory_order_acquire))
       return nullptr;
 
     //Read phase
     for (unsigned int i = 0; i < MAX_OPE; ++i) {
       if (trans.proSet[i].ope == Ope::READ) {
           trans.tread(trans.proSet[i].key);
-      }
-      else {
+      } else {
         if (RMW) {
           trans.tread(trans.proSet[i].key);
           trans.twrite(trans.proSet[i].key);
-        }
-        else
+        } else {
           trans.twrite(trans.proSet[i].key);
+        }
       }
     }
     
     //Validation phase
-    if (trans.validationPhase()) {
+    uint64_t start, stop;
+    start = rdtscp();
+    bool varesult = trans.validationPhase();
+    stop = rdtscp();
+    res.local_vali_latency += stop - start;
+    if (varesult) {
       trans.writePhase();
       ++res.local_commit_counts;
     } else {
@@ -152,8 +154,8 @@ main(int argc, char *argv[]) try
   //displayDB();
   //displayPRO();
 
-  Result rsob[THREAD_NUM];
-  Result &rsroot = rsob[0];
+  SiloResult rsob[THREAD_NUM];
+  SiloResult &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
@@ -169,15 +171,15 @@ main(int argc, char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish.store(true, std::memory_order_release);
+  SiloResult::Finish.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], NULL);
-    rsroot.add_local_all_result(rsob[i]);
+    rsroot.add_local_all_silo_result(rsob[i]);
   }
 
   rsroot.extime = EXTIME;
-  rsroot.display_all_result();
+  rsroot.display_all_silo_result();
 
   return 0;
 } catch (bad_alloc) {

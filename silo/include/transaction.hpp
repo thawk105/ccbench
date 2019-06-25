@@ -7,11 +7,11 @@
 #include "common.hpp"
 #include "log.hpp"
 #include "silo_op_element.hpp"
+#include "result.hpp"
 #include "tuple.hpp"
 
 #include "../../include/fileio.hpp"
 #include "../../include/procedure.hpp"
-#include "../../include/result.hpp"
 #include "../../include/string.hpp"
 
 #define LOGSET_SIZE 1000
@@ -27,20 +27,18 @@ public:
   vector<LogRecord> logSet;
   LogHeader latestLogHeader;
 
-  Result rsob;
+  unsigned int thid;
+  SiloResult* rsob;
 
   File logfile;
 
-  unsigned int thid;
   Tidword mrctid;
   Tidword max_rset, max_wset;
-
-  Result rsobject;
 
   char writeVal[VAL_SIZE];
   char returnVal[VAL_SIZE];
 
-  TxnExecutor(int newthid) : thid(newthid) {
+  TxnExecutor(int thid_, SiloResult* rsob_) : thid(thid_), rsob(rsob_) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     proSet.reserve(MAX_OPE);

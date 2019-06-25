@@ -90,8 +90,12 @@ TxnExecutor::tread(uint64_t key)
     
     //(e) checks the TID word again
     check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
-    if (expected == check) break;
-    else expected = check;
+    if (expected == check) {
+      break;
+    } else {
+      expected = check;
+      ++rsob->local_extra_reads;
+    }
   }
   
   readSet.emplace_back(key, tuple, returnVal, expected); // emplace の方が性能が良い

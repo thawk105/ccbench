@@ -1,12 +1,12 @@
 PROG1 = silo.exe
-SILO_SRCS1 := silo.cc transaction.cc util.cc 
+SILO_SRCS1 := silo.cc transaction.cc util.cc result.cc
 PROG2 = replayTest.exe
 SRCS2 := replayTest.cc
 
 REL := ../common/
 include $(REL)Makefile
 
-KEY_SIZE=4
+KEY_SIZE=8
 VAL_SIZE=4
 
 CC = g++
