@@ -56,6 +56,7 @@ worker(void *arg)
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   for (;;) {
+    uint64_t start, stop;
     if (YCSB)
       makeProcedureWithCheckWriteOnly(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, trans.wonly);
     else
@@ -66,29 +67,39 @@ RETRY:
     if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
 
+    start = rdtscp();
     for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
       if ((*itr).ope == Ope::READ) {
         trans.tread((*itr).key);
-        if (trans.status == TransactionStatus::aborted) {
-          trans.abort();
-          ++res.local_abort_counts;
-          goto RETRY;
-        }
-      } 
-      else if ((*itr).ope == Ope::WRITE) {
+      } else if ((*itr).ope == Ope::WRITE) {
         if (RMW) {
           trans.tread((*itr).key);
-          trans.twrite((*itr).key);
+          if (trans.status != TransactionStatus::aborted)
+            trans.twrite((*itr).key);
         }
         else
           trans.twrite((*itr).key);
-      }
-      else
+      } else {
         ERR;
+      }
+
+      if (trans.status == TransactionStatus::aborted) {
+        trans.abort();
+        ++res.local_abort_counts;
+        stop = rdtscp();
+        res.local_read_latency += stop -start;
+        goto RETRY;
+      }
     }
+    stop = rdtscp();
+    res.local_read_latency += stop -start;
     
     //Validation phase
-    if (trans.validationPhase()) {
+    start = rdtscp();
+    bool varesult = trans.validationPhase();
+    stop = rdtscp();
+    res.local_vali_latency += stop - start;
+    if (varesult) {
       trans.writePhase();
       ++res.local_commit_counts;
     } else {

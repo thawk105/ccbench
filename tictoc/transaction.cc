@@ -98,6 +98,7 @@ TxExecutor::tread(uint64_t key)
     v2.obj = __atomic_load_n(&(tuple->tsw.obj), __ATOMIC_ACQUIRE);
     if (v1 == v2 && !v1.lock) break;
     v1 = v2;
+    ++tres->local_extra_reads;
   } 
 
   this->appro_commit_ts = max(this->appro_commit_ts, v1.wts);

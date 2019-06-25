@@ -1,6 +1,7 @@
 
 #include <iostream>
 
+#include "include/common.hpp"
 #include "include/result.hpp"
 
 using std::cout;
@@ -24,6 +25,36 @@ void
 TicTocResult::display_total_preemptive_aborts_counts()
 {
   cout << "display_total_preemptive_aborts_counts:\t" << total_preemptive_aborts_counts << endl;
+}
+
+void
+TicTocResult::display_total_read_latency()
+{
+  long double rate;
+ if (total_read_latency)
+   rate = (long double)total_read_latency / ((long double)CLOCKS_PER_US * powl(10.0, 6.0) * (long double)EXTIME) / THREAD_NUM;
+ else
+   rate = 0;
+ 
+ cout << fixed << setprecision(4) << "read_phase_rate:\t" << rate << endl;
+}
+
+void
+TicTocResult::display_total_vali_latency()
+{
+  long double rate;
+ if (total_vali_latency)
+   rate = (long double)total_vali_latency / ((long double)CLOCKS_PER_US * powl(10.0, 6.0) * (long double)EXTIME) / THREAD_NUM;
+ else
+   rate = 0;
+ 
+ cout << fixed << setprecision(4) << "validation_phase_rate:\t" << rate << endl;
+}
+
+void
+TicTocResult::display_total_extra_reads()
+{
+  cout << "total_extra_reads:\t" << total_extra_reads << endl;
 }
 
 void
@@ -56,6 +87,9 @@ TicTocResult::display_all_tictoc_result()
   display_total_preemptive_aborts_counts();
   display_ratio_of_preemptive_abort_to_total_abort();
   display_rtsupd_rate();
+  display_total_read_latency();
+  display_total_vali_latency();
+  display_total_extra_reads();
   display_all_result();
 }
 
@@ -90,6 +124,24 @@ TicTocResult::add_local_rtsupd(const uint64_t rcount)
 }
 
 void
+TicTocResult::add_local_read_latency(const uint64_t rcount)
+{
+  total_read_latency += rcount;
+}
+
+void
+TicTocResult::add_local_vali_latency(const uint64_t vcount)
+{
+  total_vali_latency += vcount;
+}
+
+void
+TicTocResult::add_local_extra_reads(const uint64_t ecount)
+{
+  total_extra_reads += ecount;
+}
+
+void
 TicTocResult::add_local_all_tictoc_result(const TicTocResult& other)
 {
   add_local_all_result(other);
@@ -98,5 +150,8 @@ TicTocResult::add_local_all_tictoc_result(const TicTocResult& other)
   add_local_preemptive_aborts_counts(other.local_preemptive_aborts_counts);
   add_local_rtsupd_chances(other.local_rtsupd_chances);
   add_local_rtsupd(other.local_rtsupd);
+  add_local_read_latency(other.local_read_latency);
+  add_local_vali_latency(other.local_vali_latency);
+  add_local_extra_reads(other.local_extra_reads);
 }
 
