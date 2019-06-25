@@ -102,6 +102,7 @@ worker(void *arg)
   
   //start work(transaction)
   for (;;) {
+    uint64_t start, stop;
     if (YCSB)
       makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
     else
@@ -112,6 +113,7 @@ RETRY:
       return nullptr;
 
     //Read phase
+    start = rdtscp();
     for (unsigned int i = 0; i < MAX_OPE; ++i) {
       if (trans.proSet[i].ope == Ope::READ) {
           trans.tread(trans.proSet[i].key);
@@ -124,9 +126,10 @@ RETRY:
         }
       }
     }
+    stop = rdtscp();
+    res.local_read_latency += stop - start;
     
     //Validation phase
-    uint64_t start, stop;
     start = rdtscp();
     bool varesult = trans.validationPhase();
     stop = rdtscp();
