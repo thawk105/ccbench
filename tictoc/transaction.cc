@@ -131,9 +131,11 @@ bool
 TxExecutor::validationPhase()
 {
   lockWriteSet();
+#if NO_WAIT_LOCKING_IN_VALIDATION
   if (this->status == TransactionStatus::aborted) {
     return false;
   }
+#endif
 
   // logically, it must execute full fence here,
   // while we assume intel architecture and CAS(cmpxchg) in lockWriteSet() did it.
@@ -234,19 +236,21 @@ TxExecutor::lockWriteSet()
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     expected.obj = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
     for (;;) {
-      //no-wait locking in validation
-      //ロックオブジェクトを作ってデストラクタで解放
-      //オブジェクトの中身はtsw へのポインタ
+      /* no-wait locking in validation */
       if (expected.lock) {
+#if NO_WAIT_LOCKING_IN_VALIDATION
         if (this->wonly == false) {
           this->status = TransactionStatus::aborted;
           unlockCLL();
           return;
         }
+#endif
+        expected.obj = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
+      } else {
+        desired = expected;
+        desired.lock = 1;
+        if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
       }
-      desired = expected;
-      desired.lock = 1;
-      if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(expected.obj), desired.obj, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
     }
 
     commit_ts = max(commit_ts, desired.rts() + 1);

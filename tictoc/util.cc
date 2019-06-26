@@ -50,6 +50,7 @@ chkArg(const int argc, char *argv[])
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
+    cout << "NO_WAIT_LOCKING_IN_VALIDATION: " << NO_WAIT_LOCKING_IN_VALIDATION << endl;
     cout << "PREEMPTIVE_ABORTS: " << PREEMPTIVE_ABORTS << endl;
     cout << "TIMESTAMP_HISTORY: " << TIMESTAMP_HISTORY << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;

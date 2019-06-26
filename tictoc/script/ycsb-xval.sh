@@ -5,7 +5,6 @@ rratio=50
 rmw=off
 skew=0.9
 ycsb=on
-cpumhz=2400
 extime=3
 epoch=3
 
@@ -17,6 +16,13 @@ dbs11="dbs11"
 thread=24
 if  test $host = $dbs11 ; then
 thread=224
+fi
+
+if test $host = $dbs11 ; then
+cpumhz=2100
+fi
+if test $host = $chris41 ; then
+cpumhz=2400
 fi
 
 result=result_tictoc_ycsbA_tuple100m_skew09_val4-1k.dat
