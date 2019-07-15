@@ -1,17 +1,16 @@
 
 #include <string.h>
-
 #include <atomic>
 #include <algorithm>
 #include <bitset>
 
-#include "include/common.hpp"
-#include "include/transaction.hpp"
-#include "include/version.hpp"
-
+#include "../include/atomic_wrapper.hpp"
 #include "../include/debug.hpp"
 #include "../include/masstree_wrapper.hpp"
 #include "../include/tsc.hpp"
+#include "include/common.hpp"
+#include "include/transaction.hpp"
+#include "include/version.hpp"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 
@@ -44,7 +43,7 @@ TxExecutor::tbegin()
 {
   TransactionTable *newElement, *tmt;
 
-  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  tmt = loadAcquire(TMT[thid_]);
   if (this->status == TransactionStatus::aborted) {
     this->txid = tmt->lastcstamp.load(memory_order_acquire);
     newElement = new TransactionTable(0, 0, UINT32_MAX, tmt->lastcstamp.load(std::memory_order_acquire), TransactionStatus::inFlight);
@@ -55,9 +54,9 @@ TxExecutor::tbegin()
   }
 
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    if (i == thid) continue;
+    if (i == thid_) continue;
     do {
-      tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+      tmt = loadAcquire(TMT[i]);
     } while (tmt == nullptr);
     this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
   }
@@ -65,12 +64,12 @@ TxExecutor::tbegin()
   newElement->txid = this->txid;
 
   TransactionTable *expected, *desired;
-  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  tmt = loadAcquire(TMT[thid_]);
   expected = tmt;
   gcobject.gcqForTMT.push(expected);
   for (;;) {
     desired = newElement;
-    if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+    if (compareExchange(TMT[thid_], expected, desired)) break;
   }
   
   pstamp = 0;
@@ -151,7 +150,7 @@ TxExecutor::ssn_twrite(unsigned int key)
   
   Version *expected, *desired;
   desired = new Version();
-  uint64_t tmptid = this->thid;
+  uint64_t tmptid = this->thid_;
   tmptid = tmptid << 1;
   tmptid |= 1;
   desired->cstamp.store(tmptid, memory_order_release);  // read operation, write operation, ガベコレからアクセスされるので， CAS 前に格納
@@ -169,7 +168,7 @@ TxExecutor::ssn_twrite(unsigned int key)
     // first updater wins rule
     if (expected->status.load(memory_order_acquire) == VersionStatus::inFlight) {
       this->status = TransactionStatus::aborted;
-      TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+      TransactionTable *tmt = loadAcquire(TMT[thid_]);
       tmt->status.store(TransactionStatus::aborted, memory_order_release);
       delete desired;
       return;
@@ -188,7 +187,7 @@ TxExecutor::ssn_twrite(unsigned int key)
       //  write - write conflict, first-updater-wins rule.
       // Writers must abort if they would overwirte a version created after their snapshot.
       this->status = TransactionStatus::aborted;
-      TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+      TransactionTable *tmt = loadAcquire(TMT[thid_]);
       tmt->status.store(TransactionStatus::aborted, memory_order_release);
       delete desired;
       return;
@@ -200,7 +199,7 @@ TxExecutor::ssn_twrite(unsigned int key)
   }
 
   //ver->committed_prev->sstamp に TID を入れる
-  uint64_t tmpTID = thid;
+  uint64_t tmpTID = thid_;
   tmpTID = tmpTID << 1;
   tmpTID |= 1;
   desired->committed_prev->psstamp.atomicStoreSstamp(tmpTID);
@@ -226,7 +225,7 @@ void
 TxExecutor::ssn_commit()
 {
   this->status = TransactionStatus::committing;
-  TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  TransactionTable *tmt = loadAcquire(TMT[thid_]);
   tmt->status.store(TransactionStatus::committing);
 
   this->cstamp = ++Lsn;
@@ -303,7 +302,7 @@ void
 TxExecutor::ssn_parallel_commit()
 {
   this->status = TransactionStatus::committing;
-  TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  TransactionTable *tmt = loadAcquire(TMT[thid_]);
   tmt->status.store(TransactionStatus::committing);
 
   this->cstamp = ++Lsn;
@@ -321,8 +320,8 @@ TxExecutor::ssn_parallel_commit()
     if (v_sstamp & TIDFLAG) {
       // identify worker by using TID
       uint8_t worker = (v_sstamp >> TIDFLAG);
-      if (worker == thid) {
-        // it mustn't occur "worker == thid", so it's error.
+      if (worker == thid_) {
+        // it mustn't occur "worker == thid_", so it's error.
         dispWS();
         dispRS();
         ERR;
@@ -335,7 +334,7 @@ TxExecutor::ssn_parallel_commit()
       cout << "worker : " << worker << endl;
       cout << "v_sstamp : " << v_sstamp << endl;
       cout << "UINT32_MAX : " << UINT32_MAX << endl;*/
-      tmt = __atomic_load_n(&TMT[worker], __ATOMIC_ACQUIRE);
+      tmt = loadAcquire(TMT[worker]);
       if (tmt->status.load(memory_order_acquire) == TransactionStatus::committing) {
         // worker は ssn_parallel_commit() に突入している
         // cstamp が確実に取得されるまで待機 (cstamp は初期値 0)
@@ -364,7 +363,7 @@ TxExecutor::ssn_parallel_commit()
     uint64_t rdrs = (*itr).ver->readers.load(memory_order_acquire);
     for (unsigned int worker = 1; worker <= THREAD_NUM; ++worker) {
       if ((rdrs & (one << worker)) ? 1 : 0) {
-        tmt = __atomic_load_n(&TMT[worker], __ATOMIC_ACQUIRE);
+        tmt = loadAcquire(TMT[worker]);
         // 並行 reader が committing なら無視できない．
         // inFlight なら無視できる．なぜならそれが commit する時にはこのトランザクションよりも
         // 大きい cstamp を有し， eta となりえないから．
@@ -387,7 +386,7 @@ TxExecutor::ssn_parallel_commit()
     this->pstamp = min(this->pstamp, (*itr).ver->committed_prev->psstamp.atomicLoadPstamp());
   }
 
-  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  tmt = loadAcquire(TMT[thid_]);
   // ssn_check_exclusion
   if (pstamp < sstamp) {
     status = TransactionStatus::committed;
@@ -459,7 +458,7 @@ TxExecutor::verify_exclusion_or_abort()
 {
   if (this->pstamp >= this->sstamp) {
     this->status = TransactionStatus::aborted;
-    TransactionTable *tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+    TransactionTable *tmt = loadAcquire(TMT[thid_]);
     tmt->status.store(TransactionStatus::aborted, memory_order_release);
   }
 }
@@ -484,7 +483,7 @@ TxExecutor::mainte(ErmiaResult &res)
 void
 TxExecutor::dispWS()
 {
-  cout << "th " << this->thid << " : write set : ";
+  cout << "th " << this->thid_ << " : write set : ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     cout << "(" << (*itr).key << ", " << (*itr).ver->val << "), ";
   }
@@ -494,7 +493,7 @@ TxExecutor::dispWS()
 void
 TxExecutor::dispRS()
 {
-  cout << "th " << this->thid << " : read set : ";
+  cout << "th " << this->thid_ << " : read set : ";
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     cout << "(" << (*itr).key << ", " << (*itr).ver->val << "), ";
   }

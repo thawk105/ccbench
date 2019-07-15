@@ -3,13 +3,11 @@
 #include <mutex>
 #include <vector>
 
-#include "procedure.hpp"
-#include "transaction.hpp"
-#include "tuple.hpp"
-
 #include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 #include "../../include/masstree_wrapper.hpp"
+#include "transaction.hpp"
+#include "tuple.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL

@@ -27,7 +27,7 @@ public:
   vector<LogRecord> logSet;
   LogHeader latestLogHeader;
 
-  unsigned int thid;
+  unsigned int thid_;
   SiloResult* rsob;
 
   File logfile;
@@ -38,7 +38,7 @@ public:
   char writeVal[VAL_SIZE];
   char returnVal[VAL_SIZE];
 
-  TxnExecutor(int thid_, SiloResult* rsob_) : thid(thid_), rsob(rsob_) {
+  TxnExecutor(int thid, SiloResult* rsob_) : thid_(thid), rsob(rsob_) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     proSet.reserve(MAX_OPE);

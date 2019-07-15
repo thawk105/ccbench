@@ -35,44 +35,42 @@ public:
 #endif // MQLOCK
   TransactionStatus status;
 
-  int thid;
+  int thid_;
   Tidword mrctid;
   Tidword max_rset;
   Tidword max_wset;
   Xoroshiro128Plus *rnd;
-  int locknum; // corresponding to index of MQLNodeList.
-
+  MoccResult* tres_;
+  
   char writeVal[VAL_SIZE] = {};
   char returnVal[VAL_SIZE] = {};
 
-  TxExecutor(int thid, Xoroshiro128Plus *rnd, int locknum) {
+  TxExecutor(int thid, Xoroshiro128Plus *rnd, MoccResult* tres) : thid_(thid), tres_(tres) {
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
     proSet.reserve(MAX_OPE);
     RLL.reserve(MAX_OPE);
     CLL.reserve(MAX_OPE);
 
-    this->thid = thid;
     this->status = TransactionStatus::inFlight;
     this->rnd = rnd;
     max_rset.obj = 0;
     max_wset.obj = 0;
-    this->locknum = locknum;
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
 
-  ReadElement<Tuple> *searchReadSet(unsigned int key);
-  WriteElement<Tuple> *searchWriteSet(unsigned int key);
-  template <typename T> T *searchRLL(unsigned int key);
-  void removeFromCLL(unsigned int key);
+  ReadElement<Tuple> *searchReadSet(uint64_t key);
+  WriteElement<Tuple> *searchWriteSet(uint64_t key);
+  template <typename T> T *searchRLL(uint64_t key);
+  void removeFromCLL(uint64_t key);
   void begin();
-  char* read(unsigned int key);
-  void write(unsigned int key);
-  void lock(unsigned int key, Tuple *tuple, bool mode);
+  char* read(uint64_t key);
+  void write(uint64_t key);
+  void lock(uint64_t key, Tuple *tuple, bool mode);
   void construct_RLL(); // invoked on abort;
   void unlockCLL();
-  bool commit(MoccResult &res);
+  bool commit();
   void abort();
   void writePhase();
   void dispCLL();

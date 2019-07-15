@@ -69,13 +69,13 @@ TxnExecutor::tread(uint64_t key)
   //(a) reads the TID word, spinning until the lock is clear
   Tidword expected, check;
 
-  expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+  expected.obj = loadAcquire(tuple->tidword.obj);
   //check if it is locked.
   //spinning until the lock is clear
   
   for (;;) {
     while (expected.lock) {
-      expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+      expected.obj = loadAcquire(tuple->tidword.obj);
     }
     
     //(b) checks whether the record is the latest version
@@ -89,7 +89,7 @@ TxnExecutor::tread(uint64_t key)
     // order of load don't exchange.
     
     //(e) checks the TID word again
-    check.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+    check.obj = loadAcquire(tuple->tidword.obj);
     if (expected == check) break;
     expected = check;
     ++rsob->local_extra_reads;
@@ -124,7 +124,7 @@ TxnExecutor::validationPhase()
   lockWriteSet();
 
   asm volatile("" ::: "memory");
-  atomicStoreThLocalEpoch(thid, atomicLoadGE());
+  atomicStoreThLocalEpoch(thid_, atomicLoadGE());
   asm volatile("" ::: "memory");
 
   /* Phase 2 abort if any condition of below is satisfied. 
@@ -135,7 +135,7 @@ TxnExecutor::validationPhase()
   Tidword check;
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     //1
-    check.obj = __atomic_load_n(&((*itr).rcdptr->tidword.obj), __ATOMIC_ACQUIRE);
+    check.obj = loadAcquire((*itr).rcdptr->tidword.obj);
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       return false;
     }
@@ -208,7 +208,7 @@ void TxnExecutor::writePhase()
   tid_b.tid++;
 
   //calculates (c)
-  tid_c.epoch = ThLocalEpoch[thid].obj;
+  tid_c.epoch = ThLocalEpoch[thid_].obj;
 
   //compare a, b, c
   Tidword maxtid =  max({tid_a, tid_b, tid_c});
@@ -222,7 +222,7 @@ void TxnExecutor::writePhase()
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     //update and unlock
     memcpy((*itr).rcdptr->val, writeVal, VAL_SIZE);
-    __atomic_store_n(&((*itr).rcdptr->tidword.obj), maxtid.obj, __ATOMIC_RELEASE);
+    storeRelease((*itr).rcdptr->tidword.obj, maxtid.obj);
   }
 
   readSet.clear();
@@ -234,14 +234,14 @@ void TxnExecutor::lockWriteSet()
   Tidword expected, desired;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    expected.obj = __atomic_load_n(&((*itr).rcdptr->tidword.obj), __ATOMIC_ACQUIRE);
+    expected.obj = loadAcquire((*itr).rcdptr->tidword.obj);
     for (;;) {
       if (expected.lock) {
-        expected.obj = __atomic_load_n(&((*itr).rcdptr->tidword.obj), __ATOMIC_ACQUIRE);
+        expected.obj = loadAcquire((*itr).rcdptr->tidword.obj);
       } else {
         desired = expected;
         desired.lock = 1;
-        if (__atomic_compare_exchange_n(&((*itr).rcdptr->tidword.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+        if (compareExchange((*itr).rcdptr->tidword.obj, expected.obj, desired.obj)) break;
       }
     }
 
@@ -254,10 +254,10 @@ void TxnExecutor::unlockWriteSet()
   Tidword expected, desired;
 
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
-    expected.obj = __atomic_load_n(&((*itr).rcdptr->tidword.obj), __ATOMIC_ACQUIRE);
+    expected.obj = loadAcquire((*itr).rcdptr->tidword.obj);
     desired = expected;
     desired.lock = 0;
-    __atomic_store_n(&((*itr).rcdptr->tidword.obj), desired.obj, __ATOMIC_RELEASE);
+    storeRelease((*itr).rcdptr->tidword.obj, desired.obj);
   }
 }
 

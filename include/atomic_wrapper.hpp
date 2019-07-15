@@ -20,3 +20,7 @@ void storeRelease(T& ptr, T2 val) {
   __atomic_store_n(&ptr, (T)val, __ATOMIC_RELEASE);
 }
 
+template <typename T, typename T2>
+bool compareExchange(T& m, T& before, T2 after) {
+  return __atomic_compare_exchange_n(&m, &before, (T)after, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+}

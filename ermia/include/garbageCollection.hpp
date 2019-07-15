@@ -24,7 +24,11 @@ private:
 public:
   std::queue<TransactionTable *> gcqForTMT;
   std::queue<GCElement<Tuple>> gcqForVersion;
-  uint8_t thid;
+  uint8_t thid_;
+
+  GarbageCollection() {}
+  GarbageCollection(uint8_t thid) : thid_(thid) {}
+  void set_thid_(uint8_t thid) { thid_ = thid; }
 
   // for all thread
   INLINE uint32_t getGcThreshold() {

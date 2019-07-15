@@ -13,11 +13,9 @@
 #include <unistd.h> // syscall(SYS_gettid),
 
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/timeStamp.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
-
 #include "../include/cache_line_size.hpp"
 #include "../include/check.hpp"
 #include "../include/config.hpp"
@@ -229,26 +227,6 @@ displayDB()
 }
 
 void 
-displayPRO(Procedure *pro) 
-{
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      cout << "(ope, key, val) = (";
-    switch(pro[i].ope){
-      case Ope::READ:
-        cout << "READ";
-      break;
-      case Ope::WRITE:
-        cout << "WRITE";
-        break;
-      default:
-        break;
-    }
-      cout << ", " << pro[i].key
-      << ", " << pro[i].val << ")" << endl;
-  }
-}
-
-void 
 displayMinRts() 
 {
   cout << "MinRts:  " << MinRts << endl << endl;
@@ -296,43 +274,6 @@ displaySLogSet()
       //if (i == 0) printf("SLogSet is empty\n");
     }
   }
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd) {
-  bool ronly = true;
-
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO) {
-      pro[i].ope = Ope::READ;
-    } else {
-      ronly = false;
-      pro[i].ope = Ope::WRITE;
-    }
-    pro[i].key = rnd.next() % TUPLE_NUM;
-  }
-  
-  if (ronly) pro[0].ronly = true;
-  else pro[0].ronly = false;
-}
-
-void 
-makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf) {
-  bool ronly = true;
-
-  for (unsigned int i = 0; i < MAX_OPE; ++i) {
-    if ((rnd.next() % 100) < RRATIO) {
-      pro[i].ope = Ope::READ;
-    }
-    else {
-      ronly = false;
-      pro[i].ope = Ope::WRITE;
-    }
-    pro[i].key = zipf() % TUPLE_NUM;
-  }
-  
-  if (ronly) pro[0].ronly = true;
-  else pro[0].ronly = false;
 }
 
 void

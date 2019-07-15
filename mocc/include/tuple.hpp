@@ -41,19 +41,18 @@ struct Tidword {
 // 32bit temprature, 32bit epoch
 struct Epotemp {
   union {
-    uint64_t obj;
+    uint64_t obj_;
     struct {
-      uint64_t temp:32;
-      uint64_t epoch:32;
+      uint64_t temp_:32;
+      uint64_t epoch_:32;
     };
   };
 
-  Epotemp() {
-    obj = 0;
-  }
+  Epotemp() : obj_(0) {}
+  Epotemp(uint64_t temp, uint64_t epoch) : temp_(temp), epoch_(epoch) {}
 
   bool operator==(const Epotemp& right) const {
-    return obj == right.obj;
+    return obj_ == right.obj_;
   }
 
   bool operator!=(const Epotemp& right) const {
@@ -61,7 +60,7 @@ struct Epotemp {
   }
 
   bool eqEpoch(uint64_t epo) {
-    if (epoch == epo) return true;
+    if (epoch_ == epo) return true;
     else return false;
   }
 };
@@ -69,7 +68,7 @@ struct Epotemp {
 class Tuple {
 public:
   Tidword tidword;
-  Epotemp epotemp;  //  temprature, min 0, max 20
+  Epotemp *epotemp;  //  temprature, min 0, max 20
 #ifdef RWLOCK
   RWLock rwlock;  // 4byte
   // size to here is 20 bytes

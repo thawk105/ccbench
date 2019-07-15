@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "lock.hpp"
-#include "procedure.hpp"
 #include "transaction.hpp"
 #include "tuple.hpp"
 

@@ -27,11 +27,8 @@ using namespace std;
 
 #define MSK_TID 0b11111111
 
-void TxExecutor::tbegin(bool ronly)
+void TxExecutor::tbegin()
 {
-  if (ronly) this->ronly = true;
-  else this->ronly = false;
-
   this->status = TransactionStatus::inflight;
   this->wts.generateTimeStamp(thid);
   __atomic_store_n(&(ThreadWtsArray[thid].obj), this->wts.ts, __ATOMIC_RELEASE);
@@ -69,7 +66,7 @@ void TxExecutor::tbegin(bool ronly)
 }
 
 char *
-TxExecutor::tread(unsigned int key)
+TxExecutor::tread(uint64_t key)
 {
   //read-own-writes
   //if n E write set
@@ -126,7 +123,7 @@ TxExecutor::tread(unsigned int key)
 }
 
 void
-TxExecutor::twrite(unsigned int key)
+TxExecutor::twrite(uint64_t key)
 {
   //if n E writeSet
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {

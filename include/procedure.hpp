@@ -8,26 +8,29 @@ using std::endl;
 enum class Ope : uint8_t {
   READ,
   WRITE,
+  READ_MODIFY_WRITE,
 };
 
 class Procedure {
 public:
-  Ope ope;
-  uint64_t key;
+  Ope ope_;
+  uint64_t key_;
+  bool ronly_ = false;
+  bool wonly_ = false;
 
-  Procedure() : ope(Ope::READ), key(0){}
-  Procedure(Ope ope_, uint64_t key_) : ope(ope_), key(key_) {}
+  Procedure() : ope_(Ope::READ), key_(0){}
+  Procedure(Ope ope, uint64_t key) : ope_(ope), key_(key) {}
 
   bool operator<(const Procedure& right) const {
-    if (this->key == right.key && this->ope == Ope::WRITE && right.ope == Ope::READ) {
+    if (this->key_ == right.key_ && this->ope_ == Ope::WRITE && right.ope_ == Ope::READ) {
       return true;
     }
-    else if (this->key == right.key && this->ope == Ope::WRITE && right.ope == Ope::WRITE) {
+    else if (this->key_ == right.key_ && this->ope_ == Ope::WRITE && right.ope_ == Ope::WRITE) {
       return true;
     }
     /* キーが同値なら先に write ope を実行したい．read -> write よりも write -> read.*/
 
-    return this->key < right.key;
+    return this->key_ < right.key_;
   }
 };
 

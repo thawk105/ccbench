@@ -33,10 +33,14 @@ chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold)
 }
 
 size_t
-decide_parallel_build_number(size_t tuplenum)
+decide_parallel_build_number(size_t tuple_num)
 {
+  // if table size is very small, it builds by single thread.
+  if (tuple_num < 1000) return 1;
+
+  // else
   for (size_t i = std::thread::hardware_concurrency(); i > 0; --i) {
-    if (tuplenum % i == 0) {
+    if (tuple_num % i == 0) {
       return i;
     }
     if (i == 1) ERR;
@@ -54,7 +58,7 @@ display_procedure_vector(std::vector<Procedure>& pro)
     printf("-----\n"
            "op_num\t: %zu\n"
            "key\t: %zu\n"
-           "r/w\t: %d\n", index, (*itr).key, (int)((*itr).ope));
+           "r/w\t: %d\n", index, (*itr).key_, (int)((*itr).ope_));
            ++index;
   }
   printf("--------------------\n");
@@ -68,44 +72,31 @@ display_rusage_ru_maxrss()
   printf("maxrss:\t%ld kB\n", r.ru_maxrss);
 }
 
-void
-makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio)
-{
-  pro.clear();
-  for (size_t i = 0; i < max_ope; ++i) {
-    uint64_t tmpkey = rnd.next() % tuple_num;
-    if ((rnd.next() % 100) < rratio)
-      pro.emplace_back(Ope::READ, tmpkey);
-    else
-      pro.emplace_back(Ope::WRITE, tmpkey);
-  }
-}
-
 void 
-makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio) {
+makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb) {
   pro.clear();
+  bool ronly_flag(true), wonly_flag(true);
   for (size_t i = 0; i < max_ope; ++i) {
-    uint64_t tmpkey = zipf() % tuple_num;
-    if ((rnd.next() % 100) < rratio)
-      pro.emplace_back(Ope::READ, tmpkey);
+    uint64_t tmpkey;
+    if (ycsb)
+      tmpkey = zipf() % tuple_num;
     else
-      pro.emplace_back(Ope::WRITE, tmpkey);
-  }
-}
+      tmpkey = rnd.next() % tuple_num;
 
-void
-makeProcedureWithCheckWriteOnly(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio, bool& wonly) {
-  pro.clear();
-  wonly = true;
-  for (size_t i = 0; i < max_ope; ++i) {
-    uint64_t tmpkey = zipf() % tuple_num;
     if ((rnd.next() % 100) < rratio) {
       pro.emplace_back(Ope::READ, tmpkey);
-      wonly = false;
+      wonly_flag = false;
     } else {
-      pro.emplace_back(Ope::WRITE, tmpkey);
+      ronly_flag = false;
+      if (rmw) {
+        pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
+      } else {
+        pro.emplace_back(Ope::WRITE, tmpkey);
+      }
     }
   }
+  (*pro.begin()).ronly_ = ronly_flag;
+  (*pro.begin()).wonly_ = wonly_flag;
 }
 
 void

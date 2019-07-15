@@ -4,14 +4,14 @@
 #include <map>
 #include <vector>
 
+#include "../../include/string.hpp"
+#include "../../include/procedure.hpp"
+#include "../../include/util.hpp"
 #include "ermia_op_element.hpp"
 #include "garbageCollection.hpp"
 #include "result.hpp"
 #include "tuple.hpp"
 #include "version.hpp"
-
-#include "../../include/string.hpp"
-#include "../../include/util.hpp"
 
 // forward declaration
 class TransactionTable;
@@ -34,9 +34,10 @@ public:
   vector<SetElement<Tuple>> readSet;
   vector<SetElement<Tuple>> writeSet;
   GarbageCollection gcobject;
+  vector<Procedure> proSet;
   uint32_t preGcThreshold = 0;
 
-  uint8_t thid; // thread ID
+  uint8_t thid_; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
 
   uint64_t gcstart, gcstop; // counter for garbage collection
@@ -44,11 +45,11 @@ public:
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t newThid, unsigned int max_ope) {
-    this->thid = newThid;
-    gcobject.thid = thid;
+  TxExecutor(uint8_t thid, size_t max_ope) : thid_(thid) {
+    gcobject.set_thid_(thid);
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);
+    proSet.reserve(max_ope);
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
@@ -71,8 +72,8 @@ public:
     for (;;) {
       expected = ver->readers.load(memory_order_acquire);
 RETRY_URB:
-      if (expected & (1<<thid)) break;
-      desired = expected | (1<<thid);
+      if (expected & (1<<thid_)) break;
+      desired = expected | (1<<thid_);
       if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
       else goto RETRY_URB;
     }
@@ -83,8 +84,8 @@ RETRY_URB:
     for (;;) {
       expected = ver->readers.load(memory_order_acquire);
 RETRY_DRB:
-      if (!(expected & (1<<thid))) break;
-      desired = expected & ~(1<<thid);
+      if (!(expected & (1<<thid_))) break;
+      desired = expected & ~(1<<thid_);
       if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
       else goto RETRY_DRB;
     }

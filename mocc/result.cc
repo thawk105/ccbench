@@ -8,29 +8,53 @@ using std::cout, std::endl, std::fixed, std::setprecision;
 void
 MoccResult::display_total_abort_by_operation_rate()
 {
-  long double out = (double)total_abort_by_operation / (double)total_abort_counts;
-  cout << setprecision(6) << "total_abort_by_operation_rate :\t" << out << endl;
+  long double out;
+  if (total_abort_by_operation)
+    out = (long double)total_abort_by_operation / (long double)total_abort_counts;
+  else
+    out = 0;
+
+  cout << "total_abort_by_operation:\t" << total_abort_by_operation << endl;
+  cout << fixed << setprecision(6) << "total_abort_by_operation_rate:\t" << out << endl;
 }
 
 void
 MoccResult::display_total_abort_by_validation_rate()
 {
-  long double out = (double)total_abort_by_validation / (double)total_abort_counts;
-  cout << setprecision(6) << "total_abort_by_validationRate :\t" << out << endl;
+  long double out;
+  if (total_abort_by_validation)
+    out = (double)total_abort_by_validation / (double)total_abort_counts;
+  else
+    out = 0;
+
+  cout << "total_abort_by_validation:\t" << total_abort_by_validation << endl;
+  cout << fixed << setprecision(6) << "total_abort_by_validationRate:\t" << out << endl;
 }
 
 void
 MoccResult::display_total_validation_failure_by_writelock_rate()
 {
-  long double out = (double)total_validation_failure_by_writelock / (double)total_abort_by_validation;
-  cout << setprecision(6) << "total_validation_failure_by_writelock_rate :\t" << out << endl;
+  long double out;
+  if (total_validation_failure_by_writelock)
+    out = (double)total_validation_failure_by_writelock / (double)total_abort_by_validation;
+  else
+    out = 0;
+
+  cout << "total_validation_failure_by_writelock:\t" << total_validation_failure_by_writelock << endl;
+  cout << fixed << setprecision(6) << "total_validation_failure_by_writelock_rate:\t" << out << endl;
 }
 
 void
 MoccResult::display_total_validation_failure_by_tid_rate()
 {
-  long double out = (double)total_validation_failure_by_tid / (double)total_abort_by_validation;
-  cout << setprecision(6) << "total_validation_failure_by_tidRate :\t\t" << out << endl;
+  long double out;
+  if (total_validation_failure_by_tid)
+    out = (double)total_validation_failure_by_tid / (double)total_abort_by_validation;
+  else
+    out = 0;
+
+  cout << "total_validation_failure_by_tid:\t" << total_validation_failure_by_tid << endl;
+  cout << fixed << setprecision(6) << "total_validation_failure_by_tidRate:\t\t" << out << endl;
 }
 
 void

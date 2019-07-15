@@ -1,12 +1,11 @@
 
 #include <string.h>
-
 #include <atomic>
 #include <algorithm>
 #include <bitset>
 
+#include "../include/atomic_wrapper.hpp"
 #include "../include/debug.hpp"
-
 #include "include/common.hpp"
 #include "include/transaction.hpp"
 #include "include/version.hpp"
@@ -41,20 +40,20 @@ TxExecutor::tbegin()
 #ifdef CCTR_ON
   TransactionTable *newElement, *tmt;
 
-  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  tmt = loadAcquire(TMT[thid_]);
   if (this->status == TransactionStatus::committed) {
     this->txid = cstamp;
     newElement = new TransactionTable(0, cstamp);
   }
   else {
-    this->txid = TMT[thid]->lastcstamp.load(memory_order_acquire);
+    this->txid = TMT[thid_]->lastcstamp.load(memory_order_acquire);
     newElement = new TransactionTable(0, tmt->lastcstamp.load(std::memory_order_acquire));
   }
 
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    if (thid == i) continue;
+    if (thid_ == i) continue;
     do {
-      tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
+      tmt = loadAcquire(TMT[i]);
     } while (tmt == nullptr);
     this->txid = max(this->txid, tmt->lastcstamp.load(memory_order_acquire));
   }
@@ -62,19 +61,19 @@ TxExecutor::tbegin()
   newElement->txid = this->txid;
   
   TransactionTable *expected, *desired;
-  tmt = __atomic_load_n(&TMT[thid], __ATOMIC_ACQUIRE);
+  tmt = loadAcquire(TMT[thid_]);
   expected = tmt;
   gcobject.gcqForTMT.push_back(expected);
 
   for (;;) {
     desired = newElement;
-    if (__atomic_compare_exchange_n(&TMT[thid], &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+    if (compareExchange(TMT[thid_], expected, desired)) break;
   }
 #endif // CCTR_ON
 
 #ifdef CCTR_TW
   this->txid = ++CCtr;
-  TMT[thid]->txid.store(this->txid, std::memory_order_release);
+  TMT[thid_]->txid.store(this->txid, std::memory_order_release);
 #endif // CCTR_TW
 
   status = TransactionStatus::inFlight;
@@ -208,7 +207,7 @@ TxExecutor::commit()
   ++rsobject.local_commit_counts;
 
 #ifdef CCTR_TW
-  TMT[thid]->lastcstamp.store(this->cstamp, std::memory_order_release);
+  TMT[thid_]->lastcstamp.store(this->cstamp, std::memory_order_release);
 #endif // CCTR_TW
   return;
 }
@@ -232,7 +231,7 @@ TxExecutor::abort()
 void
 TxExecutor::dispWS()
 {
-  cout << "th " << this->thid << " : write set : ";
+  cout << "th " << this->thid_ << " : write set : ";
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     cout << "(" << (*itr).key << ", " << (*itr).ver->val << "), ";
   }
@@ -242,7 +241,7 @@ TxExecutor::dispWS()
 void
 TxExecutor::dispRS()
 {
-  cout << "th " << this->thid << " : read set : ";
+  cout << "th " << this->thid_ << " : read set : ";
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     cout << "(" << (*itr).key << ", " << (*itr).ver->val << "), ";
   }

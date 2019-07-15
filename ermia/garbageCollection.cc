@@ -71,7 +71,7 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
 #else
     Tuple *tuple = TxExecutor::get_tuple(Table, gcqForVersion.front().key);
 #endif
-    if (!tuple->gClock.compare_exchange_strong(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
+    if (!tuple->gClock.compare_exchange_strong(zero, this->thid_, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcqForVersion.pop();
       continue;

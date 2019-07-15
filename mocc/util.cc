@@ -4,7 +4,6 @@
 #include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/types.h> // syscall(SYS_gettid),
 #include <unistd.h> // syscall(SYS_gettid),
-
 #include <algorithm>
 #include <atomic>
 #include <bitset>
@@ -15,9 +14,7 @@
 #include <limits>
 #include <random>
 
-#include "include/common.hpp"
-#include "include/tuple.hpp"
-
+#include "../include/atomic_wrapper.hpp"
 #include "../include/config.hpp"
 #include "../include/check.hpp"
 #include "../include/debug.hpp"
@@ -25,6 +22,8 @@
 #include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
+#include "include/common.hpp"
+#include "include/tuple.hpp"
 
 using namespace std;
 
@@ -153,7 +152,7 @@ displayLockedTuple()
 }
 
 void
-part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end, Epotemp* eptmp_ary)
 {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
@@ -164,10 +163,14 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
     tmp = &Table[i];
     tmp->tidword.epoch = 1;
     tmp->tidword.tid = 0;
-    tmp->epotemp.epoch = 1;
-    tmp->epotemp.temp = 0;
     tmp->val[0] = 'a'; 
     tmp->val[1] = '\0';
+
+    Epotemp eptmp(0, 1);
+    size_t ep_index = i * sizeof(Tuple) / PAGE_SIZE;
+    //cout << "key:\t" << i << ", ep_index:\t" << ep_index << endl;
+    tmp->epotemp = &eptmp_ary[ep_index];
+    storeRelease(tmp->epotemp->obj_, eptmp.obj_);
 #if MASSTREE_USE
     MT.insert_value(i, tmp);
 #endif
@@ -177,17 +180,26 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 void 
 makeDB() 
 {
-  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+  if (posix_memalign((void**)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) 
+    ERR;
 #if dbs11
-  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) 
+    ERR;
 #endif
 
+  size_t eptmp_length = TUPLE_NUM * sizeof(Tuple) / PAGE_SIZE + 1;
+  //cout << "eptmp_length:\t" << eptmp_length << endl;
+  Epotemp *eptmp_ary;
+  if (posix_memalign((void**)&eptmp_ary, PAGE_SIZE, eptmp_length * sizeof(Epotemp)) != 0)
+    ERR;
+  
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
-
   std::vector<std::thread> thv;
-  for (size_t i = 0; i < maxthread; ++i)
+  for (size_t i = 0; i < maxthread; ++i) {
     thv.emplace_back(part_table_init, i,
-        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1,
+        eptmp_ary);
+  }
   for (auto& th : thv) th.join();
 }
 

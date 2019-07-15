@@ -6,18 +6,18 @@
 #include <sys/types.h>  //syscall(SYS_gettid),
 #include <time.h>
 #include <unistd.h> //syscall(SYS_gettid), 
-
 #include <iostream>
 #include <string> //string
 
 #define GLOBAL_VALUE_DEFINE
+
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
+#include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/tsc.hpp"
 #include "../include/zipf.hpp"
-
 #include "include/common.hpp"
 #include "include/garbageCollection.hpp"
 #include "include/result.hpp"
@@ -28,8 +28,7 @@ using namespace std;
 extern void chkArg(const int argc, const char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern void makeDB();
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
 extern void naiveGarbageCollection();
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
@@ -67,7 +66,6 @@ worker(void *arg)
 {
   SIResult &res = *(SIResult *)(arg);
   TxExecutor trans(res.thid, MAX_OPE);
-  Procedure pro[MAX_OPE];
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
@@ -87,8 +85,7 @@ worker(void *arg)
   //start work (transaction)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   for(;;) {
-    if (YCSB) makeProcedure(pro, rnd, zipf);
-    else makeProcedure(pro, rnd);
+    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
 
     if (Result::Finish.load(std::memory_order_acquire)) {
@@ -98,15 +95,16 @@ RETRY:
     //-----
     //transaction begin
     trans.tbegin();
-    for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      if (pro[i].ope == Ope::READ) {
-        trans.tread(pro[i].key);
+    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+      if ((*itr).ope_ == Ope::READ) {
+        trans.tread((*itr).key_);
+      } else if ((*itr).ope_ == Ope::WRITE) {
+        trans.twrite((*itr).key_);
+      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        trans.tread((*itr).key_);
+        trans.twrite((*itr).key_);
       } else {
-        if (RMW) {
-          trans.tread(pro[i].key);
-          trans.twrite(pro[i].key);
-        } else
-          trans.twrite(pro[i].key);
+        ERR;
       }
 
       if (trans.status == TransactionStatus::aborted) {

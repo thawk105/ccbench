@@ -1,13 +1,12 @@
 
 #include <stdio.h>
-
 #include <algorithm>
 #include <cmath>
 #include <random>
 #include <thread>
 
+#include "../include/atomic_wrapper.hpp"
 #include "../include/debug.hpp"
-
 #include "include/atomic_tool.hpp"
 #include "include/transaction.hpp"
 #include "include/tuple.hpp"
@@ -15,7 +14,7 @@
 using namespace std;
 
 ReadElement<Tuple> *
-TxExecutor::searchReadSet(unsigned int key)
+TxExecutor::searchReadSet(uint64_t key)
 {
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -25,7 +24,7 @@ TxExecutor::searchReadSet(unsigned int key)
 }
 
 WriteElement<Tuple> *
-TxExecutor::searchWriteSet(unsigned int key)
+TxExecutor::searchWriteSet(uint64_t key)
 {
   for (auto itr = writeSet.begin(); itr != writeSet.end(); ++itr) {
     if ((*itr).key == key) return &(*itr);
@@ -35,7 +34,7 @@ TxExecutor::searchWriteSet(unsigned int key)
 }
 
 template <typename T> T*
-TxExecutor::searchRLL(unsigned int key)
+TxExecutor::searchRLL(uint64_t key)
 {
   // will do : binary search
   for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
@@ -46,7 +45,7 @@ TxExecutor::searchRLL(unsigned int key)
 }
 
 void
-TxExecutor::removeFromCLL(unsigned int key)
+TxExecutor::removeFromCLL(uint64_t key)
 {
   int ctr = 0;
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
@@ -68,7 +67,7 @@ TxExecutor::begin()
 }
 
 char*
-TxExecutor::read(unsigned int key)
+TxExecutor::read(uint64_t key)
 {
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
@@ -94,21 +93,23 @@ TxExecutor::read(unsigned int key)
 #endif // MQLOCK
 
   Epotemp loadepot;
-  loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
+  loadepot.obj_ = loadAcquire(tuple->epotemp->obj_);
   bool needVerification = true;;
   if (inRLL != nullptr) {
     lock(key, tuple, inRLL->mode);
-    if (this->status == TransactionStatus::aborted) 
+    if (this->status == TransactionStatus::aborted) {
       return nullptr;
-    else 
+    } else {
       needVerification = false;
-  }
-  else if (loadepot.temp >= TEMP_THRESHOLD) {
+    }
+  } else if (loadepot.temp_ >= TEMP_THRESHOLD) {
+    //printf("key:\t%lu, temp:\t%lu\n", key, loadepot.temp_);
     lock(key, tuple, false);
-    if (this->status == TransactionStatus::aborted) 
+    if (this->status == TransactionStatus::aborted) {
       return nullptr;
-    else 
+    } else {
       needVerification = false;
+    }
   }
 
   Tidword expected, desired;
@@ -129,9 +130,9 @@ TxExecutor::read(unsigned int key)
           status = TransactionStatus::aborted;
           readSet.emplace_back(key, tuple);
           return nullptr;
-        }
-        else 
+        } else {
           expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
+        }
       }
 
       memcpy(returnVal, tuple->val, VAL_SIZE); // read
@@ -141,8 +142,8 @@ TxExecutor::read(unsigned int key)
       else 
         expected.obj = desired.obj;
     }
-  }
-  else {
+  } else {
+    // it already got read-lock.
     expected.obj = __atomic_load_n(&(tuple->tidword.obj), __ATOMIC_ACQUIRE);
     memcpy(returnVal, tuple->val, VAL_SIZE); // read
   }
@@ -152,7 +153,7 @@ TxExecutor::read(unsigned int key)
 }
 
 void
-TxExecutor::write(unsigned int key)
+TxExecutor::write(uint64_t key)
 {
   // tuple exists in write set.
   WriteElement<Tuple> *inw = searchWriteSet(key);
@@ -165,9 +166,11 @@ TxExecutor::write(unsigned int key)
 #endif
 
   Epotemp loadepot;
-  loadepot.obj = __atomic_load_n(&(tuple->epotemp.obj), __ATOMIC_ACQUIRE);
-  if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
-  if (this->status == TransactionStatus::aborted) return;
+  loadepot.obj_ = loadAcquire(tuple->epotemp->obj_);
+  if (loadepot.temp_ >= TEMP_THRESHOLD) lock(key, tuple, true);
+  if (this->status == TransactionStatus::aborted) {
+    return;
+  }
 
 #ifdef RWLOCK
   LockElement<RWLock> *inRLL = searchRLL<LockElement<RWLock>>(key);
@@ -176,7 +179,9 @@ TxExecutor::write(unsigned int key)
   LockElement<MQLock> *inRLL = searchRLL<LockElement<MQLock>>(key);
 #endif // MQLOCK
   if (inRLL != nullptr) lock(key, tuple, true);
-  if (this->status == TransactionStatus::aborted) return;
+  if (this->status == TransactionStatus::aborted) {
+    return;
+  }
   
   //writeSet.emplace_back(key, writeVal);
   writeSet.emplace_back(key, tuple);
@@ -184,7 +189,7 @@ TxExecutor::write(unsigned int key)
 }
 
 void
-TxExecutor::lock(unsigned int key, Tuple *tuple, bool mode)
+TxExecutor::lock(uint64_t key, Tuple *tuple, bool mode)
 {
   unsigned int vioctr = 0;
   unsigned int threshold;
@@ -376,6 +381,35 @@ TxExecutor::construct_RLL()
   }
 
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
+    // maintain temprature p
+    if ((*itr).failedVerification) {
+      Epotemp expected, desired;
+      uint64_t nowepo;
+      expected.obj_ = loadAcquire((*itr).rcdptr->epotemp->obj_);
+      nowepo = (loadAcquireGE()).obj;
+
+      if (expected.epoch_ != nowepo) {
+        desired.epoch_ = nowepo;
+        desired.temp_ = 0;
+        storeRelease((*itr).rcdptr->epotemp->obj_, desired.obj_);
+      }
+
+      for (;;) {
+        if (expected.temp_ == TEMP_MAX) {
+          break;
+        } else if (rnd->next() % (1 << expected.temp_) == 0) {
+          desired = expected;
+          desired.temp_ = expected.temp_ + 1;
+        } else {
+          break;
+        }
+
+        if (compareExchange((*itr).rcdptr->epotemp->obj_, expected.obj_, desired.obj_)) {
+          break;
+        }
+      }
+    }
+
     // check whether itr exists in RLL
 #ifdef RWLOCK
     if (searchRLL<LockElement<RWLock>>((*itr).key) != nullptr) continue;
@@ -388,8 +422,8 @@ TxExecutor::construct_RLL()
     // if temprature >= threshold
     //  || r failed verification
     Epotemp loadepot;
-    loadepot.obj = __atomic_load_n(&((*itr).rcdptr->epotemp.obj), __ATOMIC_ACQUIRE);
-    if (loadepot.temp >= TEMP_THRESHOLD 
+    loadepot.obj_ = loadAcquire((*itr).rcdptr->epotemp->obj_);
+    if (loadepot.temp_ >= TEMP_THRESHOLD 
         || (*itr).failedVerification) {
 #ifdef RWLOCK
       RLL.emplace_back((*itr).key, &((*itr).rcdptr->rwlock), false);
@@ -399,28 +433,6 @@ TxExecutor::construct_RLL()
 #endif // MQLOCK
     }
 
-    // maintain temprature p
-    if ((*itr).failedVerification) {
-      Epotemp expected, desired;
-      uint64_t nowepo;
-      expected.obj = __atomic_load_n(&((*itr).rcdptr->epotemp.obj), __ATOMIC_ACQUIRE);
-      nowepo = (loadAcquireGE()).obj;
-
-      if (expected.epoch != nowepo) {
-        desired.epoch = nowepo;
-        desired.temp = 0;
-        __atomic_store_n(&((*itr).rcdptr->epotemp.obj), desired.obj, __ATOMIC_RELEASE);
-      }
-
-      for (;;) {
-        if (expected.temp == TEMP_MAX) break;
-        else if (rnd->next() % (1 << expected.temp) == 0) {
-          desired = expected;
-          desired.temp = expected.temp + 1;
-        } else break;
-        if (__atomic_compare_exchange_n(&((*itr).rcdptr->epotemp.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
-      }
-    }
   }
 
   sort(RLL.begin(), RLL.end());
@@ -429,7 +441,7 @@ TxExecutor::construct_RLL()
 }
 
 bool
-TxExecutor::commit(MoccResult &res)
+TxExecutor::commit()
 {
   Tidword expected, desired;
 
@@ -445,7 +457,7 @@ TxExecutor::commit(MoccResult &res)
   }
 
   asm volatile ("" ::: "memory");
-  __atomic_store_n(&(ThLocalEpoch[thid].obj), (loadAcquireGE()).obj, __ATOMIC_RELEASE);
+  __atomic_store_n(&(ThLocalEpoch[thid_].obj), (loadAcquireGE()).obj, __ATOMIC_RELEASE);
   asm volatile ("" ::: "memory");
 
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
@@ -454,7 +466,7 @@ TxExecutor::commit(MoccResult &res)
     if ((*itr).tidword.epoch != check.epoch || (*itr).tidword.tid != check.tid) {
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
-      ++res.local_validation_failure_by_tid;
+      ++tres_->local_validation_failure_by_tid;
       return false;
     }
 
@@ -466,8 +478,7 @@ TxExecutor::commit(MoccResult &res)
       //if the rwlock is already acquired and the owner isn't me, abort.
       (*itr).failedVerification = true;
       this->status = TransactionStatus::aborted;
-      ++res.local_validation_failure_by_writelock;
-
+      ++tres_->local_validation_failure_by_writelock;
       return false;
     }
 
@@ -529,7 +540,7 @@ TxExecutor::writePhase()
   tid_b.tid++;
 
   // calculates (c)
-  tid_c.epoch = ThLocalEpoch[thid].obj;
+  tid_c.epoch = ThLocalEpoch[thid_].obj;
 
   // compare a, b, c
   Tidword maxtid = max({tid_a, tid_b, tid_c});
@@ -551,7 +562,7 @@ TxExecutor::writePhase()
 void
 TxExecutor::dispCLL()
 {
-  cout << "th " << this->thid << ": CLL: ";
+  cout << "th " << this->thid_ << ": CLL: ";
   for (auto itr = CLL.begin(); itr != CLL.end(); ++itr) {
     cout << (*itr).key << "(";
     if ((*itr).mode) cout << "w) ";
@@ -563,7 +574,7 @@ TxExecutor::dispCLL()
 void
 TxExecutor::dispRLL()
 {
-  cout << "th " << this->thid << ": RLL: ";
+  cout << "th " << this->thid_ << ": RLL: ";
   for (auto itr = RLL.begin(); itr != RLL.end(); ++itr) {
     cout << (*itr).key << "(";
     if ((*itr).mode) cout << "w) ";

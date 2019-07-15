@@ -14,13 +14,13 @@
 
 #define GLOBAL_VALUE_DEFINE
 #include "include/common.hpp"
-#include "include/procedure.hpp"
 #include "include/result.hpp"
 #include "include/transaction.hpp"
 
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
+#include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
 
@@ -30,8 +30,7 @@ extern void chkArg(const int argc, char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void makeDB(uint64_t *initial_wts);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd);
-extern void makeProcedure(Procedure *pro, Xoroshiro128Plus &rnd, FastZipf &zipf);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
@@ -73,8 +72,7 @@ manager_worker(void *arg)
       uint64_t minr;
       if (GROUP_COMMIT == 0) {
         minr = __atomic_load_n(&(ThreadRtsArray[1].obj), __ATOMIC_ACQUIRE);
-      }
-      else {
+      } else {
         minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj), __ATOMIC_ACQUIRE);
       }
 
@@ -84,12 +82,12 @@ manager_worker(void *arg)
         if (GROUP_COMMIT == 0) {
           tmp = __atomic_load_n(&(ThreadRtsArray[i].obj), __ATOMIC_ACQUIRE);
           if (minr > tmp) minr = tmp;
-        }
-        else {
+        } else {
           tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj), __ATOMIC_ACQUIRE);
           if (minr > tmp) minr = tmp;
         }
       }
+
       MinWts.store(minw, memory_order_release);
       MinRts.store(minr, memory_order_release);
 
@@ -110,7 +108,6 @@ worker(void *arg)
   CicadaResult &res = *(CicadaResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  Procedure pro[MAX_OPE];
   TxExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
@@ -131,27 +128,24 @@ worker(void *arg)
   //printf("%s\n", trans.writeVal);
   //start work(transaction)
   for (;;) {
-    if (YCSB) 
-      makeProcedure(pro, rnd, zipf);
-    else 
-      makeProcedure(pro, rnd);
+    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+
 RETRY:
     if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
 
-    trans.tbegin(pro[0].ronly);
-
+    trans.tbegin();
     //Read phase
-    //Search versions
-    for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      if (pro[i].ope == Ope::READ) {
-        trans.tread(pro[i].key);
+    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+      if ((*itr).ope_ == Ope::READ) {
+        trans.tread((*itr).key_);
+      } else if ((*itr).ope_ == Ope::WRITE) {
+        trans.twrite((*itr).key_);
+      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        trans.tread((*itr).key_);
+        trans.twrite((*itr).key_);
       } else {
-        if (RMW) {
-          trans.tread(pro[i].key);
-          trans.twrite(pro[i].key);
-        } else 
-          trans.twrite(pro[i].key);
+        ERR;
       }
 
       if (trans.status == TransactionStatus::abort) {
@@ -161,9 +155,9 @@ RETRY:
       }
     }
 
-    //read onlyトランザクションはread setを集めず、validationもしない。
-    //write phaseはログを取り仮バージョンのコミットを行う．これをスキップできる．
-    if (trans.ronly) {
+    // read only tx doesn't collect read set and doesn't validate.
+    // write phase execute logging and commit pending versions, but r-only tx can skip it.
+    if ((*trans.proSet.begin()).ronly_) {
       trans.mainte(res);
       ++trans.continuingCommit;
       ++res.local_commit_counts;

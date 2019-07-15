@@ -33,8 +33,7 @@ extern void display_procedure_vector(std::vector<Procedure>& pro);
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
 extern void sleepMs(size_t ms);
@@ -47,8 +46,6 @@ worker(void *arg)
   rnd.init();
   TxExecutor trans(res.thid);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
-  vector<Procedure> proSet;
-  proSet.reserve(MAX_OPE);
 
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(res.thid));
@@ -64,36 +61,27 @@ worker(void *arg)
   
   //start work (transaction)
   for (;;) {
-    if (YCSB) 
-      makeProcedure(proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
-    else
-      makeProcedure(proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 #if KEY_SORT
     std::sort(proSet.begin(), proSet.end());
 #endif
 
 RETRY:
-    trans.tbegin();
-
-    //End judgment
     if (Result::Finish.load(std::memory_order_acquire))
         return nullptr;
-    //-----
- 
-    for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      if (proSet[i].ope == Ope::READ) {
-        trans.tread(proSet[i].key);
-      } 
-      else if (proSet[i].ope == Ope::WRITE) {
-        if (RMW) {
-          trans.tread(proSet[i].key);
-          trans.twrite(proSet[i].key);
-        }
-        else
-          trans.twrite(proSet[i].key);
-      }
-      else
+    trans.tbegin();
+
+    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+      if ((*itr).ope_ == Ope::READ) {
+        trans.tread((*itr).key_);
+      } else if ((*itr).ope_ == Ope::WRITE) {
+        trans.twrite((*itr).key_);
+      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        trans.tread((*itr).key_);
+        trans.twrite((*itr).key_);
+      } else {
         ERR;
+      }
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();

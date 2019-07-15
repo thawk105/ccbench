@@ -1,26 +1,24 @@
 #pragma once
 
 #include <stdio.h>
-
 #include <atomic>
 #include <iostream>
 #include <map>
 #include <queue>
 
+#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
+
+#include "../../include/debug.hpp"
+#include "../../include/inline.hpp"
+#include "../../include/procedure.hpp"
+#include "../../include/string.hpp"
+#include "../../include/util.hpp"
 #include "cicada_op_element.hpp"
 #include "common.hpp"
-#include "procedure.hpp"
 #include "tuple.hpp"
 #include "timeStamp.hpp"
 #include "version.hpp"
 #include "result.hpp"
-
-#include "../../include/debug.hpp"
-#include "../../include/inline.hpp"
-#include "../../include/string.hpp"
-#include "../../include/util.hpp"
-
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 enum class TransactionStatus : uint8_t {
   invalid,
@@ -37,6 +35,7 @@ public:
   std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>> readSet;
   std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> writeSet;
   std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq;
+  std::vector<Procedure> proSet;
 
   bool ronly;
   uint8_t thid;
@@ -68,6 +67,7 @@ public:
 
     readSet.reserve(MAX_OPE);
     writeSet.reserve(MAX_OPE);
+    proSet.reserve(MAX_OPE);
     //gcq.resize(MAX_OPE);
 
     continuingCommit = 0;
@@ -78,9 +78,9 @@ public:
     GCstart = start;
   }
 
-  void tbegin(bool ronly);
-  char* tread(unsigned int key);
-  void twrite(unsigned int key);
+  void tbegin();
+  char* tread(uint64_t key);
+  void twrite(uint64_t key);
   bool validation();
   void writePhase();
   void swal();

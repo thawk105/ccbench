@@ -153,41 +153,43 @@ TxExecutor::validationPhase()
     ++tres->local_rtsupd_chances;
 
     v1.obj  = __atomic_load_n(&((*itr).rcdptr->tsw.obj), __ATOMIC_ACQUIRE);
-    for (;;) {
-      if ((*itr).tsw.wts != v1.wts) {
+    if ((*itr).tsw.rts() < commit_ts) {
+      for (;;) {
+        if ((*itr).tsw.wts != v1.wts) {
 #if TIMESTAMP_HISTORY
-        TsWord pre_v1;
-        pre_v1.obj = __atomic_load_n(&((*itr).rcdptr->pre_tsw.obj), __ATOMIC_ACQUIRE);
-        if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) {
-          ++tres->local_timestamp_history_success_counts;
-          break;
-        }
-        ++tres->local_timestamp_history_fail_counts;
+          TsWord pre_v1;
+          pre_v1.obj = __atomic_load_n(&((*itr).rcdptr->pre_tsw.obj), __ATOMIC_ACQUIRE);
+          if (pre_v1.wts <= commit_ts && commit_ts < v1.wts) {
+            ++tres->local_timestamp_history_success_counts;
+            break;
+          }
+          ++tres->local_timestamp_history_fail_counts;
 #endif
-        return false;
-      }
+          return false;
+        }
 
-      SetElement<Tuple> *inW = searchWriteSet((*itr).key);
-      if ((v1.rts()) < commit_ts && v1.lock) {
-        if (inW == nullptr) return false;
-      }
+        SetElement<Tuple> *inW = searchWriteSet((*itr).key);
+        if ((v1.rts()) < commit_ts && v1.lock) {
+          if (inW == nullptr) return false;
+        }
 
-      if (inW != nullptr) break;
-      //extend the rts of the tuple
-      if ((v1.rts()) < commit_ts) {
-        // Handle delta overflow
-        uint64_t delta = commit_ts - v1.wts;
-        uint64_t shift = delta - (delta & 0x7fff);
-        v2.obj = v1.obj;
-        v2.wts = v2.wts + shift;
-        v2.delta = delta - shift;
-        if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
-          ++tres->local_rtsupd;
+        if (inW != nullptr) break;
+        //extend the rts of the tuple
+        if ((v1.rts()) < commit_ts) {
+          // Handle delta overflow
+          uint64_t delta = commit_ts - v1.wts;
+          uint64_t shift = delta - (delta & 0x7fff);
+          v2.obj = v1.obj;
+          v2.wts = v2.wts + shift;
+          v2.delta = delta - shift;
+          if (__atomic_compare_exchange_n(&((*itr).rcdptr->tsw.obj), &(v1.obj), v2.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+            ++tres->local_rtsupd;
+            break;
+          }
+          else continue;
+        } else {
           break;
         }
-        else continue;
-      } else {
-        break;
       }
     }
   }

@@ -30,9 +30,7 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
-extern void makeProcedureWithCheckWriteOnly(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio, bool& wonly);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
 extern void sleepMs(size_t ms);
@@ -57,28 +55,21 @@ worker(void *arg)
   
   for (;;) {
     uint64_t start, stop;
-    if (YCSB)
-      makeProcedureWithCheckWriteOnly(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, trans.wonly);
-    else
-      makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
-    trans.tbegin();
-
     if (res.Finish.load(std::memory_order_acquire))
       return nullptr;
+    trans.tbegin();
 
     start = rdtscp();
     for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
-      if ((*itr).ope == Ope::READ) {
-        trans.tread((*itr).key);
-      } else if ((*itr).ope == Ope::WRITE) {
-        if (RMW) {
-          trans.tread((*itr).key);
-          if (trans.status != TransactionStatus::aborted)
-            trans.twrite((*itr).key);
-        }
-        else
-          trans.twrite((*itr).key);
+      if ((*itr).ope_ == Ope::READ) {
+        trans.tread((*itr).key_);
+      } else if ((*itr).ope_ == Ope::WRITE) {
+        trans.twrite((*itr).key_);
+      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        trans.tread((*itr).key_);
+        trans.twrite((*itr).key_);
       } else {
         ERR;
       }

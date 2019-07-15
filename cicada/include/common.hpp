@@ -5,14 +5,12 @@
 #include <atomic>
 #include <queue>
 
-#include "lock.hpp"
-#include "procedure.hpp"
-#include "tuple.hpp"
-#include "version.hpp"
-
 #include "../../include/cache_line_size.hpp"
 #include "../../include/int64byte.hpp"
 #include "../../include/masstree_wrapper.hpp"
+#include "lock.hpp"
+#include "tuple.hpp"
+#include "version.hpp"
 
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL

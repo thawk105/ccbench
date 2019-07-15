@@ -34,8 +34,7 @@ extern void displayDB();
 extern void displayPRO();
 extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
@@ -103,10 +102,7 @@ worker(void *arg)
   //start work(transaction)
   for (;;) {
     uint64_t start, stop;
-    if (YCSB)
-      makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
-    else
-      makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
     trans.tbegin();
     if (SiloResult::Finish.load(memory_order_acquire))
@@ -114,18 +110,19 @@ RETRY:
 
     //Read phase
     start = rdtscp();
-    for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      if (trans.proSet[i].ope == Ope::READ) {
-          trans.tread(trans.proSet[i].key);
+    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+      if ((*itr).ope_ == Ope::READ) {
+        trans.tread((*itr).key_);
+      } else if ((*itr).ope_ == Ope::WRITE) {
+        trans.twrite((*itr).key_);
+      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        trans.tread((*itr).key_);
+        trans.twrite((*itr).key_);
       } else {
-        if (RMW) {
-          trans.tread(trans.proSet[i].key);
-          trans.twrite(trans.proSet[i].key);
-        } else {
-          trans.twrite(trans.proSet[i].key);
-        }
+        ERR;
       }
     }
+
     stop = rdtscp();
     res.local_read_latency += stop - start;
     

@@ -30,8 +30,7 @@ extern void displayDB();
 extern void displayLockedTuple();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, size_t& tuple_num, size_t& max_ope, size_t& rratio);
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t& tuple_num, size_t& max_ope, size_t& rratio);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
@@ -87,14 +86,7 @@ worker(void *arg)
   MoccResult &res = *(MoccResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  int locknum = res.thid + 2;
-  // 0 : None
-  // 1 : Acquired
-  // 2 : SuccessorLeaving
-  // 3 : th num 1
-  // 4 : th num 2
-  // ..., th num 0 is leader thread.
-  TxExecutor trans(res.thid, &rnd, locknum);
+  TxExecutor trans(res.thid, &rnd, (MoccResult*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
@@ -109,10 +101,7 @@ worker(void *arg)
   
   //start work (transaction)
   for (;;) {
-    if (YCSB)
-      makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO);
-    else
-      makeProcedure(trans.proSet, rnd, TUPLE_NUM, MAX_OPE, RRATIO);
+    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 #if KEY_SORT
     sort(trans.proSet.begin(), trans.proSet.end());
 #endif
@@ -122,15 +111,16 @@ RETRY:
       return nullptr;
 
     trans.begin();
-    for (unsigned int i = 0; i < MAX_OPE; ++i) {
-      if (trans.proSet[i].ope == Ope::READ) {
-        trans.read(trans.proSet[i].key);
+    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+      if ((*itr).ope_ == Ope::READ) {
+        trans.read((*itr).key_);
+      } else if ((*itr).ope_ == Ope::WRITE) {
+        trans.write((*itr).key_);
+      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        trans.read((*itr).key_);
+        trans.write((*itr).key_);
       } else {
-        if (RMW) {
-          trans.read(trans.proSet[i].key);
-          trans.write(trans.proSet[i].key);
-        } else 
-          trans.write(trans.proSet[i].key);
+        ERR;
       }
 
       if (trans.status == TransactionStatus::aborted) {
@@ -141,7 +131,7 @@ RETRY:
       }
     }
 
-    if (!(trans.commit(res))) {
+    if (!(trans.commit())) {
       trans.abort();
       ++res.local_abort_by_validation;
       ++res.local_abort_counts;
