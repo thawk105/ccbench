@@ -47,6 +47,7 @@ struct Epotemp {
       uint64_t epoch_:32;
     };
   };
+  uint8_t pad[CACHE_LINE_SIZE - sizeof(uint64_t)];
 
   Epotemp() : obj_(0) {}
   Epotemp(uint64_t temp, uint64_t epoch) : temp_(temp), epoch_(epoch) {}

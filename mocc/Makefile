@@ -4,7 +4,7 @@ MOCC_SRCS1 := mocc.cc transaction.cc lock.cc util.cc result.cc
 REL := ../common/
 include $(REL)Makefile
 
-KEY_SIZE=4
+KEY_SIZE=8
 VAL_SIZE=4
 
 CC = g++
@@ -14,6 +14,8 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
 				 -DMASSTREE_USE=1 \
+				 -DKEY_SORT=0 \
+				 -DTEMPERATURE_RESET_OPT=1 \
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release

@@ -49,6 +49,7 @@ chkArg(const int argc, char *argv[])
     cout << "EXTIME: execution time [sec]" << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
+    cout << "Epotemp:\t" << sizeof(Epotemp) << endl;
     cout << "RWLock " << sizeof(RWLock) << endl;
     cout << "MQLock " << sizeof(MQLock) << endl;
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
@@ -109,6 +110,11 @@ chkArg(const int argc, char *argv[])
     ERR;
   }
 
+  if (PER_XX_TEMP < sizeof(Tuple)) {
+    cout << "PER_XX_TEMP's minimum is sizeof(Tuple) " << sizeof(Tuple) << endl;
+    ERR;
+  }
+    
   if (posix_memalign((void**)&Start, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
   if (posix_memalign((void**)&Stop, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
   if (posix_memalign((void**)&ThLocalEpoch, 64, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;

@@ -387,15 +387,18 @@ TxExecutor::construct_RLL()
     size_t epotemp_index = (*itr).key * sizeof(Tuple) / PER_XX_TEMP;
     if ((*itr).failedVerification) {
       Epotemp expected, desired;
-      uint64_t nowepo;
       expected.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
-      nowepo = (loadAcquireGE()).obj;
 
+#if TEMPERATURE_RESET_OPT
+      uint64_t nowepo;
+      nowepo = (loadAcquireGE()).obj;
       if (expected.epoch_ != nowepo) {
         desired.epoch_ = nowepo;
         desired.temp_ = 0;
         storeRelease(Epotemp_ary[epotemp_index].obj_, desired.obj_);
+        ++tres_->local_temperature_resets;
       }
+#endif
 
       for (;;) {
         //printf("key:\t%lu,\ttemp_index:\t%zu,\ttemp:\t%lu\n", (*itr).key, epotemp_index, expected.temp_);

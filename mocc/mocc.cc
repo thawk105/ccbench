@@ -73,6 +73,16 @@ manager_worker(void *arg)
     if (chkClkSpan(epochTimerStart, epochTimerStop, EPOCH_TIME * CLOCKS_PER_US * 1000) && chkEpochLoaded()) {
       atomicAddGE();
       epochTimerStart = epochTimerStop;
+#if TEMPERATURE_RESET_OPT
+#else
+      size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
+      uint64_t nowepo = (loadAcquireGE()).obj;
+      for (uint64_t i = 0; i < epotemp_length; ++i) {
+        Epotemp epotemp(0, nowepo);
+        storeRelease(Epotemp_ary[i].obj_, epotemp.obj_);
+      }
+      res.local_temperature_resets += epotemp_length;
+#endif
     }
     //----------
   }

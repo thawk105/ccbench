@@ -58,12 +58,19 @@ MoccResult::display_total_validation_failure_by_tid_rate()
 }
 
 void
+MoccResult::display_total_temperature_resets()
+{
+  cout << "total_temperature_resets:\t" << total_temperature_resets << endl;
+}
+
+void
 MoccResult::display_all_mocc_result()
 {
   display_total_abort_by_operation_rate();
   display_total_abort_by_validation_rate();
   display_total_validation_failure_by_writelock_rate();
   display_total_validation_failure_by_tid_rate();
+  display_total_temperature_resets();
   display_all_result();
 }
 
@@ -92,6 +99,12 @@ MoccResult::add_local_validation_failure_by_tid(uint64_t vfbtid)
 }
 
 void
+MoccResult::add_local_temperature_resets(uint64_t tr)
+{
+  total_temperature_resets += tr;
+}
+
+void
 MoccResult::add_local_all_mocc_result(MoccResult &other)
 {
   add_local_all_result(other);
@@ -99,5 +112,6 @@ MoccResult::add_local_all_mocc_result(MoccResult &other)
   add_local_abort_by_validation(other.local_abort_by_validation);
   add_local_validation_failure_by_writelock(other.local_validation_failure_by_writelock);
   add_local_validation_failure_by_tid(other.local_validation_failure_by_tid);
+  add_local_temperature_resets(other.local_temperature_resets);
 }
 
