@@ -5,6 +5,7 @@
 #include "tuple.hpp"
 
 #include "../../include/cache_line_size.hpp"
+#include "../../include/config.hpp"
 #include "../../include/int64byte.hpp"
 #include "../../include/masstree_wrapper.hpp"
 #include "../../include/random.hpp"
@@ -37,9 +38,12 @@ GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL size_t CLOCKS_PER_US;
 GLOBAL size_t EPOCH_TIME;
+GLOBAL size_t PER_XX_TEMP; // original is the per page temperature statistics.
 GLOBAL size_t EXTIME;
 
 GLOBAL RWLock CtrLock;
+// temperature, min 0, max 20
+alignas(PAGE_SIZE) GLOBAL Epotemp *Epotemp_ary;
 
 // for logging emulation
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *Start;  

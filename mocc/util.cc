@@ -32,9 +32,9 @@ extern size_t decide_parallel_build_number(size_t tuplenum);
 void
 chkArg(const int argc, char *argv[])
 {
-  if (argc != 11) {
-    cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EPOCH_TIME EXTIME" << endl;
-    cout << "example: ./mocc.exe 200 10 24 50 off 0 off 2400 40 3" << endl;
+  if (argc != 12) {
+    cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EPOCH_TIME PER_XX_TEMP EXTIME" << endl;
+    cout << "example: ./mocc.exe 200 10 224 50 off 0 on 2100 40 4096 3" << endl;
 
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
@@ -45,6 +45,7 @@ chkArg(const int argc, char *argv[])
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
     cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
     cout << "EPOCH_TIME(unsigned int)(ms): Ex. 40" << endl;
+    cout << "PER_XX_TEMP:\tWhat record size (bytes) does it integrate about temperature statistics." << endl;
     cout << "EXTIME: execution time [sec]" << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -77,7 +78,8 @@ chkArg(const int argc, char *argv[])
   string argycsb = argv[7];
   CLOCKS_PER_US = atof(argv[8]);
   EPOCH_TIME = atoi(argv[9]);
-  EXTIME = atoi(argv[10]);
+  PER_XX_TEMP = atoi(argv[10]);
+  EXTIME = atoi(argv[11]);
 
   if (RRATIO > 100) {
     cout << "rratio (* 10 \%) must be 0 ~ 10)" << endl;
@@ -152,7 +154,7 @@ displayLockedTuple()
 }
 
 void
-part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end, Epotemp* eptmp_ary)
+part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
@@ -166,11 +168,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end, Epote
     tmp->val[0] = 'a'; 
     tmp->val[1] = '\0';
 
-    Epotemp eptmp(0, 1);
-    size_t ep_index = i * sizeof(Tuple) / PAGE_SIZE;
+    Epotemp epotemp(0, 1);
+    size_t epotemp_index = i * sizeof(Tuple) / PER_XX_TEMP;
     //cout << "key:\t" << i << ", ep_index:\t" << ep_index << endl;
-    tmp->epotemp = &eptmp_ary[ep_index];
-    storeRelease(tmp->epotemp->obj_, eptmp.obj_);
+    storeRelease(Epotemp_ary[epotemp_index].obj_, epotemp.obj_);
 #if MASSTREE_USE
     MT.insert_value(i, tmp);
 #endif
@@ -187,18 +188,16 @@ makeDB()
     ERR;
 #endif
 
-  size_t eptmp_length = TUPLE_NUM * sizeof(Tuple) / PAGE_SIZE + 1;
+  size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
   //cout << "eptmp_length:\t" << eptmp_length << endl;
-  Epotemp *eptmp_ary;
-  if (posix_memalign((void**)&eptmp_ary, PAGE_SIZE, eptmp_length * sizeof(Epotemp)) != 0)
+  if (posix_memalign((void**)&Epotemp_ary, PAGE_SIZE, epotemp_length * sizeof(Epotemp)) != 0)
     ERR;
   
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i) {
     thv.emplace_back(part_table_init, i,
-        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1,
-        eptmp_ary);
+        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   }
   for (auto& th : thv) th.join();
 }

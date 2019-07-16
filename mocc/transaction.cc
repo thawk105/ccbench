@@ -93,7 +93,8 @@ TxExecutor::read(uint64_t key)
 #endif // MQLOCK
 
   Epotemp loadepot;
-  loadepot.obj_ = loadAcquire(tuple->epotemp->obj_);
+  size_t epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
   bool needVerification = true;;
   if (inRLL != nullptr) {
     lock(key, tuple, inRLL->mode);
@@ -166,7 +167,8 @@ TxExecutor::write(uint64_t key)
 #endif
 
   Epotemp loadepot;
-  loadepot.obj_ = loadAcquire(tuple->epotemp->obj_);
+  size_t epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
   if (loadepot.temp_ >= TEMP_THRESHOLD) lock(key, tuple, true);
   if (this->status == TransactionStatus::aborted) {
     return;
@@ -382,19 +384,21 @@ TxExecutor::construct_RLL()
 
   for (auto itr = readSet.begin(); itr != readSet.end(); ++itr) {
     // maintain temprature p
+    size_t epotemp_index = (*itr).key * sizeof(Tuple) / PER_XX_TEMP;
     if ((*itr).failedVerification) {
       Epotemp expected, desired;
       uint64_t nowepo;
-      expected.obj_ = loadAcquire((*itr).rcdptr->epotemp->obj_);
+      expected.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
       nowepo = (loadAcquireGE()).obj;
 
       if (expected.epoch_ != nowepo) {
         desired.epoch_ = nowepo;
         desired.temp_ = 0;
-        storeRelease((*itr).rcdptr->epotemp->obj_, desired.obj_);
+        storeRelease(Epotemp_ary[epotemp_index].obj_, desired.obj_);
       }
 
       for (;;) {
+        //printf("key:\t%lu,\ttemp_index:\t%zu,\ttemp:\t%lu\n", (*itr).key, epotemp_index, expected.temp_);
         if (expected.temp_ == TEMP_MAX) {
           break;
         } else if (rnd->next() % (1 << expected.temp_) == 0) {
@@ -404,9 +408,8 @@ TxExecutor::construct_RLL()
           break;
         }
 
-        if (compareExchange((*itr).rcdptr->epotemp->obj_, expected.obj_, desired.obj_)) {
+        if (compareExchange(Epotemp_ary[epotemp_index].obj_, expected.obj_, desired.obj_))
           break;
-        }
       }
     }
 
@@ -422,7 +425,7 @@ TxExecutor::construct_RLL()
     // if temprature >= threshold
     //  || r failed verification
     Epotemp loadepot;
-    loadepot.obj_ = loadAcquire((*itr).rcdptr->epotemp->obj_);
+    loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
     if (loadepot.temp_ >= TEMP_THRESHOLD 
         || (*itr).failedVerification) {
 #ifdef RWLOCK

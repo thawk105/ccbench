@@ -68,7 +68,6 @@ struct Epotemp {
 class Tuple {
 public:
   Tidword tidword;
-  Epotemp *epotemp;  //  temprature, min 0, max 20
 #ifdef RWLOCK
   RWLock rwlock;  // 4byte
   // size to here is 20 bytes
