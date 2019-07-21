@@ -26,9 +26,11 @@ ErmiaResult::display_totalGCTMTElementsCounts()
 void
 ErmiaResult::display_AllErmiaResult()
 {
+#if ADD_ANALYSIS
   display_totalGCCounts();
   display_totalGCVersionCounts();
   display_totalGCTMTElementsCounts();
+#endif
   display_all_result();
 }
 

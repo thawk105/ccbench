@@ -26,9 +26,11 @@ SIResult::display_totalGCTMTElements()
 void
 SIResult::display_AllSIResult()
 {
+#if ADD_ANALYSIS
   display_totalGCCounts();
   display_totalGCVersions();
   display_totalGCTMTElements();
+#endif
   display_all_result();
 }
 

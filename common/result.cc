@@ -33,13 +33,16 @@ void
 Result::display_tps()
 {
   uint64_t result = total_commit_counts / extime;
-  std::cout << "Throughput(tps):\t" << result << std::endl;
+  cout << "Throughput(tps):\t" << result << endl;
 }
 
 void
 Result::display_all_result()
 {
   display_rusage_ru_maxrss();
+#if ADD_ANALYSIS
+  display_tree_traversal();
+#endif
   display_total_commit_counts();
   display_total_abort_counts();
   display_abort_rate();
@@ -51,6 +54,9 @@ Result::add_local_all_result(const Result &other)
 {
   total_abort_counts += other.local_abort_counts;
   total_commit_counts += other.local_commit_counts;
+#if ADD_ANALYSIS
+  total_tree_traversal += other.local_tree_traversal;
+#endif
 }
 
 void
@@ -65,3 +71,16 @@ Result::add_local_commit_counts(const uint64_t ccount)
   total_commit_counts += ccount;
 }
 
+#if ADD_ANALYSIS
+void
+Result::display_tree_traversal()
+{
+  cout << "tree_traversal:\t" << total_tree_traversal << endl;
+}
+
+void
+Result::add_local_tree_traversal(const uint64_t tcount)
+{
+  total_tree_traversal += tcount;
+}
+#endif

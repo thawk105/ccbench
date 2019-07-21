@@ -32,15 +32,15 @@ public:
   std::vector<Procedure> proSet;
   GarbageCollection gcobject;
   uint32_t preGcThreshold = 0;
-  Result rsobject;
 
   uint8_t thid_; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
+  SIResult *sres_;
 
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t thid, unsigned int max_ope) : thid_(thid) {
+  TxExecutor(uint8_t thid, unsigned int max_ope, SIResult* sres) : thid_(thid), sres_(sres) {
     gcobject.thid = thid;
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);

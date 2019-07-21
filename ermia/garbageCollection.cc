@@ -56,7 +56,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion(ErmiaResult &rsob)
+GarbageCollection::gcVersion([[maybe_unused]]ErmiaResult *eres_)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -66,11 +66,14 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value(gcqForVersion.front().key);
-#else
-    Tuple *tuple = TxExecutor::get_tuple(Table, gcqForVersion.front().key);
-#endif
+    #if MASSTREE_USE
+      Tuple *tuple = MT.get_value(gcqForVersion.front().key);
+      #if ADD_ANALYSIS
+        ++eres_->local_tree_traversal;
+      #endif
+    #else
+      Tuple *tuple = TxExecutor::get_tuple(Table, gcqForVersion.front().key);
+    #endif
     if (!tuple->gClock.compare_exchange_strong(zero, this->thid_, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcqForVersion.pop();
@@ -111,7 +114,9 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
       Version *tmp = delTarget->prev;
       delete delTarget;
       delTarget = tmp;
-      ++rsob.localGCVersionCounts;
+#if ADD_ANALYSIS
+      ++eres_->localGCVersionCounts;
+#endif
     }
 
     // releases the lock
@@ -123,7 +128,7 @@ GarbageCollection::gcVersion(ErmiaResult &rsob)
 }
 
 void
-GarbageCollection::gcTMTelement(ErmiaResult &rsob)
+GarbageCollection::gcTMTelement([[maybe_unused]]ErmiaResult *eres_)
 {
   uint32_t threshold = getGcThreshold();
   if (gcqForTMT.empty()) return;
@@ -133,7 +138,9 @@ GarbageCollection::gcTMTelement(ErmiaResult &rsob)
     if (tmt->txid < threshold) {
       gcqForTMT.pop();
       delete tmt;
-      ++rsob.localGCTMTElementsCounts;
+#if ADD_ANALYSIS
+      ++eres_->localGCTMTElementsCounts;
+#endif
       if (gcqForTMT.empty()) break;
     }
     else break;

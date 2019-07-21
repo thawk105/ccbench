@@ -39,13 +39,14 @@ public:
 
   uint8_t thid_; // thread ID
   uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
+  ErmiaResult* eres_;
 
   uint64_t gcstart, gcstop; // counter for garbage collection
 
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t thid, size_t max_ope) : thid_(thid) {
+  TxExecutor(uint8_t thid, size_t max_ope, ErmiaResult* eres) : thid_(thid), eres_(eres) {
     gcobject.set_thid_(thid);
     readSet.reserve(max_ope);
     writeSet.reserve(max_ope);
@@ -62,7 +63,7 @@ public:
   void ssn_commit();
   void ssn_parallel_commit();
   void abort();
-  void mainte(ErmiaResult &res);
+  void mainte();
   void verify_exclusion_or_abort();
   void dispWS();
   void dispRS();

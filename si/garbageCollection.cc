@@ -56,7 +56,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion(SIResult &rsob)
+GarbageCollection::gcVersion([[maybe_unused]]SIResult* sres_)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -65,11 +65,14 @@ GarbageCollection::gcVersion(SIResult &rsob)
     if (gcqForVersion.front().cstamp >= threshold) break;
 
     // (a) acquiring the garbage collection lock succeeds
-#if MASSTREE_USE
-    Tuple *tuple = MT.get_value(gcqForVersion.front().key);
-#else
-    Tuple *tuple = TxExecutor::get_tuple(Table, gcqForVersion.front().key);
-#endif
+    #if MASSTREE_USE
+      Tuple *tuple = MT.get_value(gcqForVersion.front().key);
+      #if ADD_ANALYSIS
+        ++sres_->local_tree_traversal;
+      #endif
+    #else
+      Tuple *tuple = TxExecutor::get_tuple(Table, gcqForVersion.front().key);
+    #endif
 
     uint8_t zero = 0;
     if (!tuple->gClock.compare_exchange_strong(zero, this->thid, std::memory_order_acq_rel, std::memory_order_acquire)) {
@@ -112,7 +115,9 @@ GarbageCollection::gcVersion(SIResult &rsob)
       Version *tmp = delTarget->prev;
       delete delTarget;
       delTarget = tmp;
-      ++rsob.localGCVersions;
+#if ADD_ANALYSIS
+      ++sres_->localGCVersions;
+#endif
     }
 
     // releases the lock
@@ -125,7 +130,7 @@ GarbageCollection::gcVersion(SIResult &rsob)
 
 #ifdef CCTR_ON
 void
-GarbageCollection::gcTMTElements(SIResult &rsob)
+GarbageCollection::gcTMTElements([[maybe_unused]]SIResult* sres_)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -138,7 +143,9 @@ GarbageCollection::gcTMTElements(SIResult &rsob)
     if (tmt->txid < threshold) {
       gcqForTMT.pop_front();
       delete tmt;
-      ++rsob.localGCTMTElements;
+#if ADD_ANALYSIS
+      ++sres_->localGCTMTElements;
+#endif
     }
     else break;
   }

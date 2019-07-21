@@ -151,6 +151,7 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
     Tuple *tmp;
     Version *verTmp;
     tmp = TxExecutor::get_tuple(Table, i);
+    if (posix_memalign((void**)&tmp->latest, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
     tmp->min_cstamp = 0;
     verTmp = tmp->latest.load(std::memory_order_acquire);
     verTmp->cstamp = 0;
@@ -170,9 +171,6 @@ makeDB()
 #if dbs11
   if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    if (posix_memalign((void**)&Table[i].latest, 64, sizeof(Version)) != 0) ERR;
-  }
 
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
 

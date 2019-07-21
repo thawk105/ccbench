@@ -58,9 +58,9 @@ public:
   // -----
   
   // for worker thread
-  void gcVersion(SIResult &rsob);
+  void gcVersion(SIResult *sres_);
 #ifdef CCTR_ON
-  void gcTMTElements(SIResult &rsob);
+  void gcTMTElements(SIResult *sres_);
 #endif // CCTR_ON
   // -----
 };

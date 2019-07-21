@@ -65,7 +65,7 @@ static void *
 worker(void *arg)
 {
   SIResult &res = *(SIResult *)(arg);
-  TxExecutor trans(res.thid, MAX_OPE);
+  TxExecutor trans(res.thid, MAX_OPE, (SIResult*)arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
@@ -109,25 +109,23 @@ RETRY:
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.local_abort_counts;
         goto RETRY;
       }
     }
 
     trans.commit();
-    ++res.local_commit_counts;
 
 #if 1
     // maintenance phase
     // garbage collection
     uint32_t loadThreshold = trans.gcobject.getGcThreshold();
     if (trans.preGcThreshold != loadThreshold) {
-      trans.gcobject.gcVersion(res);
+      trans.gcobject.gcVersion(trans.sres_);
       trans.preGcThreshold = loadThreshold;
 #ifdef CCTR_ON
-      trans.gcobject.gcTMTElements(res);
+      trans.gcobject.gcTMTElements(trans.sres_);
 #endif // CCTR_ON
-      ++res.localGCCounts;
+      ++trans.sres_->localGCCounts;
     }
 #endif
     }

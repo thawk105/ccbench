@@ -69,7 +69,7 @@ static void *
 worker(void *arg)
 {
   ErmiaResult &res = *(ErmiaResult *)(arg);
-  TxExecutor trans(res.thid, MAX_OPE);
+  TxExecutor trans(res.thid, MAX_OPE, (ErmiaResult*)arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
@@ -110,7 +110,6 @@ RETRY:
 
       if (trans.status == TransactionStatus::aborted) {
         trans.abort();
-        ++res.local_abort_counts;
         goto RETRY;
       }
     }
@@ -119,14 +118,12 @@ RETRY:
 
     if (trans.status == TransactionStatus::aborted) {
       trans.abort();
-      ++res.local_abort_counts;
       goto RETRY;
     }
 
     // maintenance phase
     // garbage collection
-    trans.mainte(res);
-    ++res.local_commit_counts;
+    trans.mainte();
   }
 
   return nullptr;

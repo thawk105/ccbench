@@ -95,6 +95,9 @@ TxExecutor::ssn_tread(unsigned int key)
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
+  #if ADD_ANALYSIS
+    ++eres_->local_tree_traversal;
+  #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
 #endif
@@ -153,10 +156,13 @@ TxExecutor::ssn_twrite(unsigned int key)
   uint64_t tmptid = this->thid_;
   tmptid = tmptid << 1;
   tmptid |= 1;
-  desired->cstamp.store(tmptid, memory_order_release);  // read operation, write operation, ガベコレからアクセスされるので， CAS 前に格納
+  desired->cstamp.store(tmptid, memory_order_relaxed);  // read operation, write operation, ガベコレからアクセスされるので， CAS 前に格納
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
+  #if ADD_ANALYSIS
+    ++eres_->local_tree_traversal;
+  #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
 #endif
@@ -434,6 +440,7 @@ TxExecutor::ssn_parallel_commit()
 
   readSet.clear();
   writeSet.clear();
+  ++eres_->local_commit_counts;
   return;
 }
 
@@ -451,6 +458,7 @@ TxExecutor::abort()
     downReadersBits((*itr).ver);
 
   readSet.clear();
+  ++eres_->local_abort_counts;
 }
 
 void
@@ -464,17 +472,19 @@ TxExecutor::verify_exclusion_or_abort()
 }
 
 void
-TxExecutor::mainte(ErmiaResult &res)
+TxExecutor::mainte()
 {
   gcstop = rdtscp();
   if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCKS_PER_US)) {
     uint32_t loadThreshold = gcobject.getGcThreshold();
     if (preGcThreshold != loadThreshold) {
-      gcobject.gcTMTelement(res);
-      gcobject.gcVersion(res);
+      gcobject.gcTMTelement(eres_);
+      gcobject.gcVersion(eres_);
       preGcThreshold = loadThreshold;
 
-      ++res.localGCCounts;
+#if ADD_ANALYSIS
+      ++eres_->localGCCounts;
+#endif
       gcstart = gcstop;
     }
   }

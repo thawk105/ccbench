@@ -92,6 +92,9 @@ TxExecutor::tread(uint64_t key)
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
+  #if ADD_ANALYSIS
+    ++sres_->local_tree_traversal;
+  #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
 #endif
@@ -134,11 +137,14 @@ TxExecutor::twrite(uint64_t key)
   
   Version *expected, *desired;
   desired = new Version();
-  desired->cstamp.store(this->txid, memory_order_release);  // storing before CAS because it will be accessed from read operation, write operation and garbage collection.
-  desired->status.store(VersionStatus::inFlight, memory_order_release);
+  desired->cstamp.store(this->txid, memory_order_relaxed);  // storing before CAS because it will be accessed from read operation, write operation and garbage collection.
+  desired->status.store(VersionStatus::inFlight, memory_order_relaxed);
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
+  #if ADD_ANALYSIS
+    ++sres_->local_tree_traversal;
+  #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
 #endif
@@ -199,16 +205,14 @@ TxExecutor::commit()
     gcobject.gcqForVersion.push_back(GCElement((*itr).key, (*itr).rcdptr, (*itr).ver, cstamp));
   }
 
-  //logging
-
   readSet.clear();
   writeSet.clear();
-
-  ++rsobject.local_commit_counts;
 
 #ifdef CCTR_TW
   TMT[thid_]->lastcstamp.store(this->cstamp, std::memory_order_release);
 #endif // CCTR_TW
+
+  ++sres_->local_commit_counts;
   return;
 }
 
@@ -224,8 +228,7 @@ TxExecutor::abort()
 
   readSet.clear();
   writeSet.clear();
-
-  ++rsobject.local_abort_counts;
+  ++sres_->local_abort_counts;
 }
 
 void
