@@ -41,10 +41,12 @@ CicadaResult::display_gc_phase_rate()
 void
 CicadaResult::display_AllCicadaResult()
 {
+#if ADD_ANALYSIS
   display_totalGCCounts();
   display_totalGCVersions();
   display_total_gc_tics();
   display_gc_phase_rate();
+#endif
   display_all_result();
 }
 
