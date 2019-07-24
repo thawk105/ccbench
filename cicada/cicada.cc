@@ -61,29 +61,29 @@ manager_worker(void *arg)
     bool gc_update = true;
     for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     //check all thread's flag raising
-      if (__atomic_load_n(&(GCFlag[i].obj), __ATOMIC_ACQUIRE) == 0) {
+      if (__atomic_load_n(&(GCFlag[i].obj_), __ATOMIC_ACQUIRE) == 0) {
         usleep(1);
         gc_update = false;
         break;
       }
     }
     if (gc_update) {
-      uint64_t minw = __atomic_load_n(&(ThreadWtsArray[1].obj), __ATOMIC_ACQUIRE);
+      uint64_t minw = __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
       uint64_t minr;
       if (GROUP_COMMIT == 0) {
-        minr = __atomic_load_n(&(ThreadRtsArray[1].obj), __ATOMIC_ACQUIRE);
+        minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
       } else {
-        minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj), __ATOMIC_ACQUIRE);
+        minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_), __ATOMIC_ACQUIRE);
       }
 
       for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-        uint64_t tmp = __atomic_load_n(&(ThreadWtsArray[i].obj), __ATOMIC_ACQUIRE);
+        uint64_t tmp = __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
         if (minw > tmp) minw = tmp;
         if (GROUP_COMMIT == 0) {
-          tmp = __atomic_load_n(&(ThreadRtsArray[i].obj), __ATOMIC_ACQUIRE);
+          tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);
           if (minr > tmp) minr = tmp;
         } else {
-          tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj), __ATOMIC_ACQUIRE);
+          tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj_), __ATOMIC_ACQUIRE);
           if (minr > tmp) minr = tmp;
         }
       }
@@ -93,8 +93,8 @@ manager_worker(void *arg)
 
       // downgrade gc flag
       for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-        __atomic_store_n(&(GCFlag[i].obj), 0, __ATOMIC_RELEASE);
-        __atomic_store_n(&(GCExecuteFlag[i].obj), 1, __ATOMIC_RELEASE);
+        __atomic_store_n(&(GCFlag[i].obj_), 0, __ATOMIC_RELEASE);
+        __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
       }
     }
   }
@@ -108,7 +108,7 @@ worker(void *arg)
   CicadaResult &res = *(CicadaResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid);
+  TxExecutor trans(res.thid, (CicadaResult*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #ifdef Linux
@@ -128,7 +128,7 @@ worker(void *arg)
   //printf("%s\n", trans.writeVal);
   //start work(transaction)
   for (;;) {
-    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 
 RETRY:
     if (res.Finish.load(std::memory_order_acquire))
@@ -136,7 +136,7 @@ RETRY:
 
     trans.tbegin();
     //Read phase
-    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -148,39 +148,33 @@ RETRY:
         ERR;
       }
 
-      if (trans.status == TransactionStatus::abort) {
+      if (trans.status_ == TransactionStatus::abort) {
         trans.earlyAbort();
-        ++res.local_abort_counts;
         goto RETRY;
       }
     }
 
     // read only tx doesn't collect read set and doesn't validate.
     // write phase execute logging and commit pending versions, but r-only tx can skip it.
-    if ((*trans.proSet.begin()).ronly_) {
-      trans.mainte(res);
-      ++trans.continuingCommit;
+    if ((*trans.proSet_.begin()).ronly_) {
+      ++trans.continuing_commit_;
       ++res.local_commit_counts;
-      continue;
+    } else {
+      //Validation phase
+      if (!trans.validation()) {
+        trans.abort();
+        goto RETRY;
+      }
+
+      //Write phase
+      trans.writePhase();
+
+      //Maintenance
+      //Schedule garbage collection
+      //Declare quiescent state
+      //Collect garbage created by prior transactions
+      trans.mainte();
     }
-
-    //Validation phase
-    if (!trans.validation()) {
-      trans.abort();
-      ++res.local_abort_counts;
-      goto RETRY;
-    }
-
-    //Write phase
-    trans.writePhase();
-
-    //Maintenance
-    //Schedule garbage collection
-    //Declare quiescent state
-    //Collect garbage created by prior transactions
-    trans.mainte(res);
-    ++trans.continuingCommit;
-    ++res.local_commit_counts;
   }
 
   return nullptr;

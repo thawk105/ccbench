@@ -167,13 +167,13 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
 
   //init
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    GCFlag[i].obj = 0;
-    GCExecuteFlag[i].obj = 0;
-    GROUP_COMMIT_INDEX[i].obj = 0;
-    GROUP_COMMIT_COUNTER[i].obj = 0;
-    ThreadRtsArray[i].obj = 0;
-    ThreadWtsArray[i].obj = 0;
-    ThreadRtsArrayForGroup[i].obj = 0;
+    GCFlag[i].obj_ = 0;
+    GCExecuteFlag[i].obj_ = 0;
+    GROUP_COMMIT_INDEX[i].obj_ = 0;
+    GROUP_COMMIT_COUNTER[i].obj_ = 0;
+    ThreadRtsArray[i].obj_ = 0;
+    ThreadWtsArray[i].obj_ = 0;
+    ThreadRtsArrayForGroup[i].obj_ = 0;
   }
 }
 
@@ -183,16 +183,16 @@ displayDB()
   Tuple *tuple;
   Version *version;
 
-  for (unsigned int i = 0; i < TUPLE_NUM; i++) {
+  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tuple = &Table[i % TUPLE_NUM];
     cout << "------------------------------" << endl; //-は30個
     cout << "key: " << i << endl;
 
-    version = tuple->latest;
+    version = tuple->latest_;
     while (version != NULL) {
-      cout << "val: " << version->val << endl;
+      cout << "val: " << version->val_ << endl;
       
-      switch (version->status) {
+      switch (version->status_) {
         case VersionStatus::invalid:
           cout << "status:  invalid";
           break;
@@ -214,13 +214,13 @@ displayDB()
       }
       cout << endl;
 
-      cout << "wts: " << version->wts << endl;
-      cout << "bit: " << static_cast<bitset<64> >(version->wts) << endl;
-      cout << "rts: " << version->rts << endl;
-      cout << "bit: " << static_cast<bitset<64> >(version->rts) << endl;
+      cout << "wts: " << version->wts_ << endl;
+      cout << "bit: " << static_cast<bitset<64> >(version->wts_) << endl;
+      cout << "rts: " << version->rts_ << endl;
+      cout << "bit: " << static_cast<bitset<64> >(version->rts_) << endl;
       cout << endl;
 
-      version = version->next;
+      version = version->next_;
     }
     cout << endl;
   }
@@ -243,7 +243,7 @@ displayThreadWtsArray()
 {
   cout << "ThreadWtsArray:" << endl;
   for (unsigned int i = 0; i < THREAD_NUM; i++) {
-    cout << "thid " << i << ": " << ThreadWtsArray[i].obj << endl;
+    cout << "thid " << i << ": " << ThreadWtsArray[i].obj_ << endl;
   }
   cout << endl << endl;
 }
@@ -253,7 +253,7 @@ displayThreadRtsArray()
 {
   cout << "ThreadRtsArray:" << endl;
   for (unsigned int i = 0; i < THREAD_NUM; i++) {
-    cout << "thid " << i << ": " << ThreadRtsArray[i].obj << endl;
+    cout << "thid " << i << ": " << ThreadRtsArray[i].obj_ << endl;
     }
     cout << endl << endl;
 }
@@ -266,7 +266,7 @@ displaySLogSet()
   else {
     if (S_WAL) {
       SwalLock.w_lock();
-      for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj; ++i) {
+      for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj_; ++i) {
         //printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key, SLogSet[i]->val);
       }
       SwalLock.w_unlock();
@@ -286,12 +286,11 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t initts, uint64_t start, ui
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tuple;
     tuple = TxExecutor::get_tuple(Table, i);
-    tuple->min_wts = initts;
-    tuple->gClock.store(0, std::memory_order_release);
-    tuple->latest = &tuple->inlineVersion;
-    tuple->inlineVersion.set(0, initts, nullptr, VersionStatus::committed);
-    tuple->inlineVersion.val[0] = 'a';
-    tuple->inlineVersion.val[1] = '\0';
+    tuple->min_wts_ = initts;
+    tuple->gClock_.store(0, std::memory_order_release);
+    tuple->latest_ = &tuple->inline_version_;
+    tuple->inline_version_.set(0, initts, nullptr, VersionStatus::committed);
+    tuple->inline_version_.val_[0] = '\0';
 #if MASSTREE_USE
     MT.insert_value(i, tuple);
 #endif
@@ -308,12 +307,12 @@ makeDB(uint64_t *initial_wts)
 
   TimeStamp tstmp;
   tstmp.generateTimeStampFirst(0);
-  *initial_wts = tstmp.ts;
+  *initial_wts = tstmp.ts_;
   
   size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(part_table_init, i, tstmp.ts,
+    thv.emplace_back(part_table_init, i, tstmp.ts_,
         i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto& th : thv) th.join();
 }

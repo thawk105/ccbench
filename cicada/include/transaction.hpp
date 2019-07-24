@@ -30,34 +30,32 @@ enum class TransactionStatus : uint8_t {
 
 class TxExecutor {
 public:
-  TransactionStatus status = TransactionStatus::invalid;
-  TimeStamp wts;
-  std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>> readSet;
-  std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> writeSet;
-  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq;
-  std::vector<Procedure> proSet;
+  TransactionStatus status_ = TransactionStatus::invalid;
+  TimeStamp wts_;
+  std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>> readSet_;
+  std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> writeSet_;
+  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq_;
+  std::vector<Procedure> proSet_;
+  CicadaResult* cres_ = nullptr;
 
-  bool ronly;
-  uint8_t thid;
-  uint64_t rts;
-  uint64_t start, stop; // for one-sided synchronization
-  uint64_t spinstart, spinstop; // for spin-wait
-  uint64_t grpcmt_start, grpcmt_stop; // for group commit
-  uint64_t GCstart, GCstop; // for garbage collection
-  uint64_t continuingCommit;
+  bool ronly_;
+  uint8_t thid_ = 0;
+  uint64_t rts_;
+  uint64_t start_, stop_; // for one-sided synchronization
+  uint64_t grpcmt_start_, grpcmt_stop_; // for group commit
+  uint64_t gcstart_, gcstop_; // for garbage collection
+  uint64_t continuing_commit_ = 0;
 
-  char returnVal[VAL_SIZE] = {};
-  char writeVal[VAL_SIZE] = {};
+  char return_val_[VAL_SIZE] = {};
+  char write_val_[VAL_SIZE] = {};
 
-  TxExecutor(unsigned int newThid) {
+  TxExecutor(uint8_t thid, CicadaResult* cres) : cres_(cres), thid_(thid) {
     // wait to initialize MinWts
     while(MinWts.load(memory_order_acquire) == 0);
-    rts = MinWts.load(memory_order_acquire) - 1;
-    wts.generateTimeStampFirst(thid);
-    ronly = false;
-    thid = newThid;
+    rts_ = MinWts.load(memory_order_acquire) - 1;
+    wts_.generateTimeStampFirst(thid_);
 
-    __atomic_store_n(&(ThreadWtsArray[thid].obj), wts.ts, __ATOMIC_RELEASE);
+    __atomic_store_n(&(ThreadWtsArray[thid_].obj_), wts_.ts_, __ATOMIC_RELEASE);
     unsigned int expected, desired;
     expected = FirstAllocateTimestamp.load(memory_order_acquire);
     for (;;) {
@@ -65,17 +63,15 @@ public:
       if (FirstAllocateTimestamp.compare_exchange_weak(expected, desired, memory_order_acq_rel)) break;
     }
 
-    readSet.reserve(MAX_OPE);
-    writeSet.reserve(MAX_OPE);
-    proSet.reserve(MAX_OPE);
+    readSet_.reserve(MAX_OPE);
+    writeSet_.reserve(MAX_OPE);
+    proSet_.reserve(MAX_OPE);
     //gcq.resize(MAX_OPE);
 
-    continuingCommit = 0;
+    genStringRepeatedNumber(write_val_, VAL_SIZE, thid_);
 
-    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
-
-    start = rdtscp();
-    GCstart = start;
+    start_ = rdtscp();
+    gcstart_ = start_;
   }
 
   void tbegin();
@@ -93,7 +89,7 @@ public:
   void abort();
   void wSetClean();
   void displayWset();
-  void mainte(CicadaResult &res);  //maintenance
+  void mainte();  //maintenance
 
   static INLINE Tuple* get_tuple(Tuple *table, uint64_t key) {
     return &table[key];

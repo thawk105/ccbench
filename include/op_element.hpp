@@ -5,11 +5,11 @@
 template <typename T>
 class Op_element {
 public:
-  uint64_t key;
-  T* rcdptr;
+  uint64_t key_;
+  T* rcdptr_;
 
-  Op_element() : key(0), rcdptr(nullptr) {}
-  Op_element(uint64_t key_) : key(key_) {}
-  Op_element(uint64_t key_, T* rcdptr_) : key(key_), rcdptr(rcdptr_) {}
+  Op_element() : key_(0), rcdptr_(nullptr) {}
+  Op_element(uint64_t key) : key_(key) {}
+  Op_element(uint64_t key, T* rcdptr) : key_(key), rcdptr_(rcdptr) {}
 };
 

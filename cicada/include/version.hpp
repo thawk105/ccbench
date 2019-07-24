@@ -25,58 +25,55 @@ enum class VersionStatus : uint8_t {
 
 class Version {
 public:
-  atomic<uint64_t> rts;
-  atomic<uint64_t> wts;
-  atomic<Version *> next;
-  atomic<VersionStatus> status; //commit record
+  alignas(CACHE_LINE_SIZE)
+  atomic<uint64_t> rts_;
+  atomic<uint64_t> wts_;
+  atomic<Version *> next_;
+  atomic<VersionStatus> status_; //commit record
   // version size to here is 25 bytes.
 
-  char val[VAL_SIZE];
-
-  int8_t pad[CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE))];
-  // it is description for convenience.
-  // 25 : rts(8) + wts(8) + next(8) + status(1)
+  char val_[VAL_SIZE];
 
   Version() {
-    status.store(VersionStatus::pending, memory_order_release);
-    next.store(nullptr, memory_order_release);
+    status_.store(VersionStatus::pending, memory_order_release);
+    next_.store(nullptr, memory_order_release);
   }
 
   Version(uint64_t rts, uint64_t wts) {
-    this->rts.store(rts, memory_order_relaxed);
-    this->wts.store(wts, memory_order_relaxed);
+    rts_.store(rts, memory_order_relaxed);
+    wts_.store(wts, memory_order_relaxed);;
   }
 
   void set(uint64_t rts, uint64_t wts) {
-    this->rts.store(rts, memory_order_relaxed);
-    this->wts.store(wts, memory_order_relaxed);
+    rts_ = rts;
+    wts_ = wts;
   }
 
-  void set(uint64_t rts, uint64_t wts, Version *newnex, VersionStatus newst) {
-    this->rts.store(rts, memory_order_relaxed);
-    this->wts.store(wts, memory_order_relaxed);
-    next = newnex;
-    status = newst;
+  void set(uint64_t rts, uint64_t wts, Version *next, VersionStatus status) {
+    rts_ = rts;
+    wts_ = wts;
+    next_ = next;
+    status_ = status;
   }
 
   uint64_t ldAcqRts() {
-    return rts.load(std::memory_order_acquire);
+    return rts_.load(std::memory_order_acquire);
   }
 
   uint64_t ldAcqWts() {
-    return wts.load(std::memory_order_acquire);
+    return wts_.load(std::memory_order_acquire);
   }
 
   Version *ldAcqNext() {
-    return next.load(std::memory_order_acquire);
+    return next_.load(std::memory_order_acquire);
   }
 
   VersionStatus ldAcqStatus() {
-    return status.load(std::memory_order_acquire);
+    return status_.load(std::memory_order_acquire);
   }
 
-  void strRelNext(Version *next_) {
-    next.store(next_, std::memory_order_release);
+  void strRelNext(Version *next) {
+    next_.store(next, std::memory_order_release);
   }
 };
 
