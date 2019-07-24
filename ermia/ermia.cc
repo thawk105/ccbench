@@ -42,7 +42,7 @@ manager_worker(void *arg)
   GarbageCollection gcobject;
  
 #ifdef Linux 
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
 #endif // Linux
 
   gcobject.decideFirstRange();
@@ -51,7 +51,7 @@ manager_worker(void *arg)
   
   
   for (;;) {
-    if (ErmiaResult::Finish.load(std::memory_order_acquire))
+    if (ErmiaResult::Finish_.load(std::memory_order_acquire))
       return nullptr;
 
     usleep(1);
@@ -69,17 +69,17 @@ static void *
 worker(void *arg)
 {
   ErmiaResult &res = *(ErmiaResult *)(arg);
-  TxExecutor trans(res.thid, MAX_OPE, (ErmiaResult*)arg);
+  TxExecutor trans(res.thid_, MAX_OPE, (ErmiaResult*)arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
 #if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid_));
 #endif
 
 #ifdef Linux
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
@@ -90,7 +90,7 @@ worker(void *arg)
   for(;;) {
     makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
-    if (ErmiaResult::Finish.load(std::memory_order_acquire))
+    if (ErmiaResult::Finish_.load(std::memory_order_acquire))
       return nullptr;
 
     //-----
@@ -141,7 +141,7 @@ main(const int argc, const char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid = i;
+    rsob[i].thid_ = i;
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
@@ -153,14 +153,14 @@ main(const int argc, const char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  ErmiaResult::Finish.store(true, std::memory_order_release);
+  ErmiaResult::Finish_.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllErmiaResult(rsob[i]);
   }
 
-  rsroot.extime = EXTIME;
+  rsroot.extime_ = EXTIME;
   rsroot.display_AllErmiaResult();
 
   return 0;

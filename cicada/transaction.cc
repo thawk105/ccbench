@@ -94,7 +94,7 @@ TxExecutor::tread(uint64_t key)
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
   #if ADD_ANALYSIS
-    ++cres_->local_tree_traversal;
+    ++cres_->local_tree_traversal_;
   #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
@@ -139,7 +139,7 @@ TxExecutor::twrite(uint64_t key)
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
   #if ADD_ANALYSIS
-    ++cres_->local_tree_traversal;
+    ++cres_->local_tree_traversal_;
   #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
@@ -421,7 +421,7 @@ TxExecutor::earlyAbort()
   this->wts_.set_clockBoost(CLOCKS_PER_US);
   continuing_commit_ = 0;
   this->status_ = TransactionStatus::abort;
-  ++cres_->local_abort_counts;
+  ++cres_->local_abort_counts_;
 }
 
 void
@@ -442,7 +442,7 @@ TxExecutor::abort()
 
   this->wts_.set_clockBoost(CLOCKS_PER_US);
   continuing_commit_ = 0;
-  ++cres_->local_abort_counts;
+  ++cres_->local_abort_counts_;
 }
 
 void
@@ -573,6 +573,6 @@ TxExecutor::writePhase()
   readSet_.clear();
   writeSet_.clear();
   ++continuing_commit_;
-  ++cres_->local_commit_counts;
+  ++cres_->local_commit_counts_;
 }
 

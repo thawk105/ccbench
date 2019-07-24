@@ -45,7 +45,7 @@ manager_worker(void *arg)
   CicadaResult &res = *(CicadaResult *)(arg);
 
 #ifdef Linux
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 #endif // Linux
 
@@ -54,7 +54,7 @@ manager_worker(void *arg)
 
   // leader work
   for(;;) {
-    if (res.Finish.load(std::memory_order_acquire))
+    if (res.Finish_.load(std::memory_order_acquire))
       return nullptr;
 
     bool gc_update = true;
@@ -107,11 +107,11 @@ worker(void *arg)
   CicadaResult &res = *(CicadaResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid, (CicadaResult*)arg);
+  TxExecutor trans(res.thid_, (CicadaResult*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #ifdef Linux
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
@@ -130,7 +130,7 @@ worker(void *arg)
     makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 
 RETRY:
-    if (res.Finish.load(std::memory_order_acquire))
+    if (res.Finish_.load(std::memory_order_acquire))
       return nullptr;
 
     trans.tbegin();
@@ -157,7 +157,7 @@ RETRY:
     // write phase execute logging and commit pending versions, but r-only tx can skip it.
     if ((*trans.proSet_.begin()).ronly_) {
       ++trans.continuing_commit_;
-      ++res.local_commit_counts;
+      ++res.local_commit_counts_;
     } else {
       //Validation phase
       if (!trans.validation()) {
@@ -189,7 +189,7 @@ main(int argc, char *argv[]) try
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid = i;
+    rsob[i].thid_ = i;
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
@@ -201,14 +201,14 @@ main(int argc, char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish.store(true, std::memory_order_release);
+  Result::Finish_.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
     rsroot.add_localAllCicadaResult(rsob[i]);
   }
 
-  rsroot.extime = EXTIME;
+  rsroot.extime_ = EXTIME;
   rsroot.display_AllCicadaResult();
 
   return 0;

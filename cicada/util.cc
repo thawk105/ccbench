@@ -33,7 +33,7 @@ chkArg(const int argc, char *argv[])
 {
   if (argc != 15) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US GC_INTER_US EXTIME" << endl << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2400 5 2 10 3" << endl << endl;
+    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread." << endl;

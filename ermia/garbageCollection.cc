@@ -69,7 +69,7 @@ GarbageCollection::gcVersion([[maybe_unused]]ErmiaResult *eres_)
     #if MASSTREE_USE
       Tuple *tuple = MT.get_value(gcq_for_version_.front().key_);
       #if ADD_ANALYSIS
-        ++eres_->local_tree_traversal;
+        ++eres_->local_tree_traversal_;
       #endif
     #else
       Tuple *tuple = TxExecutor::get_tuple(Table, gcq_for_version_.front().key_);

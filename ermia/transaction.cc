@@ -96,7 +96,7 @@ TxExecutor::ssn_tread(unsigned int key)
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
   #if ADD_ANALYSIS
-    ++eres_->local_tree_traversal;
+    ++eres_->local_tree_traversal_;
   #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
@@ -161,7 +161,7 @@ TxExecutor::ssn_twrite(unsigned int key)
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
   #if ADD_ANALYSIS
-    ++eres_->local_tree_traversal;
+    ++eres_->local_tree_traversal_;
   #endif
 #else
   Tuple *tuple = get_tuple(Table, key);
@@ -440,7 +440,7 @@ TxExecutor::ssn_parallel_commit()
 
   readSet_.clear();
   writeSet_.clear();
-  ++eres_->local_commit_counts;
+  ++eres_->local_commit_counts_;
   return;
 }
 
@@ -458,7 +458,7 @@ TxExecutor::abort()
     downReadersBits((*itr).ver_);
 
   readSet_.clear();
-  ++eres_->local_abort_counts;
+  ++eres_->local_abort_counts_;
 }
 
 void
