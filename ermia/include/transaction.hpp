@@ -27,18 +27,18 @@ using namespace std;
 
 class TxExecutor {
 public:
-  uint32_t cstamp = 0;  // Transaction end time, c(T) 
-  TransactionStatus status = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
-  uint32_t pstamp = 0;  // Predecessor high-water mark, η (T)
-  uint32_t sstamp = UINT32_MAX; // Successor low-water mark, pi (T)
-  vector<SetElement<Tuple>> readSet;
-  vector<SetElement<Tuple>> writeSet;
-  GarbageCollection gcobject;
-  vector<Procedure> proSet;
-  uint32_t preGcThreshold = 0;
+  uint32_t cstamp_ = 0;  // Transaction end time, c(T) 
+  TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
+  uint32_t pstamp_ = 0;  // Predecessor high-water mark, η (T)
+  uint32_t sstamp_ = UINT32_MAX; // Successor low-water mark, pi (T)
+  vector<SetElement<Tuple>> readSet_;
+  vector<SetElement<Tuple>> writeSet_;
+  GarbageCollection gcobject_;
+  vector<Procedure> proSet_;
+  uint32_t pre_gc_threshold_ = 0;
 
   uint8_t thid_; // thread ID
-  uint32_t txid;  //TID and begin timestamp - the current log sequence number (LSN)
+  uint32_t txid_;  //TID and begin timestamp - the current log sequence number (LSN)
   ErmiaResult* eres_;
 
   uint64_t gcstart, gcstop; // counter for garbage collection
@@ -47,10 +47,10 @@ public:
   char writeVal[VAL_SIZE] = {};
 
   TxExecutor(uint8_t thid, size_t max_ope, ErmiaResult* eres) : thid_(thid), eres_(eres) {
-    gcobject.set_thid_(thid);
-    readSet.reserve(max_ope);
-    writeSet.reserve(max_ope);
-    proSet.reserve(max_ope);
+    gcobject_.set_thid_(thid);
+    readSet_.reserve(max_ope);
+    writeSet_.reserve(max_ope);
+    proSet_.reserve(max_ope);
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }
@@ -71,11 +71,11 @@ public:
   void upReadersBits(Version *ver) {
     uint64_t expected, desired;
     for (;;) {
-      expected = ver->readers.load(memory_order_acquire);
+      expected = ver->readers_.load(memory_order_acquire);
 RETRY_URB:
       if (expected & (1<<thid_)) break;
       desired = expected | (1<<thid_);
-      if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+      if (ver->readers_.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
       else goto RETRY_URB;
     }
   }
@@ -83,11 +83,11 @@ RETRY_URB:
   void downReadersBits(Version *ver) {
     uint64_t expected, desired;
     for (;;) {
-      expected = ver->readers.load(memory_order_acquire);
+      expected = ver->readers_.load(memory_order_acquire);
 RETRY_DRB:
       if (!(expected & (1<<thid_))) break;
       desired = expected & ~(1<<thid_);
-      if (ver->readers.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
+      if (ver->readers_.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
       else goto RETRY_DRB;
     }
   }
@@ -100,19 +100,19 @@ RETRY_DRB:
 // for MVCC SSN
 class TransactionTable {
 public:
-  std::atomic<uint32_t> txid;
-  std::atomic<uint32_t> cstamp;
-  std::atomic<uint32_t> sstamp;
-  std::atomic<uint32_t> lastcstamp;
-  std::atomic<TransactionStatus> status;
-  uint8_t padding[15];
+  alignas(CACHE_LINE_SIZE)
+  std::atomic<uint32_t> txid_;
+  std::atomic<uint32_t> cstamp_;
+  std::atomic<uint32_t> sstamp_;
+  std::atomic<uint32_t> lastcstamp_;
+  std::atomic<TransactionStatus> status_;
 
   TransactionTable(uint32_t txid, uint32_t cstamp, uint32_t sstamp, uint32_t lastcstamp, TransactionStatus status) {
-    this->txid = txid;
-    this->cstamp = cstamp;
-    this->sstamp = sstamp;
-    this->lastcstamp = lastcstamp;
-    this->status = status;
+    this->txid_ = txid;
+    this->cstamp_ = cstamp;
+    this->sstamp_ = sstamp;
+    this->lastcstamp_ = lastcstamp;
+    this->status_ = status;
   }
 };
 

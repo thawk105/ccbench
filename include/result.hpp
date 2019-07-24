@@ -4,8 +4,11 @@
 #include <iomanip>
 #include <iostream>
 
+#include "./cache_line_size.hpp"
+
 class Result {
 public:
+  alignas(CACHE_LINE_SIZE)
   static std::atomic<bool> Finish;
   uint64_t bgn = 0;
   uint64_t end = 0;

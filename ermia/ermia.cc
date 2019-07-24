@@ -88,7 +88,7 @@ worker(void *arg)
 
   trans.gcstart = rdtscp();
   for(;;) {
-    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
     if (ErmiaResult::Finish.load(std::memory_order_acquire))
       return nullptr;
@@ -96,7 +96,7 @@ RETRY:
     //-----
     //transaction begin
     trans.tbegin();
-    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.ssn_tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -108,7 +108,7 @@ RETRY:
         ERR;
       }
 
-      if (trans.status == TransactionStatus::aborted) {
+      if (trans.status_ == TransactionStatus::aborted) {
         trans.abort();
         goto RETRY;
       }
@@ -116,7 +116,7 @@ RETRY:
 
     trans.ssn_parallel_commit();
 
-    if (trans.status == TransactionStatus::aborted) {
+    if (trans.status_ == TransactionStatus::aborted) {
       trans.abort();
       goto RETRY;
     }

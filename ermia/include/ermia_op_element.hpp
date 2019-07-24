@@ -9,14 +9,14 @@ class SetElement : public Op_element<T> {
 public:
   using Op_element<T>::Op_element;
 
-  Version *ver;
+  Version *ver_;
 
   SetElement(uint64_t key, T *rcdptr, Version *ver) : Op_element<T>::Op_element(key, rcdptr) {
-    this->ver = ver;
+    this->ver_ = ver;
   }
 
   bool operator<(const SetElement& right) const {
-    return this->key < right.key;
+    return this->key_ < right.key_;
   }
 };
 
@@ -25,12 +25,12 @@ class GCElement : public Op_element<T> {
 public:
   using Op_element<T>::Op_element;
 
-  Version *ver;
-  uint32_t cstamp;
+  Version *ver_;
+  uint32_t cstamp_;
 
   GCElement(uint64_t key, T *rcdptr, Version *ver, uint32_t cstamp) : Op_element<T>::Op_element(key, rcdptr) {
-    this->ver = ver;
-    this->cstamp = cstamp;
+    this->ver_ = ver;
+    this->cstamp_ = cstamp;
   }
 };
 

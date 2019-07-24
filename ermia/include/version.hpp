@@ -15,89 +15,87 @@ enum class VersionStatus : uint8_t {
 
 struct Psstamp {
   union {
-    uint64_t obj;
+    uint64_t obj_;
     struct {
-      uint32_t pstamp;
-      uint32_t sstamp;
+      uint32_t pstamp_;
+      uint32_t sstamp_;
     };
   };
 
   Psstamp() {
-    obj = 0;
+    obj_ = 0;
   }
 
   void init(uint32_t pstamp, uint32_t sstamp) {
-    this->pstamp = pstamp;
-    this->sstamp = sstamp;
+    pstamp_ = pstamp;
+    sstamp_ = sstamp; 
   }
 
   uint64_t atomicLoad() {
     Psstamp expected;
-    expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
-    return expected.obj;
+    expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
+    return expected.obj_;
   }
 
   bool atomicCASPstamp(uint32_t expectedPstamp, uint32_t desiredPstamp) {
     Psstamp expected, desired;
-    expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
-    expected.pstamp = expectedPstamp;
+    expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
+    expected.pstamp_ = expectedPstamp;
     desired = expected;
-    desired.pstamp = desiredPstamp;
-    if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) return true;
+    desired.pstamp_ = desiredPstamp;
+    if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) return true;
     else return false;
   }
 
   uint32_t atomicLoadPstamp() {
     Psstamp expected;
-    expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
-    return expected.pstamp;
+    expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
+    return expected.pstamp_;
   }
 
   uint32_t atomicLoadSstamp() {
     Psstamp expected;
-    expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
-    return expected.sstamp;
+    expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
+    return expected.sstamp_;
   }
   void atomicStorePstamp(uint32_t newpstamp) {
     Psstamp expected, desired;
-    expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+    expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
     for (;;) {
       desired = expected;
-      desired.pstamp = newpstamp;
-      if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+      desired.pstamp_ = newpstamp;
+      if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
     }
   }
 
   void atomicStoreSstamp(uint32_t newsstamp) {
     Psstamp expected, desired;
-    expected.obj = __atomic_load_n(&obj, __ATOMIC_ACQUIRE);
+    expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
     for (;;) {
       desired = expected;
-      desired.sstamp = newsstamp;
-      if (__atomic_compare_exchange_n(&obj, &expected.obj, desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+      desired.sstamp_ = newsstamp;
+      if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
     }
   }
 };
 
 class Version {
 public:
-  Psstamp psstamp; // Version access stamp, eta(V), Version successor stamp, pi(V)
-  Version *prev;  // Pointer to overwritten version
-  Version *committed_prev;  // Pointer to the next committed version, to reduce serach cost.
+  alignas(CACHE_LINE_SIZE)
+  Psstamp psstamp_; // Version access stamp, eta(V), Version successor stamp, pi(V)
+  Version *prev_;  // Pointer to overwritten version
+  Version *committed_prev_;  // Pointer to the next committed version, to reduce serach cost.
 
-  std::atomic<uint64_t> readers;  // summarize all of V's readers.
-  std::atomic<uint32_t> cstamp;       // Version creation stamp, c(V)
-  std::atomic<VersionStatus> status;
-  // size to here is 37 byte
+  std::atomic<uint64_t> readers_;  // summarize all of V's readers.
+  std::atomic<uint32_t> cstamp_;       // Version creation stamp, c(V)
+  std::atomic<VersionStatus> status_;
 
-  char val[VAL_SIZE];
-
-  int8_t pad[CACHE_LINE_SIZE - ((37 + VAL_SIZE) % CACHE_LINE_SIZE)];
+  char val_[VAL_SIZE];
 
   Version() {
-    psstamp.init(0, UINT32_MAX & ~(TIDFLAG));
-    status.store(VersionStatus::inFlight, std::memory_order_release);
-    readers.store(0, std::memory_order_release);
+    psstamp_.init(0, UINT32_MAX & ~(TIDFLAG));
+    status_.store(VersionStatus::inFlight, std::memory_order_release);
+    readers_.store(0, std::memory_order_release);
   }
 };
 

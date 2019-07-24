@@ -34,7 +34,7 @@ chkArg(const int argc, const char *argv[])
   if (argc != 11) {
   //if (argc != 1) {
     cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US EXTIME" << endl;
-    cout << "example: ./ermia.exe 200 10 24 50 off 0 off 2400 10 3" << endl;
+    cout << "example: ./ermia.exe 200 10 24 50 off 0 off 2100 10 3" << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
@@ -131,11 +131,11 @@ displayDB()
     cout << "------------------------------" << endl; // - 30
     cout << "key: " << i << endl;
 
-    version = tuple->latest.load(std::memory_order_acquire);
+    version = tuple->latest_.load(std::memory_order_acquire);
     while (version != NULL) {
-      cout << "val: " << version->val << endl;
+      cout << "val: " << version->val_ << endl;
 
-      switch (version->status) {
+      switch (version->status_) {
         case VersionStatus::inFlight:
           cout << "status:  inFlight";
           break;
@@ -148,12 +148,12 @@ displayDB()
       }
       cout << endl;
 
-      cout << "cstamp:  " << version->cstamp << endl;
-      cout << "pstamp:  " << version->psstamp.pstamp << endl;
-      cout << "sstamp:  " << version->psstamp.sstamp << endl;
+      cout << "cstamp:  " << version->cstamp_ << endl;
+      cout << "pstamp:  " << version->psstamp_.pstamp_ << endl;
+      cout << "sstamp:  " << version->psstamp_.sstamp_ << endl;
       cout << endl;
 
-      version = version->prev;
+      version = version->prev_;
     }
     cout << endl;
   }
@@ -169,20 +169,20 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tmp;
     tmp = &Table[i];
-    tmp->min_cstamp = 0;
-    if (posix_memalign((void**)&tmp->latest, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
-    Version *verTmp = tmp->latest.load(std::memory_order_acquire);
-    verTmp->cstamp = 0;
+    tmp->min_cstamp_ = 0;
+    if (posix_memalign((void**)&tmp->latest_, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
+    Version *verTmp = tmp->latest_.load(std::memory_order_acquire);
+    verTmp->cstamp_ = 0;
     //verTmp->pstamp = 0;
     //verTmp->sstamp = UINT64_MAX & ~(1);
-    verTmp->psstamp.pstamp = 0;
-    verTmp->psstamp.sstamp = UINT32_MAX & ~(1);
+    verTmp->psstamp_.pstamp_ = 0;
+    verTmp->psstamp_.sstamp_ = UINT32_MAX & ~(1);
     // cstamp, sstamp の最下位ビットは TID フラグ
     // 1の時はTID, 0の時はstamp
-    verTmp->prev = nullptr;
-    verTmp->committed_prev = nullptr;
-    verTmp->status.store(VersionStatus::committed, std::memory_order_release);
-    verTmp->readers.store(0, std::memory_order_release);
+    verTmp->prev_ = nullptr;
+    verTmp->committed_prev_ = nullptr;
+    verTmp->status_.store(VersionStatus::committed, std::memory_order_release);
+    verTmp->readers_.store(0, std::memory_order_release);
 #if MASSTREE_USE
     MT.insert_value(i, tmp);
 #endif
@@ -213,7 +213,7 @@ naiveGarbageCollection(ErmiaResult &res)
   uint32_t mintxID = UINT32_MAX;
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
-    mintxID = min(mintxID, tmt->txid.load(std::memory_order_acquire));
+    mintxID = min(mintxID, tmt->txid_.load(std::memory_order_acquire));
   }
 
   if (mintxID == 0) return;
@@ -229,31 +229,31 @@ naiveGarbageCollection(ErmiaResult &res)
       }
       // -----
 
-      verTmp = Table[i].latest.load(memory_order_acquire);
-      if (verTmp->status.load(memory_order_acquire) != VersionStatus::committed) 
-        verTmp = verTmp->committed_prev;
+      verTmp = Table[i].latest_.load(memory_order_acquire);
+      if (verTmp->status_.load(memory_order_acquire) != VersionStatus::committed) 
+        verTmp = verTmp->committed_prev_;
       // この時点で， verTmp はコミット済み最新バージョン
 
-      uint64_t verCstamp = verTmp->cstamp.load(memory_order_acquire);
+      uint64_t verCstamp = verTmp->cstamp_.load(memory_order_acquire);
       while (mintxID < (verCstamp >> 1)) {
-        verTmp = verTmp->committed_prev;
+        verTmp = verTmp->committed_prev_;
         if (verTmp == nullptr) break;
-        verCstamp = verTmp->cstamp.load(memory_order_acquire);
+        verCstamp = verTmp->cstamp_.load(memory_order_acquire);
       }
       if (verTmp == nullptr) continue;
       // verTmp は mintxID によって到達可能．
       
       // ssn commit protocol によってverTmp->commited_prev までアクセスされる．
-      verTmp = verTmp->committed_prev;
+      verTmp = verTmp->committed_prev_;
       if (verTmp == nullptr) continue;
       
-      // verTmp->prev からガベコレ可能
-      delTarget = verTmp->prev;
+      // verTmp->prev_ からガベコレ可能
+      delTarget = verTmp->prev_;
       if (delTarget == nullptr) continue;
 
-      verTmp->prev = nullptr;
+      verTmp->prev_ = nullptr;
       while (delTarget != nullptr) {
-        verTmp = delTarget->prev;
+        verTmp = delTarget->prev_;
         delete delTarget;
         delTarget = verTmp;
       }

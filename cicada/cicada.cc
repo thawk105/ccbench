@@ -1,28 +1,27 @@
-#include <algorithm>
-#include <cctype>
-#include <cstdint>
 #include <ctype.h>
 #include <pthread.h>
-#include <random>
 #include <string.h>
-#include <sched.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <stdlib.h>
-#include <thread>
+#include <sched.h>
 #include <unistd.h>
+#include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <random>
+#include <thread>
 
 #define GLOBAL_VALUE_DEFINE
-#include "include/common.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
-
 #include "../include/cpu.hpp"
 #include "../include/debug.hpp"
 #include "../include/int64byte.hpp"
 #include "../include/procedure.hpp"
 #include "../include/random.hpp"
 #include "../include/zipf.hpp"
+#include "include/common.hpp"
+#include "include/result.hpp"
+#include "include/transaction.hpp"
 
 using namespace std;
 

@@ -3,9 +3,11 @@
 #include <atomic>
 
 #include "../../include/result.hpp"
+#include "../../include/cache_line_size.hpp"
 
 class ErmiaResult : public Result {
 public:
+  alignas(CACHE_LINE_SIZE)
   uint64_t totalGCCounts = 0;
   uint64_t localGCCounts = 0;
   uint64_t totalGCVersionCounts = 0;
