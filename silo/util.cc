@@ -13,19 +13,19 @@
 #include <thread>
 #include <vector>
 
-#include "include/atomic_tool.hpp"
-#include "include/common.hpp"
-#include "include/transaction.hpp"
-#include "include/tuple.hpp"
+#include "include/atomic_tool.hh"
+#include "include/common.hh"
+#include "include/transaction.hh"
+#include "include/tuple.hh"
 
-#include "../include/cache_line_size.hpp"
-#include "../include/check.hpp"
-#include "../include/config.hpp"
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/procedure.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+#include "../include/cache_line_size.hh"
+#include "../include/check.hh"
+#include "../include/config.hh"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/procedure.hh"
+#include "../include/random.hh"
+#include "../include/zipf.hh"
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
@@ -35,7 +35,7 @@ chkArg(const int argc, char *argv[])
   if (argc != 11) {
     cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCKS_PER_US EPOCH_TIME EXTIME" << endl << endl;
 
-    cout << "example:./main 1000000 10 24 50 off 0 on 2400 40 3" << endl << endl;
+    cout << "example:./main 1000000 10 24 50 off 0 on 2100 40 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of thread." << endl;
@@ -97,8 +97,8 @@ So you have to set THREAD_NUM >= 2.\n\n");
   if (posix_memalign((void**)&CTIDW, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR; //[0]は使わない
   //init
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    ThLocalEpoch[i].obj = 0;
-    CTIDW[i].obj = 0;
+    ThLocalEpoch[i].obj_ = 0;
+    CTIDW[i].obj_ = 0;
   }
 }
 
@@ -108,7 +108,7 @@ chkEpochLoaded()
   uint64_t nowepo = atomicLoadGE();
 //全てのワーカースレッドが最新エポックを読み込んだか確認する．
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    if (__atomic_load_n(&(ThLocalEpoch[i].obj), __ATOMIC_ACQUIRE) != nowepo) return false;
+    if (__atomic_load_n(&(ThLocalEpoch[i].obj_), __ATOMIC_ACQUIRE) != nowepo) return false;
   }
 
   return true;
@@ -123,9 +123,9 @@ displayDB()
     tuple = &Table[i];
     cout << "------------------------------" << endl; //-は30個
     cout << "key: " << i << endl;
-    cout << "val: " << tuple->val << endl;
-    cout << "TIDword: " << tuple->tidword.obj << endl;
-    cout << "bit: " << tuple->tidword.obj << endl;
+    cout << "val: " << tuple->val_ << endl;
+    cout << "TIDword: " << tuple->tidword_.obj_ << endl;
+    cout << "bit: " << tuple->tidword_.obj_ << endl;
     cout << endl;
   }
 }
@@ -147,11 +147,11 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
   for (auto i = start; i <= end; ++i) {
     Tuple *tmp;
     tmp = &Table[i];
-    tmp->tidword.epoch = 1;
-    tmp->tidword.latest = 1;
-    tmp->tidword.lock = 0;
-    tmp->val[0] = 'a';
-    tmp->val[1] = '\0';
+    tmp->tidword_.epoch = 1;
+    tmp->tidword_.latest = 1;
+    tmp->tidword_.lock = 0;
+    tmp->val_[0] = 'a';
+    tmp->val_[1] = '\0';
 
 #if MASSTREE_USE
     MT.insert_value(i, tmp);

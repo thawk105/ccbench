@@ -88,7 +88,7 @@ worker(void *arg)
 
   trans.gcstart = rdtscp();
   for(;;) {
-    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
     if (ErmiaResult::Finish_.load(std::memory_order_acquire))
       return nullptr;
@@ -96,7 +96,7 @@ RETRY:
     //-----
     //transaction begin
     trans.tbegin();
-    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.ssn_tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {

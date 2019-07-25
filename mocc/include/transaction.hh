@@ -22,9 +22,9 @@ enum class TransactionStatus : uint8_t {
 
 class TxExecutor {
 public:
-  vector<ReadElement<Tuple>> readSet_;
-  vector<WriteElement<Tuple>> writeSet_;
-  vector<Procedure> proSet_;
+  vector<ReadElement<Tuple>> read_set_;
+  vector<WriteElement<Tuple>> write_set_;
+  vector<Procedure> pro_set_;
 #ifdef RWLOCK
   vector<LockElement<RWLock>> RLL_;
   vector<LockElement<RWLock>> CLL_;
@@ -46,9 +46,9 @@ public:
   char return_val_[VAL_SIZE] = {};
 
   TxExecutor(int thid, Xoroshiro128Plus *rnd, MoccResult* mres) : thid_(thid), mres_(mres) {
-    readSet_.reserve(MAX_OPE);
-    writeSet_.reserve(MAX_OPE);
-    proSet_.reserve(MAX_OPE);
+    read_set_.reserve(MAX_OPE);
+    write_set_.reserve(MAX_OPE);
+    pro_set_.reserve(MAX_OPE);
     RLL_.reserve(MAX_OPE);
     CLL_.reserve(MAX_OPE);
 

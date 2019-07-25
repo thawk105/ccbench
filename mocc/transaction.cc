@@ -16,7 +16,7 @@ using namespace std;
 ReadElement<Tuple> *
 TxExecutor::searchReadSet(uint64_t key)
 {
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
 
@@ -26,7 +26,7 @@ TxExecutor::searchReadSet(uint64_t key)
 WriteElement<Tuple> *
 TxExecutor::searchWriteSet(uint64_t key)
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
 
@@ -132,7 +132,7 @@ TxExecutor::read(uint64_t key)
         
         if (key < CLL_.back().key_) {
           status_ = TransactionStatus::aborted;
-          readSet_.emplace_back(key, tuple);
+          read_set_.emplace_back(key, tuple);
           return nullptr;
         } else {
           expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
@@ -152,7 +152,7 @@ TxExecutor::read(uint64_t key)
     memcpy(return_val_, tuple->val_, VAL_SIZE); // read
   }
 
-  readSet_.emplace_back(expected, key, tuple, return_val_);
+  read_set_.emplace_back(expected, key, tuple, return_val_);
   return return_val_;
 }
 
@@ -191,8 +191,8 @@ TxExecutor::write(uint64_t key)
     return;
   }
   
-  //writeSet_.emplace_back(key, write_val_);
-  writeSet_.emplace_back(key, tuple);
+  //write_set_.emplace_back(key, write_val_);
+  write_set_.emplace_back(key, tuple);
   return;
 }
 
@@ -379,7 +379,7 @@ TxExecutor::construct_RLL()
 {
   RLL_.clear();
   
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
 #ifdef RWLOCK
     RLL_.emplace_back((*itr).key_, &((*itr).rcdptr_->rwlock_), true);
 #endif // RWLOCK
@@ -388,7 +388,7 @@ TxExecutor::construct_RLL()
 #endif // MQLOCK
   }
 
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     // maintain temprature p
     size_t epotemp_index = (*itr).key_ * sizeof(Tuple) / PER_XX_TEMP;
     if ((*itr).failed_verification_) {
@@ -460,8 +460,8 @@ TxExecutor::commit()
   Tidword expected, desired;
 
   // phase 1 lock write set.
-  sort(writeSet_.begin(), writeSet_.end());
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  sort(write_set_.begin(), write_set_.end());
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     lock((*itr).key_, (*itr).rcdptr_, true);
     if (this->status_ == TransactionStatus::aborted) {
       return false;
@@ -474,7 +474,7 @@ TxExecutor::commit()
   __atomic_store_n(&(ThLocalEpoch[thid_].obj_), (loadAcquireGE()).obj_, __ATOMIC_RELEASE);
   asm volatile ("" ::: "memory");
 
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Tidword check;
     check.obj_ = __atomic_load_n(&((*itr).rcdptr_->tidword_.obj_), __ATOMIC_ACQUIRE);
     if ((*itr).tidword_.epoch != check.epoch || (*itr).tidword_.tid != check.tid) {
@@ -514,8 +514,8 @@ TxExecutor::abort()
   
   construct_RLL();
 
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
 
   ++mres_->local_abort_counts_;
   return;
@@ -566,7 +566,7 @@ TxExecutor::writePhase()
   mrctid_ = maxtid;
 
   //write (record, commit-tid)
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     //update and down lockBit
     memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
     __atomic_store_n(&((*itr).rcdptr_->tidword_.obj_), maxtid.obj_, __ATOMIC_RELEASE);
@@ -574,8 +574,8 @@ TxExecutor::writePhase()
 
   unlockCLL();
   RLL_.clear();
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
   ++mres_->local_commit_counts_;
 }
 
@@ -606,7 +606,7 @@ TxExecutor::dispRLL()
 void
 TxExecutor::dispWS()
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     cout << "(" << (*itr).key_ << ", " << (*itr).rcdptr_ << ")" << endl;
   }
   cout << endl;

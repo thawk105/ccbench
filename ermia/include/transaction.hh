@@ -31,10 +31,10 @@ public:
   TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
   uint32_t pstamp_ = 0;  // Predecessor high-water mark, η (T)
   uint32_t sstamp_ = UINT32_MAX; // Successor low-water mark, pi (T)
-  vector<SetElement<Tuple>> readSet_;
-  vector<SetElement<Tuple>> writeSet_;
+  vector<SetElement<Tuple>> read_set_;
+  vector<SetElement<Tuple>> write_set_;
   GarbageCollection gcobject_;
-  vector<Procedure> proSet_;
+  vector<Procedure> pro_set_;
   uint32_t pre_gc_threshold_ = 0;
 
   uint8_t thid_; // thread ID
@@ -48,9 +48,9 @@ public:
 
   TxExecutor(uint8_t thid, size_t max_ope, ErmiaResult* eres) : thid_(thid), eres_(eres) {
     gcobject_.set_thid_(thid);
-    readSet_.reserve(max_ope);
-    writeSet_.reserve(max_ope);
-    proSet_.reserve(max_ope);
+    read_set_.reserve(max_ope);
+    write_set_.reserve(max_ope);
+    pro_set_.reserve(max_ope);
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }

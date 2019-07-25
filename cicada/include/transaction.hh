@@ -32,10 +32,10 @@ class TxExecutor {
 public:
   TransactionStatus status_ = TransactionStatus::invalid;
   TimeStamp wts_;
-  std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>> readSet_;
-  std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> writeSet_;
+  std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>> read_set_;
+  std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> write_set_;
   std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq_;
-  std::vector<Procedure> proSet_;
+  std::vector<Procedure> pro_set_;
   CicadaResult* cres_ = nullptr;
 
   bool ronly_;
@@ -63,9 +63,9 @@ public:
       if (FirstAllocateTimestamp.compare_exchange_weak(expected, desired, memory_order_acq_rel)) break;
     }
 
-    readSet_.reserve(MAX_OPE);
-    writeSet_.reserve(MAX_OPE);
-    proSet_.reserve(MAX_OPE);
+    read_set_.reserve(MAX_OPE);
+    write_set_.reserve(MAX_OPE);
+    pro_set_.reserve(MAX_OPE);
     //gcq.resize(MAX_OPE);
 
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid_);

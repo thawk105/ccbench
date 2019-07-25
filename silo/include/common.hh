@@ -4,12 +4,11 @@
 #include <atomic>
 #include <queue>
 
-#include "lock.hpp"
-#include "tuple.hpp"
+#include "tuple.hh"
 
-#include "../../include/cache_line_size.hpp"
-#include "../../include/int64byte.hpp"
-#include "../../include/masstree_wrapper.hpp"
+#include "../../include/cache_line_size.hh"
+#include "../../include/int64byte.hh"
+#include "../../include/masstree_wrapper.hh"
 
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL

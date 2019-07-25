@@ -6,11 +6,11 @@
 #include <atomic>
 #include <cstdint>
 
-#include "../../include/cache_line_size.hpp"
+#include "../../include/cache_line_size.hh"
 
 struct Tidword {
   union {
-    uint64_t obj;
+    uint64_t obj_;
     struct {
       bool lock:1;
       bool latest:1;
@@ -20,10 +20,10 @@ struct Tidword {
     };
   };
 
-  Tidword() : obj(0) {};
+  Tidword() : obj_(0) {};
 
   bool operator==(const Tidword& right) const {
-    return obj == right.obj;
+    return obj_ == right.obj_;
   }
 
   bool operator!=(const Tidword& right) const {
@@ -31,20 +31,15 @@ struct Tidword {
   }
 
   bool operator<(const Tidword& right) const {
-    return this->obj < right.obj;
+    return this->obj_ < right.obj_;
   }
 };
 
 class Tuple {
 public:
-  Tidword tidword;
+  alignas(CACHE_LINE_SIZE)
+  Tidword tidword_;
 
-  char keypad[KEY_SIZE];
-  char val[VAL_SIZE];
-
-#ifndef SHAVE_REC
-  int8_t pad[CACHE_LINE_SIZE - ((8 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
-#endif
-
+  char val_[VAL_SIZE];
 };
 

@@ -70,14 +70,14 @@ TxExecutor::tread(uint64_t key)
 {
   //read-own-writes
   //if n E write set
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
       return write_val_;
       // tanabe の実験では，スレッドごとに新しく書く値は決まっている．
     }
   }
   // if n E read set
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
       return (*itr).ver_->val_;
     }
@@ -85,7 +85,7 @@ TxExecutor::tread(uint64_t key)
 
   //else
   uint64_t trts;
-  if ((*this->proSet_.begin()).ronly_) {
+  if ((*this->pro_set_.begin()).ronly_) {
     trts = this->rts_;
   }
   else  trts = this->wts_.ts_;
@@ -115,12 +115,12 @@ TxExecutor::tread(uint64_t key)
   // ultimately, it is wasteful in prototype system.
   memcpy(return_val_, version->val_, VAL_SIZE);
 
-  //if read-only, not track or validate readSet_
-  if ((*this->proSet_.begin()).ronly_) {
+  //if read-only, not track or validate read_set_
+  if ((*this->pro_set_.begin()).ronly_) {
     return version->val_;
   }
   else {
-    readSet_.emplace_back(key, tuple, version);
+    read_set_.emplace_back(key, tuple, version);
     return version->val_;
   }
 }
@@ -128,8 +128,8 @@ TxExecutor::tread(uint64_t key)
 void
 TxExecutor::twrite(uint64_t key)
 {
-  //if n E writeSet_
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  //if n E write_set_
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
       return;
       // tanabe の実験では，スレッドごとに新たに書く値が決まっている．
@@ -170,12 +170,12 @@ TxExecutor::twrite(uint64_t key)
   
   if (tuple->getInlineVersionRight()) {
     tuple->inline_version_.set(0, this->wts_.ts_);
-    writeSet_.emplace_back(key, tuple, &tuple->inline_version_);
+    write_set_.emplace_back(key, tuple, &tuple->inline_version_);
   }
   else {
     Version *newObject;
     newObject = new Version(0, this->wts_.ts_);
-    writeSet_.emplace_back(key, tuple, newObject);
+    write_set_.emplace_back(key, tuple, newObject);
   }
 
   return;
@@ -190,11 +190,11 @@ TxExecutor::validation()
     // Each thread adaptively omits both steps if the recent transactions have been committed (5 in a row in our implementation).
     //
     // Sort write set by contention
-    partial_sort(writeSet_.begin(), writeSet_.begin() + (writeSet_.size() / 2), writeSet_.end());
+    partial_sort(write_set_.begin(), write_set_.begin() + (write_set_.size() / 2), write_set_.end());
 
     // Pre-check version consistency
     // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
-    for (auto itr = writeSet_.begin(); itr != writeSet_.begin() + (writeSet_.size() / 2); ++itr) {
+    for (auto itr = write_set_.begin(); itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
       Version *version = (*itr).rcdptr_->ldAcqLatest();
       while (version->ldAcqStatus() != VersionStatus::committed)
         version = version->ldAcqNext();
@@ -204,7 +204,7 @@ TxExecutor::validation()
   }
   
   //Install pending version
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *expected, *version;
     for (;;) {
       version = expected = (*itr).rcdptr_->ldAcqLatest();
@@ -233,7 +233,7 @@ TxExecutor::validation()
   }
 
   //Read timestamp update
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     uint64_t expected;
     expected = (*itr).ver_->ldAcqRts();
     for (;;) {
@@ -244,7 +244,7 @@ TxExecutor::validation()
 
   // version consistency check
   //(a) every previously visible version v of the records in the read set is the currently visible version to the transaction.
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Version *version, *init;
     for (;;) {
       version  = init = (*itr).rcdptr_->ldAcqLatest();
@@ -271,7 +271,7 @@ TxExecutor::validation()
   }
 
   // (b) every currently visible version v of the records in the write set satisfies (v.rts) <= (tx.ts)
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *version = (*itr).newObject_->ldAcqNext();
     while (version->ldAcqStatus() != VersionStatus::committed)
       version = version->ldAcqNext();
@@ -288,7 +288,7 @@ TxExecutor::swal()
     SwalLock.w_lock();
 
     int i = 0;
-    for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       SLogSet[i] = (*itr).newObject_;
       ++i;
     }
@@ -301,7 +301,7 @@ TxExecutor::swal()
   }
   else {  //group commit
     SwalLock.w_lock();
-    for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       SLogSet[GROUP_COMMIT_INDEX[0].obj_] = (*itr).newObject_;
       ++GROUP_COMMIT_INDEX[0].obj_;
     }
@@ -329,7 +329,7 @@ TxExecutor::pwal()
 {
   if (!GROUP_COMMIT) {
     int i = 0;
-    for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       PLogSet[thid_][i] = (*itr).newObject_;
       ++i;
     }
@@ -340,7 +340,7 @@ TxExecutor::pwal()
     while ((rdtscp() - spinstart) < threshold) {}  //spin-wait
   } 
   else {
-    for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       PLogSet[thid_][GROUP_COMMIT_INDEX[thid_].obj_] = (*itr).newObject_;
       ++GROUP_COMMIT_INDEX[this->thid_].obj_;
     }
@@ -366,7 +366,7 @@ TxExecutor::pwal()
 inline void
 TxExecutor::cpv()  //commit pending versions
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     gcq_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).newObject_, (*itr).newObject_->wts_));
     memcpy((*itr).newObject_->val_, write_val_, VAL_SIZE);
     (*itr).newObject_->status_.store(VersionStatus::committed, std::memory_order_release);
@@ -397,7 +397,7 @@ TxExecutor::gcpv()
 void
 TxExecutor::wSetClean()
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).finish_version_install_)
       (*itr).newObject_->status_.store(VersionStatus::aborted, std::memory_order_release);
     else
@@ -405,14 +405,14 @@ TxExecutor::wSetClean()
       else (*itr).rcdptr_->returnInlineVersionRight();
   }
 
-  writeSet_.clear();
+  write_set_.clear();
 }
 
 void 
 TxExecutor::earlyAbort()
 {
   wSetClean();
-  readSet_.clear();
+  read_set_.clear();
 
   if (GROUP_COMMIT) {
     chkGcpvTimeout();
@@ -428,10 +428,10 @@ void
 TxExecutor::abort()
 {
   wSetClean();
-  readSet_.clear();
+  read_set_.clear();
 
   //pending versionのステータスをabortedに変更
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).newObject_->status_.store(VersionStatus::aborted, std::memory_order_release);
   }
 
@@ -448,7 +448,7 @@ TxExecutor::abort()
 void
 TxExecutor::displayWset()
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     printf("%lu ", (*itr).key_);
   }
   cout << endl;
@@ -570,8 +570,8 @@ TxExecutor::writePhase()
 
   //ここまで来たらコミットしている
   this->wts_.set_clockBoost(0);
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
   ++continuing_commit_;
   ++cres_->local_commit_counts_;
 }

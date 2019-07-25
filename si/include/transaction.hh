@@ -27,9 +27,9 @@ class TxExecutor {
 public:
   uint32_t cstamp_ = 0;  // Transaction end time, c(T) 
   TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
-  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> readSet_;
-  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> writeSet_;
-  std::vector<Procedure> proSet_;
+  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> read_set_;
+  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> write_set_;
+  std::vector<Procedure> pro_set_;
   GarbageCollection gcobject_;
   uint32_t pre_gc_threshold_ = 0;
 
@@ -42,9 +42,9 @@ public:
 
   TxExecutor(uint8_t thid, unsigned int max_ope, SIResult* sres) : thid_(thid), sres_(sres) {
     gcobject_.thid_ = thid;
-    readSet_.reserve(max_ope);
-    writeSet_.reserve(max_ope);
-    proSet_.reserve(max_ope);
+    read_set_.reserve(max_ope);
+    write_set_.reserve(max_ope);
+    pro_set_.reserve(max_ope);
 
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }

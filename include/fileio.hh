@@ -6,12 +6,13 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
+#include <atomic>
 #include <mutex>
 #include <stdexcept>
-#include <atomic>
+#include <string>
 
-#include "debug.hpp"
-#include "util.hpp"
+#include "debug.hh"
+#include "util.hh"
 
 #ifdef Linux
 #include <linux/fs.h>
@@ -176,7 +177,7 @@ genLogFileName(std::string &logpath, const int thid)
   if (getcwd(pathname, PATHNAME_SIZE) == NULL) ERR;
 
   logpath = pathname;
-  logpath += "/log/log" + to_string(thid);
+  logpath += "/log/log" + std::to_string(thid);
 }
 
 

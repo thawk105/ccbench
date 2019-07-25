@@ -1,20 +1,21 @@
 
 #include <iostream>
 
-#include "include/common.hpp"
-#include "include/result.hpp"
+#include "include/common.hh"
+#include "include/result.hh"
 
 using std::cout;
 using std::endl;
 using std::fixed;
 using std::setprecision;
 
+#if ADD_ANALYSIS
 void
-SiloResult::display_total_read_latency()
+SiloResult::displayTotalReadLatency()
 {
   long double rate;
- if (total_read_latency)
-   rate = (long double)total_read_latency / ((long double)CLOCKS_PER_US * powl(10.0, 6.0) * (long double)EXTIME) / THREAD_NUM;
+ if (total_read_latency_)
+   rate = (long double)total_read_latency_ / ((long double)CLOCKS_PER_US * powl(10.0, 6.0) * (long double)EXTIME) / THREAD_NUM;
  else
    rate = 0;
  
@@ -22,11 +23,11 @@ SiloResult::display_total_read_latency()
 }
 
 void
-SiloResult::display_total_vali_latency()
+SiloResult::displayTotalValiLatency()
 {
   long double rate;
- if (total_vali_latency)
-   rate = (long double)total_vali_latency / ((long double)CLOCKS_PER_US * powl(10.0, 6.0) * (long double)EXTIME) / THREAD_NUM;
+ if (total_vali_latency_)
+   rate = (long double)total_vali_latency_ / ((long double)CLOCKS_PER_US * powl(10.0, 6.0) * (long double)EXTIME) / THREAD_NUM;
  else
    rate = 0;
  
@@ -34,44 +35,49 @@ SiloResult::display_total_vali_latency()
 }
 
 void
-SiloResult::display_total_extra_reads()
+SiloResult::displayTotalExtraReads()
 {
-  cout << "total_extra_reads:\t" << total_extra_reads << endl;
+  cout << "total_extra_reads:\t" << total_extra_reads_ << endl;
 }
 
 void
-SiloResult::display_all_silo_result()
+SiloResult::addLocalReadLatency(const uint64_t rcount)
 {
-  display_total_extra_reads();
-  display_total_read_latency();
-  display_total_vali_latency();
+  total_read_latency_ += rcount;
+}
+
+void
+SiloResult::addLocalValiLatency(const uint64_t vcount)
+{
+  total_vali_latency_ += vcount;
+}
+
+void
+SiloResult::addLocalExtraReads(const uint64_t ecount)
+{
+  total_extra_reads_ += ecount;
+}
+#endif
+
+void
+SiloResult::addLocalAllSiloResult(const SiloResult& other)
+{
+#if ADD_ANALYSIS
+  addLocalReadLatency(other.local_read_latency_);
+  addLocalValiLatency(other.local_vali_latency_);
+  addLocalExtraReads(other.local_extra_reads_);
+#endif
+  addLocalAllResult(other);
+}
+
+void
+SiloResult::displayAllSiloResult()
+{
+#if ADD_ANALYSIS
+  displayTotalExtraReads();
+  displayTotalReadLatency();
+  displayTotalValiLatency();
+#endif
   displayAllResult();
-}
-
-void
-SiloResult::add_local_read_latency(const uint64_t rcount)
-{
-  total_read_latency += rcount;
-}
-
-void
-SiloResult::add_local_vali_latency(const uint64_t vcount)
-{
-  total_vali_latency += vcount;
-}
-
-void
-SiloResult::add_local_extra_reads(const uint64_t ecount)
-{
-  total_extra_reads += ecount;
-}
-
-void
-SiloResult::add_local_all_silo_result(const SiloResult& other)
-{
-  add_local_read_latency(other.local_read_latency);
-  add_local_vali_latency(other.local_vali_latency);
-  add_local_extra_reads(other.local_extra_reads);
-  AddLocalAllResult(other);
 }
 

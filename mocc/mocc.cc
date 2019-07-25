@@ -111,9 +111,9 @@ worker(void *arg)
   
   //start work (transaction)
   for (;;) {
-    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 #if KEY_SORT
-    sort(trans.proSet_.begin(), trans.proSet_.end());
+    sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
 
 RETRY:
@@ -121,7 +121,7 @@ RETRY:
       return nullptr;
 
     trans.begin();
-    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.read((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {

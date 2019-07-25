@@ -16,7 +16,7 @@ inline
 SetElement<Tuple> *
 TxExecutor::searchReadSet(uint64_t key) 
 {
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
 
@@ -27,7 +27,7 @@ inline
 SetElement<Tuple> *
 TxExecutor::searchWriteSet(uint64_t key) 
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
 
@@ -114,7 +114,7 @@ TxExecutor::tread(uint64_t key)
     }
   }
 
-  readSet_.emplace_back(key, tuple, ver);
+  read_set_.emplace_back(key, tuple, ver);
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
@@ -189,7 +189,7 @@ TxExecutor::twrite(uint64_t key)
     if (tuple->latest_.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
 
-  writeSet_.emplace_back(key, tuple, desired);
+  write_set_.emplace_back(key, tuple, desired);
 }
 
 void
@@ -198,15 +198,15 @@ TxExecutor::commit()
   this->cstamp_ = ++CCtr;
   status_ = TransactionStatus::committed;
 
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
     memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
     gcobject_.gcq_for_versions_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, cstamp_));
   }
 
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
 
 #ifdef CCTR_TW
   TMT[thid_]->lastcstamp_.store(this->cstamp_, std::memory_order_release);
@@ -221,13 +221,13 @@ TxExecutor::abort()
 {
   status_ = TransactionStatus::aborted;
 
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
     gcobject_.gcq_for_versions_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_));
   }
 
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
   ++sres_->local_abort_counts_;
 }
 
@@ -235,7 +235,7 @@ void
 TxExecutor::dispWS()
 {
   cout << "th " << this->thid_ << " : write set : ";
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
   }
   cout << endl;
@@ -245,7 +245,7 @@ void
 TxExecutor::dispRS()
 {
   cout << "th " << this->thid_ << " : read set : ";
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
   }
   cout << endl;

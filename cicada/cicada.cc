@@ -127,7 +127,7 @@ worker(void *arg)
   //printf("%s\n", trans.writeVal);
   //start work(transaction)
   for (;;) {
-    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 
 RETRY:
     if (res.Finish_.load(std::memory_order_acquire))
@@ -135,7 +135,7 @@ RETRY:
 
     trans.tbegin();
     //Read phase
-    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -155,7 +155,7 @@ RETRY:
 
     // read only tx doesn't collect read set and doesn't validate.
     // write phase execute logging and commit pending versions, but r-only tx can skip it.
-    if ((*trans.proSet_.begin()).ronly_) {
+    if ((*trans.pro_set_.begin()).ronly_) {
       ++trans.continuing_commit_;
       ++res.local_commit_counts_;
     } else {

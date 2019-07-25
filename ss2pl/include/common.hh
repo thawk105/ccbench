@@ -2,11 +2,10 @@
 
 #include <atomic>
 
-#include "tuple.hpp"
-
-#include "../../include/cache_line_size.hpp"
-#include "../../include/int64byte.hpp"
-#include "../../include/masstree_wrapper.hpp"
+#include "../../include/cache_line_size.hh"
+#include "../../include/int64byte.hh"
+#include "../../include/masstree_wrapper.hh"
+#include "tuple.hh"
 
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL

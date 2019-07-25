@@ -84,7 +84,7 @@ worker(void *arg)
   //start work (transaction)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   for(;;) {
-    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
 
     if (Result::Finish_.load(std::memory_order_acquire)) {
@@ -92,7 +92,7 @@ RETRY:
     }
 
     trans.tbegin();
-    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {

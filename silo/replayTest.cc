@@ -1,12 +1,12 @@
 
 #include <iostream>
 
-#include "include/log.hpp"
-#include "include/tuple.hpp"
-#include "include/common.hpp"
+#include "include/log.hh"
+#include "include/tuple.hh"
+#include "include/common.hh"
 
-#include "../include/debug.hpp"
-#include "../include/fileio.hpp"
+#include "../include/debug.hh"
+#include "../include/fileio.hh"
 
 using std::cout;
 using std::endl;

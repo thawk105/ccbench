@@ -20,7 +20,7 @@ inline
 SetElement<Tuple> *
 TxExecutor::searchReadSet(unsigned int key) 
 {
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
 
@@ -31,7 +31,7 @@ inline
 SetElement<Tuple> *
 TxExecutor::searchWriteSet(unsigned int key) 
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
 
@@ -122,7 +122,7 @@ TxExecutor::ssn_tread(unsigned int key)
 
   if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
     // no overwrite yet
-    readSet_.emplace_back(key, tuple, ver);
+    read_set_.emplace_back(key, tuple, ver);
   else 
     // update pi with r:w edge
     this->sstamp_ = min(this->sstamp_, (ver->psstamp_.atomicLoadSstamp() >> TIDFLAG));
@@ -212,13 +212,13 @@ TxExecutor::ssn_twrite(unsigned int key)
 
   // update eta with w:r edge
   this->pstamp_ = max(this->pstamp_, desired->committed_prev_->psstamp_.atomicLoadPstamp());
-  writeSet_.emplace_back(key, tuple, desired);
+  write_set_.emplace_back(key, tuple, desired);
   
   //  avoid false positive
-  auto itr = readSet_.begin();
-  while (itr != readSet_.end()) {
+  auto itr = read_set_.begin();
+  while (itr != read_set_.end()) {
     if ((*itr).key_ == key) {
-      readSet_.erase(itr);
+      read_set_.erase(itr);
       downReadersBits(vertmp);
       break;
     } else itr++;
@@ -241,13 +241,13 @@ TxExecutor::ssn_commit()
   SsnLock.lock();
 
   // finalize eta(T)
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     pstamp_ = max(pstamp_, (*itr).ver_->committed_prev_->psstamp_.atomicLoadPstamp());
   } 
 
   // finalize pi(T)
   sstamp_ = min(sstamp_, cstamp_);
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     uint32_t verSstamp = (*itr).ver_->psstamp_.atomicLoadSstamp();
     // if the lowest bit raise, the record was overwrited by other concurrent transactions.
     // but in serial SSN, the validation of the concurrent transactions will be done after that of this transaction.
@@ -266,7 +266,7 @@ TxExecutor::ssn_commit()
   }
 
   // update eta
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     (*itr).ver_->psstamp_.atomicStorePstamp(max((*itr).ver_->psstamp_.atomicLoadPstamp(), cstamp_));
     // down readers bit
     downReadersBits((*itr).ver_);
@@ -281,7 +281,7 @@ TxExecutor::ssn_commit()
   verCstamp = verCstamp << 1;
   verCstamp &= ~(1);
 
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(verSstamp);
     // initialize new version
     (*itr).ver_->psstamp_.atomicStorePstamp(cstamp_);
@@ -292,15 +292,15 @@ TxExecutor::ssn_commit()
   //?*
   
   // status, inFlight -> committed
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     memcpy((*itr).ver_->val_, writeVal, VAL_SIZE);
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
   }
 
   this->status_ = TransactionStatus::committed;
   SsnLock.unlock();
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
   return;
 }
 
@@ -320,7 +320,7 @@ TxExecutor::ssn_parallel_commit()
   
   // finalize pi(T)
   this->sstamp_ = min(this->sstamp_, this->cstamp_);
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     uint32_t v_sstamp = (*itr).ver_->psstamp_.atomicLoadSstamp();
     // if lowest bits raise, it is TID
     if (v_sstamp & TIDFLAG) {
@@ -363,7 +363,7 @@ TxExecutor::ssn_parallel_commit()
 
   // finalize eta
   uint64_t one = 1;
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
 
     //for r in v.prev.readers
     uint64_t rdrs = (*itr).ver_->readers_.load(memory_order_acquire);
@@ -405,7 +405,7 @@ TxExecutor::ssn_parallel_commit()
   }
 
   // update eta
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Psstamp pstmp;
     pstmp.obj_ = (*itr).ver_->psstamp_.atomicLoad();
     while (pstmp.pstamp_ < this->cstamp_) {
@@ -425,7 +425,7 @@ TxExecutor::ssn_parallel_commit()
   verCstamp = verCstamp << TIDFLAG;
   verCstamp &= ~(TIDFLAG);
 
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(verSstamp);
     (*itr).ver_->cstamp_.store(verCstamp, memory_order_release);
     (*itr).ver_->psstamp_.atomicStorePstamp(this->cstamp_);
@@ -438,8 +438,8 @@ TxExecutor::ssn_parallel_commit()
   //logging
   //?*
 
-  readSet_.clear();
-  writeSet_.clear();
+  read_set_.clear();
+  write_set_.clear();
   ++eres_->local_commit_counts_;
   return;
 }
@@ -447,17 +447,17 @@ TxExecutor::ssn_parallel_commit()
 void
 TxExecutor::abort()
 {
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
     gcobject_.gcq_for_version_.push(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_ << TIDFLAG));
   }
-  writeSet_.clear();
+  write_set_.clear();
 
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr)
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
     downReadersBits((*itr).ver_);
 
-  readSet_.clear();
+  read_set_.clear();
   ++eres_->local_abort_counts_;
 }
 
@@ -494,7 +494,7 @@ void
 TxExecutor::dispWS()
 {
   cout << "th " << this->thid_ << " : write set : ";
-  for (auto itr = writeSet_.begin(); itr != writeSet_.end(); ++itr) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
   }
   cout << endl;
@@ -504,7 +504,7 @@ void
 TxExecutor::dispRS()
 {
   cout << "th " << this->thid_ << " : read set : ";
-  for (auto itr = readSet_.begin(); itr != readSet_.end(); ++itr) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
   }
   cout << endl;
