@@ -7,7 +7,7 @@
 INLINE uint64_t_64byte
 loadAcquireGE()
 {
-  return __atomic_load_n(&(GlobalEpoch.obj), __ATOMIC_ACQUIRE);
+  return __atomic_load_n(&(GlobalEpoch.obj_), __ATOMIC_ACQUIRE);
 }
 
 INLINE void
@@ -17,8 +17,8 @@ atomicAddGE()
 
   expected = loadAcquireGE();
   for (;;) {
-    desired.obj = expected.obj + 1;
-    if (__atomic_compare_exchange_n(&(GlobalEpoch.obj), &(expected.obj), desired.obj, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+    desired.obj_ = expected.obj_ + 1;
+    if (__atomic_compare_exchange_n(&(GlobalEpoch.obj_), &(expected.obj_), desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
   }
 }
 

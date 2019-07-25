@@ -12,22 +12,22 @@ class ReadElement : public Op_element<T> {
 public:
   using Op_element<T>::Op_element;
 
-  Tidword tidword;
-  char val[VAL_SIZE];
-  bool failedVerification;
+  Tidword tidword_;
+  char val_[VAL_SIZE];
+  bool failed_verification_;
 
   ReadElement(Tidword tidword, uint64_t key, T* rcdptr, char *newVal) : Op_element<T>::Op_element(key, rcdptr) {
-    this->tidword = tidword;
-    memcpy(val, newVal, VAL_SIZE);
-    this->failedVerification = false;
+    this->tidword_ = tidword;
+    memcpy(val_, newVal, VAL_SIZE);
+    this->failed_verification_ = false;
   }
 
   ReadElement(uint64_t key, T* rcdptr) : Op_element<T>::Op_element(key, rcdptr) {
-    failedVerification = true;
+    failed_verification_ = true;
   }
 
   bool operator<(const ReadElement& right) const {
-    return this->key < right.key;
+    return this->key_ < right.key_;
   }
 };
 
@@ -37,7 +37,7 @@ public:
   using Op_element<T>::Op_element;
 
   bool operator<(const WriteElement& right) const {
-    return this->key < right.key;
+    return this->key_ < right.key_;
   }
 };
 
