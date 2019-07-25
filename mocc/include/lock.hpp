@@ -119,14 +119,14 @@ public:
 
 class RWLock {
 public:
-  std::atomic<int> counter;
+  std::atomic<int> counter_;
   // counter == -1, write locked;
   // counter == 0, not locked;
   // counter > 0, there are $counter readers who acquires read-lock.
 #define W_LOCKED -1
 #define NOT_LOCK 0
   
-  RWLock() { counter.store(0, std::memory_order_release);}
+  RWLock() { counter_.store(0, std::memory_order_release);}
   void r_lock(); // read lock
   bool r_trylock(); // read try lock
   void r_unlock();  // read unlock
@@ -136,7 +136,7 @@ public:
   bool upgrade(); // upgrade from reader to writer
 
   int ldAcqCounter() {
-    return counter.load(std::memory_order_acquire);
+    return counter_.load(std::memory_order_acquire);
   }
 };
 
@@ -144,39 +144,35 @@ public:
 template <typename T>
 class LockElement {
 public:
-  unsigned int key; // record を識別する．
-  T *lock;
-  bool mode;  // 0 read-mode, 1 write-mode
+  unsigned int key_; // record を識別する．
+  T *lock_;
+  bool mode_;  // 0 read-mode, 1 write-mode
 
-  LockElement(unsigned int key, T *lock, bool mode) {
-    this->key = key;
-    this->lock = lock;
-    this->mode = mode;
-  }
+  LockElement(unsigned int key, T *lock, bool mode) : key_(key), lock_(lock), mode_(mode) {}
 
   bool operator<(const LockElement& right) const {
-    return this->key < right.key;
+    return this->key_ < right.key_;
   }
 
   // Copy constructor
   LockElement(const LockElement& other) {
-    key = other.key;
-    lock = other.lock;
-    mode = other.mode;
+    key_ = other.key_;
+    lock_ = other.lock_;
+    mode_ = other.mode_;
   }
     
   // move constructor
   LockElement(LockElement && other) {
-    key = other.key;
-    lock = other.lock;
-    mode = other.mode;
+    key_ = other.key_;
+    lock_ = other.lock_;
+    mode_ = other.mode_;
   }
 
   LockElement& operator=(LockElement&& other) noexcept {
     if (this != &other) {
-      key = other.key;
-      lock = other.lock;
-      mode = other.mode;
+      key_ = other.key_;
+      lock_ = other.lock_;
+      mode_ = other.mode_;
     }
     return *this;
   }

@@ -22,42 +22,42 @@ enum class TransactionStatus : uint8_t {
 
 class TxExecutor {
 public:
-  vector<ReadElement<Tuple>> readSet;
-  vector<WriteElement<Tuple>> writeSet;
-  vector<Procedure> proSet;
+  vector<ReadElement<Tuple>> readSet_;
+  vector<WriteElement<Tuple>> writeSet_;
+  vector<Procedure> proSet_;
 #ifdef RWLOCK
-  vector<LockElement<RWLock>> RLL;
-  vector<LockElement<RWLock>> CLL;
+  vector<LockElement<RWLock>> RLL_;
+  vector<LockElement<RWLock>> CLL_;
 #endif // RWLOCK
 #ifdef MQLOCK
-  vector<LockElement<MQLock>> RLL;
-  vector<LockElement<MQLock>> CLL;
+  vector<LockElement<MQLock>> RLL_;
+  vector<LockElement<MQLock>> CLL_;
 #endif // MQLOCK
-  TransactionStatus status;
+  TransactionStatus status_;
 
   int thid_;
-  Tidword mrctid;
-  Tidword max_rset;
-  Tidword max_wset;
-  Xoroshiro128Plus *rnd;
-  MoccResult* tres_;
+  Tidword mrctid_;
+  Tidword max_rset_;
+  Tidword max_wset_;
+  Xoroshiro128Plus *rnd_;
+  MoccResult* mres_;
   
-  char writeVal[VAL_SIZE] = {};
-  char returnVal[VAL_SIZE] = {};
+  char write_val_[VAL_SIZE] = {};
+  char return_val_[VAL_SIZE] = {};
 
-  TxExecutor(int thid, Xoroshiro128Plus *rnd, MoccResult* tres) : thid_(thid), tres_(tres) {
-    readSet.reserve(MAX_OPE);
-    writeSet.reserve(MAX_OPE);
-    proSet.reserve(MAX_OPE);
-    RLL.reserve(MAX_OPE);
-    CLL.reserve(MAX_OPE);
+  TxExecutor(int thid, Xoroshiro128Plus *rnd, MoccResult* mres) : thid_(thid), mres_(mres) {
+    readSet_.reserve(MAX_OPE);
+    writeSet_.reserve(MAX_OPE);
+    proSet_.reserve(MAX_OPE);
+    RLL_.reserve(MAX_OPE);
+    CLL_.reserve(MAX_OPE);
 
-    this->status = TransactionStatus::inFlight;
-    this->rnd = rnd;
-    max_rset.obj = 0;
-    max_wset.obj = 0;
+    this->status_ = TransactionStatus::inFlight;
+    this->rnd_ = rnd;
+    max_rset_.obj_ = 0;
+    max_wset_.obj_ = 0;
 
-    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }
 
   ReadElement<Tuple> *searchReadSet(uint64_t key);

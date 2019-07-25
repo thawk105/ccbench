@@ -853,14 +853,14 @@ void
 RWLock::r_lock()
 {
   int expected, desired;
-  expected = counter.load(std::memory_order_acquire);
+  expected = counter_.load(std::memory_order_acquire);
   for (;;) {
     if (expected != -1) desired = expected + 1;
     else {
-      expected = counter.load(std::memory_order_acquire);
+      expected = counter_.load(std::memory_order_acquire);
       continue;
     }
-    if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+    if (counter_.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
   }
 }
 
@@ -868,32 +868,32 @@ bool
 RWLock::r_trylock()
 {
   int expected, desired;
-  expected = counter.load(std::memory_order_acquire);
+  expected = counter_.load(std::memory_order_acquire);
   for (;;) {
     if (expected != -1) desired = expected + 1;
     else return false;
 
-    if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
+    if (counter_.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
   }
 }
 
 void 
 RWLock::r_unlock()
 {
-  counter--;
+  counter_--;
 }
 
 void
 RWLock::w_lock()
 {
   int expected, desired(-1);
-  expected = counter.load(std::memory_order_acquire);
+  expected = counter_.load(std::memory_order_acquire);
   for (;;) {
     if (expected != 0) {
-      expected = counter.load(std::memory_order_acquire);
+      expected = counter_.load(std::memory_order_acquire);
       continue;
     }
-    if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
+    if (counter_.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) break;
   }
 }
 
@@ -901,23 +901,23 @@ bool
 RWLock::w_trylock()
 {
   int expected, desired(-1);
-  expected = counter.load(std::memory_order_acquire);
+  expected = counter_.load(std::memory_order_acquire);
   for (;;) {
     if (expected != 0) return false;
-    if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
+    if (counter_.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) return true;
   }
 }
 
 void
 RWLock::w_unlock()
 {
-  counter++;
+  counter_++;
 }
 
 bool 
 RWLock::upgrade()
 {
   int expected = 1;
-  return counter.compare_exchange_weak(expected, -1, std::memory_order_acq_rel);
+  return counter_.compare_exchange_weak(expected, -1, std::memory_order_acq_rel);
 }
 #endif // RWLOCK

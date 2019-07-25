@@ -6,17 +6,18 @@
 
 class MoccResult : public Result {
 public:
-  uint64_t total_abort_by_operation = 0;
-  uint64_t total_abort_by_validation = 0;
-  uint64_t total_validation_failure_by_writelock = 0;
-  uint64_t total_validation_failure_by_tid = 0;
-  uint64_t total_temperature_resets = 0;
+  alignas(64)
+  uint64_t total_abort_by_operation_ = 0;
+  uint64_t total_abort_by_validation_ = 0;
+  uint64_t total_validation_failure_by_writelock_ = 0;
+  uint64_t total_validation_failure_by_tid_ = 0;
+  uint64_t total_temperature_resets_ = 0;
 
-  uint64_t local_abort_by_operation = 0;
-  uint64_t local_abort_by_validation = 0;
-  uint64_t local_validation_failure_by_writelock = 0;
-  uint64_t local_validation_failure_by_tid = 0;
-  uint64_t local_temperature_resets = 0;
+  uint64_t local_abort_by_operation_ = 0;
+  uint64_t local_abort_by_validation_ = 0;
+  uint64_t local_validation_failure_by_writelock_ = 0;
+  uint64_t local_validation_failure_by_tid_ = 0;
+  uint64_t local_temperature_resets_ = 0;
 
   void display_total_abort_by_operation_rate(); // abort by operation rate;
   void display_total_abort_by_validation_rate(); // abort by validation rate;

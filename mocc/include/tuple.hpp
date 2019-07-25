@@ -14,7 +14,7 @@
 
 struct Tidword {
   union {
-    uint64_t obj;
+    uint64_t obj_;
     struct {
       uint64_t tid:32;
       uint64_t epoch:32;
@@ -22,11 +22,11 @@ struct Tidword {
   };
 
   Tidword() {
-    obj = 0;
+    obj_ = 0;
   }
 
   bool operator==(const Tidword& right) const {
-    return obj == right.obj;
+    return obj_ == right.obj_;
   }
 
   bool operator!=(const Tidword& right) const {
@@ -34,23 +34,23 @@ struct Tidword {
   }
 
   bool operator<(const Tidword& right) const {
-    return this->obj < right.obj;
+    return this->obj_ < right.obj_;
   }
 };
 
 // 32bit temprature, 32bit epoch
 struct Epotemp {
   union {
+    alignas(CACHE_LINE_SIZE)
     uint64_t obj_;
     struct {
-      uint64_t temp_:32;
-      uint64_t epoch_:32;
+      uint64_t temp:32;
+      uint64_t epoch:32;
     };
   };
-  uint8_t pad[CACHE_LINE_SIZE - sizeof(uint64_t)];
 
   Epotemp() : obj_(0) {}
-  Epotemp(uint64_t temp, uint64_t epoch) : temp_(temp), epoch_(epoch) {}
+  Epotemp(uint64_t temp2, uint64_t epoch2) : temp(temp2), epoch(epoch2) {}
 
   bool operator==(const Epotemp& right) const {
     return obj_ == right.obj_;
@@ -61,34 +61,23 @@ struct Epotemp {
   }
 
   bool eqEpoch(uint64_t epo) {
-    if (epoch_ == epo) return true;
+    if (epoch == epo) return true;
     else return false;
   }
 };
 
 class Tuple {
 public:
-  Tidword tidword;
+  alignas(CACHE_LINE_SIZE)
+  Tidword tidword_;
 #ifdef RWLOCK
-  RWLock rwlock;  // 4byte
+  RWLock rwlock_;  // 4byte
   // size to here is 20 bytes
 #endif
 #ifdef MQLOCK
-  MQLock mqlock;
+  MQLock mqlock_;
 #endif
 
-  char keypad[KEY_SIZE];
-  char val[VAL_SIZE];
-
-#ifdef RWLOCK
-
-#ifdef SHAVE_REC
-  int8_t pad[4];
-#endif // SHAVE_REC
-#ifndef SHAVE_REC
-  int8_t pad[CACHE_LINE_SIZE - ((20 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
-#endif // SHAVE_REC
-
-#endif // RWLOCK
+  char val_[VAL_SIZE];
 };
 

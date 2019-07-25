@@ -126,7 +126,7 @@ chkArg(const int argc, char *argv[])
 #endif // MQLOCK
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    ThLocalEpoch[i].obj = 0;
+    ThLocalEpoch[i].obj_ = 0;
   }
 }
 
@@ -139,10 +139,10 @@ displayDB()
     tuple = &Table[i];
     cout << "----------" << endl; // - is 10
     cout << "key: " << i << endl;
-    cout << "val: " << tuple->val << endl;
-    cout << "lockctr: " << tuple->rwlock.counter << endl;
-    cout << "TIDword: " << tuple->tidword.obj << endl;
-    cout << "bit: " << static_cast<bitset<64>>(tuple->tidword.obj) << endl;
+    cout << "val: " << tuple->val_ << endl;
+    cout << "lockctr: " << tuple->rwlock_.counter_ << endl;
+    cout << "TIDword: " << tuple->tidword_.obj_ << endl;
+    cout << "bit: " << static_cast<bitset<64>>(tuple->tidword_.obj_) << endl;
     cout << endl;
   }
 }
@@ -152,7 +152,7 @@ displayLockedTuple()
 {
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
 #ifdef RWLOCK
-    if (Table[i].rwlock.counter.load(memory_order_relaxed) == -1) {
+    if (Table[i].rwlock_.counter_.load(memory_order_relaxed) == -1) {
 #endif // RWLOCK
       cout << "key : " << i << " is locked!." << endl;
     }
@@ -169,10 +169,10 @@ part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tmp;
     tmp = &Table[i];
-    tmp->tidword.epoch = 1;
-    tmp->tidword.tid = 0;
-    tmp->val[0] = 'a'; 
-    tmp->val[1] = '\0';
+    tmp->tidword_.epoch = 1;
+    tmp->tidword_.tid = 0;
+    tmp->val_[0] = 'a'; 
+    tmp->val_[1] = '\0';
 
     Epotemp epotemp(0, 1);
     size_t epotemp_index = i * sizeof(Tuple) / PER_XX_TEMP;
