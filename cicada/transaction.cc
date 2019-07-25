@@ -10,14 +10,14 @@
 #include <string>
 #include <vector>
 
-#include "include/transaction.hpp"
-#include "include/common.hpp"
-#include "include/timeStamp.hpp"
-#include "include/version.hpp"
+#include "include/transaction.hh"
+#include "include/common.hh"
+#include "include/time_stamp.hh"
+#include "include/version.hh"
 
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/tsc.hpp"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/tsc.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 extern void displaySLogSet();
@@ -494,7 +494,7 @@ TxExecutor::mainte()
   //-----
   if (__atomic_load_n(&(GCExecuteFlag[thid_].obj_), __ATOMIC_ACQUIRE) == 1) {
 #if ADD_ANALYSIS
-    ++cres_->localGCCounts;
+    ++cres_->local_gc_counts_;
 #endif
     while (!gcq_.empty()) {
       if (gcq_.front().wts_ >= MinRts.load(memory_order_acquire)) break;
@@ -529,7 +529,7 @@ TxExecutor::mainte()
         if (delTarget != &tuple->inline_version_) delete delTarget;
         else gcq_.front().rcdptr_->returnInlineVersionRight();
 #if ADD_ANALYSIS
-        ++cres_->localGCVersions;
+        ++cres_->local_gc_versions_;
 #endif
         delTarget = tmp;
       }
@@ -550,7 +550,7 @@ TxExecutor::mainte()
   //-----
 #if ADD_ANALYSIS
   func_gcstop = rdtscp();
-  cres_->local_gc_tics += (func_gcstop - func_gcstart);
+  cres_->local_gc_tics_ += (func_gcstop - func_gcstart);
 #endif
 }
 

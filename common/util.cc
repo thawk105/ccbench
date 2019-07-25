@@ -8,11 +8,11 @@
 #include <thread>
 #include <vector>
 
-#include "../include/atomic_wrapper.hpp"
-#include "../include/debug.hpp"
-#include "../include/procedure.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+#include "../include/atomic_wrapper.hh"
+#include "../include/debug.hh"
+#include "../include/procedure.hh"
+#include "../include/random.hh"
+#include "../include/zipf.hh"
 
 bool
 chkSpan(struct timeval &start, struct timeval &stop, long threshold)
@@ -33,7 +33,7 @@ chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold)
 }
 
 size_t
-decide_parallel_build_number(size_t tuple_num)
+decideParallelBuildNumber(size_t tuple_num)
 {
   // if table size is very small, it builds by single thread.
   if (tuple_num < 1000) return 1;
@@ -50,7 +50,7 @@ decide_parallel_build_number(size_t tuple_num)
 }
 
 void
-display_procedure_vector(std::vector<Procedure>& pro)
+displayProcedureVector(std::vector<Procedure>& pro)
 {
   printf("--------------------\n");
   size_t index = 0;
@@ -65,7 +65,7 @@ display_procedure_vector(std::vector<Procedure>& pro)
 }
 
 void
-display_rusage_ru_maxrss()
+displayRusageRUMaxrss()
 {
   struct rusage r;
   if (getrusage(RUSAGE_SELF, &r) != 0) ERR;

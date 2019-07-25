@@ -90,7 +90,7 @@ TicTocResult::display_all_tictoc_result()
   display_total_read_latency();
   display_total_vali_latency();
   display_total_extra_reads();
-  display_all_result();
+  displayAllResult();
 }
 
 void
@@ -144,7 +144,7 @@ TicTocResult::add_local_extra_reads(const uint64_t ecount)
 void
 TicTocResult::add_local_all_tictoc_result(const TicTocResult& other)
 {
-  add_local_all_result(other);
+  AddLocalAllResult(other);
   add_local_timestamp_history_success_counts(other.local_timestamp_history_success_counts);
   add_local_timestamp_history_fail_counts(other.local_timestamp_history_fail_counts);
   add_local_preemptive_aborts_counts(other.local_preemptive_aborts_counts);

@@ -12,20 +12,20 @@
 #include <iostream>
 #include <limits>
 
-#include "../include/cache_line_size.hpp"
-#include "../include/check.hpp"
-#include "../include/config.hpp"
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/random.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-#include "include/common.hpp"
-#include "include/result.hpp"
-#include "include/tuple.hpp"
+#include "../include/cache_line_size.hh"
+#include "../include/check.hh"
+#include "../include/config.hh"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/random.hh"
+#include "../include/tsc.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/result.hh"
+#include "include/tuple.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
-extern size_t decide_parallel_build_number(size_t tuplenum);
+extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void 
 chkArg(const int argc, const char *argv[])
@@ -160,7 +160,7 @@ displayDB()
 }
 
 void
-part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
+partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
@@ -197,10 +197,10 @@ makeDB()
   if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
 
-  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(part_table_init, i,
+    thv.emplace_back(partTableInit, i,
         i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto& th : thv) th.join();
 }

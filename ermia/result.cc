@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "include/result.hpp"
+#include "include/result.hh"
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 
@@ -31,7 +31,7 @@ ErmiaResult::display_AllErmiaResult()
   display_totalGCVersionCounts();
   display_totalGCTMTElementsCounts();
 #endif
-  display_all_result();
+  displayAllResult();
 }
 
 void
@@ -55,7 +55,7 @@ ErmiaResult::add_localGCTMTElementsCounts(const uint64_t gcount)
 void
 ErmiaResult::add_localAllErmiaResult(const ErmiaResult &other)
 {
-  add_local_all_result(other);
+  addLocalAllResult(other);
   add_localGCCounts(other.localGCCounts);
   add_localGCVersionCounts(other.localGCVersionCounts);
   add_localGCTMTElementsCounts(other.localGCTMTElementsCounts);

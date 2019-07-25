@@ -26,7 +26,7 @@
 
 using namespace std;
 
-extern size_t decide_parallel_build_number(size_t tuplenum);
+extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void 
 chkArg(const int argc, char *argv[])
@@ -118,7 +118,7 @@ displayDB()
 }
 
 void
-part_table_init([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
+partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
@@ -145,11 +145,11 @@ makeDB()
   if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
 #endif
 
-  size_t maxthread = decide_parallel_build_number(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(part_table_init, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto& th : thv) th.join();
 }
 

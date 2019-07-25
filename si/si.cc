@@ -11,17 +11,17 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "../include/cpu.hpp"
-#include "../include/debug.hpp"
-#include "../include/int64byte.hpp"
-#include "../include/procedure.hpp"
-#include "../include/random.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-#include "include/common.hpp"
-#include "include/garbageCollection.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
+#include "../include/cpu.hh"
+#include "../include/debug.hh"
+#include "../include/int64byte.hh"
+#include "../include/procedure.hh"
+#include "../include/random.hh"
+#include "../include/tsc.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/garbage_collection.hh"
+#include "include/result.hh"
+#include "include/transaction.hh"
 
 using namespace std;
 
@@ -38,23 +38,23 @@ static void *
 manager_worker(void *arg)
 {
   SIResult &res = *(SIResult *)(arg);
-  GarbageCollection gcobject;
+  GarbageCollection gcobject_;
  
 #ifdef Linux 
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
 #endif // Linux
 
-  gcobject.decideFirstRange();
+  gcobject_.decideFirstRange();
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   for (;;) {
     usleep(1);
 
-    if (gcobject.chkSecondRange()) {
-      gcobject.decideGcThreshold();
-      gcobject.mvSecondRangeToFirstRange();
+    if (gcobject_.chkSecondRange()) {
+      gcobject_.decideGcThreshold();
+      gcobject_.mvSecondRangeToFirstRange();
     }
-    if (Result::Finish.load(std::memory_order_acquire)) return nullptr;
+    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
   }
 
   return nullptr;
@@ -65,37 +65,34 @@ static void *
 worker(void *arg)
 {
   SIResult &res = *(SIResult *)(arg);
-  TxExecutor trans(res.thid, MAX_OPE, (SIResult*)arg);
+  TxExecutor trans(res.thid_, MAX_OPE, (SIResult*)arg);
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
- 
+
 #if MASSTREE_USE
- MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+ MasstreeWrapper<Tuple>::thread_init(int(res.thid_));
 #endif
 
 #ifdef Linux
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
 #endif // Linux
 
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  
   //start work (transaction)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   for(;;) {
-    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.proSet_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
 
-    if (Result::Finish.load(std::memory_order_acquire)) {
+    if (Result::Finish_.load(std::memory_order_acquire)) {
       return nullptr;
     }
 
-    //-----
-    //transaction begin
     trans.tbegin();
-    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+    for (auto itr = trans.proSet_.begin(); itr != trans.proSet_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -107,7 +104,7 @@ RETRY:
         ERR;
       }
 
-      if (trans.status == TransactionStatus::aborted) {
+      if (trans.status_ == TransactionStatus::aborted) {
         trans.abort();
         goto RETRY;
       }
@@ -118,14 +115,14 @@ RETRY:
 #if 1
     // maintenance phase
     // garbage collection
-    uint32_t loadThreshold = trans.gcobject.getGcThreshold();
-    if (trans.preGcThreshold != loadThreshold) {
-      trans.gcobject.gcVersion(trans.sres_);
-      trans.preGcThreshold = loadThreshold;
+    uint32_t loadThreshold = trans.gcobject_.getGcThreshold();
+    if (trans.pre_gc_threshold_ != loadThreshold) {
+      trans.gcobject_.gcVersion(trans.sres_);
+      trans.pre_gc_threshold_ = loadThreshold;
 #ifdef CCTR_ON
-      trans.gcobject.gcTMTElements(trans.sres_);
+      trans.gcobject_.gcTMTElements(trans.sres_);
 #endif // CCTR_ON
-      ++trans.sres_->localGCCounts;
+      ++trans.sres_->local_gc_counts_;
     }
 #endif
     }
@@ -144,7 +141,7 @@ main(const int argc, const char *argv[]) try
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid = i;
+    rsob[i].thid_ = i;
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
@@ -156,15 +153,15 @@ main(const int argc, const char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish.store(true, std::memory_order_release);
+  Result::Finish_.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAllSIResult(rsob[i]);
+    rsroot.addLocalAllSIResult(rsob[i]);
   }
 
-  rsroot.extime = EXTIME;
-  rsroot.display_AllSIResult();
+  rsroot.extime_ = EXTIME;
+  rsroot.displayAllSIResult();
 
   return 0;
 } catch (bad_alloc) {

@@ -2,8 +2,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include "include/common.hpp"
-#include "include/result.hpp"
+#include "include/common.hh"
+#include "include/result.hh"
 
 using std::cout;
 using std::endl;
@@ -11,69 +11,69 @@ using std::fixed;
 using std::setprecision;
 
 void
-CicadaResult::display_totalGCCounts()
+CicadaResult::displayTotalGCCounts()
 {
-  cout << "totalGCCounts:\t\t" << totalGCCounts << endl;
+  cout << "total_gc_counts_:\t\t" << total_gc_counts_ << endl;
 }
 
 void
-CicadaResult::display_totalGCVersions()
+CicadaResult::displayTotalGCVersions()
 {
-  cout << "totalGCVersions:\t" << totalGCVersions << endl;
+  cout << "total_gc_versions_:\t" << total_gc_versions_ << endl;
 }
 
 void
-CicadaResult::display_total_gc_tics()
+CicadaResult::displayTotalGCTics()
 {
-  cout << "total_gc_tics:\t\t" << total_gc_tics << endl;
+  cout << "total_gc_tics_:\t\t" << total_gc_tics_ << endl;
 }
 
 void
-CicadaResult::display_gc_phase_rate()
+CicadaResult::displayGCPhaseRate()
 {
   cout << fixed << setprecision(4) << "gc_phase_rate:\t\t" 
-    << total_gc_tics / CLOCKS_PER_US / pow(10,6) / EXTIME / (THREAD_NUM - 1) << endl;
+    << total_gc_tics_ / CLOCKS_PER_US / pow(10,6) / EXTIME / (THREAD_NUM - 1) << endl;
   /* (THREAD_NUM - 1) の理由。
    * leader thread がいるから。例として、3秒実験のうち、1秒がgc time だとしたら、1 * THREAD_NUM が
    * 算出されるのは意に沿わないため、ワーカー数で割る。 */
 }
 
 void
-CicadaResult::display_AllCicadaResult()
+CicadaResult::displayAllCicadaResult()
 {
 #if ADD_ANALYSIS
-  display_totalGCCounts();
-  display_totalGCVersions();
-  display_total_gc_tics();
-  display_gc_phase_rate();
+  displayTotalGCCounts();
+  displayTotalGCVersions();
+  displayTotalGCTics();
+  displayGCPhaseRate();
 #endif
-  display_all_result();
+  displayAllResult();
 }
 
 void
-CicadaResult::add_localGCCounts(uint64_t gcount)
+CicadaResult::addLocalGCCounts(uint64_t gcount)
 {
-  totalGCCounts += gcount;
+  total_gc_counts_ += gcount;
 }
 
 void
-CicadaResult::add_localGCVersions(uint64_t vcount)
+CicadaResult::addLocalGCVersions(uint64_t vcount)
 {
-  totalGCVersions += vcount;
+  total_gc_versions_ += vcount;
 }
 
 void
-CicadaResult::add_local_gc_tics(uint64_t tics)
+CicadaResult::addLocalGCTics(uint64_t tics)
 {
-  total_gc_tics += tics;
+  total_gc_tics_ += tics;
 }
 
 void
-CicadaResult::add_localAllCicadaResult(CicadaResult &other)
+CicadaResult::addLocalAllCicadaResult(CicadaResult &other)
 {
-  add_local_all_result(other);
-  add_localGCCounts(other.localGCCounts);
-  add_localGCVersions(other.localGCVersions);
-  add_local_gc_tics(other.local_gc_tics);
+  addLocalAllResult(other);
+  addLocalGCCounts(other.local_gc_counts_);
+  addLocalGCVersions(other.local_gc_versions_);
+  addLocalGCTics(other.local_gc_tics_);
 }
 

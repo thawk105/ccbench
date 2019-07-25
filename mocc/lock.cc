@@ -1,7 +1,7 @@
 #include <atomic>
 
-#include "include/common.hpp"
-#include "include/lock.hpp"
+#include "include/common.hh"
+#include "include/lock.hh"
 
 #define xchg(...) __atomic_exchange_n(__VA_ARGS__)
 #define cas(...) __atomic_compare_exchange_n(__VA_ARGS__)

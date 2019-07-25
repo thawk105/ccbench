@@ -1,63 +1,63 @@
 
 #include <iostream>
 
-#include "include/result.hpp"
+#include "include/result.hh"
 
 using std::cout, std::endl, std::fixed, std::setprecision;
 
 void
-SIResult::display_totalGCCounts()
+SIResult::displayTotalGCCounts()
 {
-  cout << "totalGCCounts:\t\t" << totalGCCounts << endl;
+  cout << "total_gc_counts_:\t\t" << total_gc_counts_ << endl;
 }
 
 void
-SIResult::display_totalGCVersions()
+SIResult::displayTotalGCVersions()
 {
-  cout << "totalGCVersions:\t" << totalGCVersions << endl;
+  cout << "total_gc_versions_:\t" << total_gc_versions_ << endl;
 }
 
 void
-SIResult::display_totalGCTMTElements()
+SIResult::displayTotalGCTMTElements()
 {
-  cout << "totalGCTMTElements:\t" << totalGCTMTElements << endl;
+  cout << "total_gc_TMT_elements_:\t" << total_gc_TMT_elements_ << endl;
 }
 
 void
-SIResult::display_AllSIResult()
+SIResult::displayAllSIResult()
 {
 #if ADD_ANALYSIS
-  display_totalGCCounts();
-  display_totalGCVersions();
-  display_totalGCTMTElements();
+  displayTotalGCCounts();
+  displayTotalGCVersions();
+  displayTotalGCTMTElements();
 #endif
-  display_all_result();
+  displayAllResult();
 }
 
 void
-SIResult::add_localGCCounts(const uint64_t gcount)
+SIResult::addLocalGCCounts(const uint64_t gcount)
 {
-  totalGCCounts += gcount;
+  total_gc_counts_ += gcount;
 }
 
 void
-SIResult::add_localGCVersions(const uint64_t vcount)
+SIResult::addLocalGCVersions(const uint64_t vcount)
 {
-  totalGCVersions += vcount;
+  total_gc_versions_ += vcount;
 }
 
 void
-SIResult::add_localGCTMTElements(const uint64_t ecount)
+SIResult::addLocalGCTMTElements(const uint64_t ecount)
 {
-  totalGCTMTElements += ecount;
+  total_gc_TMT_elements_ += ecount;
 }
 
 void
-SIResult::add_localAllSIResult(const SIResult &other)
+SIResult::addLocalAllSIResult(const SIResult &other)
 {
-  add_local_all_result(other);
-  add_localGCCounts(other.localGCCounts);
-  add_localGCVersions(other.localGCVersions);
-  add_localGCTMTElements(other.localGCTMTElements);
+  addLocalAllResult(other);
+  addLocalGCCounts(other.local_gc_counts_);
+  addLocalGCVersions(other.local_gc_versions_);
+  addLocalGCTMTElements(other.local_gc_TMT_elements_);
 }
 

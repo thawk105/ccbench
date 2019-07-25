@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <bitset>
 
-#include "../include/atomic_wrapper.hpp"
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/tsc.hpp"
-#include "include/common.hpp"
-#include "include/transaction.hpp"
-#include "include/version.hpp"
+#include "../include/atomic_wrapper.hh"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/tsc.hh"
+#include "include/common.hh"
+#include "include/transaction.hh"
+#include "include/version.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
 

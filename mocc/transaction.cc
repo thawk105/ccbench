@@ -5,11 +5,11 @@
 #include <random>
 #include <thread>
 
-#include "../include/atomic_wrapper.hpp"
-#include "../include/debug.hpp"
-#include "include/atomic_tool.hpp"
-#include "include/transaction.hpp"
-#include "include/tuple.hpp"
+#include "../include/atomic_wrapper.hh"
+#include "../include/debug.hh"
+#include "include/atomic_tool.hh"
+#include "include/transaction.hh"
+#include "include/tuple.hh"
 
 using namespace std;
 

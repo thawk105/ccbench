@@ -10,17 +10,17 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "include/atomic_tool.hpp"
-#include "include/common.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
+#include "include/atomic_tool.hh"
+#include "include/common.hh"
+#include "include/result.hh"
+#include "include/transaction.hh"
 
-#include "../include/cpu.hpp"
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/int64byte.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
+#include "../include/cpu.hh"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/int64byte.hh"
+#include "../include/tsc.hh"
+#include "../include/zipf.hh"
 
 using namespace std;
 

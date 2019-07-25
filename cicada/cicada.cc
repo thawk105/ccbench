@@ -13,15 +13,15 @@
 #include <thread>
 
 #define GLOBAL_VALUE_DEFINE
-#include "../include/cpu.hpp"
-#include "../include/debug.hpp"
-#include "../include/int64byte.hpp"
-#include "../include/procedure.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
-#include "include/common.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
+#include "../include/cpu.hh"
+#include "../include/debug.hh"
+#include "../include/int64byte.hh"
+#include "../include/procedure.hh"
+#include "../include/random.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/result.hh"
+#include "include/transaction.hh"
 
 using namespace std;
 
@@ -205,11 +205,11 @@ main(int argc, char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAllCicadaResult(rsob[i]);
+    rsroot.addLocalAllCicadaResult(rsob[i]);
   }
 
   rsroot.extime_ = EXTIME;
-  rsroot.display_AllCicadaResult();
+  rsroot.displayAllCicadaResult();
 
   return 0;
 } catch (bad_alloc) {

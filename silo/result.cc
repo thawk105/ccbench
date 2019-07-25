@@ -45,7 +45,7 @@ SiloResult::display_all_silo_result()
   display_total_extra_reads();
   display_total_read_latency();
   display_total_vali_latency();
-  display_all_result();
+  displayAllResult();
 }
 
 void
@@ -72,6 +72,6 @@ SiloResult::add_local_all_silo_result(const SiloResult& other)
   add_local_read_latency(other.local_read_latency);
   add_local_vali_latency(other.local_vali_latency);
   add_local_extra_reads(other.local_extra_reads);
-  add_local_all_result(other);
+  AddLocalAllResult(other);
 }
 

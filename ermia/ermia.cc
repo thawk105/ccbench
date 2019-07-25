@@ -11,18 +11,18 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "../include/cpu.hpp"
-#include "../include/debug.hpp"
-#include "../include/int64byte.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/procedure.hpp"
-#include "../include/random.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
-#include "include/common.hpp"
-#include "include/garbageCollection.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
+#include "../include/cpu.hh"
+#include "../include/debug.hh"
+#include "../include/int64byte.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/procedure.hh"
+#include "../include/random.hh"
+#include "../include/tsc.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/garbage_collection.hh"
+#include "include/result.hh"
+#include "include/transaction.hh"
 
 using namespace std;
 

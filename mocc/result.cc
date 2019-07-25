@@ -1,5 +1,5 @@
-#include "include/common.hpp"
-#include "include/result.hpp"
+#include "include/common.hh"
+#include "include/result.hh"
 #include <iomanip>
 #include <iostream>
 
@@ -73,7 +73,7 @@ MoccResult::display_all_mocc_result()
   display_total_validation_failure_by_tid_rate();
   display_total_temperature_resets();
 #endif
-  display_all_result();
+  displayAllResult();
 }
 
 void
@@ -109,7 +109,7 @@ MoccResult::add_local_temperature_resets(uint64_t tr)
 void
 MoccResult::add_local_all_mocc_result(MoccResult &other)
 {
-  add_local_all_result(other);
+  addLocalAllResult(other);
 #if ADD_ANALYSIS
   add_local_abort_by_operation(other.local_abort_by_operation_);
   add_local_abort_by_validation(other.local_abort_by_validation_);
