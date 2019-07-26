@@ -34,6 +34,7 @@ GLOBAL bool RMW;
 GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL size_t CLOCKS_PER_US;
+GLOBAL size_t GC_INTER_US; // garbage collection interval
 GLOBAL size_t EXTIME;
 // -----
 

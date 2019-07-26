@@ -6,6 +6,7 @@
 
 #include "../include/atomic_wrapper.hh"
 #include "../include/debug.hh"
+#include "../include/tsc.hh"
 #include "include/common.hh"
 #include "include/transaction.hh"
 #include "include/version.hh"
@@ -82,13 +83,26 @@ TxExecutor::tbegin()
 char*
 TxExecutor::tread(uint64_t key)
 {
+#if ADD_ANALYSIS
+  sres_->bgn_ = rdtscp();
+#endif
+
   //if it already access the key object once.
-  // w
   SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return write_val_;
+  if (inW) {
+#if ADD_ANALYSIS
+    sres_->local_read_latency_ += rdtscp() - sres_->bgn_;
+#endif
+    return write_val_;
+  }
 
   SetElement<Tuple> *inR = searchReadSet(key);
-  if (inR) return inR->ver_->val_;
+  if (inR) {
+#if ADD_ANALYSIS
+    sres_->local_read_latency_ += rdtscp() - sres_->bgn_;
+#endif
+    return inR->ver_->val_;
+  }
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
@@ -120,15 +134,27 @@ TxExecutor::tread(uint64_t key)
   // ultimately, it is wasteful in prototype system.
   memcpy(return_val_, ver->val_, VAL_SIZE);
 
+#if ADD_ANALYSIS
+  sres_->local_read_latency_ += rdtscp() - sres_->bgn_;
+#endif
   return ver->val_;
 }
 
 void
 TxExecutor::twrite(uint64_t key)
 {
+#if ADD_ANALYSIS
+  sres_->bgn_ = rdtscp();
+#endif
+
   // if it already wrote the key object once.
   SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return;
+  if (inW) {
+#if ADD_ANALYSIS
+    sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+#endif
+    return;
+  }
 
   // if v not in t.writes:
   //
@@ -142,9 +168,9 @@ TxExecutor::twrite(uint64_t key)
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
-  #if ADD_ANALYSIS
-    ++sres_->local_tree_traversal_;
-  #endif
+#if ADD_ANALYSIS
+  ++sres_->local_tree_traversal_;
+#endif
 #else
   Tuple *tuple = get_tuple(Table, key);
 #endif
@@ -161,6 +187,9 @@ TxExecutor::twrite(uint64_t key)
       //性能が向上されるケースもある．
         this->status_ = TransactionStatus::aborted;
         delete desired;
+#if ADD_ANALYSIS
+        sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+#endif
         return;
       }
 
@@ -181,6 +210,9 @@ TxExecutor::twrite(uint64_t key)
       // Writers must abort if they would overwirte a version created after their snapshot.
       this->status_ = TransactionStatus::aborted;
       delete desired;
+#if ADD_ANALYSIS
+      sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+#endif
       return;
     }
 
@@ -189,6 +221,9 @@ TxExecutor::twrite(uint64_t key)
     if (tuple->latest_.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) break;
   }
 
+#if ADD_ANALYSIS
+  sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+#endif
   write_set_.emplace_back(key, tuple, desired);
 }
 
@@ -251,3 +286,26 @@ TxExecutor::dispRS()
   cout << endl;
 }
 
+void
+TxExecutor::mainte()
+{
+  gcstop_ = rdtscp();
+  if (chkClkSpan(gcstart_, gcstop_, GC_INTER_US * CLOCKS_PER_US)) {
+    uint32_t load_threshold = gcobject_.getGcThreshold();
+    if (pre_gc_threshold_ != load_threshold) {
+#if ADD_ANALYSIS
+      ++sres_->local_gc_counts_;
+      sres_->bgn_ = rdtscp();
+#endif
+      gcobject_.gcVersion(sres_);
+      pre_gc_threshold_ = load_threshold;
+      gcstart_ = gcstop_;
+#ifdef CCTR_ON
+      gcobject_.gcTMTElements(sres_);
+#endif
+#if ADD_ANALYSIS
+      sres_->local_gc_latency_ += rdtscp() - sres_->bgn_;
+#endif
+    }
+  }
+}

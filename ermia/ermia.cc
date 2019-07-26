@@ -38,7 +38,8 @@ extern void sleepMs(size_t);
 static void *
 manager_worker(void *arg)
 {
-  ErmiaResult &res = *(ErmiaResult *)(arg);
+  Result &res = *(Result *)(arg);
+  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   GarbageCollection gcobject;
  
 #ifdef Linux 
@@ -51,7 +52,7 @@ manager_worker(void *arg)
   
   
   for (;;) {
-    if (ErmiaResult::Finish_.load(std::memory_order_acquire))
+    if (Result::Finish_.load(std::memory_order_acquire))
       return nullptr;
 
     usleep(1);
@@ -68,8 +69,9 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  ErmiaResult &res = *(ErmiaResult *)(arg);
-  TxExecutor trans(res.thid_, MAX_OPE, (ErmiaResult*)arg);
+  Result &res = *(Result *)(arg);
+  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
+  TxExecutor trans(res.thid_, MAX_OPE, (Result*)arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
@@ -86,11 +88,11 @@ worker(void *arg)
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 
-  trans.gcstart = rdtscp();
+  trans.gcstart_ = rdtscp();
   for(;;) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
-    if (ErmiaResult::Finish_.load(std::memory_order_acquire))
+    if (Result::Finish_.load(std::memory_order_acquire))
       return nullptr;
 
     //-----
@@ -135,8 +137,8 @@ main(const int argc, const char *argv[]) try
   chkArg(argc, argv);
   makeDB();
 
-  ErmiaResult rsob[THREAD_NUM];
-  ErmiaResult &rsroot = rsob[0];
+  Result rsob[THREAD_NUM];
+  Result &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
@@ -153,15 +155,13 @@ main(const int argc, const char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  ErmiaResult::Finish_.store(true, std::memory_order_release);
+  Result::Finish_.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_localAllErmiaResult(rsob[i]);
+    rsroot.addLocalAllResult(rsob[i]);
   }
-
-  rsroot.extime_ = EXTIME;
-  rsroot.display_AllErmiaResult();
+  rsroot.displayAllResult();
 
   return 0;
 } catch (bad_alloc) {

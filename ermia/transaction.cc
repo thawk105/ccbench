@@ -80,16 +80,26 @@ TxExecutor::tbegin()
 char *
 TxExecutor::ssn_tread(unsigned int key)
 {
-  //safe retry property
-  
+#if ADD_ANALYSIS
+  uint64_t start;
+  start = rdtscp();
+#endif
+
   //if it already access the key object once.
   // w
   SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return writeVal;
-  // tanabe の実験ではスレッドごとに書き込む新しい値が決まっている．
+  if (inW) {
+#if ADD_ANALYSIS
+    eres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return writeVal;
+  }
 
   SetElement<Tuple> *inR = searchReadSet(key);
   if (inR) {
+#if ADD_ANALYSIS
+    eres_->local_read_latency_ += rdtscp() - start;
+#endif
     return inR->ver_->val_;
   }
 
@@ -129,19 +139,39 @@ TxExecutor::ssn_tread(unsigned int key)
   upReadersBits(ver);
 
   verify_exclusion_or_abort();
+  if (this->status_ == TransactionStatus::aborted) {
+#if ADD_ANALYSIS
+    eres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return nullptr;
+  }
+
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
   memcpy(returnVal, ver->val_, VAL_SIZE);
+#if ADD_ANALYSIS
+  eres_->local_read_latency_ += rdtscp() - start;
+#endif
   return ver->val_;
 }
 
 void
 TxExecutor::ssn_twrite(unsigned int key)
 {
+#if ADD_ANALYSIS
+  uint64_t start;
+  start = rdtscp();
+#endif
+
   // if it already wrote the key object once.
   SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return;
+  if (inW) {
+#if ADD_ANALYSIS
+    eres_->local_write_latency_ += rdtscp() - start;
+#endif
+    return;
+  }
   // tanabe の実験では，スレッドごとに書き込む新しい値が決まっている．
   // であれば，コミットが確定し，version status を committed にして other worker に visible になるときに
   // memcpy するのが一番無駄が少ない．
@@ -177,6 +207,9 @@ TxExecutor::ssn_twrite(unsigned int key)
       TransactionTable *tmt = loadAcquire(TMT[thid_]);
       tmt->status_.store(TransactionStatus::aborted, memory_order_release);
       delete desired;
+#if ADD_ANALYSIS
+      eres_->local_write_latency_ += rdtscp() - start;
+#endif
       return;
     }
     
@@ -196,6 +229,9 @@ TxExecutor::ssn_twrite(unsigned int key)
       TransactionTable *tmt = loadAcquire(TMT[thid_]);
       tmt->status_.store(TransactionStatus::aborted, memory_order_release);
       delete desired;
+#if ADD_ANALYSIS
+      eres_->local_write_latency_ += rdtscp() - start;
+#endif
       return;
     }
 
@@ -225,6 +261,10 @@ TxExecutor::ssn_twrite(unsigned int key)
   }
   
   verify_exclusion_or_abort();
+#if ADD_ANALYSIS
+  eres_->local_write_latency_ += rdtscp() - start;
+#endif
+  return;
 }
 
 void
@@ -474,18 +514,22 @@ TxExecutor::verify_exclusion_or_abort()
 void
 TxExecutor::mainte()
 {
-  gcstop = rdtscp();
-  if (chkClkSpan(gcstart, gcstop, GC_INTER_US * CLOCKS_PER_US)) {
+  gcstop_ = rdtscp();
+  if (chkClkSpan(gcstart_, gcstop_, GC_INTER_US * CLOCKS_PER_US)) {
     uint32_t loadThreshold = gcobject_.getGcThreshold();
     if (pre_gc_threshold_ != loadThreshold) {
+#if ADD_ANALYSIS
+      uint64_t start;
+      start = rdtscp();
+      ++eres_->local_gc_counts_;
+#endif
       gcobject_.gcTMTelement(eres_);
       gcobject_.gcVersion(eres_);
       pre_gc_threshold_ = loadThreshold;
-
+      gcstart_ = gcstop_;
 #if ADD_ANALYSIS
-      ++eres_->localGCCounts;
+      eres_->local_gc_latency_ += rdtscp() - start;
 #endif
-      gcstart = gcstop;
     }
   }
 }

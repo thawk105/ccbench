@@ -4,7 +4,7 @@ SS2PL_SRCS1 := ss2pl.cc transaction.cc util.cc
 REL := ../common/
 include $(REL)Makefile
 
-KEY_SIZE=4
+KEY_SIZE=8
 VAL_SIZE=4
 
 CC = clang++
@@ -16,7 +16,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
          -DMASSTREE_USE=1 \
          -DKEY_SORT=1 \
          -DDLR1 \
-				 -DADD_ANALYSIS=1 \
+         -DADD_ANALYSIS=1 \
 
 # dead lock resolution.
 # DLR0 ... timeout

@@ -6,6 +6,8 @@
 
 class SIResult : public Result {
 public:
+  using Result::Result;
+
   uint64_t total_gc_counts_ = 0;
   uint64_t local_gc_counts_ = 0;
   uint64_t total_gc_versions_ = 0;

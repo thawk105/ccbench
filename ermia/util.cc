@@ -206,7 +206,7 @@ makeDB()
 }
 
 void
-naiveGarbageCollection(ErmiaResult &res) 
+naiveGarbageCollection() 
 {
   TransactionTable *tmt;
 
@@ -222,12 +222,7 @@ naiveGarbageCollection(ErmiaResult &res)
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       // 時間がかかるので，離脱条件チェック
-      res.end_ = rdtscp();
-      if (chkClkSpan(res.bgn_, res.end_, EXTIME * 1000 * 1000 * CLOCKS_PER_US)) {
-        res.Finish_.store(true, std::memory_order_release);
-        return;
-      }
-      // -----
+      if (ErmiaResult::Finish_.load(std::memory_order_acquire) == true) return;
 
       verTmp = Table[i].latest_.load(memory_order_acquire);
       if (verTmp->status_.load(memory_order_acquire) != VersionStatus::committed) 

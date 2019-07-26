@@ -25,20 +25,21 @@ enum class TransactionStatus : uint8_t {
 
 class TxExecutor {
 public:
+  uint8_t thid_; // thread ID
   uint32_t cstamp_ = 0;  // Transaction end time, c(T) 
-  TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
+  uint32_t txid_;  //TID and begin timestamp - the current log sequence number (LSN)
+  uint32_t pre_gc_threshold_ = 0;
+  uint64_t gcstart_, gcstop_;
+  char return_val_[VAL_SIZE] = {};
+  char write_val_[VAL_SIZE] = {};
+
   std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> read_set_;
   std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> write_set_;
   std::vector<Procedure> pro_set_;
+
   GarbageCollection gcobject_;
-  uint32_t pre_gc_threshold_ = 0;
-
-  uint8_t thid_; // thread ID
-  uint32_t txid_;  //TID and begin timestamp - the current log sequence number (LSN)
   SIResult *sres_;
-
-  char return_val_[VAL_SIZE] = {};
-  char write_val_[VAL_SIZE] = {};
+  TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
 
   TxExecutor(uint8_t thid, unsigned int max_ope, SIResult* sres) : thid_(thid), sres_(sres) {
     gcobject_.thid_ = thid;
@@ -56,6 +57,7 @@ public:
   void twrite(uint64_t key);
   void commit();
   void abort();
+  void mainte();
   void dispWS();
   void dispRS();
 

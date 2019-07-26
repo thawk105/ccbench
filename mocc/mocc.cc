@@ -55,10 +55,8 @@ manager_worker(void *arg)
 #ifdef Linux
   setThreadAffinity(res.thid_);
 #endif
-
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
-  res.bgn_ = rdtscp();
   epochTimerStart = rdtscp();
   for (;;) {
     if (Result::Finish_.load(memory_order_acquire))

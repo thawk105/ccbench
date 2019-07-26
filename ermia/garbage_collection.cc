@@ -108,7 +108,7 @@ GarbageCollection::gcVersion([[maybe_unused]]ErmiaResult *eres_)
       delete delTarget;
       delTarget = tmp;
 #if ADD_ANALYSIS
-      ++eres_->localGCVersionCounts;
+      ++eres_->local_gc_version_counts_;
 #endif
     }
 
@@ -132,7 +132,7 @@ GarbageCollection::gcTMTelement([[maybe_unused]]ErmiaResult *eres_)
       gcq_for_TMT_.pop();
       delete tmt;
 #if ADD_ANALYSIS
-      ++eres_->localGCTMTElementsCounts;
+      ++eres_->local_gc_TMT_elements_counts_;
 #endif
       if (gcq_for_TMT_.empty()) break;
     }

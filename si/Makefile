@@ -9,7 +9,7 @@ VAL_SIZE=4
 
 CC = g++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
-				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model -fstack-protector-all \
+				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \

@@ -38,6 +38,7 @@ static void *
 manager_worker(void *arg)
 {
   SIResult &res = *(SIResult *)(arg);
+  res = SIResult(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   GarbageCollection gcobject_;
  
 #ifdef Linux 
@@ -48,13 +49,14 @@ manager_worker(void *arg)
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   for (;;) {
-    usleep(1);
+    if (Result::Finish_.load(std::memory_order_acquire)) 
+      return nullptr;
 
+    usleep(1);
     if (gcobject_.chkSecondRange()) {
       gcobject_.decideGcThreshold();
       gcobject_.mvSecondRangeToFirstRange();
     }
-    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
   }
 
   return nullptr;
@@ -65,6 +67,7 @@ static void *
 worker(void *arg)
 {
   SIResult &res = *(SIResult *)(arg);
+  res = SIResult(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   TxExecutor trans(res.thid_, MAX_OPE, (SIResult*)arg);
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   Xoroshiro128Plus rnd;
@@ -83,6 +86,7 @@ worker(void *arg)
 
   //start work (transaction)
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  trans.gcstart_ = rdtscp();
   for(;;) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
@@ -112,20 +116,10 @@ RETRY:
 
     trans.commit();
 
-#if 1
     // maintenance phase
     // garbage collection
-    uint32_t loadThreshold = trans.gcobject_.getGcThreshold();
-    if (trans.pre_gc_threshold_ != loadThreshold) {
-      trans.gcobject_.gcVersion(trans.sres_);
-      trans.pre_gc_threshold_ = loadThreshold;
-#ifdef CCTR_ON
-      trans.gcobject_.gcTMTElements(trans.sres_);
-#endif // CCTR_ON
-      ++trans.sres_->local_gc_counts_;
-    }
-#endif
-    }
+    trans.mainte();
+  }
 
   return nullptr;
 }
@@ -159,8 +153,6 @@ main(const int argc, const char *argv[]) try
     pthread_join(thread[i], nullptr);
     rsroot.addLocalAllSIResult(rsob[i]);
   }
-
-  rsroot.extime_ = EXTIME;
   rsroot.displayAllSIResult();
 
   return 0;

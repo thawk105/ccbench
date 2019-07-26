@@ -41,7 +41,7 @@ public:
   uint32_t txid_;  //TID and begin timestamp - the current log sequence number (LSN)
   ErmiaResult* eres_;
 
-  uint64_t gcstart, gcstop; // counter for garbage collection
+  uint64_t gcstart_, gcstop_; // counter for garbage collection
 
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};

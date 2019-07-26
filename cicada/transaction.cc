@@ -488,7 +488,7 @@ TxExecutor::mainte()
    * 以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
    */
 #if ADD_ANALYSIS
-  uint64_t func_gcstart, func_gcstop;
+  uint64_t func_gcstart;
   func_gcstart = rdtscp();
 #endif
   //-----
@@ -549,8 +549,7 @@ TxExecutor::mainte()
   }
   //-----
 #if ADD_ANALYSIS
-  func_gcstop = rdtscp();
-  cres_->local_gc_tics_ += (func_gcstop - func_gcstart);
+  cres_->local_gc_tics_ += rdtscp() - func_gcstart;
 #endif
 }
 

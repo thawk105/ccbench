@@ -30,10 +30,10 @@ extern size_t decideParallelBuildNumber(size_t tuplenum);
 void
 chkArg(const int argc, const char *argv[])
 {
-  if (argc != 10) {
+  if (argc != 11) {
   //if (argc != 1) {
-    cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl;
-    cout << "example: ./si.exe 200 10 24 50 off 0 off 2400 3" << endl;
+    cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US EXTIME" << endl;
+    cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 3" << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
@@ -42,6 +42,7 @@ chkArg(const int argc, const char *argv[])
     cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
     cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
+    cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "EXTIME: execution time [sec]" << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -69,7 +70,8 @@ chkArg(const int argc, const char *argv[])
   ZIPF_SKEW = atof(argv[6]);
   std::string argst = argv[7];
   CLOCKS_PER_US = atof(argv[8]);
-  EXTIME = atoi(argv[9]);
+  GC_INTER_US = atoi(argv[9]);
+  EXTIME = atoi(argv[10]);
 
   if (THREAD_NUM < 2) {
     cout << "1 thread is leader thread. \nthread number 1 is no worker thread, so exit." << endl;
