@@ -10,13 +10,14 @@ VAL_SIZE=4
 CC = g++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
+				 -D$(shell uname) \
+				 -D$(shell hostname) \
 				 -DNO_WAIT_LOCKING_IN_VALIDATION=1 \
 				 -DPREEMPTIVE_ABORTS=1 \
 				 -DTIMESTAMP_HISTORY=1 \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
-				 -D$(shell uname) \
-				 -D$(shell hostname) \
 				 -DMASSTREE_USE=1 \
+				 -DADD_ANALYSIS=1 \
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release

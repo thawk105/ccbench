@@ -14,16 +14,15 @@
 #include <limits>
 #include <vector>
 
-#include "include/common.hpp"
-#include "include/tuple.hpp"
-
-#include "../include/check.hpp"
-#include "../include/config.hpp"
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/procedure.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+#include "../include/check.hh"
+#include "../include/config.hh"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/procedure.hh"
+#include "../include/random.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/tuple.hh"
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
@@ -32,7 +31,7 @@ chkArg(const int argc, const char *argv[])
 {
   if (argc != 10) {
     cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl << endl;
-    cout << "example: ./ss2pl.exe 200 10 24 50 off 0 on 2400 3" << endl << endl;
+    cout << "example: ./ss2pl.exe 200 10 24 50 off 0 on 2100 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
@@ -105,7 +104,7 @@ displayDB()
     tuple = &Table[i];
     cout << "------------------------------" << endl; // - 30
     cout << "key: " << i << endl;
-    cout << "val: " << tuple->val << endl;
+    cout << "val: " << tuple->val_ << endl;
   }
 }
 
@@ -118,8 +117,8 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 #endif
 
   for (auto i = start; i <= end; ++i) {
-    Table[i].val[0] = 'a';
-    Table[i].val[1] = '\0';
+    Table[i].val_[0] = 'a';
+    Table[i].val_[1] = '\0';
 
 #if MASSTREE_USE
     MT.insert_value(i, &Table[i]);

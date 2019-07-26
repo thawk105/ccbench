@@ -65,9 +65,8 @@ GarbageCollection::gcVersion([[maybe_unused]]SIResult* sres_)
     if (gcq_for_versions_.front().cstamp_ >= threshold) break;
 
     // (a) acquiring the garbage collection lock succeeds
-    Tuple* tuple = gcq_for_versions_.front().rcdptr_;
-
     uint8_t zero = 0;
+    Tuple* tuple = gcq_for_versions_.front().rcdptr_;
     if (!tuple->g_clock_.compare_exchange_strong(zero, this->thid_, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcq_for_versions_.pop_front();

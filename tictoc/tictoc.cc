@@ -13,17 +13,16 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "include/common.hpp"
-#include "include/result.hpp"
-#include "include/transaction.hpp"
-
-#include "../include/cpu.hpp"
-#include "../include/debug.hpp"
-#include "../include/masstree_wrapper.hpp"
-#include "../include/random.hpp"
-#include "../include/result.hpp"
-#include "../include/tsc.hpp"
-#include "../include/zipf.hpp"
+#include "../include/cpu.hh"
+#include "../include/debug.hh"
+#include "../include/masstree_wrapper.hh"
+#include "../include/random.hh"
+#include "../include/result.hh"
+#include "../include/tsc.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/result.hh"
+#include "include/transaction.hh"
 
 extern void chkArg(const int argc, char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
@@ -41,28 +40,30 @@ worker(void *arg)
   TicTocResult &res = *(TicTocResult *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid, &res);
+  TxExecutor trans(res.thid_, &res);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(res.thid));
+  MasstreeWrapper<Tuple>::thread_init(int(res.thid_));
 #endif
 
-  setThreadAffinity(res.thid);
+  setThreadAffinity(res.thid_);
   //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   
   for (;;) {
-    uint64_t start, stop;
-    makeProcedure(trans.proSet, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
-    if (res.Finish.load(std::memory_order_acquire))
+    if (res.Finish_.load(std::memory_order_acquire))
       return nullptr;
     trans.tbegin();
 
+#if ADD_ANALYSIS
+    uint64_t start;
     start = rdtscp();
-    for (auto itr = trans.proSet.begin(); itr != trans.proSet.end(); ++itr) {
+#endif
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -74,28 +75,24 @@ RETRY:
         ERR;
       }
 
-      if (trans.status == TransactionStatus::aborted) {
+      if (trans.status_ == TransactionStatus::aborted) {
         trans.abort();
-        ++res.local_abort_counts;
-        stop = rdtscp();
-        res.local_read_latency += stop -start;
+#if ADD_ANALYSIS
+        res.local_read_latency_ += rdtscp() -start;
+#endif
         goto RETRY;
       }
     }
-    stop = rdtscp();
-    res.local_read_latency += stop -start;
+#if ADD_ANALYSIS
+    res.local_read_latency_ += rdtscp() -start;
+#endif
     
     //Validation phase
-    start = rdtscp();
     bool varesult = trans.validationPhase();
-    stop = rdtscp();
-    res.local_vali_latency += stop - start;
     if (varesult) {
       trans.writePhase();
-      ++res.local_commit_counts;
     } else {
       trans.abort();
-      ++res.local_abort_counts;
       goto RETRY;
     }
   }
@@ -114,7 +111,7 @@ main(int argc, char *argv[]) try
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid = i;
+    rsob[i].thid_ = i;
     ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;
   }
@@ -123,15 +120,15 @@ main(int argc, char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  TicTocResult::Finish.store(true, std::memory_order_release);
+  TicTocResult::Finish_.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_local_all_tictoc_result(rsob[i]);
+    rsroot.addLocalAllTictocResult(rsob[i]);
   }
 
-  rsroot.extime = EXTIME;
-  rsroot.display_all_tictoc_result();
+  rsroot.extime_ = EXTIME;
+  rsroot.displayAllTictocResult();
 
   return 0;
 } catch (bad_alloc) {

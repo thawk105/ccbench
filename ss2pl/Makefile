@@ -10,12 +10,13 @@ VAL_SIZE=4
 CC = clang++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
          -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
+         -D$(shell uname) \
+         -D$(shell hostname) \
          -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
          -DMASSTREE_USE=1 \
          -DKEY_SORT=1 \
-         -DDLR0 \
-         -D$(shell uname) \
-         -D$(shell hostname) \
+         -DDLR1 \
+				 -DADD_ANALYSIS=1 \
 
 # dead lock resolution.
 # DLR0 ... timeout

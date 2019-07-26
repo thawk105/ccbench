@@ -2,12 +2,13 @@
 
 #include <vector>
 
-#include "../../include/rwlock.hpp"
-#include "../../include/string.hpp"
-#include "../../include/procedure.hpp"
-#include "../../include/util.hpp"
-#include "ss2pl_op_element.hpp"
-#include "tuple.hpp"
+#include "../../include/rwlock.hh"
+#include "../../include/string.hh"
+#include "../../include/procedure.hh"
+#include "../../include/result.hh"
+#include "../../include/util.hh"
+#include "ss2pl_op_element.hh"
+#include "tuple.hh"
 
 enum class TransactionStatus : uint8_t {
   inFlight,
@@ -20,25 +21,25 @@ extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 class TxExecutor {
 public:
   int thid_;
-  std::vector<RWLock*> r_lockList;
-  std::vector<RWLock*> w_lockList;
-  TransactionStatus status = TransactionStatus::inFlight;
+  std::vector<RWLock*> r_lock_list_;
+  std::vector<RWLock*> w_lock_list_;
+  TransactionStatus status_ = TransactionStatus::inFlight;
+  Result* sres_;
+  vector<SetElement<Tuple>> read_set_;
+  vector<SetElement<Tuple>> write_set_;
+  vector<Procedure> pro_set_;
 
-  vector<SetElement<Tuple>> readSet;
-  vector<SetElement<Tuple>> writeSet;
-  vector<Procedure> proSet;
+  char write_val_[VAL_SIZE];
+  char return_val_[VAL_SIZE];
 
-  char writeVal[VAL_SIZE];
-  char returnVal[VAL_SIZE];
+  TxExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
+    read_set_.reserve(MAX_OPE);
+    write_set_.reserve(MAX_OPE);
+    pro_set_.reserve(MAX_OPE);
+    r_lock_list_.reserve(MAX_OPE);
+    w_lock_list_.reserve(MAX_OPE);
 
-  TxExecutor(int thid) : thid_(thid) {
-    readSet.reserve(MAX_OPE);
-    writeSet.reserve(MAX_OPE);
-    proSet.reserve(MAX_OPE);
-    r_lockList.reserve(MAX_OPE);
-    w_lockList.reserve(MAX_OPE);
-
-    genStringRepeatedNumber(writeVal, VAL_SIZE, thid); 
+    genStringRepeatedNumber(write_val_, VAL_SIZE, thid); 
   }
 
   SetElement<Tuple> *searchReadSet(uint64_t key);
@@ -48,7 +49,7 @@ public:
   void twrite(uint64_t key);
   void commit();
   void abort();
-  void unlock_list();
+  void unlockList();
 
   // inline
   Tuple* get_tuple(Tuple *table, uint64_t key) { return &table[key]; }

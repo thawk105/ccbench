@@ -3,19 +3,16 @@
 #include <atomic>
 #include <mutex>
 
-#include "../../include/cache_line_size.hpp"
-#include "../../include/inline.hpp"
-#include "../../include/rwlock.hpp"
+#include "../../include/cache_line_size.hh"
+#include "../../include/inline.hh"
+#include "../../include/rwlock.hh"
 
 using namespace std;
 
 class Tuple {
 public:
-  RWLock lock;
-
-  char keypad[KEY_SIZE];
-  char val[VAL_SIZE];
-
-  int8_t pad[CACHE_LINE_SIZE - ((4 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
+  alignas(CACHE_LINE_SIZE)
+  RWLock lock_;
+  char val_[VAL_SIZE];
 };
 

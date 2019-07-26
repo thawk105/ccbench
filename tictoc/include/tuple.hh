@@ -6,11 +6,11 @@
 #include <atomic>
 #include <cstdint>
 
-#include "../../include/cache_line_size.hpp"
+#include "../../include/cache_line_size.hh"
 
 struct TsWord {
   union {
-    uint64_t obj;
+    uint64_t obj_;
     struct {
       bool lock:1;
       uint16_t delta:15;
@@ -19,11 +19,11 @@ struct TsWord {
   };
 
   TsWord () {
-    obj = 0;
+    obj_ = 0;
   }
 
   bool operator==(const TsWord& right) const {
-    return obj == right.obj;
+    return obj_ == right.obj_;
   }
 
   bool operator!=(const TsWord& right) const {
@@ -42,19 +42,9 @@ struct TsWord {
 };
 class Tuple {
 public:
-  TsWord tsw;
-  TsWord pre_tsw;
-  // wts 48bit, rts-wts 15bit, lockbit 1bit
-  //
-
-  char keypad[KEY_SIZE];
-  char val[VAL_SIZE];
-
-#ifdef SHAVE_REC
-  int8_t pad[8];
-#endif // SHAVE_REC
-#ifndef SHAVE_REC
-  int8_t pad[CACHE_LINE_SIZE - ((16 + KEY_SIZE + VAL_SIZE) % CACHE_LINE_SIZE)];
-#endif // SHAVE_REC
+  alignas(CACHE_LINE_SIZE)
+  TsWord tsw_;
+  TsWord pre_tsw_;
+  char val_[VAL_SIZE];
 };
 

@@ -13,16 +13,15 @@
 #include <thread>
 #include <vector>
 
-#include "include/common.hpp"
-#include "include/transaction.hpp"
-#include "include/tuple.hpp"
-
-#include "../include/config.hpp"
-#include "../include/check.hpp"
-#include "../include/inline.hpp"
-#include "../include/debug.hpp"
-#include "../include/random.hpp"
-#include "../include/zipf.hpp"
+#include "../include/config.hh"
+#include "../include/check.hh"
+#include "../include/inline.hh"
+#include "../include/debug.hh"
+#include "../include/random.hh"
+#include "../include/zipf.hh"
+#include "include/common.hh"
+#include "include/transaction.hh"
+#include "include/tuple.hh"
 
 using namespace std;
 
@@ -34,7 +33,7 @@ chkArg(const int argc, char *argv[])
   if (argc != 10) {
     cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCKS_PER_US EXTIME" << endl << endl;
 
-    cout << "example:./main 200 10 24 50 off 0 on 2400 3" << endl << endl;
+    cout << "example:./main 200 10 24 50 off 0 on 2100 3" << endl << endl;
 
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
@@ -110,9 +109,9 @@ displayDB()
     tuple = &Table[i];
     cout << "------------------------------" << endl; //-は30個
     cout << "key: " << i << endl;
-    cout << "val: " << tuple->val << endl;
-    cout << "TS_word: " << tuple->tsw.obj << endl;
-    cout << "bit: " << static_cast<bitset<64>>(tuple->tsw.obj) << endl;
+    cout << "val_: " << tuple->val_ << endl;
+    cout << "TS_word: " << tuple->tsw_.obj_ << endl;
+    cout << "bit: " << static_cast<bitset<64>>(tuple->tsw_.obj_) << endl;
     cout << endl;
   }
 }
@@ -126,10 +125,10 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
 
   for (auto i = start; i <= end; ++i) {
     Tuple *tmp = &Table[i];
-    tmp->tsw.obj = 0;
-    tmp->pre_tsw.obj = 0;
-    tmp->val[0] = 'a'; 
-    tmp->val[1] = '\0';
+    tmp->tsw_.obj_ = 0;
+    tmp->pre_tsw_.obj_ = 0;
+    tmp->val_[0] = 'a'; 
+    tmp->val_[1] = '\0';
 
 #if MASSTREE_USE
     MT.insert_value(i, tmp);
