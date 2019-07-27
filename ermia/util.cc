@@ -18,10 +18,10 @@
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
-#include "include/result.hh"
 #include "include/tuple.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
@@ -222,7 +222,7 @@ naiveGarbageCollection()
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       // 時間がかかるので，離脱条件チェック
-      if (ErmiaResult::Finish_.load(std::memory_order_acquire) == true) return;
+      if (Result::Finish_.load(std::memory_order_acquire) == true) return;
 
       verTmp = Table[i].latest_.load(memory_order_acquire);
       if (verTmp->status_.load(memory_order_acquire) != VersionStatus::committed) 

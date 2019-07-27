@@ -159,10 +159,10 @@ void
 Result::displayAllResult()
 {
 #if ADD_ANALYSIS
-  displayGCLatencyRate();
   displayTreeTraversal();
   displayReadLatencyRate();
   displayWriteLatencyRate();
+  displayGCLatencyRate();
 #endif
   displayRusageRUMaxrss();
   displayTotalCommitCounts();
@@ -175,12 +175,12 @@ void
 Result::addLocalAllResult(const Result &other)
 {
 #if ADD_ANALYSIS
-  total_gc_latency_ += other.local_gc_latency_;
-  total_tree_traversal_ += other.local_tree_traversal_;
-  total_read_latency_ += other.local_read_latency_;
-  total_write_latency_ += other.local_write_latency_;
+  addLocalGCLatency(other.local_gc_latency_);
+  addLocalTreeTraversal(other.local_tree_traversal_);
+  addLocalReadLatency(other.local_read_latency_);
+  addLocalWriteLatency(other.local_write_latency_);
 #endif
-  total_abort_counts_ += other.local_abort_counts_;
-  total_commit_counts_ += other.local_commit_counts_;
+  addLocalAbortCounts(other.local_abort_counts_);
+  addLocalCommitCounts(other.local_commit_counts_);
 }
 

@@ -11,6 +11,7 @@
 #include "../../include/debug.hh"
 #include "../../include/inline.hh"
 #include "../../include/procedure.hh"
+#include "../../include/result.hh"
 #include "../../include/string.hh"
 #include "../../include/util.hh"
 #include "cicada_op_element.hh"
@@ -18,7 +19,6 @@
 #include "tuple.hh"
 #include "time_stamp.hh"
 #include "version.hh"
-#include "result.hh"
 
 enum class TransactionStatus : uint8_t {
   invalid,
@@ -36,7 +36,7 @@ public:
   std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>> write_set_;
   std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq_;
   std::vector<Procedure> pro_set_;
-  CicadaResult* cres_ = nullptr;
+  Result* cres_ = nullptr;
 
   bool ronly_;
   uint8_t thid_ = 0;
@@ -49,7 +49,7 @@ public:
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t thid, CicadaResult* cres) : cres_(cres), thid_(thid) {
+  TxExecutor(uint8_t thid, Result* cres) : cres_(cres), thid_(thid) {
     // wait to initialize MinWts
     while(MinWts.load(memory_order_acquire) == 0);
     rts_ = MinWts.load(memory_order_acquire) - 1;

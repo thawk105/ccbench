@@ -68,10 +68,17 @@ void TxExecutor::tbegin()
 char *
 TxExecutor::tread(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
   //read-own-writes
   //if n E write set
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
+#if ADD_ANALYSIS
+      cres_->local_read_latency_ += rdtscp() - start;
+#endif
       return write_val_;
       // tanabe の実験では，スレッドごとに新しく書く値は決まっている．
     }
@@ -79,6 +86,9 @@ TxExecutor::tread(uint64_t key)
   // if n E read set
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
+#if ADD_ANALYSIS
+      cres_->local_read_latency_ += rdtscp() - start;
+#endif
       return (*itr).ver_->val_;
     }
   }
@@ -116,21 +126,28 @@ TxExecutor::tread(uint64_t key)
   memcpy(return_val_, version->val_, VAL_SIZE);
 
   //if read-only, not track or validate read_set_
-  if ((*this->pro_set_.begin()).ronly_) {
-    return version->val_;
-  }
-  else {
+  if ((*this->pro_set_.begin()).ronly_ == false) {
     read_set_.emplace_back(key, tuple, version);
-    return version->val_;
   }
+
+#if ADD_ANALYSIS
+  cres_->local_read_latency_ += rdtscp() - start;
+#endif
+  return version->val_;
 }
 
 void
 TxExecutor::twrite(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
   //if n E write_set_
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
+#if ADD_ANALYSIS
+      cres_->local_write_latency_ += rdtscp() - start;
+#endif
       return;
       // tanabe の実験では，スレッドごとに新たに書く値が決まっている．
     }
@@ -158,6 +175,9 @@ TxExecutor::twrite(uint64_t key)
   if ((version->ldAcqRts() > this->wts_.ts_) && (version->ldAcqStatus() == VersionStatus::committed)) {
     //it must be aborted in validation phase, so early abort.
     this->status_ = TransactionStatus::abort;
+#if ADD_ANALYSIS
+    cres_->local_write_latency_ += rdtscp() - start;
+#endif
     return; 
   }
   else if (version->wts_.load(memory_order_acquire) > this->wts_.ts_) {
@@ -165,6 +185,9 @@ TxExecutor::twrite(uint64_t key)
     //But it may be aborted, so early abort.
     //if committed, it must be aborted in validaiton phase due to order of newest to oldest.
     this->status_ = TransactionStatus::abort;
+#if ADD_ANALYSIS
+    cres_->local_write_latency_ += rdtscp() - start;
+#endif
     return; 
   }
   
@@ -178,6 +201,9 @@ TxExecutor::twrite(uint64_t key)
     write_set_.emplace_back(key, tuple, newObject);
   }
 
+#if ADD_ANALYSIS
+  cres_->local_write_latency_ += rdtscp() - start;
+#endif
   return;
 }
 
@@ -488,8 +514,8 @@ TxExecutor::mainte()
    * 以外のバージョンは全てデリート可能。絶対に到達されないことが保証される.
    */
 #if ADD_ANALYSIS
-  uint64_t func_gcstart;
-  func_gcstart = rdtscp();
+  uint64_t start;
+  start = rdtscp();
 #endif
   //-----
   if (__atomic_load_n(&(GCExecuteFlag[thid_].obj_), __ATOMIC_ACQUIRE) == 1) {
@@ -529,7 +555,7 @@ TxExecutor::mainte()
         if (delTarget != &tuple->inline_version_) delete delTarget;
         else gcq_.front().rcdptr_->returnInlineVersionRight();
 #if ADD_ANALYSIS
-        ++cres_->local_gc_versions_;
+        ++cres_->local_gc_version_counts_;
 #endif
         delTarget = tmp;
       }
@@ -549,7 +575,7 @@ TxExecutor::mainte()
   }
   //-----
 #if ADD_ANALYSIS
-  cres_->local_gc_tics_ += rdtscp() - func_gcstart;
+  cres_->local_gc_latency_ += rdtscp() - start;
 #endif
 }
 

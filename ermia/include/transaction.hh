@@ -4,12 +4,12 @@
 #include <map>
 #include <vector>
 
+#include "../../include/result.hh"
 #include "../../include/string.hh"
 #include "../../include/procedure.hh"
 #include "../../include/util.hh"
 #include "ermia_op_element.hh"
 #include "garbage_collection.hh"
-#include "result.hh"
 #include "tuple.hh"
 #include "version.hh"
 
@@ -39,14 +39,14 @@ public:
 
   uint8_t thid_; // thread ID
   uint32_t txid_;  //TID and begin timestamp - the current log sequence number (LSN)
-  ErmiaResult* eres_;
+  Result* eres_;
 
   uint64_t gcstart_, gcstop_; // counter for garbage collection
 
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t thid, size_t max_ope, ErmiaResult* eres) : thid_(thid), eres_(eres) {
+  TxExecutor(uint8_t thid, size_t max_ope, Result* eres) : thid_(thid), eres_(eres) {
     gcobject_.set_thid_(thid);
     read_set_.reserve(max_ope);
     write_set_.reserve(max_ope);

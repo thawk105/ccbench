@@ -17,11 +17,11 @@
 #include "../include/masstree_wrapper.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/garbage_collection.hh"
-#include "include/result.hh"
 #include "include/transaction.hh"
 
 using namespace std;

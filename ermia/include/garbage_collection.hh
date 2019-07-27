@@ -7,7 +7,6 @@
 #include "../../include/op_element.hh"
 
 #include "ermia_op_element.hh"
-#include "result.hh"
 #include "tuple.hh"
 #include "version.hh"
 
@@ -50,8 +49,8 @@ public:
   // -----
   
   // for worker thread
-  void gcVersion(ErmiaResult* eres_);
-  void gcTMTelement(ErmiaResult* eres_);
+  void gcVersion(Result* eres_);
+  void gcTMTelement(Result* eres_);
   // -----
 };
 

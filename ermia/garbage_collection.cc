@@ -2,14 +2,13 @@
 #include <algorithm>
 #include <iostream>
 
-#include "include/common.hh"
-#include "include/garbage_collection.hh"
-#include "include/result.hh"
-#include "include/transaction.hh"
-#include "include/version.hh"
-
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
+#include "../include/result.hh"
+#include "include/common.hh"
+#include "include/garbage_collection.hh"
+#include "include/transaction.hh"
+#include "include/version.hh"
 
 using std::cout, std::endl;
 
@@ -56,7 +55,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion([[maybe_unused]]ErmiaResult *eres_)
+GarbageCollection::gcVersion([[maybe_unused]]Result *eres_)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -121,7 +120,7 @@ GarbageCollection::gcVersion([[maybe_unused]]ErmiaResult *eres_)
 }
 
 void
-GarbageCollection::gcTMTelement([[maybe_unused]]ErmiaResult *eres_)
+GarbageCollection::gcTMTelement([[maybe_unused]]Result *eres_)
 {
   uint32_t threshold = getGcThreshold();
   if (gcq_for_TMT_.empty()) return;

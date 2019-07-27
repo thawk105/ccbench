@@ -1,5 +1,5 @@
 PROG1 = cicada.exe
-CICADA_SRCS1 := cicada.cc transaction.cc util.cc result.cc
+CICADA_SRCS1 := cicada.cc transaction.cc util.cc
 
 REL := ../common/
 include $(REL)Makefile

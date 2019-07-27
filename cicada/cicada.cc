@@ -18,9 +18,9 @@
 #include "../include/int64byte.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
-#include "include/result.hh"
 #include "include/transaction.hh"
 
 using namespace std;
@@ -42,7 +42,8 @@ manager_worker(void *arg)
   uint64_t initial_wts;
   makeDB(&initial_wts);
   MinWts.store(initial_wts + 2, memory_order_release);
-  CicadaResult &res = *(CicadaResult *)(arg);
+  Result &res = *(Result *)(arg);
+  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
@@ -104,10 +105,11 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  CicadaResult &res = *(CicadaResult *)(arg);
+  Result &res = *(Result *)(arg);
+  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, (CicadaResult*)arg);
+  TxExecutor trans(res.thid_, (Result*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #ifdef Linux
@@ -184,8 +186,8 @@ main(int argc, char *argv[]) try
 {
   chkArg(argc, argv);
 
-  CicadaResult rsob[THREAD_NUM];
-  CicadaResult &rsroot = rsob[0];
+  Result rsob[THREAD_NUM];
+  Result &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
@@ -205,11 +207,11 @@ main(int argc, char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.addLocalAllCicadaResult(rsob[i]);
+    rsroot.addLocalAllResult(rsob[i]);
   }
 
   rsroot.extime_ = EXTIME;
-  rsroot.displayAllCicadaResult();
+  rsroot.displayAllResult();
 
   return 0;
 } catch (bad_alloc) {
