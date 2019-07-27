@@ -21,7 +21,6 @@
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
-#include "include/result.hh"
 #include "include/transaction.hh"
 
 extern void chkArg(const int argc, char *argv[]);
@@ -37,7 +36,7 @@ extern void sleepMs(size_t ms);
 static void *
 worker(void *arg)
 {
-  TicTocResult &res = *(TicTocResult *)(arg);
+  Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   TxExecutor trans(res.thid_, &res);
@@ -59,10 +58,6 @@ RETRY:
       return nullptr;
     trans.tbegin();
 
-#if ADD_ANALYSIS
-    uint64_t start;
-    start = rdtscp();
-#endif
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
@@ -77,15 +72,9 @@ RETRY:
 
       if (trans.status_ == TransactionStatus::aborted) {
         trans.abort();
-#if ADD_ANALYSIS
-        res.local_read_latency_ += rdtscp() -start;
-#endif
         goto RETRY;
       }
     }
-#if ADD_ANALYSIS
-    res.local_read_latency_ += rdtscp() -start;
-#endif
     
     //Validation phase
     bool varesult = trans.validationPhase();
@@ -106,12 +95,11 @@ main(int argc, char *argv[]) try
   chkArg(argc, argv);
   makeDB();
   
-  TicTocResult rsob[THREAD_NUM];
-  TicTocResult &rsroot = rsob[0];
+  Result rsob[THREAD_NUM];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid_ = i;
+    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;
   }
@@ -120,15 +108,14 @@ main(int argc, char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  TicTocResult::Finish_.store(true, std::memory_order_release);
+  Result::Finish_.store(true, std::memory_order_release);
 
+  Result &rsroot = rsob[0];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.addLocalAllTictocResult(rsob[i]);
+    rsroot.addLocalAllResult(rsob[i]);
   }
-
-  rsroot.extime_ = EXTIME;
-  rsroot.displayAllTictocResult();
+  rsroot.displayAllResult();
 
   return 0;
 } catch (bad_alloc) {

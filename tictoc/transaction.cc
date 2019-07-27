@@ -66,13 +66,27 @@ TxExecutor::preemptiveAborts(const TsWord& v1)
 char*
 TxExecutor::tread(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
   SetElement<Tuple> *result;
 
   result = searchWriteSet(key);
-  if (result != nullptr) return write_val_;
+  if (result != nullptr) {
+#if ADD_ANALYSIS
+    tres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return write_val_;
+  }
 
   result = searchReadSet(key);
-  if (result != nullptr) return result->val_;
+  if (result != nullptr) {
+#if ADD_ANALYSIS
+    tres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return result->val_;
+  }
 
   TsWord v1, v2;
 
@@ -89,7 +103,12 @@ TxExecutor::tread(uint64_t key)
   for (;;) {
     if (v1.lock) {
 #if PREEMPTIVE_ABORTS
-      if (preemptiveAborts(v1)) return 0;
+      if (preemptiveAborts(v1)) {
+#if ADD_ANALYSIS
+        tres_->local_read_latency_ += rdtscp() - start;
+#endif
+        return 0;
+      }
 #endif
       v1.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
       continue;
@@ -108,16 +127,27 @@ TxExecutor::tread(uint64_t key)
   this->appro_commit_ts_ = max(this->appro_commit_ts_, v1.wts);
   read_set_.emplace_back(key, tuple, return_val_, v1);
 
+#if ADD_ANALYSIS
+  tres_->local_read_latency_ += rdtscp() - start;
+#endif
   return return_val_;
 }
 
 void 
 TxExecutor::twrite(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
   SetElement<Tuple> *result;
 
   result = searchWriteSet(key);
-  if (result != nullptr) return;
+  if (result != nullptr) {
+#if ADD_ANALYSIS
+    tres_->local_write_latency_ += rdtscp() - start;
+#endif
+    return;
+  }
 
   TsWord tsword;
 #if MASSTREE_USE
@@ -131,6 +161,9 @@ TxExecutor::twrite(uint64_t key)
 
   tsword.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
   this->appro_commit_ts_ = max(this->appro_commit_ts_, tsword.rts() + 1);
+#if ADD_ANALYSIS
+  tres_->local_write_latency_ += rdtscp() - start;
+#endif
   write_set_.emplace_back(key, tuple, tsword);
 }
 
@@ -138,8 +171,7 @@ bool
 TxExecutor::validationPhase()
 {
 #if ADD_ANALYSIS
-  uint64_t start;
-  start = rdtscp();
+  uint64_t start = rdtscp();
 #endif
 
   lockWriteSet();
@@ -196,10 +228,12 @@ TxExecutor::validationPhase()
 
         SetElement<Tuple> *inW = searchWriteSet((*itr).key_);
         if ((v1.rts()) < commit_ts_ && v1.lock) {
+          if (inW == nullptr) {
 #if ADD_ANALYSIS
-          tres_->local_vali_latency_ += rdtscp() - start;
+            tres_->local_vali_latency_ += rdtscp() - start;
 #endif
-          if (inW == nullptr) return false;
+            return false;
+          }
         }
 
         if (inW != nullptr) break;
@@ -227,7 +261,6 @@ TxExecutor::validationPhase()
 #if ADD_ANALYSIS
   tres_->local_vali_latency_ += rdtscp() - start;
 #endif
-
   return true;
 }
 

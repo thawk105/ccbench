@@ -18,10 +18,10 @@
 #include "../include/masstree_wrapper.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
-#include "include/result.hh"
 #include "include/tuple.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
@@ -33,7 +33,7 @@ chkArg(const int argc, const char *argv[])
   if (argc != 11) {
   //if (argc != 1) {
     cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US EXTIME" << endl;
-    cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 3" << endl;
+    cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 10 3" << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;

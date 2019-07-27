@@ -43,7 +43,6 @@ manager_worker(void *arg)
   makeDB(&initial_wts);
   MinWts.store(initial_wts + 2, memory_order_release);
   Result &res = *(Result *)(arg);
-  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
@@ -106,7 +105,6 @@ static void *
 worker(void *arg)
 {
   Result &res = *(Result *)(arg);
-  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   Xoroshiro128Plus rnd;
   rnd.init();
   TxExecutor trans(res.thid_, (Result*)arg);
@@ -191,7 +189,7 @@ main(int argc, char *argv[]) try
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid_ = i;
+    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
@@ -209,8 +207,6 @@ main(int argc, char *argv[]) try
     pthread_join(thread[i], nullptr);
     rsroot.addLocalAllResult(rsob[i]);
   }
-
-  rsroot.extime_ = EXTIME;
   rsroot.displayAllResult();
 
   return 0;

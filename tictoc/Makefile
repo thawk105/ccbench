@@ -1,5 +1,5 @@
 PROG1 = tictoc.exe
-TICTOC_SRCS1 := tictoc.cc transaction.cc util.cc result.cc
+TICTOC_SRCS1 := tictoc.cc transaction.cc util.cc
 
 REL := ../common/
 include $(REL)Makefile

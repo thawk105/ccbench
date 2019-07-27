@@ -4,9 +4,8 @@
 #include <queue>
 
 #include "../../include/inline.hh"
-
+#include "../../include/result.hh"
 #include "common.hh"
-#include "result.hh"
 #include "si_op_element.hh"
 #include "tuple.hh"
 #include "version.hh"
@@ -58,9 +57,9 @@ public:
   // -----
   
   // for worker thread
-  void gcVersion(SIResult *sres_);
+  void gcVersion(Result *sres_);
 #ifdef CCTR_ON
-  void gcTMTElements(SIResult *sres_);
+  void gcTMTElements(Result *sres_);
 #endif // CCTR_ON
   // -----
 };

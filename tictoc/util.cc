@@ -18,6 +18,7 @@
 #include "../include/inline.hh"
 #include "../include/debug.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/transaction.hh"
@@ -53,6 +54,7 @@ chkArg(const int argc, char *argv[])
     cout << "PREEMPTIVE_ABORTS: " << PREEMPTIVE_ABORTS << endl;
     cout << "TIMESTAMP_HISTORY: " << TIMESTAMP_HISTORY << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
+    cout << "Result " << sizeof(Result) << endl;
     exit(0);
   }
   chkInt(argv[1]);

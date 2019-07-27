@@ -39,7 +39,6 @@ static void *
 manager_worker(void *arg)
 {
   Result &res = *(Result *)(arg);
-  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   GarbageCollection gcobject;
  
 #ifdef Linux 
@@ -70,7 +69,6 @@ static void *
 worker(void *arg)
 {
   Result &res = *(Result *)(arg);
-  res = Result(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
   TxExecutor trans(res.thid_, MAX_OPE, (Result*)arg);
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -143,7 +141,7 @@ main(const int argc, const char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid_ = i;
+    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else

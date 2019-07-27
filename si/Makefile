@@ -1,5 +1,5 @@
 PROG1 = si.exe
-SI_SRCS1 = si.cc transaction.cc util.cc garbage_collection.cc result.cc
+SI_SRCS1 = si.cc transaction.cc util.cc garbage_collection.cc
 
 REL := ../common/
 include $(REL)Makefile

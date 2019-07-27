@@ -10,17 +10,16 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "include/atomic_tool.hh"
-#include "include/common.hh"
-#include "include/result.hh"
-#include "include/transaction.hh"
-
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/int64byte.hh"
+#include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
+#include "include/atomic_tool.hh"
+#include "include/common.hh"
+#include "include/transaction.hh"
 
 using namespace std;
 
@@ -49,14 +48,14 @@ chkEpochLoaded()
 static void *
 manager_worker(void *arg)
 {
-  MoccResult &res = *(MoccResult *)(arg);
-  uint64_t epochTimerStart, epochTimerStop;
+  Result &res = *(Result *)(arg);
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
 #endif
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
+  uint64_t epochTimerStart, epochTimerStop;
   epochTimerStart = rdtscp();
   for (;;) {
     if (Result::Finish_.load(memory_order_acquire))
@@ -91,10 +90,10 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  MoccResult &res = *(MoccResult *)(arg);
+  Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, &rnd, (MoccResult*)arg);
+  TxExecutor trans(res.thid_, &rnd, (Result*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
@@ -160,12 +159,12 @@ main(int argc, char *argv[])  try
   chkArg(argc, argv);
   makeDB();
 
-  MoccResult rsob[THREAD_NUM];
-  MoccResult &rsroot = rsob[0];
+  Result rsob[THREAD_NUM];
+  Result &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid_ = i;
+    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
@@ -173,19 +172,17 @@ main(int argc, char *argv[])  try
     if (ret) ERR;
   }
  
- waitForReadyOfAllThread(Running, THREAD_NUM);
- for (size_t i = 0; i < EXTIME; ++i) {
-   sleepMs(1000);
- }
- Result::Finish_.store(true, std::memory_order_release);
+  waitForReadyOfAllThread(Running, THREAD_NUM);
+  for (size_t i = 0; i < EXTIME; ++i) {
+    sleepMs(1000);
+  }
+  Result::Finish_.store(true, std::memory_order_release);
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.add_local_all_mocc_result(rsob[i]);
+    rsroot.addLocalAllResult(rsob[i]);
   }
-
-  rsroot.extime_ = EXTIME;
-  rsroot.display_all_mocc_result();
+  rsroot.displayAllResult();
 
   return 0;
 } catch (bad_alloc) {

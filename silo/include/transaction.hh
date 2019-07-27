@@ -4,15 +4,14 @@
 #include <set>
 #include <vector>
 
+#include "../../include/fileio.hh"
+#include "../../include/procedure.hh"
+#include "../../include/result.hh"
+#include "../../include/string.hh"
 #include "common.hh"
 #include "log.hh"
 #include "silo_op_element.hh"
-#include "result.hh"
 #include "tuple.hh"
-
-#include "../../include/fileio.hh"
-#include "../../include/procedure.hh"
-#include "../../include/string.hh"
 
 #define LOGSET_SIZE 1000
 
@@ -28,7 +27,7 @@ public:
   LogHeader latest_log_header_;
 
   unsigned int thid_;
-  SiloResult* sres_;
+  Result* sres_;
 
   File logfile_;
 
@@ -38,7 +37,7 @@ public:
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxnExecutor(int thid, SiloResult* sres) : thid_(thid), sres_(sres) {
+  TxnExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);

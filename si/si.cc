@@ -16,11 +16,11 @@
 #include "../include/int64byte.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/garbage_collection.hh"
-#include "include/result.hh"
 #include "include/transaction.hh"
 
 using namespace std;
@@ -37,8 +37,7 @@ extern void sleepMs(size_t ms);
 static void *
 manager_worker(void *arg)
 {
-  SIResult &res = *(SIResult *)(arg);
-  res = SIResult(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
+  Result &res = *(Result *)(arg);
   GarbageCollection gcobject_;
  
 #ifdef Linux 
@@ -66,9 +65,8 @@ manager_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  SIResult &res = *(SIResult *)(arg);
-  res = SIResult(res.thid_, THREAD_NUM, CLOCKS_PER_US, EXTIME);
-  TxExecutor trans(res.thid_, MAX_OPE, (SIResult*)arg);
+  Result &res = *(Result *)(arg);
+  TxExecutor trans(res.thid_, MAX_OPE, (Result*)arg);
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -130,12 +128,12 @@ main(const int argc, const char *argv[]) try
   chkArg(argc, argv);
   makeDB();
 
-  SIResult rsob[THREAD_NUM];
-  SIResult &rsroot = rsob[0];
+  Result rsob[THREAD_NUM];
+  Result &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid_ = i;
+    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
@@ -151,9 +149,9 @@ main(const int argc, const char *argv[]) try
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], nullptr);
-    rsroot.addLocalAllSIResult(rsob[i]);
+    rsroot.addLocalAllResult(rsob[i]);
   }
-  rsroot.displayAllSIResult();
+  rsroot.displayAllResult();
 
   return 0;
 } catch (bad_alloc) {

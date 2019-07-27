@@ -1,5 +1,5 @@
 PROG1 = mocc.exe
-MOCC_SRCS1 := mocc.cc transaction.cc lock.cc util.cc result.cc
+MOCC_SRCS1 := mocc.cc transaction.cc lock.cc util.cc
 
 REL := ../common/
 include $(REL)Makefile

@@ -15,6 +15,7 @@
 #include "../include/debug.hh"
 #include "../include/fileio.hh"
 #include "../include/masstree_wrapper.hh"
+#include "../include/tsc.hh"
 
 extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 extern void displayDB();
@@ -51,6 +52,10 @@ TxnExecutor::searchReadSet(uint64_t key)
 char*
 TxnExecutor::tread(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -62,11 +67,21 @@ TxnExecutor::tread(uint64_t key)
 
   //w
   WriteElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return write_val_;
+  if (inW) {
+#if ADD_ANALYSIS
+    sres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return write_val_;
+  }
 
   //r
   ReadElement<Tuple> *inR = searchReadSet(key);
-  if (inR) return inR->val_;
+  if (inR) {
+#if ADD_ANALYSIS
+    sres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return inR->val_;
+  }
 
   
   //(a) reads the TID word, spinning until the lock is clear
@@ -101,14 +116,26 @@ TxnExecutor::tread(uint64_t key)
   }
   
   read_set_.emplace_back(key, tuple, return_val_, expected); // emplace の方が性能が良い
+#if ADD_ANALYSIS
+  sres_->local_read_latency_ += rdtscp() - start;
+#endif
   return return_val_;
 }
 
 void 
 TxnExecutor::twrite(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
   WriteElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return;
+  if (inW) {
+#if ADD_ANALYSIS
+    sres_->local_write_latency_ += rdtscp() - start;
+#endif
+    return;
+  }
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
@@ -120,12 +147,19 @@ TxnExecutor::twrite(uint64_t key)
 #endif
 
   write_set_.emplace_back(key, tuple); // push の方が性能が良い
+#if ADD_ANALYSIS
+  sres_->local_write_latency_ += rdtscp() - start;
+#endif
   return;
 }
 
 bool 
 TxnExecutor::validationPhase()
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
   /* Phase 1 
    * lock write_set_ sorted.*/
   sort(write_set_.begin(), write_set_.end());
@@ -145,17 +179,28 @@ TxnExecutor::validationPhase()
     //1
     check.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     if ((*itr).tidword_.epoch != check.epoch || (*itr).tidword_.tid != check.tid) {
+#if ADD_ANALYSIS
+      sres_->local_vali_latency_ += rdtscp() - start;
+#endif
       return false;
     }
     //2
     //if (!check.latest) return false;
 
     //3
-    if (check.lock && !searchWriteSet((*itr).key_)) return false;
+    if (check.lock && !searchWriteSet((*itr).key_)) {
+#if ADD_ANALYSIS
+      sres_->local_vali_latency_ += rdtscp() - start;
+#endif
+      return false;
+    }
     max_rset_ = max(max_rset_, check);
   }
 
   //goto Phase 3
+#if ADD_ANALYSIS
+  sres_->local_vali_latency_ += rdtscp() - start;
+#endif
   return true;
 }
 

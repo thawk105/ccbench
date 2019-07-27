@@ -10,8 +10,8 @@
 #include "../../include/util.hh"
 #include "../../include/inline.hh"
 #include "../../include/procedure.hh"
+#include "../../include/result.hh"
 #include "common.hh"
-#include "result.hh"
 #include "tictoc_op_element.hh"
 #include "tuple.hh"
 
@@ -30,7 +30,7 @@ public:
   int thid_;
   uint64_t commit_ts_;
   uint64_t appro_commit_ts_;
-  TicTocResult* tres_;
+  Result* tres_;
   bool wonly_ = false;
   vector<Procedure> pro_set_;
 
@@ -43,7 +43,7 @@ public:
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxExecutor(int thid, TicTocResult* tres) : thid_(thid), tres_(tres) {
+  TxExecutor(int thid, Result* tres) : thid_(thid), tres_(tres) {
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     cll_.reserve(MAX_OPE);

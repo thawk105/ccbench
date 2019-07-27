@@ -84,14 +84,14 @@ char*
 TxExecutor::tread(uint64_t key)
 {
 #if ADD_ANALYSIS
-  sres_->bgn_ = rdtscp();
+  uint64_t start = rdtscp();
 #endif
 
   //if it already access the key object once.
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) {
 #if ADD_ANALYSIS
-    sres_->local_read_latency_ += rdtscp() - sres_->bgn_;
+    sres_->local_read_latency_ += rdtscp() - start;
 #endif
     return write_val_;
   }
@@ -99,7 +99,7 @@ TxExecutor::tread(uint64_t key)
   SetElement<Tuple> *inR = searchReadSet(key);
   if (inR) {
 #if ADD_ANALYSIS
-    sres_->local_read_latency_ += rdtscp() - sres_->bgn_;
+    sres_->local_read_latency_ += rdtscp() - start;
 #endif
     return inR->ver_->val_;
   }
@@ -135,7 +135,7 @@ TxExecutor::tread(uint64_t key)
   memcpy(return_val_, ver->val_, VAL_SIZE);
 
 #if ADD_ANALYSIS
-  sres_->local_read_latency_ += rdtscp() - sres_->bgn_;
+  sres_->local_read_latency_ += rdtscp() - start;
 #endif
   return ver->val_;
 }
@@ -144,14 +144,14 @@ void
 TxExecutor::twrite(uint64_t key)
 {
 #if ADD_ANALYSIS
-  sres_->bgn_ = rdtscp();
+  uint64_t start = rdtscp();
 #endif
 
   // if it already wrote the key object once.
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) {
 #if ADD_ANALYSIS
-    sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+    sres_->local_write_latency_ += rdtscp() - start;
 #endif
     return;
   }
@@ -188,7 +188,7 @@ TxExecutor::twrite(uint64_t key)
         this->status_ = TransactionStatus::aborted;
         delete desired;
 #if ADD_ANALYSIS
-        sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+        sres_->local_write_latency_ += rdtscp() - start;
 #endif
         return;
       }
@@ -211,7 +211,7 @@ TxExecutor::twrite(uint64_t key)
       this->status_ = TransactionStatus::aborted;
       delete desired;
 #if ADD_ANALYSIS
-      sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+      sres_->local_write_latency_ += rdtscp() - start;
 #endif
       return;
     }
@@ -222,7 +222,7 @@ TxExecutor::twrite(uint64_t key)
   }
 
 #if ADD_ANALYSIS
-  sres_->local_write_latency_ += rdtscp() - sres_->bgn_;
+  sres_->local_write_latency_ += rdtscp() - start;
 #endif
   write_set_.emplace_back(key, tuple, desired);
 }
@@ -295,7 +295,7 @@ TxExecutor::mainte()
     if (pre_gc_threshold_ != load_threshold) {
 #if ADD_ANALYSIS
       ++sres_->local_gc_counts_;
-      sres_->bgn_ = rdtscp();
+      uint64_t start = rdtscp();
 #endif
       gcobject_.gcVersion(sres_);
       pre_gc_threshold_ = load_threshold;
@@ -304,7 +304,7 @@ TxExecutor::mainte()
       gcobject_.gcTMTElements(sres_);
 #endif
 #if ADD_ANALYSIS
-      sres_->local_gc_latency_ += rdtscp() - sres_->bgn_;
+      sres_->local_gc_latency_ += rdtscp() - start;
 #endif
     }
   }

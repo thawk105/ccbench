@@ -13,7 +13,6 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hh"
 #include "include/common.hh"
-#include "include/result.hh"
 #include "include/transaction.hh"
 
 #include "../include/cpu.hh"
@@ -21,6 +20,7 @@
 #include "../include/fileio.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/util.hh"
 #include "../include/zipf.hh"
@@ -46,19 +46,17 @@ epoch_worker(void *arg)
    * 2. 十分条件
    * 全ての worker が最新の epoch を読み込んでいる。
    * */
-
-  SiloResult &res = *(SiloResult *)(arg);
-  uint64_t epochTimerStart, epochTimerStop;
-  SiloResult rsobject;
+  Result &res = *(Result *)(arg);
 
   setThreadAffinity(res.thid_);
   //printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
-  epochTimerStart = rdtscp();
 
+  uint64_t epochTimerStart, epochTimerStop;
+  epochTimerStart = rdtscp();
   for (;;) {
-    if (SiloResult::Finish_.load(memory_order_acquire))
+    if (Result::Finish_.load(memory_order_acquire))
       return nullptr;
 
     usleep(1);
@@ -79,10 +77,10 @@ epoch_worker(void *arg)
 static void *
 worker(void *arg)
 {
-  SiloResult &res = *(SiloResult *)(arg);
+  Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxnExecutor trans(res.thid_, (SiloResult*)arg);
+  TxnExecutor trans(res.thid_, (Result*)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   
   //std::string logpath;
@@ -104,14 +102,10 @@ worker(void *arg)
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
 RETRY:
     trans.tbegin();
-    if (SiloResult::Finish_.load(memory_order_acquire))
+    if (Result::Finish_.load(memory_order_acquire))
       return nullptr;
 
     //Read phase
-#if ADD_ANALYSIS
-    uint64_t start, stop;
-    start = rdtscp();
-#endif
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
@@ -124,20 +118,9 @@ RETRY:
         ERR;
       }
     }
-#if ADD_ANALYSIS
-    stop = rdtscp();
-    res.local_read_latency_ += stop - start;
-#endif
     
     //Validation phase
-#if ADD_ANALYSIS
-    start = rdtscp();
-#endif
     bool varesult = trans.validationPhase();
-#if ADD_ANALYSIS
-    stop = rdtscp();
-    res.local_vali_latency_ += stop - start;
-#endif
     if (varesult) {
       trans.writePhase();
       ++res.local_commit_counts_;
@@ -161,12 +144,11 @@ main(int argc, char *argv[]) try
   //displayDB();
   //displayPRO();
 
-  SiloResult rsob[THREAD_NUM];
-  SiloResult &rsroot = rsob[0];
+  Result rsob[THREAD_NUM];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
-    rsob[i].thid_ = i;
+    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
       ret = pthread_create(&thread[i], NULL, epoch_worker, (void *)(&rsob[i]));
     else
@@ -178,15 +160,14 @@ main(int argc, char *argv[]) try
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  SiloResult::Finish_.store(true, std::memory_order_release);
+  Result::Finish_.store(true, std::memory_order_release);
 
+  Result &rsroot = rsob[0];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(thread[i], NULL);
-    rsroot.addLocalAllSiloResult(rsob[i]);
+    rsroot.addLocalAllResult(rsob[i]);
   }
-
-  rsroot.extime_ = EXTIME;
-  rsroot.displayAllSiloResult();
+  rsroot.displayAllResult();
 
   return 0;
 } catch (bad_alloc) {

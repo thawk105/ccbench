@@ -7,6 +7,7 @@
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
 #include "../../include/procedure.hh"
+#include "../../include/result.hh"
 #include "../../include/string.hh"
 #include "../../include/util.hh"
 #include "garbage_collection.hh"
@@ -38,10 +39,10 @@ public:
   std::vector<Procedure> pro_set_;
 
   GarbageCollection gcobject_;
-  SIResult *sres_;
+  Result *sres_;
   TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
 
-  TxExecutor(uint8_t thid, unsigned int max_ope, SIResult* sres) : thid_(thid), sres_(sres) {
+  TxExecutor(uint8_t thid, unsigned int max_ope, Result* sres) : thid_(thid), sres_(sres) {
     gcobject_.thid_ = thid;
     read_set_.reserve(max_ope);
     write_set_.reserve(max_ope);

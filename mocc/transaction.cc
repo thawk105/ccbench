@@ -7,6 +7,7 @@
 
 #include "../include/atomic_wrapper.hh"
 #include "../include/debug.hh"
+#include "../include/tsc.hh"
 #include "include/atomic_tool.hh"
 #include "include/transaction.hh"
 #include "include/tuple.hh"
@@ -69,6 +70,10 @@ TxExecutor::begin()
 char*
 TxExecutor::read(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
   #if ADD_ANALYSIS
@@ -81,11 +86,21 @@ TxExecutor::read(uint64_t key)
   // tuple exists in write set.
   WriteElement<Tuple> *inW = searchWriteSet(key);
   //if (inW) return inW->val_;
-  if (inW) return return_val_;
+  if (inW) {
+#if ADD_ANALYSIS
+    ++mres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return return_val_;
+  }
 
   // tuple exists in read set.
   ReadElement<Tuple> *inR = searchReadSet(key);
-  if (inR) return inR->val_;
+  if (inR) {
+#if ADD_ANALYSIS
+    ++mres_->local_read_latency_ += rdtscp() - start;
+#endif
+    return inR->val_;
+  }
 
   // tuple doesn't exist in read/write set.
 #ifdef RWLOCK
@@ -102,6 +117,9 @@ TxExecutor::read(uint64_t key)
   if (inRLL != nullptr) {
     lock(key, tuple, inRLL->mode_);
     if (this->status_ == TransactionStatus::aborted) {
+#if ADD_ANALYSIS
+      ++mres_->local_read_latency_ += rdtscp() - start;
+#endif
       return nullptr;
     } else {
       needVerification = false;
@@ -110,6 +128,9 @@ TxExecutor::read(uint64_t key)
     //printf("key:\t%lu, temp:\t%lu\n", key, loadepot.temp_);
     lock(key, tuple, false);
     if (this->status_ == TransactionStatus::aborted) {
+#if ADD_ANALYSIS
+      ++mres_->local_read_latency_ += rdtscp() - start;
+#endif
       return nullptr;
     } else {
       needVerification = false;
@@ -133,6 +154,9 @@ TxExecutor::read(uint64_t key)
         if (key < CLL_.back().key_) {
           status_ = TransactionStatus::aborted;
           read_set_.emplace_back(key, tuple);
+#if ADD_ANALYSIS
+          ++mres_->local_read_latency_ += rdtscp() - start;
+#endif
           return nullptr;
         } else {
           expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
@@ -153,15 +177,27 @@ TxExecutor::read(uint64_t key)
   }
 
   read_set_.emplace_back(expected, key, tuple, return_val_);
+#if ADD_ANALYSIS
+  ++mres_->local_read_latency_ += rdtscp() - start;
+#endif
   return return_val_;
 }
 
 void
 TxExecutor::write(uint64_t key)
 {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
   // tuple exists in write set.
   WriteElement<Tuple> *inw = searchWriteSet(key);
-  if (inw) return;
+  if (inw) {
+#if ADD_ANALYSIS
+    mres_->local_write_latency_ += rdtscp() - start;
+#endif
+    return;
+  }
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
@@ -177,6 +213,9 @@ TxExecutor::write(uint64_t key)
   loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
   if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
   if (this->status_ == TransactionStatus::aborted) {
+#if ADD_ANALYSIS
+    mres_->local_write_latency_ += rdtscp() - start;
+#endif
     return;
   }
 
@@ -188,11 +227,17 @@ TxExecutor::write(uint64_t key)
 #endif // MQLOCK
   if (inRLL != nullptr) lock(key, tuple, true);
   if (this->status_ == TransactionStatus::aborted) {
+#if ADD_ANALYSIS
+    mres_->local_write_latency_ += rdtscp() - start;
+#endif
     return;
   }
   
   //write_set_.emplace_back(key, write_val_);
   write_set_.emplace_back(key, tuple);
+#if ADD_ANALYSIS
+  mres_->local_write_latency_ += rdtscp() - start;
+#endif
   return;
 }
 

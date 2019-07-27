@@ -3,11 +3,10 @@
 #include <iostream>
 
 #include "../include/debug.hh"
+#include "../include/result.hh"
 #include "../include/util.hh"
-
 #include "include/common.hh"
 #include "include/garbage_collection.hh"
-#include "include/result.hh"
 #include "include/transaction.hh"
 #include "include/version.hh"
 
@@ -56,7 +55,7 @@ GarbageCollection::decideFirstRange()
 
 // for worker thread
 void
-GarbageCollection::gcVersion([[maybe_unused]]SIResult* sres_)
+GarbageCollection::gcVersion([[maybe_unused]]Result* sres_)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -108,7 +107,7 @@ GarbageCollection::gcVersion([[maybe_unused]]SIResult* sres_)
       delete delTarget;
       delTarget = tmp;
 #if ADD_ANALYSIS
-      ++sres_->local_gc_versions_;
+      ++sres_->local_gc_version_counts_;
 #endif
     }
 
@@ -122,7 +121,7 @@ GarbageCollection::gcVersion([[maybe_unused]]SIResult* sres_)
 
 #ifdef CCTR_ON
 void
-GarbageCollection::gcTMTElements([[maybe_unused]]SIResult* sres_)
+GarbageCollection::gcTMTElements([[maybe_unused]]Result* sres_)
 {
   uint32_t threshold = getGcThreshold();
 
@@ -136,7 +135,7 @@ GarbageCollection::gcTMTElements([[maybe_unused]]SIResult* sres_)
       gcq_for_TMT_.pop_front();
       delete tmt;
 #if ADD_ANALYSIS
-      ++sres_->local_gc_TMT_elements_;
+      ++sres_->local_gc_TMT_elements_counts_;
 #endif
     }
     else break;

@@ -4,12 +4,11 @@
 
 #include "../../include/string.hh"
 #include "../../include/procedure.hh"
+#include "../../include/result.hh"
 #include "../../include/util.hh"
-
 #include "common.hh"
 #include "mocc_op_element.hh"
 #include "lock.hh"
-#include "result.hh"
 #include "tuple.hh"
 
 using namespace std;
@@ -40,12 +39,12 @@ public:
   Tidword max_rset_;
   Tidword max_wset_;
   Xoroshiro128Plus *rnd_;
-  MoccResult* mres_;
+  Result* mres_;
   
   char write_val_[VAL_SIZE] = {};
   char return_val_[VAL_SIZE] = {};
 
-  TxExecutor(int thid, Xoroshiro128Plus *rnd, MoccResult* mres) : thid_(thid), mres_(mres) {
+  TxExecutor(int thid, Xoroshiro128Plus *rnd, Result* mres) : thid_(thid), mres_(mres) {
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);
