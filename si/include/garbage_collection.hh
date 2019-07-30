@@ -16,24 +16,27 @@
 class TransactionTable;
 
 class GarbageCollection {
-private:
-  uint32_t fmin_, fmax_; // first range of txid in TMT.
-  uint32_t smin_, smax_; // second range of txid in TMT.
+ private:
+  uint32_t fmin_, fmax_;  // first range of txid in TMT.
+  uint32_t smin_, smax_;  // second range of txid in TMT.
 
-  static std::atomic<uint32_t> GC_threshold_; // share for all object (meaning all thread).
+  static std::atomic<uint32_t>
+      GC_threshold_;  // share for all object (meaning all thread).
 
-public:
+ public:
 #ifdef CCTR_ON
-  std::deque<TransactionTable *, tbb::scalable_allocator<TransactionTable *>> gcq_for_TMT_;
-#endif // CCTR_ON
-  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq_for_versions_;
+  std::deque<TransactionTable *, tbb::scalable_allocator<TransactionTable *>>
+      gcq_for_TMT_;
+#endif  // CCTR_ON
+  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>>
+      gcq_for_versions_;
   uint8_t thid_;
 
   GarbageCollection() {
-//#ifdef CCTR_ON
-//    gcqForTMT.resize(1000);
-//#endif // CCTR_ON
-//    gcqForVersion.resize(1000);
+    //#ifdef CCTR_ON
+    //    gcqForTMT.resize(1000);
+    //#endif // CCTR_ON
+    //    gcqForVersion.resize(1000);
   }
 
   // for all thread
@@ -41,7 +44,7 @@ public:
     return GC_threshold_.load(std::memory_order_acquire);
   }
   // -----
-  
+
   // for leader thread
   bool chkSecondRange();
   void decideFirstRange();
@@ -55,16 +58,16 @@ public:
     fmax_ = smax_;
   }
   // -----
-  
+
   // for worker thread
   void gcVersion(Result *sres_);
 #ifdef CCTR_ON
   void gcTMTElements(Result *sres_);
-#endif // CCTR_ON
+#endif  // CCTR_ON
   // -----
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
-  // declare in ermia.cc
-  std::atomic<uint32_t> GarbageCollection::GC_threshold_(0);
+// declare in ermia.cc
+std::atomic<uint32_t> GarbageCollection::GC_threshold_(0);
 #endif

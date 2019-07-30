@@ -12,12 +12,9 @@
 
 using namespace std;
 
-extern void display_procedure_vector(std::vector<Procedure>& pro);
+extern void display_procedure_vector(std::vector<Procedure> &pro);
 
-inline
-SetElement<Tuple> *
-TxExecutor::searchReadSet(uint64_t key) 
-{
+inline SetElement<Tuple> *TxExecutor::searchReadSet(uint64_t key) {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
@@ -25,10 +22,7 @@ TxExecutor::searchReadSet(uint64_t key)
   return nullptr;
 }
 
-inline
-SetElement<Tuple> *
-TxExecutor::searchWriteSet(uint64_t key) 
-{
+inline SetElement<Tuple> *TxExecutor::searchWriteSet(uint64_t key) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
@@ -36,18 +30,14 @@ TxExecutor::searchWriteSet(uint64_t key)
   return nullptr;
 }
 
-void
-TxExecutor::abort()
-{
+void TxExecutor::abort() {
   unlockList();
   read_set_.clear();
   write_set_.clear();
   ++sres_->local_abort_counts_;
 }
 
-void
-TxExecutor::commit()
-{
+void TxExecutor::commit() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
   }
@@ -58,16 +48,10 @@ TxExecutor::commit()
   ++sres_->local_commit_counts_;
 }
 
-void
-TxExecutor::tbegin()
-{
-  this->status_ = TransactionStatus::inFlight;
-}
+void TxExecutor::tbegin() { this->status_ = TransactionStatus::inFlight; }
 
-char*
-TxExecutor::tread(uint64_t key)
-{
-  //if it already access the key object once.
+char *TxExecutor::tread(uint64_t key) {
+  // if it already access the key object once.
   // w
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW != nullptr) return write_val_;
@@ -88,7 +72,7 @@ TxExecutor::tread(uint64_t key)
   tuple->lock_.r_lock();
   r_lock_list_.emplace_back(&tuple->lock_);
   read_set_.emplace_back(key, tuple, tuple->val_);
-#elif defined ( DLR1 )
+#elif defined(DLR1)
   if (tuple->lock_.r_trylock()) {
     r_lock_list_.emplace_back(&tuple->lock_);
     read_set_.emplace_back(key, tuple, tuple->val_);
@@ -101,18 +85,16 @@ TxExecutor::tread(uint64_t key)
   return return_val_;
 }
 
-void
-TxExecutor::twrite(uint64_t key)
-{
+void TxExecutor::twrite(uint64_t key) {
   // if it already wrote the key object once.
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) return;
 
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
-    if ((*rItr).key_ == key) { // hit
+    if ((*rItr).key_ == key) {  // hit
 #if DLR0
       (*rItr).rcdptr_->lock_.upgrade();
-#elif defined ( DLR1 )
+#elif defined(DLR1)
       if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
         this->status_ = TransactionStatus::aborted;
         return;
@@ -120,7 +102,8 @@ TxExecutor::twrite(uint64_t key)
 #endif
 
       // upgrade success
-      for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end(); ++lItr) {
+      for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
+           ++lItr) {
         if (*lItr == &((*rItr).rcdptr_->lock_)) {
           write_set_.emplace_back(key, (*rItr).rcdptr_);
           w_lock_list_.emplace_back(&(*rItr).rcdptr_->lock_);
@@ -145,7 +128,7 @@ TxExecutor::twrite(uint64_t key)
 
 #if DLR0
   tuple->lock_.w_lock();
-#elif defined ( DLR1 )
+#elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
     this->status_ = TransactionStatus::aborted;
     return;
@@ -157,9 +140,7 @@ TxExecutor::twrite(uint64_t key)
   return;
 }
 
-void
-TxExecutor::unlockList()
-{
+void TxExecutor::unlockList() {
   for (auto itr = r_lock_list_.begin(); itr != r_lock_list_.end(); ++itr)
     (*itr)->r_unlock();
 
@@ -169,4 +150,3 @@ TxExecutor::unlockList()
   r_lock_list_.clear();
   w_lock_list_.clear();
 }
-

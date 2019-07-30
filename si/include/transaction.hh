@@ -25,24 +25,29 @@ enum class TransactionStatus : uint8_t {
 };
 
 class TxExecutor {
-public:
-  uint8_t thid_; // thread ID
-  uint32_t cstamp_ = 0;  // Transaction end time, c(T) 
-  uint32_t txid_;  //TID and begin timestamp - the current log sequence number (LSN)
+ public:
+  uint8_t thid_;         // thread ID
+  uint32_t cstamp_ = 0;  // Transaction end time, c(T)
+  uint32_t
+      txid_;  // TID and begin timestamp - the current log sequence number (LSN)
   uint32_t pre_gc_threshold_ = 0;
   uint64_t gcstart_, gcstop_;
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
 
-  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> read_set_;
-  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>> write_set_;
+  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>>
+      read_set_;
+  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>>
+      write_set_;
   std::vector<Procedure> pro_set_;
 
   GarbageCollection gcobject_;
   Result *sres_;
-  TransactionStatus status_ = TransactionStatus::inFlight;   // Status: inFlight, committed, or aborted
+  TransactionStatus status_ =
+      TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
 
-  TxExecutor(uint8_t thid, unsigned int max_ope, Result* sres) : thid_(thid), sres_(sres) {
+  TxExecutor(uint8_t thid, unsigned int max_ope, Result *sres)
+      : thid_(thid), sres_(sres) {
     gcobject_.thid_ = thid;
     read_set_.reserve(max_ope);
     write_set_.reserve(max_ope);
@@ -54,7 +59,7 @@ public:
   SetElement<Tuple> *searchReadSet(uint64_t key);
   SetElement<Tuple> *searchWriteSet(uint64_t key);
   void tbegin();
-  char* tread(uint64_t key);
+  char *tread(uint64_t key);
   void twrite(uint64_t key);
   void commit();
   void abort();
@@ -62,16 +67,13 @@ public:
   void dispWS();
   void dispRS();
 
-  static Tuple* get_tuple(Tuple *table, uint64_t key) {
-    return &table[key];
-  }
+  static Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };
 
 // for MVCC SSN
 class TransactionTable {
-public:
-  alignas(CACHE_LINE_SIZE)
-  std::atomic<uint32_t> txid_;
+ public:
+  alignas(CACHE_LINE_SIZE) std::atomic<uint32_t> txid_;
   std::atomic<uint32_t> lastcstamp_;
 
   TransactionTable(uint32_t txid, uint32_t lastcstamp) {
@@ -79,4 +81,3 @@ public:
     this->lastcstamp_ = lastcstamp;
   }
 };
-

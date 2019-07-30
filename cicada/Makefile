@@ -3,8 +3,9 @@ CICADA_SRCS1 := cicada.cc transaction.cc util.cc
 
 REL := ../common/
 include $(REL)Makefile
+CICADA_ALLSRC = $(CICADA_SRCS1) $(wildcard include/*.hh)
 
-KEY_SIZE=4
+KEY_SIZE=8
 VAL_SIZE=4
 
 CC = g++
@@ -40,6 +41,9 @@ $(PROG1) : $(OBJS1) $(MASSOBJ)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
+
+format:
+	clang-format -i -verbose -style=Google $(CICADA_ALLSRC)
 
 clean:
 	rm -f *~ *.o *.exe *.stackdump

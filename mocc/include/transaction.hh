@@ -2,13 +2,13 @@
 
 #include <vector>
 
-#include "../../include/string.hh"
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
+#include "../../include/string.hh"
 #include "../../include/util.hh"
 #include "common.hh"
-#include "mocc_op_element.hh"
 #include "lock.hh"
+#include "mocc_op_element.hh"
 #include "tuple.hh"
 
 using namespace std;
@@ -20,18 +20,18 @@ enum class TransactionStatus : uint8_t {
 };
 
 class TxExecutor {
-public:
+ public:
   vector<ReadElement<Tuple>> read_set_;
   vector<WriteElement<Tuple>> write_set_;
   vector<Procedure> pro_set_;
 #ifdef RWLOCK
   vector<LockElement<RWLock>> RLL_;
   vector<LockElement<RWLock>> CLL_;
-#endif // RWLOCK
+#endif  // RWLOCK
 #ifdef MQLOCK
   vector<LockElement<MQLock>> RLL_;
   vector<LockElement<MQLock>> CLL_;
-#endif // MQLOCK
+#endif  // MQLOCK
   TransactionStatus status_;
 
   int thid_;
@@ -39,12 +39,13 @@ public:
   Tidword max_rset_;
   Tidword max_wset_;
   Xoroshiro128Plus *rnd_;
-  Result* mres_;
-  
+  Result *mres_;
+
   char write_val_[VAL_SIZE] = {};
   char return_val_[VAL_SIZE] = {};
 
-  TxExecutor(int thid, Xoroshiro128Plus *rnd, Result* mres) : thid_(thid), mres_(mres) {
+  TxExecutor(int thid, Xoroshiro128Plus *rnd, Result *mres)
+      : thid_(thid), mres_(mres) {
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);
@@ -61,13 +62,14 @@ public:
 
   ReadElement<Tuple> *searchReadSet(uint64_t key);
   WriteElement<Tuple> *searchWriteSet(uint64_t key);
-  template <typename T> T *searchRLL(uint64_t key);
+  template <typename T>
+  T *searchRLL(uint64_t key);
   void removeFromCLL(uint64_t key);
   void begin();
-  char* read(uint64_t key);
+  char *read(uint64_t key);
   void write(uint64_t key);
   void lock(uint64_t key, Tuple *tuple, bool mode);
-  void construct_RLL(); // invoked on abort;
+  void construct_RLL();  // invoked on abort;
   void unlockCLL();
   bool commit();
   void abort();
@@ -76,8 +78,5 @@ public:
   void dispRLL();
   void dispWS();
 
-  Tuple* get_tuple(Tuple *table, uint64_t key) {
-    return &table[key];
-  }
+  Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };
-

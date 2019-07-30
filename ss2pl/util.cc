@@ -1,17 +1,17 @@
 
 #include <stdlib.h>
-#include <sys/syscall.h> // syscall(SYS_gettid),
-#include <sys/types.h> // syscall(SSY_gettid),
-#include <unistd.h> // syscall(SSY_gettid),
+#include <sys/syscall.h>  // syscall(SYS_gettid),
+#include <sys/types.h>    // syscall(SSY_gettid),
+#include <unistd.h>       // syscall(SSY_gettid),
 
 #include <atomic>
 #include <bitset>
 #include <cstdint>
-#include <thread>
-#include <type_traits>
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <thread>
+#include <type_traits>
 #include <vector>
 
 #include "../include/check.hh"
@@ -26,11 +26,12 @@
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
-void
-chkArg(const int argc, const char *argv[])
-{
+void chkArg(const int argc, const char *argv[]) {
   if (argc != 10) {
-    cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ EXTIME" << endl << endl;
+    cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
+            "ZIPF_SKEW YCSB CPU_MHZ EXTIME"
+         << endl
+         << endl;
     cout << "example: ./ss2pl.exe 200 10 24 50 off 0 on 2100 3" << endl << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
@@ -40,7 +41,9 @@ chkArg(const int argc, const char *argv[])
     cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
 
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
+    cout
+        << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
+        << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
     cout << "Tuple size " << sizeof(Tuple) << endl;
@@ -48,9 +51,12 @@ chkArg(const int argc, const char *argv[])
     cout << "RWLock size " << sizeof(RWLock) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "std::thread::hardware_concurrency()=" << std::thread::hardware_concurrency() << endl;
-    cout << "Procedure : is_move_constructible : " << std::is_move_constructible<Procedure>::value << endl;
-    cout << "Procedure : is_move_assignable : " << std::is_move_assignable<Procedure>::value << endl;
+    cout << "std::thread::hardware_concurrency()="
+         << std::thread::hardware_concurrency() << endl;
+    cout << "Procedure : is_move_constructible : "
+         << std::is_move_constructible<Procedure>::value << endl;
+    cout << "Procedure : is_move_assignable : "
+         << std::is_move_assignable<Procedure>::value << endl;
     exit(0);
   }
 
@@ -95,23 +101,19 @@ chkArg(const int argc, const char *argv[])
   }
 }
 
-void
-displayDB()
-{
+void displayDB() {
   Tuple *tuple;
 
   for (unsigned int i = 0; i < TUPLE_NUM; i++) {
     tuple = &Table[i];
-    cout << "------------------------------" << endl; // - 30
+    cout << "------------------------------" << endl;  // - 30
     cout << "key: " << i << endl;
     cout << "val: " << tuple->val_ << endl;
   }
 }
 
-void
-partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
-{
-  //printf("partTableInit(...): thid %zu : %lu : %lu\n", thid, start, end);
+void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
+  // printf("partTableInit(...): thid %zu : %lu : %lu\n", thid, start, end);
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
@@ -126,12 +128,13 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
   }
 }
 
-void
-makeDB()
-{
-  if (posix_memalign((void**)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
+void makeDB() {
+  if (posix_memalign((void **)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) !=
+      0)
+    ERR;
 #if dbs11
-  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+    ERR;
 #endif
 
   // maxthread は masstree 構築の最大並行スレッド数。
@@ -140,10 +143,10 @@ makeDB()
   size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
 
   std::vector<std::thread> thv;
-  //cout << "masstree 並列構築スレッド数 " << maxthread << endl;
+  // cout << "masstree 並列構築スレッド数 " << maxthread << endl;
   for (size_t i = 0; i < maxthread; ++i) {
-    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
+                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
   }
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 }
-

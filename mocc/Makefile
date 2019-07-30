@@ -3,6 +3,7 @@ MOCC_SRCS1 := mocc.cc transaction.cc lock.cc util.cc
 
 REL := ../common/
 include $(REL)Makefile
+MOCC_ALLSRC = $(MOCC_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
@@ -42,6 +43,9 @@ $(PROG1) : $(OBJS1) $(MASSOBJ)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
+
+format:
+	clang-format -i -verbose -style=Google $(MOCC_ALLSRC)
 
 clean:
 	rm -f *~ *.o *.exe *.stackdump *.log

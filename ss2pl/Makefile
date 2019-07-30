@@ -3,6 +3,7 @@ SS2PL_SRCS1 := ss2pl.cc transaction.cc util.cc
 
 REL := ../common/
 include $(REL)Makefile
+SS2PL_ALLSRC = $(SS2PL_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
@@ -47,6 +48,8 @@ $(PROG1) : $(OBJS1) $(MASSOBJ)
 .cc.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $< -o $@
 
+format:
+	clang-format -i -verbose -style=Google $(SS2PL_ALLSRC)
 
 clean:
 	rm -f *~ *.o *.exe *.stackdump

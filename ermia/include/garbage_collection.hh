@@ -14,13 +14,14 @@
 class TransactionTable;
 
 class GarbageCollection {
-private:
-  uint32_t fmin_, fmax_; // first range of txid in TMT.
-  uint32_t smin_, smax_; // second range of txid in TMT.
-  static std::atomic<uint32_t> GC_threshold_; // share for all object (meaning all thread).
+ private:
+  uint32_t fmin_, fmax_;  // first range of txid in TMT.
+  uint32_t smin_, smax_;  // second range of txid in TMT.
+  static std::atomic<uint32_t>
+      GC_threshold_;  // share for all object (meaning all thread).
 
-public:
-  std::queue<TransactionTable *> gcq_for_TMT_;
+ public:
+  std::queue<TransactionTable*> gcq_for_TMT_;
   std::queue<GCElement<Tuple>> gcq_for_version_;
   uint8_t thid_;
 
@@ -33,7 +34,7 @@ public:
     return GC_threshold_.load(std::memory_order_acquire);
   }
   // -----
-  
+
   // for leader thread
   bool chkSecondRange();
   void decideFirstRange();
@@ -47,7 +48,7 @@ public:
     fmax_ = smax_;
   }
   // -----
-  
+
   // for worker thread
   void gcVersion(Result* eres_);
   void gcTMTelement(Result* eres_);
@@ -55,6 +56,6 @@ public:
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
-  // declare in ermia.cc
-  std::atomic<uint32_t> GarbageCollection::GC_threshold_(0);
+// declare in ermia.cc
+std::atomic<uint32_t> GarbageCollection::GC_threshold_(0);
 #endif

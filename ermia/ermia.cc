@@ -1,13 +1,13 @@
 
-#include <ctype.h>  //isdigit, 
+#include <ctype.h>  //isdigit,
 #include <pthread.h>
-#include <string.h> //strlen,
-#include <sys/syscall.h>  //syscall(SYS_gettid),  
-#include <sys/types.h>  //syscall(SYS_gettid),
+#include <string.h>       //strlen,
+#include <sys/syscall.h>  //syscall(SYS_gettid),
+#include <sys/types.h>    //syscall(SYS_gettid),
 #include <time.h>
-#include <unistd.h> //syscall(SYS_gettid), 
+#include <unistd.h>  //syscall(SYS_gettid),
 #include <iostream>
-#include <string> //string
+#include <string>  //string
 
 #define GLOBAL_VALUE_DEFINE
 
@@ -27,32 +27,32 @@
 using namespace std;
 
 extern void chkArg(const int argc, const char *argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
+extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+                          size_t rratio, bool rmw, bool ycsb);
 extern void naiveGarbageCollection();
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+                                            size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t);
 
-static void *
-manager_worker(void *arg)
-{
+static void *manager_worker(void *arg) {
   Result &res = *(Result *)(arg);
   GarbageCollection gcobject;
- 
-#ifdef Linux 
+
+#ifdef Linux
   setThreadAffinity(res.thid_);
-#endif // Linux
+#endif  // Linux
 
   gcobject.decideFirstRange();
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   // end, initial work
-  
-  
+
   for (;;) {
-    if (Result::Finish_.load(std::memory_order_acquire))
-      return nullptr;
+    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
 
     usleep(1);
     if (gcobject.chkSecondRange()) {
@@ -64,39 +64,38 @@ manager_worker(void *arg)
   return nullptr;
 }
 
-
-static void *
-worker(void *arg)
-{
+static void *worker(void *arg) {
   Result &res = *(Result *)(arg);
-  TxExecutor trans(res.thid_, MAX_OPE, (Result*)arg);
+  TxExecutor trans(res.thid_, MAX_OPE, (Result *)arg);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
-  
+
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(res.thid_));
 #endif
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-  //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
-#endif // Linux
+  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  // printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n",
+  // sysconf(_SC_NPROCESSORS_CONF));
+#endif  // Linux
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 
   trans.gcstart_ = rdtscp();
-  for(;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
-RETRY:
-    if (Result::Finish_.load(std::memory_order_acquire))
-      return nullptr;
+  for (;;) {
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
+                  YCSB);
+  RETRY:
+    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
 
     //-----
-    //transaction begin
+    // transaction begin
     trans.tbegin();
-    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
+         ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.ssn_tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -129,9 +128,7 @@ RETRY:
   return nullptr;
 }
 
-int
-main(const int argc, const char *argv[]) try
-{
+int main(const int argc, const char *argv[]) try {
   chkArg(argc, argv);
   makeDB();
 
@@ -143,7 +140,8 @@ main(const int argc, const char *argv[]) try
     int ret;
     rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
-      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
+      ret =
+          pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
       ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;

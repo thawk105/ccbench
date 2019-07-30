@@ -5,6 +5,7 @@ SRCS2 := replayTest.cc
 
 REL := ../common/
 include $(REL)Makefile
+SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
@@ -46,6 +47,10 @@ $(PROG2) : $(OBJS2)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
+
+format:
+	clang-format -i -verbose -style=Google $(SILO_ALLSRC)
+
 clean:
 	rm -f *~ *.o *.exe *.stackdump
 	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump

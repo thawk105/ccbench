@@ -10,9 +10,7 @@
 using namespace std;
 
 class Tuple {
-public:
-  alignas(CACHE_LINE_SIZE)
-  RWLock lock_;
+ public:
+  alignas(CACHE_LINE_SIZE) RWLock lock_;
   char val_[VAL_SIZE];
 };
-

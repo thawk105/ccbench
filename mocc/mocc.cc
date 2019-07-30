@@ -1,19 +1,19 @@
 #include <ctype.h>  // isdigit,
-#include <iostream>
 #include <pthread.h>
-#include <string.h> // strlen,
-#include <string> // string
+#include <string.h>       // strlen,
 #include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/types.h>  // syscall(SYS_gettid),
+#include <sys/types.h>    // syscall(SYS_gettid),
 #include <time.h>
-#include <unistd.h> // syscall(SYS_gettid),
+#include <unistd.h>  // syscall(SYS_gettid),
+#include <iostream>
+#include <string>  // string
 
 #define GLOBAL_VALUE_DEFINE
 
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
-#include "../include/masstree_wrapper.hh"
 #include "../include/int64byte.hh"
+#include "../include/masstree_wrapper.hh"
 #include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
@@ -24,30 +24,32 @@
 using namespace std;
 
 extern void chkArg(const int argc, char *argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
 extern void displayDB();
 extern void displayLockedTuple();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+                          size_t rratio, bool rmw, bool ycsb);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+                                            size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
 
-bool
-chkEpochLoaded()
-{
+bool chkEpochLoaded() {
   uint64_t_64byte nowepo = loadAcquireGE();
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    if (__atomic_load_n(&(ThLocalEpoch[i].obj_), __ATOMIC_ACQUIRE) != nowepo.obj_) return false;
+    if (__atomic_load_n(&(ThLocalEpoch[i].obj_), __ATOMIC_ACQUIRE) !=
+        nowepo.obj_)
+      return false;
   }
 
   return true;
 }
 
-static void *
-manager_worker(void *arg)
-{
+static void *manager_worker(void *arg) {
   Result &res = *(Result *)(arg);
 
 #ifdef Linux
@@ -58,16 +60,17 @@ manager_worker(void *arg)
   uint64_t epochTimerStart, epochTimerStop;
   epochTimerStart = rdtscp();
   for (;;) {
-    if (Result::Finish_.load(memory_order_acquire))
-      return nullptr;
+    if (Result::Finish_.load(memory_order_acquire)) return nullptr;
 
     usleep(1);
 
-    //Epoch Control
+    // Epoch Control
     epochTimerStop = rdtscp();
-    //chkEpochLoaded は最新のグローバルエポックを
+    // chkEpochLoaded は最新のグローバルエポックを
     //全てのワーカースレッドが読み込んだか確認する．
-    if (chkClkSpan(epochTimerStart, epochTimerStop, EPOCH_TIME * CLOCKS_PER_US * 1000) && chkEpochLoaded()) {
+    if (chkClkSpan(epochTimerStart, epochTimerStop,
+                   EPOCH_TIME * CLOCKS_PER_US * 1000) &&
+        chkEpochLoaded()) {
       atomicAddGE();
       epochTimerStart = epochTimerStop;
 #if TEMPERATURE_RESET_OPT
@@ -83,17 +86,15 @@ manager_worker(void *arg)
     }
     //----------
   }
-  
+
   return nullptr;
 }
 
-static void *
-worker(void *arg)
-{
+static void *worker(void *arg) {
   Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, &rnd, (Result*)arg);
+  TxExecutor trans(res.thid_, &rnd, (Result *)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
@@ -102,23 +103,24 @@ worker(void *arg)
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
-#endif // Linux
+#endif  // Linux
 
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  
-  //start work (transaction)
+
+  // start work (transaction)
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
+                  YCSB);
 #if KEY_SORT
     sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
 
-RETRY:
-    if (Result::Finish_.load(memory_order_acquire))
-      return nullptr;
+  RETRY:
+    if (Result::Finish_.load(memory_order_acquire)) return nullptr;
 
     trans.begin();
-    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
+         ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.read((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -153,9 +155,7 @@ RETRY:
   return nullptr;
 }
 
-int
-main(int argc, char *argv[])  try
-{
+int main(int argc, char *argv[]) try {
   chkArg(argc, argv);
   makeDB();
 
@@ -166,12 +166,13 @@ main(int argc, char *argv[])  try
     int ret;
     rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
-      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
+      ret =
+          pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
       ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;
   }
- 
+
   waitForReadyOfAllThread(Running, THREAD_NUM);
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);

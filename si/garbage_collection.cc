@@ -13,9 +13,7 @@
 using std::cout, std::endl;
 
 // start, for leader thread.
-bool
-GarbageCollection::chkSecondRange()
-{
+bool GarbageCollection::chkSecondRange() {
   TransactionTable *tmt;
 
   smin_ = UINT32_MAX;
@@ -27,18 +25,16 @@ GarbageCollection::chkSecondRange()
     smax_ = std::max(smax_, tmptxid);
   }
 
-  //cout << "fmin_, fmax_ : " << fmin_ << ", " << fmax_ << endl;
-  //cout << "smin_, smax_ : " << smin_ << ", " << smax_ << endl;
+  // cout << "fmin_, fmax_ : " << fmin_ << ", " << fmax_ << endl;
+  // cout << "smin_, smax_ : " << smin_ << ", " << smax_ << endl;
 
   if (fmax_ < smin_)
     return true;
-  else 
+  else
     return false;
 }
 
-void
-GarbageCollection::decideFirstRange()
-{
+void GarbageCollection::decideFirstRange() {
   TransactionTable *tmt;
 
   fmin_ = fmax_ = 0;
@@ -54,9 +50,7 @@ GarbageCollection::decideFirstRange()
 // end, for leader thread.
 
 // for worker thread
-void
-GarbageCollection::gcVersion([[maybe_unused]]Result* sres_)
-{
+void GarbageCollection::gcVersion([[maybe_unused]] Result *sres_) {
   uint32_t threshold = getGcThreshold();
 
   // my customized Rapid garbage collection inspired from Cicada (sigmod 2017).
@@ -65,8 +59,10 @@ GarbageCollection::gcVersion([[maybe_unused]]Result* sres_)
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
-    Tuple* tuple = gcq_for_versions_.front().rcdptr_;
-    if (!tuple->g_clock_.compare_exchange_strong(zero, this->thid_, std::memory_order_acq_rel, std::memory_order_acquire)) {
+    Tuple *tuple = gcq_for_versions_.front().rcdptr_;
+    if (!tuple->g_clock_.compare_exchange_strong(zero, this->thid_,
+                                                 std::memory_order_acq_rel,
+                                                 std::memory_order_acquire)) {
       // fail acquiring the lock
       gcq_for_versions_.pop_front();
       continue;
@@ -82,7 +78,7 @@ GarbageCollection::gcVersion([[maybe_unused]]Result* sres_)
       continue;
     }
     // this pointer may be dangling.
-       
+
     Version *delTarget = gcq_for_versions_.front().ver_->committed_prev_;
     if (delTarget == nullptr) {
       tuple->g_clock_.store(0, std::memory_order_release);
@@ -95,14 +91,16 @@ GarbageCollection::gcVersion([[maybe_unused]]Result* sres_)
       gcq_for_versions_.pop_front();
       continue;
     }
- 
+
     // the thread detaches the rest of the version list from v
     gcq_for_versions_.front().ver_->committed_prev_->prev_ = nullptr;
     // updates record.min_wts
-    tuple->min_cstamp_.store(gcq_for_versions_.front().ver_->committed_prev_->cstamp_, std::memory_order_release);
+    tuple->min_cstamp_.store(
+        gcq_for_versions_.front().ver_->committed_prev_->cstamp_,
+        std::memory_order_release);
 
     while (delTarget != nullptr) {
-      //next pointer escape
+      // next pointer escape
       Version *tmp = delTarget->prev_;
       delete delTarget;
       delTarget = tmp;
@@ -120,9 +118,7 @@ GarbageCollection::gcVersion([[maybe_unused]]Result* sres_)
 }
 
 #ifdef CCTR_ON
-void
-GarbageCollection::gcTMTElements([[maybe_unused]]Result* sres_)
-{
+void GarbageCollection::gcTMTElements([[maybe_unused]] Result *sres_) {
   uint32_t threshold = getGcThreshold();
 
   for (;;) {
@@ -137,10 +133,10 @@ GarbageCollection::gcTMTElements([[maybe_unused]]Result* sres_)
 #if ADD_ANALYSIS
       ++sres_->local_gc_TMT_elements_counts_;
 #endif
-    }
-    else break;
+    } else
+      break;
   }
-  
+
   return;
 }
-#endif // CCTR_ON
+#endif  // CCTR_ON

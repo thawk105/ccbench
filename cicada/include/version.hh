@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string.h> // memcpy
+#include <string.h>  // memcpy
 #include <sys/time.h>
 
 #include <atomic>
@@ -17,19 +17,18 @@ enum class VersionStatus : uint8_t {
   invalid,
   pending,
   aborted,
-  precommitted, //early lock releaseで利用
+  precommitted,  // early lock releaseで利用
   committed,
   deleted,
   unused,
 };
 
 class Version {
-public:
-  alignas(CACHE_LINE_SIZE)
-  atomic<uint64_t> rts_;
+ public:
+  alignas(CACHE_LINE_SIZE) atomic<uint64_t> rts_;
   atomic<uint64_t> wts_;
   atomic<Version *> next_;
-  atomic<VersionStatus> status_; //commit record
+  atomic<VersionStatus> status_;  // commit record
   // version size to here is 25 bytes.
 
   char val_[VAL_SIZE];
@@ -41,7 +40,8 @@ public:
 
   Version(uint64_t rts, uint64_t wts) {
     rts_.store(rts, memory_order_relaxed);
-    wts_.store(wts, memory_order_relaxed);;
+    wts_.store(wts, memory_order_relaxed);
+    ;
   }
 
   void set(uint64_t rts, uint64_t wts) {
@@ -56,17 +56,11 @@ public:
     status_ = status;
   }
 
-  uint64_t ldAcqRts() {
-    return rts_.load(std::memory_order_acquire);
-  }
+  uint64_t ldAcqRts() { return rts_.load(std::memory_order_acquire); }
 
-  uint64_t ldAcqWts() {
-    return wts_.load(std::memory_order_acquire);
-  }
+  uint64_t ldAcqWts() { return wts_.load(std::memory_order_acquire); }
 
-  Version *ldAcqNext() {
-    return next_.load(std::memory_order_acquire);
-  }
+  Version *ldAcqNext() { return next_.load(std::memory_order_acquire); }
 
   VersionStatus ldAcqStatus() {
     return status_.load(std::memory_order_acquire);
@@ -76,4 +70,3 @@ public:
     next_.store(next, std::memory_order_release);
   }
 };
-

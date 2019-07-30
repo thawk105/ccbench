@@ -3,6 +3,7 @@ ERMIA_SRCS1 = ermia.cc transaction.cc util.cc garbage_collection.cc
 
 REL := ../common/
 include $(REL)Makefile
+ERMIA_ALLSRC = $(ERMIA_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
@@ -40,6 +41,9 @@ $(PROG1) : $(OBJS1) $(MASSOBJ)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
+
+format:
+	clang-format -i -verbose -style=Google $(ERMIA_ALLSRC)
 
 clean:
 	rm -f *~ *.o *.exe *.stackdump

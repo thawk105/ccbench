@@ -1,10 +1,10 @@
 #include <ctype.h>
 #include <pthread.h>
+#include <sched.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <stdlib.h>
-#include <sched.h>
 #include <unistd.h>
 #include <algorithm>
 #include <cctype>
@@ -26,17 +26,20 @@
 using namespace std;
 
 extern void chkArg(const int argc, char *argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
-extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
+extern bool chkSpan(struct timeval &start, struct timeval &stop,
+                    long threshold);
 extern void makeDB(uint64_t *initial_wts);
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+                          size_t rratio, bool rmw, bool ycsb);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+                                            size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
 extern void sleepMs(size_t ms);
 
-static void *
-manager_worker(void *arg)
-{
+static void *manager_worker(void *arg) {
   TimeStamp tmp;
 
   uint64_t initial_wts;
@@ -46,20 +49,20 @@ manager_worker(void *arg)
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-#endif // Linux
+  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+#endif  // Linux
 
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {}
+  while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {
+  }
 
   // leader work
-  for(;;) {
-    if (res.Finish_.load(std::memory_order_acquire))
-      return nullptr;
+  for (;;) {
+    if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
 
     bool gc_update = true;
     for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    //check all thread's flag raising
+      // check all thread's flag raising
       if (__atomic_load_n(&(GCFlag[i].obj_), __ATOMIC_ACQUIRE) == 0) {
         usleep(1);
         gc_update = false;
@@ -67,22 +70,26 @@ manager_worker(void *arg)
       }
     }
     if (gc_update) {
-      uint64_t minw = __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
+      uint64_t minw =
+          __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
       uint64_t minr;
       if (GROUP_COMMIT == 0) {
         minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
       } else {
-        minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_), __ATOMIC_ACQUIRE);
+        minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_),
+                               __ATOMIC_ACQUIRE);
       }
 
       for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-        uint64_t tmp = __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
+        uint64_t tmp =
+            __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
         if (minw > tmp) minw = tmp;
         if (GROUP_COMMIT == 0) {
           tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);
           if (minr > tmp) minr = tmp;
         } else {
-          tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj_), __ATOMIC_ACQUIRE);
+          tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj_),
+                                __ATOMIC_ACQUIRE);
           if (minr > tmp) minr = tmp;
         }
       }
@@ -101,41 +108,41 @@ manager_worker(void *arg)
   return nullptr;
 }
 
-static void *
-worker(void *arg)
-{
+static void *worker(void *arg) {
   Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, (Result*)arg);
+  TxExecutor trans(res.thid_, (Result *)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-  //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
-#endif // Linux
+  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
+  // sysconf(_SC_NPROCESSORS_CONF));
+#endif  // Linux
 
 #ifdef Darwin
   int nowcpu;
   GETCPU(nowcpu);
-  //printf("Thread %d on CPU %d\n", *myid, nowcpu);
-#endif // Darwin
+  // printf("Thread %d on CPU %d\n", *myid, nowcpu);
+#endif  // Darwin
 
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
 
-  //printf("%s\n", trans.writeVal);
-  //start work(transaction)
+  // printf("%s\n", trans.writeVal);
+  // start work(transaction)
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
+                  YCSB);
 
-RETRY:
-    if (res.Finish_.load(std::memory_order_acquire))
-      return nullptr;
+  RETRY:
+    if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
 
     trans.tbegin();
-    //Read phase
-    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
+    // Read phase
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
+         ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -154,24 +161,25 @@ RETRY:
     }
 
     // read only tx doesn't collect read set and doesn't validate.
-    // write phase execute logging and commit pending versions, but r-only tx can skip it.
+    // write phase execute logging and commit pending versions, but r-only tx
+    // can skip it.
     if ((*trans.pro_set_.begin()).ronly_) {
       ++trans.continuing_commit_;
       ++res.local_commit_counts_;
     } else {
-      //Validation phase
+      // Validation phase
       if (!trans.validation()) {
         trans.abort();
         goto RETRY;
       }
 
-      //Write phase
+      // Write phase
       trans.writePhase();
 
-      //Maintenance
-      //Schedule garbage collection
-      //Declare quiescent state
-      //Collect garbage created by prior transactions
+      // Maintenance
+      // Schedule garbage collection
+      // Declare quiescent state
+      // Collect garbage created by prior transactions
       trans.mainte();
     }
   }
@@ -179,9 +187,7 @@ RETRY:
   return nullptr;
 }
 
-int 
-main(int argc, char *argv[]) try
-{
+int main(int argc, char *argv[]) try {
   chkArg(argc, argv);
 
   Result rsob[THREAD_NUM];
@@ -191,7 +197,8 @@ main(int argc, char *argv[]) try
     int ret;
     rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
-      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
+      ret =
+          pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
     else
       ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;

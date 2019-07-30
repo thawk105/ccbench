@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "../../include/rwlock.hh"
-#include "../../include/string.hh"
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
+#include "../../include/rwlock.hh"
+#include "../../include/string.hh"
 #include "../../include/util.hh"
 #include "ss2pl_op_element.hh"
 #include "tuple.hh"
@@ -16,10 +16,10 @@ enum class TransactionStatus : uint8_t {
   aborted,
 };
 
-extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
+extern void writeValGenerator(char* writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
-public:
+ public:
   int thid_;
   std::vector<RWLock*> r_lock_list_;
   std::vector<RWLock*> w_lock_list_;
@@ -39,11 +39,11 @@ public:
     r_lock_list_.reserve(MAX_OPE);
     w_lock_list_.reserve(MAX_OPE);
 
-    genStringRepeatedNumber(write_val_, VAL_SIZE, thid); 
+    genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }
 
-  SetElement<Tuple> *searchReadSet(uint64_t key);
-  SetElement<Tuple> *searchWriteSet(uint64_t key);
+  SetElement<Tuple>* searchReadSet(uint64_t key);
+  SetElement<Tuple>* searchWriteSet(uint64_t key);
   void tbegin();
   char* tread(uint64_t key);
   void twrite(uint64_t key);
@@ -52,5 +52,5 @@ public:
   void unlockList();
 
   // inline
-  Tuple* get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
+  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
 };

@@ -1,16 +1,16 @@
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/syscall.h>  // syscall(SYS_gettid),
+#include <sys/time.h>
+#include <sys/types.h>  // syscall(SYS_gettid),
+#include <unistd.h>     // syscall(SYS_gettid),
 #include <atomic>
 #include <bitset>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <limits>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/syscall.h> // syscall(SYS_gettid),
-#include <sys/time.h>
-#include <sys/types.h> // syscall(SYS_gettid),
-#include <unistd.h> // syscall(SYS_gettid),
 
 #include "../include/cache_line_size.hh"
 #include "../include/check.hh"
@@ -28,13 +28,18 @@ using std::cout, std::endl;
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
-void 
-chkArg(const int argc, char *argv[])
-{
+void chkArg(const int argc, char *argv[]) {
   if (argc != 15) {
-    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS GROUP_COMMIT_TIMEOUT_US GC_INTER_US EXTIME" << endl << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 3" << endl << endl;
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
+            "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
+            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US EXTIME"
+         << endl
+         << endl;
+    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 3" << endl
+         << endl;
+    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
+            "100)"
+         << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread." << endl;
     cout << "RRATIO: read ratio [%%]" << endl;
@@ -42,10 +47,17 @@ chkArg(const int argc, char *argv[])
     cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
     cout << "WAL: P or S or off." << endl;
-    cout << "GROUP_COMMIT:  unsigned integer or off, i reccomend off or 3" << endl;
-    cout << "CPU_MHZ(float):  your cpuMHz. used by calculate time of yours 1clock." << endl;
-    cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the time(nano seconds)." << endl;
-    cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by timeout(micro seconds)." << endl;
+    cout << "GROUP_COMMIT:  unsigned integer or off, i reccomend off or 3"
+         << endl;
+    cout << "CPU_MHZ(float):  your cpuMHz. used by calculate time of yours "
+            "1clock."
+         << endl;
+    cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the "
+            "time(nano seconds)."
+         << endl;
+    cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by "
+            "timeout(micro seconds)."
+         << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
@@ -55,8 +67,13 @@ chkArg(const int argc, char *argv[])
     cout << "Procedure " << sizeof(Procedure) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE)) : " << CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE)) << endl;
-    cout << "CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) : " << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
+    cout << "CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % "
+            "(CACHE_LINE_SIZE)) : "
+         << CACHE_LINE_SIZE -
+                ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE))
+         << endl;
+    cout << "CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) : "
+         << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     exit(0);
   }
@@ -105,42 +122,39 @@ chkArg(const int argc, char *argv[])
 
   if (argycsb == "on") {
     YCSB = true;
-  }
-  else if (argycsb == "off") {
+  } else if (argycsb == "off") {
     YCSB = false;
-  }
-  else ERR;
+  } else
+    ERR;
 
-  if (argwal == "P")  {
+  if (argwal == "P") {
     P_WAL = true;
     S_WAL = false;
-  } 
-  else if (argwal == "S") {
+  } else if (argwal == "S") {
     P_WAL = false;
     S_WAL = true;
-  } 
-  else if (argwal == "off") {
+  } else if (argwal == "off") {
     P_WAL = false;
     S_WAL = false;
 
     if (arggrpc != "off") {
-      printf("i don't implement below.\n\
+      printf(
+          "i don't implement below.\n\
 P_WAL off, S_WAL off, GROUP_COMMIT number.\n\
 usage: P_WAL or S_WAL is selected. \n\
 P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. performance is concurrency control only.\n\n");
       exit(0);
     }
-  }
-  else {
+  } else {
     printf("WAL must be P or S or off\n");
     exit(0);
   }
 
-  if (arggrpc == "off") GROUP_COMMIT = 0;
+  if (arggrpc == "off")
+    GROUP_COMMIT = 0;
   else if (chkInt(argv[9])) {
-      GROUP_COMMIT = atoi(argv[9]);
-  }
-  else {
+    GROUP_COMMIT = atoi(argv[9]);
+  } else {
     printf("GROUP_COMMIT(argv[9]) must be unsigned integer or off\n");
     exit(0);
   }
@@ -150,22 +164,36 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
     exit(0);
   }
 
-  if (posix_memalign((void**)&ThreadRtsArrayForGroup, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  if (posix_memalign((void**)&ThreadWtsArray, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  if (posix_memalign((void**)&ThreadRtsArray, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  if (posix_memalign((void**)&GROUP_COMMIT_INDEX, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  if (posix_memalign((void**)&GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  if (posix_memalign((void**)&GCFlag, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  if (posix_memalign((void**)&GCExecuteFlag, CACHE_LINE_SIZE, THREAD_NUM * sizeof(uint64_t_64byte)) != 0) ERR;
-  
-  SLogSet = new Version*[(MAX_OPE) * (GROUP_COMMIT)]; 
-  PLogSet = new Version**[THREAD_NUM];
+  if (posix_memalign((void **)&ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+  if (posix_memalign((void **)&ThreadWtsArray, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+  if (posix_memalign((void **)&ThreadRtsArray, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+  if (posix_memalign((void **)&GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+  if (posix_memalign((void **)&GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+  if (posix_memalign((void **)&GCFlag, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+  if (posix_memalign((void **)&GCExecuteFlag, CACHE_LINE_SIZE,
+                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+
+  SLogSet = new Version *[(MAX_OPE) * (GROUP_COMMIT)];
+  PLogSet = new Version **[THREAD_NUM];
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    PLogSet[i] = new Version*[(MAX_OPE) * (GROUP_COMMIT)];
+    PLogSet[i] = new Version *[(MAX_OPE) * (GROUP_COMMIT)];
   }
 
-  //init
+  // init
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     GCFlag[i].obj_ = 0;
     GCExecuteFlag[i].obj_ = 0;
@@ -177,21 +205,19 @@ P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. pe
   }
 }
 
-void 
-displayDB() 
-{
+void displayDB() {
   Tuple *tuple;
   Version *version;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tuple = &Table[i % TUPLE_NUM];
-    cout << "------------------------------" << endl; //-は30個
+    cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
 
     version = tuple->latest_;
     while (version != NULL) {
       cout << "val: " << version->val_ << endl;
-      
+
       switch (version->status_) {
         case VersionStatus::invalid:
           cout << "status:  invalid";
@@ -226,21 +252,11 @@ displayDB()
   }
 }
 
-void 
-displayMinRts() 
-{
-  cout << "MinRts:  " << MinRts << endl << endl;
-}
+void displayMinRts() { cout << "MinRts:  " << MinRts << endl << endl; }
 
-void 
-displayMinWts() 
-{
-  cout << "MinWts:  " << MinWts << endl << endl;
-}
+void displayMinWts() { cout << "MinWts:  " << MinWts << endl << endl; }
 
-void 
-displayThreadWtsArray() 
-{
+void displayThreadWtsArray() {
   cout << "ThreadWtsArray:" << endl;
   for (unsigned int i = 0; i < THREAD_NUM; i++) {
     cout << "thid " << i << ": " << ThreadWtsArray[i].obj_ << endl;
@@ -248,37 +264,32 @@ displayThreadWtsArray()
   cout << endl << endl;
 }
 
-void 
-displayThreadRtsArray() 
-{
+void displayThreadRtsArray() {
   cout << "ThreadRtsArray:" << endl;
   for (unsigned int i = 0; i < THREAD_NUM; i++) {
     cout << "thid " << i << ": " << ThreadRtsArray[i].obj_ << endl;
-    }
-    cout << endl << endl;
+  }
+  cout << endl << endl;
 }
 
-void 
-displaySLogSet() 
-{
+void displaySLogSet() {
   if (!GROUP_COMMIT) {
-  }
-  else {
+  } else {
     if (S_WAL) {
       SwalLock.w_lock();
       for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj_; ++i) {
-        //printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key, SLogSet[i]->val);
+        // printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key,
+        // SLogSet[i]->val);
       }
       SwalLock.w_unlock();
 
-      //if (i == 0) printf("SLogSet is empty\n");
+      // if (i == 0) printf("SLogSet is empty\n");
     }
   }
 }
 
-void
-partTableInit([[maybe_unused]]size_t thid, uint64_t initts, uint64_t start, uint64_t end)
-{
+void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
+                   uint64_t start, uint64_t end) {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
@@ -297,22 +308,23 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t initts, uint64_t start, uint
   }
 }
 
-void
-makeDB(uint64_t *initial_wts)
-{
-  if (posix_memalign((void**)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) != 0) ERR;
+void makeDB(uint64_t *initial_wts) {
+  if (posix_memalign((void **)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) !=
+      0)
+    ERR;
 #if dbs11
-  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+    ERR;
 #endif
 
   TimeStamp tstmp;
   tstmp.generateTimeStampFirst(0);
   *initial_wts = tstmp.ts_;
-  
+
   size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, tstmp.ts_,
-        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
-  for (auto& th : thv) th.join();
+    thv.emplace_back(partTableInit, i, tstmp.ts_, i * (TUPLE_NUM / maxthread),
+                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto &th : thv) th.join();
 }

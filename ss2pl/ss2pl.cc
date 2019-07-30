@@ -1,13 +1,13 @@
 
-#include <ctype.h>  //isdigit, 
+#include <ctype.h>  //isdigit,
 #include <pthread.h>
-#include <string.h> //strlen,
-#include <sys/types.h>  //syscall(SYS_gettid),
-#include <sys/syscall.h>  //syscall(SYS_gettid),  
-#include <unistd.h> //syscall(SYS_gettid), 
+#include <string.h>       //strlen,
+#include <sys/syscall.h>  //syscall(SYS_gettid),
+#include <sys/types.h>    //syscall(SYS_gettid),
+#include <unistd.h>       //syscall(SYS_gettid),
 
 #include <iostream>
-#include <string> //string
+#include <string>  //string
 #include <thread>
 
 #define GLOBAL_VALUE_DEFINE
@@ -27,23 +27,26 @@
 #include "include/transaction.hh"
 
 extern void chkArg(const int argc, const char *argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
-extern void display_procedure_vector(std::vector<Procedure>& pro);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
+extern void display_procedure_vector(std::vector<Procedure> &pro);
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
-extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
+extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+                          size_t rratio, bool rmw, bool ycsb);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+                                            const size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running,
+                                    const size_t thnm);
 extern void sleepMs(size_t ms);
 
-static void *
-worker(void *arg)
-{
+static void *worker(void *arg) {
   Result &res = *(Result *)arg;
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, (Result*)arg);
+  TxExecutor trans(res.thid_, (Result *)arg);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
@@ -52,25 +55,27 @@ worker(void *arg)
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-  //printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n", sysconf(_SC_NPROCESSORS_CONF));
-#endif // Linux
+  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  // printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n",
+  // sysconf(_SC_NPROCESSORS_CONF));
+#endif  // Linux
 
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  
-  //start work (transaction)
+
+  // start work (transaction)
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
+                  YCSB);
 #if KEY_SORT
     std::sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
 
-RETRY:
-    if (Result::Finish_.load(std::memory_order_acquire))
-        return nullptr;
+  RETRY:
+    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
     trans.tbegin();
 
-    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
+         ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -88,21 +93,19 @@ RETRY:
       }
     }
 
-    //commit - write phase
+    // commit - write phase
     trans.commit();
   }
 
   return nullptr;
 }
 
-int
-main(const int argc, const char *argv[]) try
-{
+int main(const int argc, const char *argv[]) try {
   chkArg(argc, argv);
   makeDB();
-  //displayDB();
+  // displayDB();
 
-  //displayPRO();
+  // displayPRO();
 
   Result rsob[THREAD_NUM];
   Result &rsroot = rsob[0];
@@ -128,7 +131,7 @@ main(const int argc, const char *argv[]) try
   rsroot.extime_ = EXTIME;
   rsroot.displayAllResult();
 
-  //displayDB();
+  // displayDB();
 
   return 0;
 } catch (bad_alloc) {

@@ -18,7 +18,7 @@
 using namespace std;
 
 class TxnExecutor {
-public:
+ public:
   vector<ReadElement<Tuple>> read_set_;
   vector<WriteElement<Tuple>> write_set_;
   vector<Procedure> pro_set_;
@@ -41,9 +41,9 @@ public:
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);
-    //log_set_.reserve(LOGSET_SIZE);
+    // log_set_.reserve(LOGSET_SIZE);
 
-    //latest_log_header_.init();
+    // latest_log_header_.init();
 
     max_rset_.obj_ = 0;
     max_wset_.obj_ = 0;
@@ -61,10 +61,8 @@ public:
   void wal(uint64_t ctid);
   void lockWriteSet();
   void unlockWriteSet();
-  ReadElement<Tuple> *searchReadSet(uint64_t key);
-  WriteElement<Tuple> *searchWriteSet(uint64_t key);
+  ReadElement<Tuple>* searchReadSet(uint64_t key);
+  WriteElement<Tuple>* searchWriteSet(uint64_t key);
 
-  Tuple* get_tuple(Tuple *table, uint64_t key) {
-    return &table[key];
-  }
+  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
 };

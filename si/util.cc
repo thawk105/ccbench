@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/syscall.h> // syscall(SYS_gettid),
-#include <sys/types.h> // syscall(SYS_gettid), 
-#include <unistd.h> // syscall(SYS_gettid), 
+#include <sys/syscall.h>  // syscall(SYS_gettid),
+#include <sys/types.h>    // syscall(SYS_gettid),
+#include <unistd.h>       // syscall(SYS_gettid),
 #include <atomic>
 #include <bitset>
 #include <cstdint>
@@ -24,15 +24,16 @@
 #include "include/common.hh"
 #include "include/tuple.hh"
 
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
-void
-chkArg(const int argc, const char *argv[])
-{
+void chkArg(const int argc, const char *argv[]) {
   if (argc != 11) {
-  //if (argc != 1) {
-    cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US EXTIME" << endl;
+    // if (argc != 1) {
+    cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "
+            "YCSB CPU_MHZ GC_INTER_US EXTIME"
+         << endl;
     cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 10 3" << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
@@ -41,7 +42,9 @@ chkArg(const int argc, const char *argv[])
     cout << "RMW : read modify write. on or off." << endl;
     cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock" << endl;
+    cout
+        << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
+        << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "EXTIME: execution time [sec]" << endl;
 
@@ -74,7 +77,9 @@ chkArg(const int argc, const char *argv[])
   EXTIME = atoi(argv[10]);
 
   if (THREAD_NUM < 2) {
-    cout << "1 thread is leader thread. \nthread number 1 is no worker thread, so exit." << endl;
+    cout << "1 thread is leader thread. \nthread number 1 is no worker thread, "
+            "so exit."
+         << endl;
     ERR;
   }
   if (RRATIO > 100) {
@@ -91,7 +96,7 @@ chkArg(const int argc, const char *argv[])
     YCSB = true;
   else if (argst == "off")
     YCSB = false;
-  else 
+  else
     ERR;
 
   if (CLOCKS_PER_US < 100) {
@@ -99,21 +104,19 @@ chkArg(const int argc, const char *argv[])
     ERR;
   }
 
-  TMT = new TransactionTable*[THREAD_NUM];
+  TMT = new TransactionTable *[THREAD_NUM];
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i)
     TMT[i] = new TransactionTable(0, 0);
 }
 
-void
-displayDB()
-{
+void displayDB() {
   Tuple *tuple;
   Version *version;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tuple = TxExecutor::get_tuple(Table, i);
-    cout << "------------------------------" << endl; // - 30
+    cout << "------------------------------" << endl;  // - 30
     cout << "key: " << i << endl;
 
     version = tuple->latest_.load(std::memory_order_acquire);
@@ -142,9 +145,7 @@ displayDB()
   }
 }
 
-void
-partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
-{
+void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
@@ -153,7 +154,9 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
     Tuple *tmp;
     Version *verTmp;
     tmp = TxExecutor::get_tuple(Table, i);
-    if (posix_memalign((void**)&tmp->latest_, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
+    if (posix_memalign((void **)&tmp->latest_, CACHE_LINE_SIZE,
+                       sizeof(Version)) != 0)
+      ERR;
     tmp->min_cstamp_ = 0;
     verTmp = tmp->latest_.load(std::memory_order_acquire);
     verTmp->cstamp_ = 0;
@@ -166,26 +169,25 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
   }
 }
 
-void
-makeDB()
-{
-  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+void makeDB() {
+  if (posix_memalign((void **)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) !=
+      0)
+    ERR;
 #if dbs11
-  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+    ERR;
 #endif
 
   size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, 
-        i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
-  for (auto& th : thv) th.join();
+    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
+                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto &th : thv) th.join();
 }
 
-void
-naiveGarbageCollection() 
-{
+void naiveGarbageCollection() {
   TransactionTable *tmt;
 
   uint32_t mintxID = UINT32_MAX;
@@ -194,9 +196,10 @@ naiveGarbageCollection()
     mintxID = std::min(mintxID, tmt->txid_.load(std::memory_order_acquire));
   }
 
-  if (mintxID == 0) return;
+  if (mintxID == 0)
+    return;
   else {
-    //mintxIDから到達不能なバージョンを削除する
+    // mintxIDから到達不能なバージョンを削除する
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       if (Result::Finish_.load(std::memory_order_acquire)) return;
@@ -208,7 +211,8 @@ naiveGarbageCollection()
 #endif
 
       verTmp = tuple->latest_.load(std::memory_order_acquire);
-      if (verTmp->status_.load(std::memory_order_acquire) != VersionStatus::committed) 
+      if (verTmp->status_.load(std::memory_order_acquire) !=
+          VersionStatus::committed)
         verTmp = verTmp->committed_prev_;
       // この時点で， verTmp はコミット済み最新バージョン
 
@@ -220,11 +224,11 @@ naiveGarbageCollection()
       }
       if (verTmp == nullptr) continue;
       // verTmp は mintxID によって到達可能．
-      
+
       // ssn commit protocol によってverTmp->commited_prev_ までアクセスされる．
       verTmp = verTmp->committed_prev_;
       if (verTmp == nullptr) continue;
-      
+
       // verTmp->prev_ からガベコレ可能
       delTarget = verTmp->prev_;
       if (delTarget == nullptr) continue;
@@ -239,4 +243,3 @@ naiveGarbageCollection()
     }
   }
 }
-

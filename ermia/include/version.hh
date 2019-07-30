@@ -22,13 +22,11 @@ struct Psstamp {
     };
   };
 
-  Psstamp() {
-    obj_ = 0;
-  }
+  Psstamp() { obj_ = 0; }
 
   void init(uint32_t pstamp, uint32_t sstamp) {
     pstamp_ = pstamp;
-    sstamp_ = sstamp; 
+    sstamp_ = sstamp;
   }
 
   uint64_t atomicLoad() {
@@ -43,8 +41,11 @@ struct Psstamp {
     expected.pstamp_ = expectedPstamp;
     desired = expected;
     desired.pstamp_ = desiredPstamp;
-    if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_RELAXED)) return true;
-    else return false;
+    if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false,
+                                    __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
+      return true;
+    else
+      return false;
   }
 
   uint32_t atomicLoadPstamp() {
@@ -64,7 +65,10 @@ struct Psstamp {
     for (;;) {
       desired = expected;
       desired.pstamp_ = newpstamp;
-      if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+      if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_,
+                                      false, __ATOMIC_ACQ_REL,
+                                      __ATOMIC_ACQUIRE))
+        break;
     }
   }
 
@@ -74,20 +78,24 @@ struct Psstamp {
     for (;;) {
       desired = expected;
       desired.sstamp_ = newsstamp;
-      if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) break;
+      if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_,
+                                      false, __ATOMIC_ACQ_REL,
+                                      __ATOMIC_ACQUIRE))
+        break;
     }
   }
 };
 
 class Version {
-public:
-  alignas(CACHE_LINE_SIZE)
-  Psstamp psstamp_; // Version access stamp, eta(V), Version successor stamp, pi(V)
-  Version *prev_;  // Pointer to overwritten version
-  Version *committed_prev_;  // Pointer to the next committed version, to reduce serach cost.
+ public:
+  alignas(CACHE_LINE_SIZE) Psstamp
+      psstamp_;  // Version access stamp, eta(V), Version successor stamp, pi(V)
+  Version *prev_;            // Pointer to overwritten version
+  Version *committed_prev_;  // Pointer to the next committed version, to reduce
+                             // serach cost.
 
   std::atomic<uint64_t> readers_;  // summarize all of V's readers.
-  std::atomic<uint32_t> cstamp_;       // Version creation stamp, c(V)
+  std::atomic<uint32_t> cstamp_;   // Version creation stamp, c(V)
   std::atomic<VersionStatus> status_;
 
   char val_[VAL_SIZE];
@@ -98,4 +106,3 @@ public:
     readers_.store(0, std::memory_order_release);
   }
 };
-
