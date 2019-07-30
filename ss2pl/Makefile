@@ -15,7 +15,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
          -D$(shell hostname) \
          -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
          -DMASSTREE_USE=1 \
-         -DKEY_SORT=1 \
+         -DKEY_SORT=0 \
          -DDLR1 \
          -DADD_ANALYSIS=1 \
 

@@ -108,7 +108,7 @@ void Result::displayReadLatencyRate() {
         (long double)total_read_latency_ /
         ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
         thnum_;
-    cout << fixed << setprecision(4) << "raed_latency_rate:\t" << rate << endl;
+    cout << fixed << setprecision(4) << "read_latency_rate:\t" << rate << endl;
   }
 }
 

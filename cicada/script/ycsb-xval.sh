@@ -7,7 +7,7 @@ skew=0.9
 ycsb=on
 wal=off
 group_commit=off
-cpu_mhz=2400
+cpu_mhz=2100
 io_time_ns=5
 group_commit_timeout_us=2
 gci=10
@@ -35,11 +35,11 @@ do
     val=100
   fi
   cd ../
-  make clean all VAL_SIZE=$val
+  make clean; make -j10 VAL_SIZE=$val
   cd script
 
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime"
-  echo "Thread number $thread"
+  echo "value size: $val"
   
   sumTH=0
   sumAR=0
@@ -60,7 +60,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`

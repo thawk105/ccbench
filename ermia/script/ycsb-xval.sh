@@ -5,7 +5,7 @@ rratio=50
 rmw=off
 skew=0.9
 ycsb=on
-cpu_mhz=2400
+cpu_mhz=2100
 gci=10
 extime=3
 epoch=3
@@ -32,11 +32,11 @@ do
     val=100
   fi
   cd ../
-  make clean all VAL_SIZE=$val
+  make clean; make -j10 VAL_SIZE=$val
   cd script
 
   echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
-  echo "Thread number $thread"
+  echo "value size: $val"
   
   sumTH=0
   sumAR=0
@@ -57,7 +57,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
