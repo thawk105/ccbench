@@ -7,16 +7,20 @@
 #include "./cache_line_size.hh"
 
 class Result {
-public:
-  alignas(CACHE_LINE_SIZE)
-  static std::atomic<bool> Finish_;
+ public:
+  alignas(CACHE_LINE_SIZE) static std::atomic<bool> Finish_;
   size_t clocks_per_us_ = 0;
   size_t extime_ = 0;
   size_t thid_ = 0;
   size_t thnum_ = 0;
 
-  Result(){}
-  Result(const size_t clocks_per_us, const size_t extime, const size_t thid, const size_t thnum) : clocks_per_us_(clocks_per_us), extime_(extime), thid_(thid), thnum_(thnum) {}
+  Result() {}
+  Result(const size_t clocks_per_us, const size_t extime, const size_t thid,
+         const size_t thnum)
+      : clocks_per_us_(clocks_per_us),
+        extime_(extime),
+        thid_(thid),
+        thnum_(thnum) {}
 
   uint64_t local_abort_counts_ = 0;
   uint64_t local_commit_counts_ = 0;
@@ -74,8 +78,8 @@ public:
   void displayTps();
   void displayAllResult();
 #if ADD_ANALYSIS
-  void displayAbortByOperationRate(); // abort by operation rate;
-  void displayAbortByValidationRate(); // abort by validation rate;
+  void displayAbortByOperationRate();   // abort by operation rate;
+  void displayAbortByValidationRate();  // abort by validation rate;
   void displayExtraReads();
   void displayGCCounts();
   void displayGCLatencyRate();
@@ -119,9 +123,8 @@ public:
   void addLocalValidationFailureByTid(const uint64_t count);
   void addLocalValidationFailureByWritelock(const uint64_t count);
 #endif
-
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
 std::atomic<bool> Result::Finish_(false);
-#endif 
+#endif

@@ -6,14 +6,15 @@
 using std::cout;
 using std::endl;
 
-static void
-genStringRepeatedNumber(char *string, size_t val_size, size_t thid)
-{
+static void genStringRepeatedNumber(char *string, size_t val_size,
+                                    size_t thid) {
   size_t digit(1), thidnum(thid);
-  for(;;) {
+  for (;;) {
     thidnum /= 10;
-    if (thidnum != 0) ++digit;
-    else break;
+    if (thidnum != 0)
+      ++digit;
+    else
+      break;
   }
 
   // generate write value for this thread.
@@ -21,5 +22,5 @@ genStringRepeatedNumber(char *string, size_t val_size, size_t thid)
   for (uint i = digit; i < val_size - 2; ++i) {
     string[i] = '0';
   }
-  //printf("%s\n", string);
+  // printf("%s\n", string);
 }

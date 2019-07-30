@@ -4,7 +4,7 @@
 #include <mutex>
 #include <vector>
 
-#include "../../include/int64byte.hpp"
+#include "../../include/int64byte.hh"
 
 #ifdef GLOBAL_VALUE_DEFINE
   #define GLOBAL

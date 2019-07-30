@@ -62,6 +62,9 @@ $(PROG5) : $(OBJS5)
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
 
+format:
+	clang-format -i -verbose -style=Google $(wildcard *.cc)
+
 clean:
 	rm -f *~ *.o *.exe *.stackdump
 	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump

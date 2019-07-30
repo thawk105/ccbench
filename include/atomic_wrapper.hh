@@ -22,5 +22,6 @@ void storeRelease(T& ptr, T2 val) {
 
 template <typename T, typename T2>
 bool compareExchange(T& m, T& before, T2 after) {
-  return __atomic_compare_exchange_n(&m, &before, (T)after, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+  return __atomic_compare_exchange_n(&m, &before, (T)after, false,
+                                     __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
 }

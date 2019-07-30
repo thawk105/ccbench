@@ -12,25 +12,26 @@ enum class Ope : uint8_t {
 };
 
 class Procedure {
-public:
+ public:
   Ope ope_;
   uint64_t key_;
   bool ronly_ = false;
   bool wonly_ = false;
 
-  Procedure() : ope_(Ope::READ), key_(0){}
+  Procedure() : ope_(Ope::READ), key_(0) {}
   Procedure(Ope ope, uint64_t key) : ope_(ope), key_(key) {}
 
   bool operator<(const Procedure& right) const {
-    if (this->key_ == right.key_ && this->ope_ == Ope::WRITE && right.ope_ == Ope::READ) {
+    if (this->key_ == right.key_ && this->ope_ == Ope::WRITE &&
+        right.ope_ == Ope::READ) {
+      return true;
+    } else if (this->key_ == right.key_ && this->ope_ == Ope::WRITE &&
+               right.ope_ == Ope::WRITE) {
       return true;
     }
-    else if (this->key_ == right.key_ && this->ope_ == Ope::WRITE && right.ope_ == Ope::WRITE) {
-      return true;
-    }
-    /* キーが同値なら先に write ope を実行したい．read -> write よりも write -> read.*/
+    /* キーが同値なら先に write ope を実行したい．read -> write よりも write ->
+     * read.*/
 
     return this->key_ < right.key_;
   }
 };
-
