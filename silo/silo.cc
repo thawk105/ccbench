@@ -37,7 +37,8 @@ extern void genLogFile(std::string &logpath, const int thid);
 extern void makeDB();
 extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                           FastZipf &zipf, size_t tuple_num, size_t max_ope,
-                          size_t rratio, bool rmw, bool ycsb);
+                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
+                          bool partition, size_t thread_id);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
                                             size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
@@ -100,8 +101,14 @@ static void *worker(void *arg) {
 
   // start work(transaction)
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
-                  YCSB);
+#if PARTITION_TABLE
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, true, res.thid_);
+#else
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, false, res.thid_);
+#endif
+
   RETRY:
     trans.tbegin();
     if (Result::Finish_.load(memory_order_acquire)) return nullptr;

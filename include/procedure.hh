@@ -30,7 +30,9 @@ class Procedure {
       return true;
     }
     /* キーが同値なら先に write ope を実行したい．read -> write よりも write ->
-     * read.*/
+     * read.
+     * キーが同値で自分が read でここまで来たら，下記の式によって絶対に false
+     * となり，自分 (read) が昇順で後ろ回しになるので ok */
 
     return this->key_ < right.key_;
   }

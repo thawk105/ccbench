@@ -33,7 +33,8 @@ extern bool chkSpan(struct timeval &start, struct timeval &stop,
 extern void makeDB(uint64_t *initial_wts);
 extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                           FastZipf &zipf, size_t tuple_num, size_t max_ope,
-                          size_t rratio, bool rmw, bool ycsb);
+                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
+                          bool partition, size_t thread_id);
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
                                             size_t thnm);
 extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
@@ -133,8 +134,27 @@ static void *worker(void *arg) {
   // printf("%s\n", trans.writeVal);
   // start work(transaction)
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
-                  YCSB);
+    /* シングル実行で絶対に競合を起こさないワークロードにおいて，
+     * 自トランザクションで read した後に write するのは複雑になる．
+     * write した後に read であれば，write set から read
+     * するので挙動がシンプルになる．
+     * スレッドごとにアクセスブロックを作る形でパーティションを作って
+     * スレッド間の競合を無くした後に sort して同一キーに対しては
+     * write - read とする．
+     * */
+#if SINGLE_EXEC
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, true, res.thid_);
+    sort(trans.pro_set_.begin(), trans.pro_set_.end());
+#else
+#if PARTITION_TABLE
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, true, res.thid_);
+#else
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, false, res.thid_);
+#endif
+#endif
 
   RETRY:
     if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
@@ -180,7 +200,10 @@ static void *worker(void *arg) {
       // Schedule garbage collection
       // Declare quiescent state
       // Collect garbage created by prior transactions
+#if SINGLE_EXEC
+#else
       trans.mainte();
+#endif
     }
   }
 

@@ -65,7 +65,7 @@ class Version {
     return status_.load(std::memory_order_acquire);
   }
 
-  void strRelNext(Version *next) {
+  void strRelNext(Version *next) {  // store release next = strRelNext
     next_.store(next, std::memory_order_release);
   }
 };

@@ -1,8 +1,8 @@
 
-#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/syscall.h>  // syscall(SYS_gettid),
 #include <sys/time.h>
-#include <sys/types.h> // syscall(SYS_gettid),
-#include <unistd.h> // syscall(SYS_gettid),
+#include <sys/types.h>  // syscall(SYS_gettid),
+#include <unistd.h>     // syscall(SYS_gettid),
 
 #include <atomic>
 #include <bitset>
@@ -13,10 +13,10 @@
 #include <thread>
 #include <vector>
 
-#include "../include/config.hh"
 #include "../include/check.hh"
-#include "../include/inline.hh"
+#include "../include/config.hh"
 #include "../include/debug.hh"
+#include "../include/inline.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
 #include "../include/zipf.hh"
@@ -28,15 +28,18 @@ using namespace std;
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
-void 
-chkArg(const int argc, char *argv[])
-{
+void chkArg(const int argc, char *argv[]) {
   if (argc != 10) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW YCSB CLOCKS_PER_US EXTIME" << endl << endl;
+    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "
+            "YCSB CLOCKS_PER_US EXTIME"
+         << endl
+         << endl;
 
     cout << "example:./main 200 10 24 50 off 0 on 2100 3" << endl << endl;
 
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, 100)" << endl;
+    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
+            "100)"
+         << endl;
     cout << "MAX_OPE(int):    total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of thread." << endl;
     cout << "RRATIO : read ratio [%%]" << endl;
@@ -50,7 +53,8 @@ chkArg(const int argc, char *argv[])
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "NO_WAIT_LOCKING_IN_VALIDATION: " << NO_WAIT_LOCKING_IN_VALIDATION << endl;
+    cout << "NO_WAIT_LOCKING_IN_VALIDATION: " << NO_WAIT_LOCKING_IN_VALIDATION
+         << endl;
     cout << "PREEMPTIVE_ABORTS: " << PREEMPTIVE_ABORTS << endl;
     cout << "TIMESTAMP_HISTORY: " << TIMESTAMP_HISTORY << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
@@ -101,15 +105,12 @@ chkArg(const int argc, char *argv[])
   return;
 }
 
-void 
-displayDB() 
-{
-
+void displayDB() {
   Tuple *tuple;
 
   for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
     tuple = &Table[i];
-    cout << "------------------------------" << endl; //-は30個
+    cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
     cout << "val_: " << tuple->val_ << endl;
     cout << "TS_word: " << tuple->tsw_.obj_ << endl;
@@ -118,9 +119,7 @@ displayDB()
   }
 }
 
-void
-partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
-{
+void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
@@ -129,7 +128,7 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
     Tuple *tmp = &Table[i];
     tmp->tsw_.obj_ = 0;
     tmp->pre_tsw_.obj_ = 0;
-    tmp->val_[0] = 'a'; 
+    tmp->val_[0] = 'a';
     tmp->val_[1] = '\0';
 
 #if MASSTREE_USE
@@ -138,19 +137,20 @@ partTableInit([[maybe_unused]]size_t thid, uint64_t start, uint64_t end)
   }
 }
 
-void
-makeDB() 
-{
-  if (posix_memalign((void**)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) != 0) ERR;
+void makeDB() {
+  if (posix_memalign((void **)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) !=
+      0)
+    ERR;
 #if dbs11
-  if (madvise((void*)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0) ERR;
+  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+    ERR;
 #endif
 
   size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread), (i + 1) * (TUPLE_NUM / maxthread) - 1);
-  for (auto& th : thv) th.join();
+    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
+                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto &th : thv) th.join();
 }
-

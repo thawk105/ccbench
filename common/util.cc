@@ -72,15 +72,27 @@ void displayRusageRUMaxrss() {
 
 void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                    FastZipf &zipf, size_t tuple_num, size_t max_ope,
-                   size_t rratio, bool rmw, bool ycsb) {
+                   size_t thread_num, size_t rratio, bool rmw, bool ycsb,
+                   bool partition, size_t thread_id) {
   pro.clear();
   bool ronly_flag(true), wonly_flag(true);
   for (size_t i = 0; i < max_ope; ++i) {
     uint64_t tmpkey;
-    if (ycsb)
-      tmpkey = zipf() % tuple_num;
-    else
-      tmpkey = rnd.next() % tuple_num;
+    if (ycsb) {
+      if (partition) {
+        size_t block_size = tuple_num / thread_num;
+        tmpkey = (block_size * thread_id) + (zipf() % block_size);
+      } else {
+        tmpkey = zipf() % tuple_num;
+      }
+    } else {
+      if (partition) {
+        size_t block_size = tuple_num / thread_num;
+        tmpkey = (block_size * thread_id) + (rnd.next() % block_size);
+      } else {
+        tmpkey = rnd.next() % tuple_num;
+      }
+    }
 
     if ((rnd.next() % 100) < rratio) {
       pro.emplace_back(Ope::READ, tmpkey);

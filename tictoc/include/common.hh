@@ -12,22 +12,22 @@
 #include "tuple.hh"
 
 #ifdef GLOBAL_VALUE_DEFINE
-  #define GLOBAL
+#define GLOBAL
 
-  GLOBAL std::atomic<size_t> Running(0);
+GLOBAL std::atomic<size_t> Running(0);
 
-  #if MASSTREE_USE
-  alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
-  #endif
+#if MASSTREE_USE
+alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
+#endif
 
 #else
-  #define GLOBAL extern
+#define GLOBAL extern
 
-  GLOBAL std::atomic<size_t> Running;
+GLOBAL std::atomic<size_t> Running;
 
-  #if MASSTREE_USE
-  alignas (CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
-  #endif
+#if MASSTREE_USE
+alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
+#endif
 
 #endif
 

@@ -18,9 +18,7 @@
 
 using namespace std;
 
-SetElement<Tuple> *
-TxExecutor::searchWriteSet(uint64_t key)
-{
+SetElement<Tuple> *TxExecutor::searchWriteSet(uint64_t key) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
@@ -28,9 +26,7 @@ TxExecutor::searchWriteSet(uint64_t key)
   return nullptr;
 }
 
-SetElement<Tuple> *
-TxExecutor::searchReadSet(uint64_t key)
-{
+SetElement<Tuple> *TxExecutor::searchReadSet(uint64_t key) {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
@@ -38,17 +34,13 @@ TxExecutor::searchReadSet(uint64_t key)
   return nullptr;
 }
 
-void
-TxExecutor::tbegin()
-{
+void TxExecutor::tbegin() {
   this->status_ = TransactionStatus::inFlight;
   this->commit_ts_ = 0;
   this->appro_commit_ts_ = 0;
 }
 
-bool
-TxExecutor::preemptiveAborts(const TsWord& v1)
-{
+bool TxExecutor::preemptiveAborts(const TsWord &v1) {
   if (v1.rts() < this->appro_commit_ts_) {
     // it must check whether this write set include the tuple,
     // but it already checked L31 - L33.
@@ -63,9 +55,7 @@ TxExecutor::preemptiveAborts(const TsWord& v1)
   return false;
 }
 
-char*
-TxExecutor::tread(uint64_t key)
-{
+char *TxExecutor::tread(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -122,7 +112,7 @@ TxExecutor::tread(uint64_t key)
 #if ADD_ANALYSIS
     ++tres_->local_extra_reads_;
 #endif
-  } 
+  }
 
   this->appro_commit_ts_ = max(this->appro_commit_ts_, v1.wts);
   read_set_.emplace_back(key, tuple, return_val_, v1);
@@ -133,9 +123,7 @@ TxExecutor::tread(uint64_t key)
   return return_val_;
 }
 
-void 
-TxExecutor::twrite(uint64_t key)
-{
+void TxExecutor::twrite(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -167,9 +155,7 @@ TxExecutor::twrite(uint64_t key)
   write_set_.emplace_back(key, tuple, tsword);
 }
 
-bool 
-TxExecutor::validationPhase()
-{
+bool TxExecutor::validationPhase() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -185,14 +171,14 @@ TxExecutor::validationPhase()
 #endif
 
   // logically, it must execute full fence here,
-  // while we assume intel architecture and CAS(cmpxchg) in lockWriteSet() did it.
+  // while we assume intel architecture and CAS(cmpxchg) in lockWriteSet() did
+  // it.
   //
-  asm volatile ("" ::: "memory");
+  asm volatile("" ::: "memory");
 
   // step2, compute the commit timestamp
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
     commit_ts_ = max(commit_ts_, (*itr).tsw_.wts);
-
 
   // step3, validate the read set.
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
@@ -201,14 +187,15 @@ TxExecutor::validationPhase()
     ++tres_->local_rtsupd_chances_;
 #endif
 
-    v1.obj_  = __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+    v1.obj_ = __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
     if ((*itr).tsw_.rts() < commit_ts_) {
       for (;;) {
         if ((*itr).tsw_.wts != v1.wts) {
           // start timestamp history processing
 #if TIMESTAMP_HISTORY
           TsWord pre_v1;
-          pre_v1.obj_ = __atomic_load_n(&((*itr).rcdptr_->pre_tsw_.obj_), __ATOMIC_ACQUIRE);
+          pre_v1.obj_ = __atomic_load_n(&((*itr).rcdptr_->pre_tsw_.obj_),
+                                        __ATOMIC_ACQUIRE);
           if (pre_v1.wts <= commit_ts_ && commit_ts_ < v1.wts) {
 #if ADD_ANALYSIS
             ++tres_->local_timestamp_history_success_counts_;
@@ -237,7 +224,7 @@ TxExecutor::validationPhase()
         }
 
         if (inW != nullptr) break;
-        //extend the rts of the tuple
+        // extend the rts of the tuple
         if ((v1.rts()) < commit_ts_) {
           // Handle delta overflow
           uint64_t delta = commit_ts_ - v1.wts;
@@ -245,13 +232,15 @@ TxExecutor::validationPhase()
           v2.obj_ = v1.obj_;
           v2.wts = v2.wts + shift;
           v2.delta = delta - shift;
-          if (__atomic_compare_exchange_n(&((*itr).rcdptr_->tsw_.obj_), &(v1.obj_), v2.obj_, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+          if (__atomic_compare_exchange_n(&((*itr).rcdptr_->tsw_.obj_),
+                                          &(v1.obj_), v2.obj_, false,
+                                          __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 #if ADD_ANALYSIS
             ++tres_->local_rtsupd_;
 #endif
             break;
-          }
-          else continue;
+          } else
+            continue;
         } else {
           break;
         }
@@ -264,9 +253,7 @@ TxExecutor::validationPhase()
   return true;
 }
 
-void 
-TxExecutor::abort() 
-{
+void TxExecutor::abort() {
   unlockCLL();
 
   read_set_.clear();
@@ -275,9 +262,7 @@ TxExecutor::abort()
   ++tres_->local_abort_counts_;
 }
 
-void 
-TxExecutor::writePhase()
-{
+void TxExecutor::writePhase() {
   TsWord result;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
@@ -286,10 +271,11 @@ TxExecutor::writePhase()
     result.delta = 0;
     result.lock = 0;
 #if TIMESTAMP_HISTORY
-    __atomic_store_n(&((*itr).rcdptr_->pre_tsw_.obj_), (*itr).tsw_.obj_, __ATOMIC_RELAXED);
+    __atomic_store_n(&((*itr).rcdptr_->pre_tsw_.obj_), (*itr).tsw_.obj_,
+                     __ATOMIC_RELAXED);
 #endif
-    __atomic_store_n(&((*itr).rcdptr_->tsw_.obj_), result.obj_, __ATOMIC_RELEASE);
-
+    __atomic_store_n(&((*itr).rcdptr_->tsw_.obj_), result.obj_,
+                     __ATOMIC_RELEASE);
   }
 
   read_set_.clear();
@@ -298,14 +284,13 @@ TxExecutor::writePhase()
   ++tres_->local_commit_counts_;
 }
 
-void 
-TxExecutor::lockWriteSet()
-{
+void TxExecutor::lockWriteSet() {
   TsWord expected, desired;
 
   sort(write_set_.begin(), write_set_.end());
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    expected.obj_ = __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+    expected.obj_ =
+        __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
     for (;;) {
       /* no-wait locking in validation */
       if (expected.lock) {
@@ -316,11 +301,15 @@ TxExecutor::lockWriteSet()
           return;
         }
 #endif
-        expected.obj_ = __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+        expected.obj_ =
+            __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
       } else {
         desired = expected;
         desired.lock = 1;
-        if (__atomic_compare_exchange_n(&((*itr).rcdptr_->tsw_.obj_), &(expected.obj_), desired.obj_, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) break;
+        if (__atomic_compare_exchange_n(&((*itr).rcdptr_->tsw_.obj_),
+                                        &(expected.obj_), desired.obj_, false,
+                                        __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+          break;
       }
     }
 
@@ -329,22 +318,20 @@ TxExecutor::lockWriteSet()
   }
 }
 
-void 
-TxExecutor::unlockCLL()
-{
+void TxExecutor::unlockCLL() {
   TsWord expected, desired;
 
   for (auto itr = cll_.begin(); itr != cll_.end(); ++itr) {
-    expected.obj_ = __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+    expected.obj_ =
+        __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
     desired.obj_ = expected.obj_;
     desired.lock = 0;
-    __atomic_store_n(&((*itr).rcdptr_->tsw_.obj_), desired.obj_, __ATOMIC_RELEASE);
+    __atomic_store_n(&((*itr).rcdptr_->tsw_.obj_), desired.obj_,
+                     __ATOMIC_RELEASE);
   }
 }
 
-void
-TxExecutor::dispWS()
-{
+void TxExecutor::dispWS() {
   cout << "th " << this->thid_ << ": write set: ";
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {

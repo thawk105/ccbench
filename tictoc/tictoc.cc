@@ -1,11 +1,11 @@
 
 #include <ctype.h>
 #include <pthread.h>
-#include <string.h>
 #include <sched.h>
+#include <string.h>
 #include <sys/syscall.h>
-#include <sys/types.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -24,18 +24,22 @@
 #include "include/transaction.hh"
 
 extern void chkArg(const int argc, char *argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
 extern void displayDB();
 extern void displayPRO();
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus &rnd, FastZipf &zipf, size_t tuple_num, size_t max_ope, size_t rratio, bool rmw, bool ycsb);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
-extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
+extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
+                          bool partition, size_t thread_id);
+extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+                                            const size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running,
+                                    const size_t thnm);
 extern void sleepMs(size_t ms);
 
-static void *
-worker(void *arg)
-{
+static void *worker(void *arg) {
   Result &res = *(Result *)(arg);
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -47,18 +51,20 @@ worker(void *arg)
 #endif
 
   setThreadAffinity(res.thid_);
-  //printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-  //printf("sysconf(_SC_NPROCESSORS_CONF) %d\n", sysconf(_SC_NPROCESSORS_CONF));
+  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
+  // sysconf(_SC_NPROCESSORS_CONF));
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  
+
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW, YCSB);
-RETRY:
-    if (res.Finish_.load(std::memory_order_acquire))
-      return nullptr;
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, false, res.thid_);
+  RETRY:
+    if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
     trans.tbegin();
 
-    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end(); ++itr) {
+    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
+         ++itr) {
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
@@ -75,8 +81,8 @@ RETRY:
         goto RETRY;
       }
     }
-    
-    //Validation phase
+
+    // Validation phase
     bool varesult = trans.validationPhase();
     if (varesult) {
       trans.writePhase();
@@ -89,12 +95,10 @@ RETRY:
   return nullptr;
 }
 
-int 
-main(int argc, char *argv[]) try
-{
+int main(int argc, char *argv[]) try {
   chkArg(argc, argv);
   makeDB();
-  
+
   Result rsob[THREAD_NUM];
   pthread_t thread[THREAD_NUM];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
@@ -121,4 +125,3 @@ main(int argc, char *argv[]) try
 } catch (bad_alloc) {
   ERR;
 }
-

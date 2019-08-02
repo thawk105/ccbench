@@ -31,7 +31,8 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern void makeDB();
 extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                           FastZipf &zipf, size_t tuple_num, size_t max_ope,
-                          size_t rratio, bool rmw, bool ycsb);
+                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
+                          bool partition, size_t thread_id);
 extern void naiveGarbageCollection();
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
                                             size_t thnm);
@@ -85,8 +86,8 @@ static void *worker(void *arg) {
   ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   trans.gcstart_ = rdtscp();
   for (;;) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,
-                  YCSB);
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, false, res.thid_);
   RETRY:
 
     if (Result::Finish_.load(std::memory_order_acquire)) {

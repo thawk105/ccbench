@@ -6,11 +6,11 @@
 #include <set>
 #include <vector>
 
-#include "../../include/string.hh"
-#include "../../include/util.hh"
 #include "../../include/inline.hh"
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
+#include "../../include/string.hh"
+#include "../../include/util.hh"
 #include "common.hh"
 #include "tictoc_op_element.hh"
 #include "tuple.hh"
@@ -23,10 +23,10 @@ enum class TransactionStatus : uint8_t {
 
 using namespace std;
 
-extern void write_val_Generator(char *write_val_, size_t val_size, size_t thid);
+extern void write_val_Generator(char* write_val_, size_t val_size, size_t thid);
 
 class TxExecutor {
-public:
+ public:
   int thid_;
   uint64_t commit_ts_;
   uint64_t appro_commit_ts_;
@@ -37,8 +37,8 @@ public:
   TransactionStatus status_;
   vector<SetElement<Tuple>> read_set_;
   vector<SetElement<Tuple>> write_set_;
-  vector<OpElement<Tuple>> cll_; // current lock list;
-  //use for lockWriteSet() to record locks;
+  vector<OpElement<Tuple>> cll_;  // current lock list;
+  // use for lockWriteSet() to record locks;
 
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
@@ -61,11 +61,9 @@ public:
   void writePhase();
   void lockWriteSet();
   void unlockCLL();
-  SetElement<Tuple> *searchWriteSet(uint64_t key);
-  SetElement<Tuple> *searchReadSet(uint64_t key);
+  SetElement<Tuple>* searchWriteSet(uint64_t key);
+  SetElement<Tuple>* searchReadSet(uint64_t key);
   void dispWS();
 
-  Tuple* get_tuple(Tuple *table, uint64_t key) {
-    return &table[key];
-  }
+  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
 };

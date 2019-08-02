@@ -93,14 +93,6 @@ char *TxExecutor::tread(uint64_t key) {
     }
   }
 
-  // else
-  uint64_t trts;
-  if ((*this->pro_set_.begin()).ronly_) {
-    trts = this->rts_;
-  } else
-    trts = this->wts_.ts_;
-    //-----
-
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -111,7 +103,18 @@ char *TxExecutor::tread(uint64_t key) {
 #endif
 
   // Search version
-  Version *version = tuple->ldAcqLatest();
+  Version *version;
+#if SINGLE_EXEC
+  version = &tuple->inline_version_;
+#else
+  uint64_t trts;
+  if ((*this->pro_set_.begin()).ronly_) {
+    trts = this->rts_;
+  } else {
+    trts = this->wts_.ts_;
+  }
+
+  version = tuple->ldAcqLatest();
   if (version->ldAcqStatus() == VersionStatus::pending) {
     if (version->ldAcqWts() < trts)
       while (version->ldAcqStatus() == VersionStatus::pending)
@@ -121,6 +124,7 @@ char *TxExecutor::tread(uint64_t key) {
          version->ldAcqStatus() != VersionStatus::committed) {
     version = version->ldAcqNext();
   }
+#endif
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
@@ -161,6 +165,12 @@ void TxExecutor::twrite(uint64_t key) {
   Tuple *tuple = get_tuple(Table, key);
 #endif
 
+#if SINGLE_EXEC
+  write_set_.emplace_back(key, tuple, &tuple->inline_version_);
+#if ADD_ANALYSIS
+  cres_->local_write_latency_ += rdtscp() - start;
+#endif
+#else
   Version *version = tuple->ldAcqLatest();
 
   // Search version (for early abort check)
@@ -209,10 +219,13 @@ void TxExecutor::twrite(uint64_t key) {
 #if ADD_ANALYSIS
   cres_->local_write_latency_ += rdtscp() - start;
 #endif
+#endif
   return;
 }
 
 bool TxExecutor::validation() {
+#if SINGLE_EXEC
+#else
   if (continuing_commit_ < 5) {
     // Two optimizations can add unnecessary overhead under low contention
     // because they do not improve the performance of uncontended workloads.
@@ -271,6 +284,7 @@ bool TxExecutor::validation() {
     }
     (*itr).finish_version_install_ = true;
   }
+#endif
 
   // Read timestamp update
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
@@ -315,6 +329,8 @@ bool TxExecutor::validation() {
     }
   }
 
+#if SINGLE_EXEC
+#else
   // (b) every currently visible version v of the records in the write set
   // satisfies (v.rts) <= (tx.ts)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
@@ -323,6 +339,7 @@ bool TxExecutor::validation() {
       version = version->ldAcqNext();
     if (version->ldAcqRts() > this->wts_.ts_) return false;
   }
+#endif
 
   return true;
 }
@@ -410,11 +427,18 @@ void TxExecutor::pwal() {
 inline void TxExecutor::cpv()  // commit pending versions
 {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+#if SINGLE_EXEC
+    memcpy((*itr).newObject_->val_, write_val_, VAL_SIZE);
+    (*itr).newObject_->status_.store(VersionStatus::committed,
+                                     std::memory_order_release);
+    (*itr).newObject_->set(0, this->wts_.ts_);
+#else
     gcq_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).newObject_,
                              (*itr).newObject_->wts_));
     memcpy((*itr).newObject_->val_, write_val_, VAL_SIZE);
     (*itr).newObject_->status_.store(VersionStatus::committed,
                                      std::memory_order_release);
+#endif
   }
 
   // std::cout << gcq_.size() << std::endl;
