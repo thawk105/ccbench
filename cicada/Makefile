@@ -14,10 +14,11 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
-				 -DMASSTREE_USE=1 \
 				 -DADD_ANALYSIS=1 \
-				 -DSINGLE_EXEC=0 \
 				 -DPARTITION_TABLE=0 \
+				 -DSINGLE_EXEC=0 \
+				 -DUSE_BACKOFF=0 \
+				 -DMASSTREE_USE=1 \
 
 # SINGLE_EXEC option can be executed only non conflict workload.
 # スレッドごとにアクセスするブロックをパーティションで分割し，同一キーに対しては

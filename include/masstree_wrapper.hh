@@ -12,8 +12,9 @@
 
 // フォーマッターを利用すると，辞書順のために下記2行が入れ替わる．
 // しかし，依存関係があるため，config -> compiler の順にしなければ
-// 大量のエラーが出てしまう．
+// 大量のエラーが出てしまう． そのため，改行を防ぐため空行を空けている
 #include "../masstree/config.h"
+
 #include "../masstree/compiler.hh"
 
 #include "../masstree/kvthread.hh"

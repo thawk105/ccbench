@@ -13,6 +13,7 @@
 #include <thread>
 
 #define GLOBAL_VALUE_DEFINE
+#include "../include/backoff.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/int64byte.hh"
@@ -46,10 +47,10 @@ static void *manager_worker(void *arg) {
   uint64_t initial_wts;
   makeDB(&initial_wts);
   MinWts.store(initial_wts + 2, memory_order_release);
-  Result &res = *(Result *)(arg);
+  Result *resroot = (Result *)(arg);
 
 #ifdef Linux
-  setThreadAffinity(res.thid_);
+  setThreadAffinity(resroot->thid_);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 #endif  // Linux
 
@@ -58,8 +59,12 @@ static void *manager_worker(void *arg) {
   }
 
   // leader work
+#if USE_BACKOFF
+  Backoff backoff_ob;
+  backoff_ob.init(CLOCKS_PER_US);
+#endif
   for (;;) {
-    if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
+    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
 
     bool gc_update = true;
     for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -104,6 +109,15 @@ static void *manager_worker(void *arg) {
         __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
       }
     }
+
+#if USE_BACKOFF
+    if (backoff_ob.check_update_backoff()) {
+      uint64_t sum_committed_txs(0);
+      for (unsigned int i = 1; i < THREAD_NUM; ++i)
+        sum_committed_txs += resroot[i].local_commit_counts_;
+      backoff_ob.update_backoff(sum_committed_txs);
+    }
+#endif
   }
 
   return nullptr;
@@ -157,6 +171,18 @@ static void *worker(void *arg) {
 #endif
 
   RETRY:
+#if USE_BACKOFF
+    if (trans.status_ == TransactionStatus::abort) {
+#if ADD_ANALYSIS
+      uint64_t start = rdtscp();
+#endif
+      Backoff::backoff(CLOCKS_PER_US);
+#if ADD_ANALYSIS
+      res.local_backoff_latency_ += rdtscp() - start;
+#endif
+    }
+#endif
+
     if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
 
     trans.tbegin();
@@ -219,9 +245,9 @@ int main(int argc, char *argv[]) try {
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     int ret;
     rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
+    //rsob[i].set(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
     if (i == 0)
-      ret =
-          pthread_create(&thread[i], NULL, manager_worker, (void *)(&rsob[i]));
+      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(rsob));
     else
       ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
     if (ret) ERR;

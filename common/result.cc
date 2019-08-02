@@ -54,6 +54,18 @@ void Result::displayAbortByValidationRate() {
   }
 }
 
+void Result::displayBackoffLatencyRate() {
+  if (total_backoff_latency_) {
+    long double rate;
+    rate =
+        (long double)total_backoff_latency_ /
+        ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
+        thnum_;
+    cout << fixed << setprecision(4) << "backoff_latency_rate:\t" << rate
+         << endl;
+  }
+}
+
 void Result::displayExtraReads() {
   if (total_extra_reads_)
     cout << "extra_reads:\t" << total_extra_reads_ << endl;
@@ -206,6 +218,10 @@ void Result::addLocalAbortByValidation(const uint64_t count) {
   total_abort_by_validation_ += count;
 }
 
+void Result::addLocalBackoffLatency(const uint64_t count) {
+  total_backoff_latency_ += count;
+}
+
 void Result::addLocalExtraReads(const uint64_t count) {
   total_extra_reads_ += count;
 }
@@ -277,6 +293,7 @@ void Result::displayAllResult() {
 #if ADD_ANALYSIS
   displayAbortByOperationRate();
   displayAbortByValidationRate();
+  displayBackoffLatencyRate();
   displayExtraReads();
   displayGCCounts();
   displayGCLatencyRate();
@@ -308,6 +325,7 @@ void Result::addLocalAllResult(const Result &other) {
 #if ADD_ANALYSIS
   addLocalAbortByOperation(other.local_abort_by_operation_);
   addLocalAbortByValidation(other.local_abort_by_validation_);
+  addLocalBackoffLatency(other.local_backoff_latency_);
   addLocalExtraReads(other.local_extra_reads_);
   addLocalGCCounts(other.local_gc_counts_);
   addLocalGCLatency(other.local_gc_latency_);

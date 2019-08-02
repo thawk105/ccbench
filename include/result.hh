@@ -22,11 +22,22 @@ class Result {
         thid_(thid),
         thnum_(thnum) {}
 
+  void set(const size_t clocks_per_us, const size_t extime, const size_t thid,
+           const size_t thnum) {
+    clocks_per_us_ = clocks_per_us;
+    extime_ = extime;
+    thid_ = thid;
+    thnum_ = thnum;
+    local_commit_counts_ = 0;
+  }
+
   uint64_t local_abort_counts_ = 0;
+  //std::atomic<uint64_t> local_commit_counts_;
   uint64_t local_commit_counts_ = 0;
 #if ADD_ANALYSIS
   uint64_t local_abort_by_operation_ = 0;
   uint64_t local_abort_by_validation_ = 0;
+  uint64_t local_backoff_latency_ = 0;
   uint64_t local_extra_reads_ = 0;
   uint64_t local_gc_counts_ = 0;
   uint64_t local_gc_latency_ = 0;
@@ -51,6 +62,7 @@ class Result {
 #if ADD_ANALYSIS
   uint64_t total_abort_by_operation_ = 0;
   uint64_t total_abort_by_validation_ = 0;
+  uint64_t total_backoff_latency_ = 0;
   uint64_t total_extra_reads_ = 0;
   uint64_t total_gc_counts_ = 0;
   uint64_t total_gc_latency_ = 0;
@@ -80,6 +92,7 @@ class Result {
 #if ADD_ANALYSIS
   void displayAbortByOperationRate();   // abort by operation rate;
   void displayAbortByValidationRate();  // abort by validation rate;
+  void displayBackoffLatencyRate();
   void displayExtraReads();
   void displayGCCounts();
   void displayGCLatencyRate();
@@ -105,6 +118,7 @@ class Result {
 #if ADD_ANALYSIS
   void addLocalAbortByOperation(const uint64_t count);
   void addLocalAbortByValidation(const uint64_t count);
+  void addLocalBackoffLatency(const uint64_t count);
   void addLocalExtraReads(const uint64_t count);
   void addLocalGCCounts(const uint64_t count);
   void addLocalGCLatency(const uint64_t count);
