@@ -37,16 +37,19 @@ void TxExecutor::tbegin() {
   TransactionTable *newElement, *tmt;
 
   tmt = loadAcquire(TMT[thid_]);
-  if (this->status_ == TransactionStatus::aborted) {
-    this->txid_ = tmt->lastcstamp_.load(memory_order_acquire);
-    newElement = new TransactionTable(
-        0, 0, UINT32_MAX, tmt->lastcstamp_.load(std::memory_order_acquire),
-        TransactionStatus::inFlight);
+  uint32_t lastcstamp;
+  if (this->status_ == TransactionStatus::aborted)
+    lastcstamp = this->txid_ = tmt->lastcstamp_.load(std::memory_order_acquire);
+  else
+    lastcstamp = this->txid_ = cstamp_;
+
+  if (gcobject_.reuse_TMT_element_from_gc_.empty()) {
+    newElement = new TransactionTable(0, 0, UINT32_MAX, lastcstamp,
+                                      TransactionStatus::inFlight);
   } else {
-    this->txid_ = this->cstamp_;
-    newElement = new TransactionTable(
-        0, 0, UINT32_MAX, tmt->cstamp_.load(std::memory_order_acquire),
-        TransactionStatus::inFlight);
+    newElement = gcobject_.reuse_TMT_element_from_gc_.back();
+    gcobject_.reuse_TMT_element_from_gc_.pop_back();
+    newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inFlight);
   }
 
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -62,7 +65,7 @@ void TxExecutor::tbegin() {
   TransactionTable *expected, *desired;
   tmt = loadAcquire(TMT[thid_]);
   expected = tmt;
-  gcobject_.gcq_for_TMT_.push(expected);
+  gcobject_.gcq_for_TMT_.emplace_back(expected);
   for (;;) {
     desired = newElement;
     if (compareExchange(TMT[thid_], expected, desired)) break;
@@ -151,8 +154,7 @@ char *TxExecutor::ssn_tread(unsigned int key) {
 
 void TxExecutor::ssn_twrite(unsigned int key) {
 #if ADD_ANALYSIS
-  uint64_t start;
-  start = rdtscp();
+  uint64_t start = rdtscp();
 #endif
 
   // if it already wrote the key object once.
@@ -174,7 +176,13 @@ void TxExecutor::ssn_twrite(unsigned int key) {
   // later than its begin timestamp.
 
   Version *expected, *desired;
-  desired = new Version();
+  if (gcobject_.reuse_version_from_gc_.empty()) {
+    desired = new Version();
+  } else {
+    desired = gcobject_.reuse_version_from_gc_.back();
+    gcobject_.reuse_version_from_gc_.pop_back();
+    desired->init();
+  }
   uint64_t tmptid = this->thid_;
   tmptid = tmptid << 1;
   tmptid |= 1;
@@ -202,7 +210,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       this->status_ = TransactionStatus::aborted;
       TransactionTable *tmt = loadAcquire(TMT[thid_]);
       tmt->status_.store(TransactionStatus::aborted, memory_order_release);
-      delete desired;
+      gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
       eres_->local_write_latency_ += rdtscp() - start;
 #endif
@@ -226,7 +234,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       this->status_ = TransactionStatus::aborted;
       TransactionTable *tmt = loadAcquire(TMT[thid_]);
       tmt->status_.store(TransactionStatus::aborted, memory_order_release);
-      delete desired;
+      gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
       eres_->local_write_latency_ += rdtscp() - start;
 #endif
@@ -493,7 +501,7 @@ void TxExecutor::ssn_parallel_commit() {
     (*itr).ver_->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     memcpy((*itr).ver_->val_, writeVal, VAL_SIZE);
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
-    gcobject_.gcq_for_version_.push(
+    gcobject_.gcq_for_version_.emplace_back(
         GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, verCstamp));
   }
 
@@ -511,7 +519,7 @@ void TxExecutor::abort() {
     (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(UINT32_MAX &
                                                              ~(TIDFLAG));
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
-    gcobject_.gcq_for_version_.push(GCElement(
+    gcobject_.gcq_for_version_.emplace_back(GCElement(
         (*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_ << TIDFLAG));
   }
   write_set_.clear();

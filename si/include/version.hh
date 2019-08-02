@@ -91,14 +91,17 @@ class Version {
   alignas(CACHE_LINE_SIZE) Version *prev_;  // Pointer to overwritten version
   Version *committed_prev_;  // Pointer to the next committed version, to reduce
                              // serach cost.
-
   std::atomic<uint32_t> cstamp_;  // Version creation stamp, c(V)
   std::atomic<VersionStatus> status_;
-  // size to here is 21 bytes.
-
   char val_[VAL_SIZE] = {};
 
   Version() {
     status_.store(VersionStatus::inFlight, std::memory_order_release);
+  }
+  void init() {
+    prev_ = nullptr;
+    committed_prev_ = nullptr;
+    cstamp_.store(0, std::memory_order_relaxed);
+    status_.store(VersionStatus::inFlight, std::memory_order_relaxed);
   }
 };

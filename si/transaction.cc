@@ -34,13 +34,18 @@ void TxExecutor::tbegin() {
   TransactionTable *newElement, *tmt;
 
   tmt = loadAcquire(TMT[thid_]);
-  if (this->status_ == TransactionStatus::committed) {
-    this->txid_ = cstamp_;
-    newElement = new TransactionTable(0, cstamp_);
+  uint32_t lastcstamp;
+  if (this->status_ == TransactionStatus::aborted)
+    lastcstamp = this->txid_ = tmt->lastcstamp_.load(std::memory_order_acquire);
+  else
+    lastcstamp = this->txid_ = cstamp_;
+
+  if (gcobject_.reuse_TMT_element_from_gc_.empty()) {
+    newElement = new TransactionTable(0, lastcstamp);
   } else {
-    this->txid_ = TMT[thid_]->lastcstamp_.load(memory_order_acquire);
-    newElement = new TransactionTable(
-        0, tmt->lastcstamp_.load(std::memory_order_acquire));
+    newElement = gcobject_.reuse_TMT_element_from_gc_.back();
+    gcobject_.reuse_TMT_element_from_gc_.pop_back();
+    newElement->set(0, lastcstamp);
   }
 
   for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -56,7 +61,7 @@ void TxExecutor::tbegin() {
   TransactionTable *expected, *desired;
   tmt = loadAcquire(TMT[thid_]);
   expected = tmt;
-  gcobject_.gcq_for_TMT_.push_back(expected);
+  gcobject_.gcq_for_TMT_.emplace_back(expected);
 
   for (;;) {
     desired = newElement;
@@ -151,7 +156,12 @@ void TxExecutor::twrite(uint64_t key) {
   // later than its begin timestamp.
 
   Version *expected, *desired;
-  desired = new Version();
+  if (gcobject_.reuse_version_from_gc_.empty()) {
+    desired = new Version();
+  } else {
+    desired = gcobject_.reuse_version_from_gc_.back();
+    gcobject_.reuse_version_from_gc_.pop_back();
+  }
   desired->cstamp_.store(
       this->txid_,
       memory_order_relaxed);  // storing before CAS because it will be accessed
@@ -179,7 +189,7 @@ void TxExecutor::twrite(uint64_t key) {
         // if (1) { // no-wait で abort させても性能劣化はほぼ起きていない．
         //性能が向上されるケースもある．
         this->status_ = TransactionStatus::aborted;
-        delete desired;
+        gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
         sres_->local_write_latency_ += rdtscp() - start;
 #endif
@@ -204,7 +214,7 @@ void TxExecutor::twrite(uint64_t key) {
       // Writers must abort if they would overwirte a version created after
       // their snapshot.
       this->status_ = TransactionStatus::aborted;
-      delete desired;
+      gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
       sres_->local_write_latency_ += rdtscp() - start;
 #endif
@@ -232,7 +242,7 @@ void TxExecutor::commit() {
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
     memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
-    gcobject_.gcq_for_versions_.push_back(
+    gcobject_.gcq_for_versions_.emplace_back(
         GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, cstamp_));
   }
 
@@ -252,7 +262,7 @@ void TxExecutor::abort() {
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
-    gcobject_.gcq_for_versions_.push_back(
+    gcobject_.gcq_for_versions_.emplace_back(
         GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_));
   }
 

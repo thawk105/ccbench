@@ -11,6 +11,7 @@ VAL_SIZE=4
 CC = g++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
+				 -DTBB_DO_THREADING_TOOLS=1 \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
@@ -22,10 +23,11 @@ ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
 endif
 ifeq ($(shell hostname), dbs11)
-LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release
+LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_debug
 endif
 
-LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
+LIBS = -lpthread -ltbb -ltbbmalloc -ltbbmalloc_proxy 
+#LIBS = -lpthread -ltbb_debug -ltbbmalloc_debug -ltbbmalloc_proxy_debug
 ifneq ($(shell hostname), chris41.omni.hpcc.jp)
 ifneq ($(shell hostname), dbs11)
 LIBS = -lpthread

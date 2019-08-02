@@ -65,7 +65,6 @@ static void *manager_worker(void *arg) {
 static void *worker(void *arg) {
   Result &res = *(Result *)(arg);
   TxExecutor trans(res.thid_, MAX_OPE, (Result *)arg);
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
@@ -83,6 +82,7 @@ static void *worker(void *arg) {
 
   // start work (transaction)
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   trans.gcstart_ = rdtscp();
   for (;;) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,

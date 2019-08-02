@@ -29,7 +29,6 @@ class Version {
   atomic<uint64_t> wts_;
   atomic<Version *> next_;
   atomic<VersionStatus> status_;  // commit record
-  // version size to here is 25 bytes.
 
   char val_[VAL_SIZE];
 
@@ -45,8 +44,8 @@ class Version {
   }
 
   void set(uint64_t rts, uint64_t wts) {
-    rts_ = rts;
-    wts_ = wts;
+    rts_.store(rts, memory_order_relaxed);
+    wts_.store(wts, memory_order_relaxed);
   }
 
   void set(uint64_t rts, uint64_t wts, Version *next, VersionStatus status) {

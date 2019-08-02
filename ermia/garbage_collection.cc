@@ -64,7 +64,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
                                                  std::memory_order_acq_rel,
                                                  std::memory_order_acquire)) {
       // fail acquiring the lock
-      gcq_for_version_.pop();
+      gcq_for_version_.pop_front();
       continue;
     }
 
@@ -74,7 +74,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     if (gcq_for_version_.front().cstamp_ <= tuple->min_cstamp_) {
       // releases the lock
       tuple->g_clock_.store(0, std::memory_order_release);
-      gcq_for_version_.pop();
+      gcq_for_version_.pop_front();
       continue;
     }
     // this pointer may be dangling.
@@ -82,13 +82,13 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     Version *delTarget = gcq_for_version_.front().ver_->committed_prev_;
     if (delTarget == nullptr) {
       tuple->g_clock_.store(0, std::memory_order_release);
-      gcq_for_version_.pop();
+      gcq_for_version_.pop_front();
       continue;
     }
     delTarget = delTarget->prev_;
     if (delTarget == nullptr) {
       tuple->g_clock_.store(0, std::memory_order_release);
-      gcq_for_version_.pop();
+      gcq_for_version_.pop_front();
       continue;
     }
 
@@ -102,7 +102,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     while (delTarget != nullptr) {
       // next pointer escape
       Version *tmp = delTarget->prev_;
-      delete delTarget;
+      reuse_version_from_gc_.emplace_back(delTarget);
       delTarget = tmp;
 #if ADD_ANALYSIS
       ++eres_->local_gc_version_counts_;
@@ -111,7 +111,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
 
     // releases the lock
     tuple->g_clock_.store(0, std::memory_order_release);
-    gcq_for_version_.pop();
+    gcq_for_version_.pop_front();
   }
 
   return;
@@ -124,8 +124,8 @@ void GarbageCollection::gcTMTelement([[maybe_unused]] Result *eres_) {
   for (;;) {
     TransactionTable *tmt = gcq_for_TMT_.front();
     if (tmt->txid_ < threshold) {
-      gcq_for_TMT_.pop();
-      delete tmt;
+      gcq_for_TMT_.pop_front();
+      reuse_TMT_element_from_gc_.emplace_back(tmt);
 #if ADD_ANALYSIS
       ++eres_->local_gc_TMT_elements_counts_;
 #endif

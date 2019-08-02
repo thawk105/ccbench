@@ -36,6 +36,8 @@ class TxExecutor {
   std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>>
       write_set_;
   std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq_;
+  std::deque<Version*, tbb::scalable_allocator<Version*>>
+      reuse_version_from_gc_;
   std::vector<Procedure> pro_set_;
   Result* cres_ = nullptr;
 

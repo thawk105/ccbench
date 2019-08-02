@@ -10,6 +10,8 @@
 #include "tuple.hh"
 #include "version.hh"
 
+#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
+
 // forward declaration
 class TransactionTable;
 
@@ -21,8 +23,14 @@ class GarbageCollection {
       GC_threshold_;  // share for all object (meaning all thread).
 
  public:
-  std::queue<TransactionTable*> gcq_for_TMT_;
-  std::queue<GCElement<Tuple>> gcq_for_version_;
+  std::deque<TransactionTable*, tbb::scalable_allocator<TransactionTable*>>
+      gcq_for_TMT_;
+  std::deque<TransactionTable*, tbb::scalable_allocator<TransactionTable*>>
+      reuse_TMT_element_from_gc_;
+  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>>
+      gcq_for_version_;
+  std::deque<Version*, tbb::scalable_allocator<Version*>>
+      reuse_version_from_gc_;
   uint8_t thid_;
 
   GarbageCollection() {}

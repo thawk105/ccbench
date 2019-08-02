@@ -102,7 +102,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *sres_) {
     while (delTarget != nullptr) {
       // next pointer escape
       Version *tmp = delTarget->prev_;
-      delete delTarget;
+      reuse_version_from_gc_.emplace_back(delTarget);
       delTarget = tmp;
 #if ADD_ANALYSIS
       ++sres_->local_gc_version_counts_;
@@ -129,7 +129,7 @@ void GarbageCollection::gcTMTElements([[maybe_unused]] Result *sres_) {
     }
     if (tmt->txid_ < threshold) {
       gcq_for_TMT_.pop_front();
-      delete tmt;
+      reuse_TMT_element_from_gc_.emplace_back(tmt);
 #if ADD_ANALYSIS
       ++sres_->local_gc_TMT_elements_counts_;
 #endif

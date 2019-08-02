@@ -105,4 +105,10 @@ class Version {
     status_.store(VersionStatus::inFlight, std::memory_order_release);
     readers_.store(0, std::memory_order_release);
   }
+
+  void init() {
+    psstamp_.init(0, UINT32_MAX & ~(TIDFLAG));
+    status_.store(VersionStatus::inFlight, std::memory_order_release);
+    readers_.store(0, std::memory_order_release);
+  }
 };

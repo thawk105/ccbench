@@ -77,13 +77,13 @@ static void *worker(void *arg) {
 
 #ifdef Linux
   setThreadAffinity(res.thid_);
-  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
+  // printf("Thread #%zu: on CPU %d\n", res.thid_, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n",
   // sysconf(_SC_NPROCESSORS_CONF));
 #endif  // Linux
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
 
+  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
   trans.gcstart_ = rdtscp();
   for (;;) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, RRATIO, RMW,

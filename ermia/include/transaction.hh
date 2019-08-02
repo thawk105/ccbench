@@ -117,10 +117,19 @@ class TransactionTable {
 
   TransactionTable(uint32_t txid, uint32_t cstamp, uint32_t sstamp,
                    uint32_t lastcstamp, TransactionStatus status) {
-    this->txid_ = txid;
-    this->cstamp_ = cstamp;
-    this->sstamp_ = sstamp;
-    this->lastcstamp_ = lastcstamp;
-    this->status_ = status;
+    this->txid_.store(txid, memory_order_relaxed);
+    this->cstamp_.store(cstamp, memory_order_relaxed);
+    this->sstamp_.store(sstamp, memory_order_relaxed);
+    this->lastcstamp_.store(lastcstamp, memory_order_relaxed);
+    this->status_.store(status, memory_order_relaxed);
+  }
+
+  void set(uint32_t txid, uint32_t cstamp, uint32_t sstamp, uint32_t lastcstamp,
+           TransactionStatus status) {
+    this->txid_.store(txid, memory_order_relaxed);
+    this->cstamp_.store(cstamp, memory_order_relaxed);
+    this->sstamp_.store(sstamp, memory_order_relaxed);
+    this->lastcstamp_.store(lastcstamp, memory_order_relaxed);
+    this->status_.store(status, memory_order_relaxed);
   }
 };

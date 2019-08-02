@@ -196,7 +196,13 @@ void TxExecutor::twrite(uint64_t key) {
     write_set_.emplace_back(key, tuple, &tuple->inline_version_);
   } else {
     Version *newObject;
-    newObject = new Version(0, this->wts_.ts_);
+    if (reuse_version_from_gc_.empty()) {
+      newObject = new Version(0, this->wts_.ts_);
+    } else {
+      newObject = reuse_version_from_gc_.back();
+      reuse_version_from_gc_.pop_back();
+      newObject->set(0, this->wts_.ts_);
+    }
     write_set_.emplace_back(key, tuple, newObject);
   }
 
@@ -281,7 +287,7 @@ bool TxExecutor::validation() {
 
   // version consistency check
   //(a) every previously visible version v of the records in the read set is the
-  //currently visible version to the transaction.
+  // currently visible version to the transaction.
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Version *version, *init;
     for (;;) {
@@ -437,7 +443,7 @@ void TxExecutor::wSetClean() {
       (*itr).newObject_->status_.store(VersionStatus::aborted,
                                        std::memory_order_release);
     else if ((*itr).newObject_ != &(*itr).rcdptr_->inline_version_)
-      delete (*itr).newObject_;
+      reuse_version_from_gc_.emplace_back((*itr).newObject_);
     else
       (*itr).rcdptr_->returnInlineVersionRight();
   }
@@ -556,7 +562,7 @@ void TxExecutor::mainte() {
         // nextポインタ退避
         Version *tmp = delTarget->next_.load(std::memory_order_acquire);
         if (delTarget != &tuple->inline_version_)
-          delete delTarget;
+          reuse_version_from_gc_.emplace_back(delTarget);
         else
           gcq_.front().rcdptr_->returnInlineVersionRight();
 #if ADD_ANALYSIS
