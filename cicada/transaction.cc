@@ -487,6 +487,20 @@ void TxExecutor::earlyAbort() {
   continuing_commit_ = 0;
   this->status_ = TransactionStatus::abort;
   ++cres_->local_abort_counts_;
+
+#if USE_BACKOFF
+
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  cres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+
+#endif
 }
 
 void TxExecutor::abort() {
@@ -506,6 +520,20 @@ void TxExecutor::abort() {
   this->wts_.set_clockBoost(CLOCKS_PER_US);
   continuing_commit_ = 0;
   ++cres_->local_abort_counts_;
+
+#if USE_BACKOFF
+
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  cres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+
+#endif
 }
 
 void TxExecutor::displayWset() {

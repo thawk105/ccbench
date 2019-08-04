@@ -171,22 +171,9 @@ static void *worker(void *arg) {
 #endif
 
   RETRY:
-#if USE_BACKOFF
-    if (trans.status_ == TransactionStatus::abort) {
-#if ADD_ANALYSIS
-      uint64_t start = rdtscp();
-#endif
-      Backoff::backoff(CLOCKS_PER_US);
-#if ADD_ANALYSIS
-      res.local_backoff_latency_ += rdtscp() - start;
-#endif
-    }
-#endif
-
     if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
 
     trans.tbegin();
-    // Read phase
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
       if ((*itr).ope_ == Ope::READ) {
