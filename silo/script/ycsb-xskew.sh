@@ -1,11 +1,11 @@
 #ycsb-xrs.sh(silo)
-tuple=1000
+tuple=100000000
 maxope=10
 rratio=50
 rmw=off
 skew=0
 ycsb=on
-cpumhz=2400
+cpumhz=2100
 epochtime=40
 extime=3
 epoch=3
@@ -20,7 +20,7 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_silo_ycsbA_tuple1k_skew0-099.dat
+result=result_silo_ycsbA_tuple100m_skew0-099.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
@@ -56,7 +56,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`

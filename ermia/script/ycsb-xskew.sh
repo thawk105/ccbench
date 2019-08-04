@@ -1,11 +1,11 @@
 #ycsb-xrs.sh(ermia)
-tuple=1000
+tuple=100000000
 maxope=10
 rratio=50
 rmw=off
 skew=0
 ycsb=on
-cpu_mhz=2400
+cpu_mhz=2100
 gci=10
 extime=3
 epoch=3
@@ -21,7 +21,7 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_ermia_ycsbA_tuple1k_skew0-099.dat
+result=result_ermia_ycsbA_tuple100m_skew0-099.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
@@ -58,7 +58,7 @@ do
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
-    tmpAR=`grep abortRate ./exp.txt | awk '{print $2}'`
+    tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
