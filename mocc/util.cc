@@ -21,7 +21,10 @@
 #include "../include/masstree_wrapper.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
+#include "../include/tsc.hh"
 #include "../include/zipf.hh"
+#include "include/atomic_tool.hh"
 #include "include/common.hh"
 #include "include/tuple.hh"
 
@@ -211,4 +214,41 @@ void makeDB() {
                      (i + 1) * (TUPLE_NUM / maxthread) - 1);
   }
   for (auto &th : thv) th.join();
+}
+
+bool chkEpochLoaded() {
+  uint64_t_64byte nowepo = loadAcquireGE();
+  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    if (__atomic_load_n(&(ThLocalEpoch[i].obj_), __ATOMIC_ACQUIRE) !=
+        nowepo.obj_)
+      return false;
+  }
+
+  return true;
+}
+
+void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
+                [[maybe_unused]] Result &res) {
+  epoch_timer_stop = rdtscp();
+  // chkEpochLoaded は最新のグローバルエポックを
+  //全てのワーカースレッドが読み込んだか確認する．
+  if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
+                 EPOCH_TIME * CLOCKS_PER_US * 1000) &&
+      chkEpochLoaded()) {
+    atomicAddGE();
+    epoch_timer_start = epoch_timer_stop;
+
+#if TEMPERATURE_RESET_OPT
+#else
+    size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
+    uint64_t nowepo = (loadAcquireGE()).obj;
+    for (uint64_t i = 0; i < epotemp_length; ++i) {
+      Epotemp epotemp(0, nowepo);
+      storeRelease(Epotemp_ary[i].obj_, epotemp.obj_);
+    }
+#if ADD_ANALYSIS
+    res.local_temperature_resets += epotemp_length;
+#endif
+#endif
+  }
 }

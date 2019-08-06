@@ -76,8 +76,8 @@ void chkArg(const int argc, const char *argv[]) {
   GC_INTER_US = atoi(argv[9]);
   EXTIME = atoi(argv[10]);
 
-  if (THREAD_NUM < 2) {
-    cout << "1 thread is leader thread. \nthread number 1 is no worker thread, "
+  if (THREAD_NUM < 1) {
+    cout << "1 thread is minimum."
             "so exit."
          << endl;
     ERR;
@@ -187,7 +187,7 @@ void makeDB() {
   for (auto &th : thv) th.join();
 }
 
-void naiveGarbageCollection() {
+void naiveGarbageCollection(const bool& quit) {
   TransactionTable *tmt;
 
   uint32_t mintxID = UINT32_MAX;
@@ -202,7 +202,7 @@ void naiveGarbageCollection() {
     // mintxIDから到達不能なバージョンを削除する
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-      if (Result::Finish_.load(std::memory_order_acquire)) return;
+      if (quit) return;
 
 #if MASSTREE_USE
       Tuple *tuple = MT.get_value(i);
@@ -241,5 +241,12 @@ void naiveGarbageCollection() {
       }
       //-----
     }
+  }
+}
+
+void leaderWork(GarbageCollection &gcob) {
+  if (gcob.chkSecondRange()) {
+    gcob.decideGcThreshold();
+    gcob.mvSecondRangeToFirstRange();
   }
 }

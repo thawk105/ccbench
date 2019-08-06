@@ -59,8 +59,9 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
+    uint8_t one = 0;
     Tuple *tuple = gcq_for_version_.front().rcdptr_;
-    if (!tuple->g_clock_.compare_exchange_strong(zero, this->thid_,
+    if (!tuple->g_clock_.compare_exchange_strong(zero, one,
                                                  std::memory_order_acq_rel,
                                                  std::memory_order_acquire)) {
       // fail acquiring the lock

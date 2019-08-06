@@ -8,6 +8,7 @@
 #include "../../include/result.hh"
 #include "../../include/string.hh"
 #include "../../include/util.hh"
+#include "common.hh"
 #include "ermia_op_element.hh"
 #include "garbage_collection.hh"
 #include "tuple.hh"
@@ -48,12 +49,11 @@ class TxExecutor {
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t thid, size_t max_ope, Result *eres)
-      : thid_(thid), eres_(eres) {
+  TxExecutor(uint8_t thid, Result *eres) : thid_(thid), eres_(eres) {
     gcobject_.set_thid_(thid);
-    read_set_.reserve(max_ope);
-    write_set_.reserve(max_ope);
-    pro_set_.reserve(max_ope);
+    read_set_.reserve(MAX_OPE);
+    write_set_.reserve(MAX_OPE);
+    pro_set_.reserve(MAX_OPE);
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }

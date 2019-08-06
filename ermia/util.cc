@@ -55,6 +55,10 @@ void chkArg(const int argc, const char *argv[]) {
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
+    int hoge = 1;
+    cout << hoge << endl;
+    cout << (hoge << 0) << endl;
+    cout << (hoge << 1) << endl;
     exit(0);
   }
 
@@ -77,8 +81,8 @@ void chkArg(const int argc, const char *argv[]) {
   GC_INTER_US = atoi(argv[9]);
   EXTIME = atoi(argv[10]);
 
-  if (THREAD_NUM < 2) {
-    cout << "1 thread is leader thread. \nthread number 1 is no worker thread, "
+  if (THREAD_NUM < 1) {
+    cout << "1 is minimum thread number."
             "so exit."
          << endl;
     ERR;
@@ -209,7 +213,7 @@ void makeDB() {
   for (auto &th : thv) th.join();
 }
 
-void naiveGarbageCollection() {
+void naiveGarbageCollection(const bool &quit) {
   TransactionTable *tmt;
 
   uint32_t mintxID = UINT32_MAX;
@@ -225,7 +229,7 @@ void naiveGarbageCollection() {
     Version *verTmp, *delTarget;
     for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
       // 時間がかかるので，離脱条件チェック
-      if (Result::Finish_.load(std::memory_order_acquire) == true) return;
+      if (quit == true) return;
 
       verTmp = Table[i].latest_.load(memory_order_acquire);
       if (verTmp->status_.load(memory_order_acquire) !=
@@ -258,5 +262,12 @@ void naiveGarbageCollection() {
       }
       //-----
     }
+  }
+}
+
+void leaderWork(GarbageCollection &gcob) {
+  if (gcob.chkSecondRange()) {
+    gcob.decideGcThreshold();
+    gcob.mvSecondRangeToFirstRange();
   }
 }

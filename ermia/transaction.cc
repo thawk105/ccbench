@@ -62,14 +62,8 @@ void TxExecutor::tbegin() {
   this->txid_ += 1;
   newElement->txid_ = this->txid_;
 
-  TransactionTable *expected, *desired;
-  tmt = loadAcquire(TMT[thid_]);
-  expected = tmt;
-  gcobject_.gcq_for_TMT_.emplace_back(expected);
-  for (;;) {
-    desired = newElement;
-    if (compareExchange(TMT[thid_], expected, desired)) break;
-  }
+  gcobject_.gcq_for_TMT_.emplace_back(loadAcquire(TMT[thid_]));
+  storeRelease(TMT[thid_], newElement);
 
   pstamp_ = 0;
   sstamp_ = UINT32_MAX;

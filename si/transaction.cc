@@ -48,8 +48,7 @@ void TxExecutor::tbegin() {
     newElement->set(0, lastcstamp);
   }
 
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    if (thid_ == i) continue;
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     do {
       tmt = loadAcquire(TMT[i]);
     } while (tmt == nullptr);
@@ -58,15 +57,8 @@ void TxExecutor::tbegin() {
   this->txid_ += 1;
   newElement->txid_ = this->txid_;
 
-  TransactionTable *expected, *desired;
-  tmt = loadAcquire(TMT[thid_]);
-  expected = tmt;
-  gcobject_.gcq_for_TMT_.emplace_back(expected);
-
-  for (;;) {
-    desired = newElement;
-    if (compareExchange(TMT[thid_], expected, desired)) break;
-  }
+  gcobject_.gcq_for_TMT_.emplace_back(loadAcquire(TMT[thid_]));
+  storeRelease(TMT[thid_], newElement);
 #endif  // CCTR_ON
 
 #ifdef CCTR_TW
@@ -185,7 +177,7 @@ void TxExecutor::twrite(uint64_t key) {
     if (expected->status_.load(memory_order_acquire) ==
         VersionStatus::inFlight) {
       uint64_t rivaltid = expected->cstamp_.load(memory_order_acquire);
-      if (this->txid_ <= rivaltid) {
+      if (this->txid_ < rivaltid) {
         // if (1) { // no-wait で abort させても性能劣化はほぼ起きていない．
         //性能が向上されるケースもある．
         this->status_ = TransactionStatus::aborted;

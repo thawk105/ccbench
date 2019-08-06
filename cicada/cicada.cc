@@ -145,6 +145,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 #endif
     }
   }
+
+  cout << trans.cres_->local_commit_counts_ << endl;
   
   return;
 }

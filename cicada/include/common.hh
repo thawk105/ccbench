@@ -14,8 +14,6 @@
 
 #ifdef GLOBAL_VALUE_DEFINE
 #define GLOBAL
-GLOBAL std::atomic<size_t> Running(0);
-GLOBAL std::atomic<bool> Finish(false);
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinRts(0);
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinWts(0);
 alignas(
@@ -25,8 +23,6 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 #else
 #define GLOBAL extern
-GLOBAL std::atomic<size_t> Running;
-GLOBAL std::atomic<bool> Finish;
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinRts;
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinWts;
 alignas(

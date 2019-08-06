@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "lock.hh"
-#include "transaction.hh"
 #include "tuple.hh"
 
 #include "../../include/cache_line_size.hh"
@@ -14,14 +13,12 @@
 #ifdef GLOBAL_VALUE_DEFINE
 #define GLOBAL
 GLOBAL std::atomic<uint64_t> Lsn(0);
-GLOBAL std::atomic<size_t> Running(0);
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 #else
 #define GLOBAL extern
 GLOBAL std::atomic<uint64_t> Lsn;
-GLOBAL std::atomic<size_t> Running;
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
@@ -38,7 +35,8 @@ GLOBAL bool YCSB;
 GLOBAL size_t CLOCKS_PER_US;
 GLOBAL size_t GC_INTER_US;  // garbage collection interval
 GLOBAL size_t EXTIME;
-// -----
+
+#include "transaction.hh"
 
 alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 alignas(CACHE_LINE_SIZE) GLOBAL
