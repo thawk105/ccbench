@@ -27,8 +27,8 @@ void Result::displayCommitCounts() {
   cout << "commit_counts_:\t" << total_commit_counts_ << endl;
 }
 
-void Result::displayTps() {
-  uint64_t result = total_commit_counts_ / extime_;
+void Result::displayTps(size_t extime) {
+  uint64_t result = total_commit_counts_ / extime;
   cout << "Throughput(tps):\t" << result << endl;
 }
 
@@ -54,13 +54,14 @@ void Result::displayAbortByValidationRate() {
   }
 }
 
-void Result::displayBackoffLatencyRate() {
+void Result::displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
+                                       size_t thread_num) {
   if (total_backoff_latency_) {
     long double rate;
     rate =
         (long double)total_backoff_latency_ /
-        ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
-        thnum_;
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
     cout << fixed << setprecision(4) << "backoff_latency_rate:\t" << rate
          << endl;
   }
@@ -75,13 +76,14 @@ void Result::displayGCCounts() {
   if (total_gc_counts_) cout << "gc_counts:\t" << total_gc_counts_ << endl;
 }
 
-void Result::displayGCLatencyRate() {
+void Result::displayGCLatencyRate(size_t clocks_per_us, size_t extime,
+                                  size_t thread_num) {
   if (total_gc_latency_) {
     long double rate;
     rate =
         (long double)total_gc_latency_ /
-        ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
-        thnum_;
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
     cout << fixed << setprecision(4) << "gc_latency_rate:\t" << rate << endl;
   }
 }
@@ -113,13 +115,14 @@ void Result::displayRatioOfPreemptiveAbortToTotalAbort() {
   }
 }
 
-void Result::displayReadLatencyRate() {
+void Result::displayReadLatencyRate(size_t clocks_per_us, size_t extime,
+                                    size_t thread_num) {
   if (total_read_latency_) {
     long double rate;
     rate =
         (long double)total_read_latency_ /
-        ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
-        thnum_;
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
     cout << fixed << setprecision(4) << "read_latency_rate:\t" << rate << endl;
   }
 }
@@ -155,13 +158,14 @@ void Result::displayTreeTraversal() {
     cout << "tree_traversal:\t" << total_tree_traversal_ << endl;
 }
 
-void Result::displayValiLatencyRate() {
+void Result::displayValiLatencyRate(size_t clocks_per_us, size_t extime,
+                                    size_t thread_num) {
   if (total_vali_latency_) {
     long double rate;
     rate =
         (long double)total_vali_latency_ /
-        ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
-        thnum_;
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
     cout << fixed << setprecision(4) << "vali_latency_rate:\t" << rate << endl;
   }
 }
@@ -190,13 +194,14 @@ void Result::displayValidationFailureByWritelockRate() {
   }
 }
 
-void Result::displayWriteLatencyRate() {
+void Result::displayWriteLatencyRate(size_t clocks_per_us, size_t extime,
+                                     size_t thread_num) {
   if (total_write_latency_) {
     long double rate;
     rate =
         (long double)total_write_latency_ /
-        ((long double)clocks_per_us_ * powl(10.0, 6.0) * (long double)extime_) /
-        thnum_;
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
     cout << fixed << setprecision(4) << "write_latency_rate:\t" << rate << endl;
   }
 }
@@ -289,26 +294,27 @@ void Result::addLocalWriteLatency(const uint64_t count) {
 }
 #endif
 
-void Result::displayAllResult() {
+void Result::displayAllResult(size_t clocks_per_us, size_t extime,
+                              size_t thread_num) {
 #if ADD_ANALYSIS
   displayAbortByOperationRate();
   displayAbortByValidationRate();
-  displayBackoffLatencyRate();
+  displayBackoffLatencyRate(clocks_per_us, extime, thread_num);
   displayExtraReads();
   displayGCCounts();
-  displayGCLatencyRate();
+  displayGCLatencyRate(clocks_per_us, extime, thread_num);
   displayGCTMTElementsCounts();
   displayGCVersionCounts();
   displayPreemptiveAbortsCounts();
   displayRatioOfPreemptiveAbortToTotalAbort();
-  displayReadLatencyRate();
+  displayReadLatencyRate(clocks_per_us, extime, thread_num);
   displayRtsupdRate();
   displayTemperatureResets();
   displayTimestampHistorySuccessCounts();
   displayTimestampHistoryFailCounts();
   displayTreeTraversal();
-  displayWriteLatencyRate();
-  displayValiLatencyRate();
+  displayWriteLatencyRate(clocks_per_us, extime, thread_num);
+  displayValiLatencyRate(clocks_per_us, extime, thread_num);
   displayValidationFailureByTidRate();
   displayValidationFailureByWritelockRate();
 #endif
@@ -316,7 +322,7 @@ void Result::displayAllResult() {
   displayCommitCounts();
   displayRusageRUMaxrss();
   displayAbortRate();
-  displayTps();
+  displayTps(extime);
 }
 
 void Result::addLocalAllResult(const Result &other) {

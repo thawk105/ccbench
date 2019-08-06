@@ -18,7 +18,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -D$(shell hostname) \
 				 -DMASSTREE_USE=1 \
 				 -DADD_ANALYSIS=1 \
-				 -DPARTITION_TABLE=1 \
+				 -DPARTITION_TABLE=0 \
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release

@@ -9,10 +9,12 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <functional>
 #include <random>
 #include <thread>
 
 #define GLOBAL_VALUE_DEFINE
+#include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
@@ -26,112 +28,38 @@
 
 using namespace std;
 
-extern void chkArg(const int argc, char *argv[]);
+extern void chkArg(const int argc, char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
-extern bool chkSpan(struct timeval &start, struct timeval &stop,
+extern bool chkSpan(struct timeval& start, struct timeval& stop,
                     long threshold);
-extern void makeDB(uint64_t *initial_wts);
-extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
-                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+extern void isReady(const std::vector<char>& readys);
+extern void makeDB(uint64_t* initial_wts);
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus& rnd,
+                          FastZipf& zipf, size_t tuple_num, size_t max_ope,
                           size_t thread_num, size_t rratio, bool rmw, bool ycsb,
                           bool partition, size_t thread_id);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
-                                            size_t thnm);
-extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Result>& res);
+extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
-static void *manager_worker(void *arg) {
-  TimeStamp tmp;
-
-  uint64_t initial_wts;
-  makeDB(&initial_wts);
-  MinWts.store(initial_wts + 2, memory_order_release);
-  Result *resroot = (Result *)(arg);
-
-#ifdef Linux
-  setThreadAffinity(resroot->thid_);
-  // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
-#endif  // Linux
-
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  while (FirstAllocateTimestamp.load(memory_order_acquire) != THREAD_NUM - 1) {
-  }
-
-  // leader work
-#if USE_BACKOFF
-  Backoff backoff_ob;
-  backoff_ob.init(CLOCKS_PER_US);
-#endif
-  for (;;) {
-    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
-
-    bool gc_update = true;
-    for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-      // check all thread's flag raising
-      if (__atomic_load_n(&(GCFlag[i].obj_), __ATOMIC_ACQUIRE) == 0) {
-        usleep(1);
-        gc_update = false;
-        break;
-      }
-    }
-    if (gc_update) {
-      uint64_t minw =
-          __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
-      uint64_t minr;
-      if (GROUP_COMMIT == 0) {
-        minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
-      } else {
-        minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_),
-                               __ATOMIC_ACQUIRE);
-      }
-
-      for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-        uint64_t tmp =
-            __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
-        if (minw > tmp) minw = tmp;
-        if (GROUP_COMMIT == 0) {
-          tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);
-          if (minr > tmp) minr = tmp;
-        } else {
-          tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj_),
-                                __ATOMIC_ACQUIRE);
-          if (minr > tmp) minr = tmp;
-        }
-      }
-
-      MinWts.store(minw, memory_order_release);
-      MinRts.store(minr, memory_order_release);
-
-      // downgrade gc flag
-      for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-        __atomic_store_n(&(GCFlag[i].obj_), 0, __ATOMIC_RELEASE);
-        __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
-      }
-    }
-
-#if USE_BACKOFF
-    if (backoff_ob.check_update_backoff()) {
-      uint64_t sum_committed_txs(0);
-      for (unsigned int i = 1; i < THREAD_NUM; ++i)
-        sum_committed_txs += resroot[i].local_commit_counts_;
-      backoff_ob.update_backoff(sum_committed_txs);
-    }
-#endif
-  }
-
-  return nullptr;
-}
-
-static void *worker(void *arg) {
-  Result &res = *(Result *)(arg);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit,
+            std::vector<Result>& res) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, (Result *)arg);
+  TxExecutor trans(thid, (Result*)&res[thid]);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
+  // backoff: leader work に渡せないとエラーになってしまうので，
+  // 使わないとしても実体が欲しい．
+  Backoff backoff;
+#if USE_BACKOFF
+  if (thid == 0)
+    backoff.init(CLOCKS_PER_US);
+#endif
+
 #ifdef Linux
-  setThreadAffinity(res.thid_);
+  setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
@@ -143,11 +71,11 @@ static void *worker(void *arg) {
   // printf("Thread %d on CPU %d\n", *myid, nowcpu);
 #endif  // Darwin
 
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
+  storeRelease(ready, 1);
+  while (!loadAcquire(start)) _mm_pause();
+  while (!loadAcquire(quit)) {
+    if (thid == 0) leaderWork(std::ref(backoff), std::ref(res));
 
-  // printf("%s\n", trans.writeVal);
-  // start work(transaction)
-  for (;;) {
     /* シングル実行で絶対に競合を起こさないワークロードにおいて，
      * 自トランザクションで read した後に write するのは複雑になる．
      * write した後に read であれば，write set から read
@@ -158,21 +86,19 @@ static void *worker(void *arg) {
      * */
 #if SINGLE_EXEC
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, res.thid_);
+                  RRATIO, RMW, YCSB, true, thid);
     sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #else
 #if PARTITION_TABLE
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, res.thid_);
+                  RRATIO, RMW, YCSB, true, thid);
 #else
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, res.thid_);
+                  RRATIO, RMW, YCSB, false, thid);
 #endif
 #endif
 
   RETRY:
-    if (res.Finish_.load(std::memory_order_acquire)) return nullptr;
-
     trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
@@ -198,7 +124,7 @@ static void *worker(void *arg) {
     // can skip it.
     if ((*trans.pro_set_.begin()).ronly_) {
       ++trans.continuing_commit_;
-      ++res.local_commit_counts_;
+      ++res[thid].local_commit_counts_;
     } else {
       // Validation phase
       if (!trans.validation()) {
@@ -219,38 +145,36 @@ static void *worker(void *arg) {
 #endif
     }
   }
-
-  return nullptr;
+  
+  return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   chkArg(argc, argv);
+  uint64_t initial_wts;
+  makeDB(&initial_wts);
+  MinWts.store(initial_wts + 2, memory_order_release);
 
-  Result rsob[THREAD_NUM];
-  Result &rsroot = rsob[0];
-  pthread_t thread[THREAD_NUM];
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    int ret;
-    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
-    //rsob[i].set(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
-    if (i == 0)
-      ret = pthread_create(&thread[i], NULL, manager_worker, (void *)(rsob));
-    else
-      ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
-    if (ret) ERR;
-  }
-
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  alignas(CACHE_LINE_SIZE) bool start = false;
+  alignas(CACHE_LINE_SIZE) bool quit = false;
+  std::vector<char> readys(THREAD_NUM);
+  std::vector<Result> res(THREAD_NUM);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < THREAD_NUM; ++i)
+    thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
+                       std::ref(quit), std::ref(res));
+  waitForReady(readys);
+  storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish_.store(true, std::memory_order_release);
+  storeRelease(quit, true);
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(thread[i], nullptr);
-    rsroot.addLocalAllResult(rsob[i]);
+    res[0].addLocalAllResult(res[i]);
   }
-  rsroot.displayAllResult();
+  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {

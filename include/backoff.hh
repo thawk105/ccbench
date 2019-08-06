@@ -3,6 +3,7 @@
 #include <x86intrin.h>
 
 #include <atomic>
+#include <cmath>
 #include <iostream>
 
 #include "tsc.hh"
@@ -20,16 +21,16 @@ class Backoff {
   uint64_t last_committed_txs_ = 0;
   double last_committed_tput_ = 0;
   uint64_t last_backoff_ = 0;
-  uint64_t last_time = 0;
+  uint64_t last_time_ = 0;
   size_t clocks_per_us_;
 
   void init(size_t clocks_per_us) {
-    last_time = rdtscp();
+    last_time_ = rdtscp();
     clocks_per_us_ = clocks_per_us;
   }
 
   bool check_update_backoff() {
-    if (chkClkSpan(last_time, rdtscp(), clocks_per_us_ * 10))
+    if (chkClkSpan(last_time_, rdtscp(), clocks_per_us_ * 10))
       return true;
     else
       return false;
@@ -37,8 +38,8 @@ class Backoff {
 
   void update_backoff(const uint64_t committed_txs) {
     uint64_t now = rdtscp();
-    uint64_t time_diff = now - last_time;
-    last_time = now;
+    uint64_t time_diff = now - last_time_;
+    last_time_ = now;
 
     double new_backoff = Backoff_.load(std::memory_order_acquire);
     double backoff_diff = new_backoff - last_backoff_;

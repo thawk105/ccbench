@@ -15,6 +15,7 @@
 #include "include/transaction.hh"
 #include "include/version.hh"
 
+#include "../include/backoff.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/tsc.hh"

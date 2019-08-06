@@ -12,6 +12,7 @@
 #include <iostream>
 #include <limits>
 
+#include "../include/backoff.hh"
 #include "../include/cache_line_size.hh"
 #include "../include/check.hh"
 #include "../include/config.hh"
@@ -75,6 +76,7 @@ void chkArg(const int argc, char *argv[]) {
     cout << "CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) : "
          << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
+    cout << "Result:\t" << sizeof(Result) << endl;
     exit(0);
   }
 
@@ -327,4 +329,59 @@ void makeDB(uint64_t *initial_wts) {
     thv.emplace_back(partTableInit, i, tstmp.ts_, i * (TUPLE_NUM / maxthread),
                      (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto &th : thv) th.join();
+}
+
+void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Result>& res) {
+  bool gc_update = true;
+  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    // check all thread's flag raising
+    if (__atomic_load_n(&(GCFlag[i].obj_), __ATOMIC_ACQUIRE) == 0) {
+      gc_update = false;
+      break;
+    }
+  }
+  if (gc_update) {
+    uint64_t minw =
+        __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
+    uint64_t minr;
+    if (GROUP_COMMIT == 0) {
+      minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
+    } else {
+      minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_),
+                             __ATOMIC_ACQUIRE);
+    }
+
+    for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+      uint64_t tmp =
+          __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
+      if (minw > tmp) minw = tmp;
+      if (GROUP_COMMIT == 0) {
+        tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);
+        if (minr > tmp) minr = tmp;
+      } else {
+        tmp = __atomic_load_n(&(ThreadRtsArrayForGroup[i].obj_),
+                              __ATOMIC_ACQUIRE);
+        if (minr > tmp) minr = tmp;
+      }
+    }
+
+    MinWts.store(minw, memory_order_release);
+    MinRts.store(minr, memory_order_release);
+
+    // downgrade gc flag
+    for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+      __atomic_store_n(&(GCFlag[i].obj_), 0, __ATOMIC_RELEASE);
+      __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
+    }
+  }
+
+#if USE_BACKOFF
+  if (backoff.check_update_backoff()) {
+    uint64_t sum_committed_txs(0);
+    for (auto& th : res) {
+      sum_committed_txs += th.local_commit_counts_;
+      backoff.update_backoff(sum_committed_txs);
+    }
+  }
+#endif
 }

@@ -1,5 +1,5 @@
 # ycsb-xrs.sh(tictoc)
-tuple=100000000
+tuple=1000
 maxope=10
 rratio=50
 rmw=off
@@ -19,7 +19,7 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_tictoc_ycsbA_tuple100m_skew0-099.dat
+result=result_tictoc_ycsbA_tuple1k_skew0-099.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result

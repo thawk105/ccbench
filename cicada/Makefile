@@ -17,7 +17,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -DADD_ANALYSIS=1 \
 				 -DPARTITION_TABLE=0 \
 				 -DSINGLE_EXEC=0 \
-				 -DUSE_BACKOFF=0 \
+				 -DUSE_BACKOFF=1 \
 				 -DMASSTREE_USE=1 \
 
 # SINGLE_EXEC option can be executed only non conflict workload.

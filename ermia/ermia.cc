@@ -10,7 +10,7 @@
 #include <string>  //string
 
 #define GLOBAL_VALUE_DEFINE
-
+#include "../include/atomic_wrapper.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/int64byte.hh"
@@ -29,6 +29,7 @@ using namespace std;
 extern void chkArg(const int argc, const char *argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
+extern void isReady(const std::vector<char>& readys);
 extern void makeDB();
 extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                           FastZipf &zipf, size_t tuple_num, size_t max_ope,
@@ -37,24 +38,20 @@ extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
 extern void naiveGarbageCollection();
 extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
                                             size_t thnm);
-extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t);
 
-static void *manager_worker(void *arg) {
-  Result &res = *(Result *)(arg);
+void managerWorker(size_t thid, char& ready, const bool& start, const bool& quit) {
   GarbageCollection gcobject;
 
 #ifdef Linux
-  setThreadAffinity(res.thid_);
+  setThreadAffinity(thid);
 #endif  // Linux
 
   gcobject.decideFirstRange();
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-  // end, initial work
-
-  for (;;) {
-    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
-
+  storeRelease(ready, 1);
+  while (!loadAcquire(start)) _mm_pause();
+  while(!loadAcquire(quit)) {
     usleep(1);
     if (gcobject.chkSecondRange()) {
       gcobject.decideGcThreshold();
@@ -62,7 +59,7 @@ static void *manager_worker(void *arg) {
     }
   }
 
-  return nullptr;
+  return;
 }
 
 static void *worker(void *arg) {
@@ -133,6 +130,9 @@ int main(const int argc, const char *argv[]) try {
   chkArg(argc, argv);
   makeDB();
 
+  alignas(CACHE_LINE_SIZE) bool start = false;
+  alignas(CACHE_LINE_SIZE) bool quit = false;
+  std::vector<char> readys(THREAD_NUM);
   Result rsob[THREAD_NUM];
   Result &rsroot = rsob[0];
   pthread_t thread[THREAD_NUM];

@@ -8,31 +8,7 @@
 
 class Result {
  public:
-  alignas(CACHE_LINE_SIZE) static std::atomic<bool> Finish_;
-  size_t clocks_per_us_ = 0;
-  size_t extime_ = 0;
-  size_t thid_ = 0;
-  size_t thnum_ = 0;
-
-  Result() {}
-  Result(const size_t clocks_per_us, const size_t extime, const size_t thid,
-         const size_t thnum)
-      : clocks_per_us_(clocks_per_us),
-        extime_(extime),
-        thid_(thid),
-        thnum_(thnum) {}
-
-  void set(const size_t clocks_per_us, const size_t extime, const size_t thid,
-           const size_t thnum) {
-    clocks_per_us_ = clocks_per_us;
-    extime_ = extime;
-    thid_ = thid;
-    thnum_ = thnum;
-    local_commit_counts_ = 0;
-  }
-
-  uint64_t local_abort_counts_ = 0;
-  //std::atomic<uint64_t> local_commit_counts_;
+  alignas(CACHE_LINE_SIZE) uint64_t local_abort_counts_ = 0;
   uint64_t local_commit_counts_ = 0;
 #if ADD_ANALYSIS
   uint64_t local_abort_by_operation_ = 0;
@@ -87,27 +63,32 @@ class Result {
   void displayAbortCounts();
   void displayAbortRate();
   void displayCommitCounts();
-  void displayTps();
-  void displayAllResult();
+  void displayTps(size_t extime);
+  void displayAllResult(size_t clocks_per_us, size_t extime, size_t thread_num);
 #if ADD_ANALYSIS
   void displayAbortByOperationRate();   // abort by operation rate;
   void displayAbortByValidationRate();  // abort by validation rate;
-  void displayBackoffLatencyRate();
+  void displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
+                                 size_t thread_num);
   void displayExtraReads();
   void displayGCCounts();
-  void displayGCLatencyRate();
+  void displayGCLatencyRate(size_t clocks_per_us, size_t extime,
+                            size_t thread_num);
   void displayGCTMTElementsCounts();
   void displayGCVersionCounts();
   void displayPreemptiveAbortsCounts();
   void displayRatioOfPreemptiveAbortToTotalAbort();
-  void displayReadLatencyRate();
+  void displayReadLatencyRate(size_t clocks_per_us, size_t extime,
+                              size_t thread_num);
   void displayRtsupdRate();
   void displayTemperatureResets();
   void displayTimestampHistorySuccessCounts();
   void displayTimestampHistoryFailCounts();
   void displayTreeTraversal();
-  void displayWriteLatencyRate();
-  void displayValiLatencyRate();
+  void displayWriteLatencyRate(size_t clocks_per_us, size_t extime,
+                               size_t thread_num);
+  void displayValiLatencyRate(size_t clocks_per_us, size_t extime,
+                              size_t thread_num);
   void displayValidationFailureByTidRate();
   void displayValidationFailureByWritelockRate();
 #endif
@@ -138,7 +119,3 @@ class Result {
   void addLocalValidationFailureByWritelock(const uint64_t count);
 #endif
 };
-
-#ifdef GLOBAL_VALUE_DEFINE
-std::atomic<bool> Result::Finish_(false);
-#endif
