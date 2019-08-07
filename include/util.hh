@@ -21,6 +21,12 @@
 #include <string>
 #include <vector>
 
+#include "procedure.hh"
+#include "random.hh"
+#include "result.hh"
+#include "tsc.hh"
+#include "zipf.hh"
+
 [[maybe_unused]] inline static bool chkClkSpan(const uint64_t start,
                                                const uint64_t stop,
                                                const uint64_t threshold) {
@@ -67,3 +73,50 @@ class LibcError : public std::exception {
   explicit LibcError(int errnum = errno, const std::string &msg = "libc_error:")
       : str_(generateMessage(errnum, msg)) {}
 };
+
+inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+                   FastZipf &zipf, size_t tuple_num, size_t max_ope,
+                   size_t thread_num, size_t rratio, bool rmw, bool ycsb,
+                   bool partition, size_t thread_id, Result& res) {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+  pro.clear();
+  bool ronly_flag(true), wonly_flag(true);
+  for (size_t i = 0; i < max_ope; ++i) {
+    uint64_t tmpkey;
+    if (ycsb) {
+      if (partition) {
+        size_t block_size = tuple_num / thread_num;
+        tmpkey = (block_size * thread_id) + (zipf() % block_size);
+      } else {
+        tmpkey = zipf() % tuple_num;
+      }
+    } else {
+      if (partition) {
+        size_t block_size = tuple_num / thread_num;
+        tmpkey = (block_size * thread_id) + (rnd.next() % block_size);
+      } else {
+        tmpkey = rnd.next() % tuple_num;
+      }
+    }
+
+    if ((rnd.next() % 100) < rratio) {
+      pro.emplace_back(Ope::READ, tmpkey);
+      wonly_flag = false;
+    } else {
+      ronly_flag = false;
+      if (rmw) {
+        pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
+      } else {
+        pro.emplace_back(Ope::WRITE, tmpkey);
+      }
+    }
+  }
+  (*pro.begin()).ronly_ = ronly_flag;
+  (*pro.begin()).wonly_ = wonly_flag;
+#if ADD_ANALYSIS
+  res.local_make_procedure_latency_ += rdtscp() - start;
+#endif
+}
+

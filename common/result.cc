@@ -99,6 +99,18 @@ void Result::displayGCVersionCounts() {
     cout << "gc_version_counts:\t" << total_gc_version_counts_ << endl;
 }
 
+void Result::displayMakeProcedureLatencyRate(size_t clocks_per_us, size_t extime,
+                                    size_t thread_num) {
+  if (total_make_procedure_latency_) {
+    long double rate;
+    rate =
+        (long double)total_make_procedure_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+    cout << fixed << setprecision(4) << "make_procedure_latency_rate:\t" << rate << endl;
+  }
+}
+
 void Result::displayPreemptiveAbortsCounts() {
   if (total_preemptive_aborts_counts_)
     cout << "preemptive_aborts_counts:\t" << total_preemptive_aborts_counts_
@@ -247,6 +259,10 @@ void Result::addLocalGCLatency(const uint64_t count) {
   total_gc_latency_ += count;
 }
 
+void Result::addLocalMakeProcedureLatency(const uint64_t count) {
+  total_make_procedure_latency_ += count;
+}
+
 void Result::addLocalPreemptiveAbortsCounts(const uint64_t count) {
   total_preemptive_aborts_counts_ += count;
 }
@@ -305,6 +321,7 @@ void Result::displayAllResult(size_t clocks_per_us, size_t extime,
   displayGCLatencyRate(clocks_per_us, extime, thread_num);
   displayGCTMTElementsCounts();
   displayGCVersionCounts();
+  displayMakeProcedureLatencyRate(clocks_per_us, extime, thread_num);
   displayPreemptiveAbortsCounts();
   displayRatioOfPreemptiveAbortToTotalAbort();
   displayReadLatencyRate(clocks_per_us, extime, thread_num);
@@ -337,6 +354,7 @@ void Result::addLocalAllResult(const Result &other) {
   addLocalGCLatency(other.local_gc_latency_);
   addLocalGCVersionCounts(other.local_gc_version_counts_);
   addLocalGCTMTElementsCounts(other.local_gc_TMT_elements_counts_);
+  addLocalMakeProcedureLatency(other.local_make_procedure_latency_);
   addLocalPreemptiveAbortsCounts(other.local_preemptive_aborts_counts_);
   addLocalReadLatency(other.local_read_latency_);
   addLocalRtsupd(other.local_rtsupd_);

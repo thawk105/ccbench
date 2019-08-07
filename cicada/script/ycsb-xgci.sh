@@ -26,7 +26,7 @@ fi
 
 result=result_cicada_ycsbA_tuple1m_gci10us-1s.dat
 rm $result
-echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-write_latency_rate, avg-gc_latency_rate" >> $result
+echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-make_procedure_latency_rate, avg-read_latency_rate, avg-write_latency_rate, avg-vali_latency_rate, avg-gc_latency_rate" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us gci $extime" >> $result
 
 for ((gci=10; gci<=1000000; gci*=10))
@@ -37,7 +37,10 @@ do
   sumTH=0
   sumAR=0
   sumCA=0
+  sumML=0
+  sumRL=0
   sumWL=0
+  sumVL=0
   sumGL=0
   maxTH=0
   maxAR=0
@@ -57,7 +60,10 @@ do
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
+    tmpML=`grep make_latency_rate ./exp.txt | awk '{print $2}'`
+    tmpRL=`grep read_latency_rate ./exp.txt | awk '{print $2}'`
     tmpWL=`grep write_latency_rate ./exp.txt | awk '{print $2}'`
+    tmpVL=`grep vali_latency_rate ./exp.txt | awk '{print $2}'`
     tmpGL=`grep gc_latency_rate ./exp.txt | awk '{print $2}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
@@ -104,12 +110,15 @@ do
   avgTH=`echo "$sumTH / $epoch" | bc`
   avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
   avgCA=`echo "$sumCA / $epoch" | bc`
+  avgML=`echo "scale=4; $sumML / $epoch" | bc | xargs printf %.4f`
+  avgRL=`echo "scale=4; $sumRL / $epoch" | bc | xargs printf %.4f`
   avgWL=`echo "scale=4; $sumWL / $epoch" | bc | xargs printf %.4f`
+  avgVL=`echo "scale=4; $sumVL / $epoch" | bc | xargs printf %.4f`
   avgGL=`echo "scale=4; $sumGL / $epoch" | bc | xargs printf %.4f`
   echo "sumTH: $sumTH, sumAR: $sumAR, sumCA: $sumCA"
   echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
   echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
   echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
   echo ""
-  echo "$gci $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA $avgWL $avgGL" >> $result
+  echo "$gci $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA $avgML $avgRL $avgWL $avgVL $avgGL" >> $result
 done

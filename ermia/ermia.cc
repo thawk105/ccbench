@@ -19,6 +19,7 @@
 #include "../include/random.hh"
 #include "../include/result.hh"
 #include "../include/tsc.hh"
+#include "../include/util.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/garbage_collection.hh"
@@ -32,10 +33,6 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern void isReady(const std::vector<char>& readys);
 extern void leaderWork(GarbageCollection& gcob);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus& rnd,
-                          FastZipf& zipf, size_t tuple_num, size_t max_ope,
-                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
-                          bool partition, size_t thread_id);
 extern void naiveGarbageCollection();
 extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t);
@@ -70,7 +67,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     }
 
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid);
+                  RRATIO, RMW, YCSB, false, thid, res);
   RETRY:
     // transaction begin
     trans.tbegin();

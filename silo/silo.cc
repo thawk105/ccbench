@@ -38,10 +38,6 @@ extern void displayDB();
 extern void displayPRO();
 extern void genLogFile(std::string& logpath, const int thid);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus& rnd,
-                          FastZipf& zipf, size_t tuple_num, size_t max_ope,
-                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
-                          bool partition, size_t thread_id);
 extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
@@ -76,10 +72,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     if (thid == 0) leaderWork(epoch_timer_start, epoch_timer_stop);
 #if PARTITION_TABLE
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, thid);
+                  RRATIO, RMW, YCSB, true, thid, res);
 #else
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid);
+                  RRATIO, RMW, YCSB, false, thid, res);
 #endif
   RETRY:
 

@@ -36,10 +36,6 @@ extern void displayDB();
 extern void displayPRO();
 extern void isReady(const std::vector<char>& readys);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
-                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
-                          size_t thread_num, size_t rratio, bool rmw, bool ycsb,
-                          bool partition, size_t thread_id);
 extern void sleepMs(size_t ms);
 extern void waitForReady(const std::vector<char>& readys);
 
@@ -64,7 +60,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit, Resul
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid);
+                  RRATIO, RMW, YCSB, false, thid, res);
 #if KEY_SORT
     std::sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif

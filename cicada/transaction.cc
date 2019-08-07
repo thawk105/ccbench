@@ -225,6 +225,9 @@ void TxExecutor::twrite(uint64_t key) {
 }
 
 bool TxExecutor::validation() {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
 #if SINGLE_EXEC
 #else
   if (continuing_commit_ < 5) {
@@ -247,7 +250,12 @@ bool TxExecutor::validation() {
       while (version->ldAcqStatus() != VersionStatus::committed)
         version = version->ldAcqNext();
 
-      if (version->ldAcqRts() > this->wts_.ts_) return false;
+      if (version->ldAcqRts() > this->wts_.ts_) {
+#if ADD_ANALYSIS
+        cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+        return false;
+      }
     }
   }
 
@@ -258,7 +266,12 @@ bool TxExecutor::validation() {
       version = expected = (*itr).rcdptr_->ldAcqLatest();
 
       if (version->ldAcqStatus() == VersionStatus::pending) {
-        if (this->wts_.ts_ < version->ldAcqWts()) return false;
+        if (this->wts_.ts_ < version->ldAcqWts()) {
+#if ADD_ANALYSIS
+          cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+          return false;
+        }
         while (version->ldAcqStatus() == VersionStatus::pending)
           ;
       }
@@ -273,7 +286,12 @@ bool TxExecutor::validation() {
       // to keep versions ordered by wts in the version list
       // if version is pending version, concurrent transaction that has lower
       // timestamp is aborted.
-      if (this->wts_.ts_ < version->ldAcqWts()) return false;
+      if (this->wts_.ts_ < version->ldAcqWts()) {
+#if ADD_ANALYSIS
+        cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+        return false;
+      }
 
       (*itr).newObject_->status_.store(VersionStatus::pending,
                                        memory_order_release);
@@ -316,14 +334,24 @@ bool TxExecutor::validation() {
         // 元々それを読まなければいけなかったのでアボート
         while (version->ldAcqStatus() == VersionStatus::pending)
           ;
-        if (version->ldAcqStatus() == VersionStatus::committed) return false;
+        if (version->ldAcqStatus() == VersionStatus::committed) {
+#if ADD_ANALYSIS
+          cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+          return false;
+        }
       }
 
       while (version->ldAcqStatus() != VersionStatus::committed ||
              version->ldAcqWts() > this->wts_.ts_)
         version = version->ldAcqNext();
 
-      if ((*itr).ver_ != version) return false;
+      if ((*itr).ver_ != version) {
+#if ADD_ANALYSIS
+        cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+        return false;
+      }
 
       if (init == (*itr).rcdptr_->ldAcqLatest()) break;
       // else, the validation was interrupted.
@@ -338,10 +366,18 @@ bool TxExecutor::validation() {
     Version *version = (*itr).newObject_->ldAcqNext();
     while (version->ldAcqStatus() != VersionStatus::committed)
       version = version->ldAcqNext();
-    if (version->ldAcqRts() > this->wts_.ts_) return false;
+    if (version->ldAcqRts() > this->wts_.ts_) {
+#if ADD_ANALYSIS
+      cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+      return false;
+    }
   }
 #endif
 
+#if ADD_ANALYSIS
+  cres_->local_vali_latency_ += rdtscp() - start;
+#endif
   return true;
 }
 

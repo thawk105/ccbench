@@ -12,6 +12,7 @@
 #include "../include/debug.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/zipf.hh"
 
 bool chkSpan(struct timeval &start, struct timeval &stop, long threshold) {
@@ -68,46 +69,6 @@ void displayRusageRUMaxrss() {
   struct rusage r;
   if (getrusage(RUSAGE_SELF, &r) != 0) ERR;
   printf("maxrss:\t%ld kB\n", r.ru_maxrss);
-}
-
-void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
-                   FastZipf &zipf, size_t tuple_num, size_t max_ope,
-                   size_t thread_num, size_t rratio, bool rmw, bool ycsb,
-                   bool partition, size_t thread_id) {
-  pro.clear();
-  bool ronly_flag(true), wonly_flag(true);
-  for (size_t i = 0; i < max_ope; ++i) {
-    uint64_t tmpkey;
-    if (ycsb) {
-      if (partition) {
-        size_t block_size = tuple_num / thread_num;
-        tmpkey = (block_size * thread_id) + (zipf() % block_size);
-      } else {
-        tmpkey = zipf() % tuple_num;
-      }
-    } else {
-      if (partition) {
-        size_t block_size = tuple_num / thread_num;
-        tmpkey = (block_size * thread_id) + (rnd.next() % block_size);
-      } else {
-        tmpkey = rnd.next() % tuple_num;
-      }
-    }
-
-    if ((rnd.next() % 100) < rratio) {
-      pro.emplace_back(Ope::READ, tmpkey);
-      wonly_flag = false;
-    } else {
-      ronly_flag = false;
-      if (rmw) {
-        pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
-      } else {
-        pro.emplace_back(Ope::WRITE, tmpkey);
-      }
-    }
-  }
-  (*pro.begin()).ronly_ = ronly_flag;
-  (*pro.begin()).wonly_ = wonly_flag;
 }
 
 void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
