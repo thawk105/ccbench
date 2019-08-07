@@ -18,7 +18,7 @@ bool GarbageCollection::chkSecondRange() {
 
   smin_ = UINT32_MAX;
   smax_ = 0;
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid_.load(std::memory_order_acquire);
     smin_ = min(smin_, tmptxid);
@@ -38,7 +38,7 @@ void GarbageCollection::decideFirstRange() {
   TransactionTable *tmt;
 
   fmin_ = fmax_ = 0;
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid_.load(std::memory_order_acquire);
     fmin_ = min(fmin_, tmptxid);
@@ -59,11 +59,10 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
-    uint8_t one = 0;
+    uint8_t one = 1;
     Tuple *tuple = gcq_for_version_.front().rcdptr_;
-    if (!tuple->g_clock_.compare_exchange_strong(zero, one,
-                                                 std::memory_order_acq_rel,
-                                                 std::memory_order_acquire)) {
+    if (!tuple->g_clock_.compare_exchange_strong(
+            zero, one, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcq_for_version_.pop_front();
       continue;

@@ -67,8 +67,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(quit)) {
     if (thid == 0) {
       leaderWork(std::ref(gcob));
-      _mm_pause();
-      continue;
     }
 
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,

@@ -25,14 +25,14 @@
 
 using namespace std;
 
-extern void chkArg(const int argc, const char *argv[]);
+extern void chkArg(const int argc, const char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 extern void isReady(const std::vector<char>& readys);
 extern void leaderWork(GarbageCollection& gcob);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
-                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus& rnd,
+                          FastZipf& zipf, size_t tuple_num, size_t max_ope,
                           size_t thread_num, size_t rratio, bool rmw, bool ycsb,
                           bool partition, size_t thread_id);
 extern void naiveGarbageCollection();
@@ -40,7 +40,7 @@ extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-    Result& res) {
+            Result& res) {
   TxExecutor trans(thid, MAX_OPE, (Result*)&res);
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -74,10 +74,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
-        trans.twrite((*itr).key_, std::ref(quit));
+        trans.twrite((*itr).key_);
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
         trans.tread((*itr).key_);
-        trans.twrite((*itr).key_, std::ref(quit));
+        trans.twrite((*itr).key_);
       } else {
         ERR;
       }
@@ -98,7 +98,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   return;
 }
 
-int main(const int argc, const char *argv[]) try {
+int main(const int argc, const char* argv[]) try {
   chkArg(argc, argv);
   makeDB();
 

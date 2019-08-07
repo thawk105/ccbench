@@ -61,9 +61,8 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *sres_) {
     uint8_t zero = 0;
     uint8_t one = 1;
     Tuple *tuple = gcq_for_versions_.front().rcdptr_;
-    if (!tuple->g_clock_.compare_exchange_strong(zero, one,
-                                                 std::memory_order_acq_rel,
-                                                 std::memory_order_acquire)) {
+    if (!tuple->g_clock_.compare_exchange_strong(
+            zero, one, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcq_for_versions_.pop_front();
       continue;

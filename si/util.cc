@@ -187,7 +187,7 @@ void makeDB() {
   for (auto &th : thv) th.join();
 }
 
-void naiveGarbageCollection(const bool& quit) {
+void naiveGarbageCollection(const bool &quit) {
   TransactionTable *tmt;
 
   uint32_t mintxID = UINT32_MAX;

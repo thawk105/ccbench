@@ -52,8 +52,7 @@ void TxExecutor::tbegin() {
     newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inFlight);
   }
 
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
-    if (i == thid_) continue;
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     do {
       tmt = loadAcquire(TMT[i]);
     } while (tmt == nullptr);
@@ -418,7 +417,7 @@ void TxExecutor::ssn_parallel_commit() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     // for r in v.prev.readers
     uint64_t rdrs = (*itr).ver_->readers_.load(memory_order_acquire);
-    for (unsigned int worker = 1; worker <= THREAD_NUM; ++worker) {
+    for (unsigned int worker = 0; worker < THREAD_NUM; ++worker) {
       if ((rdrs & (one << worker)) ? 1 : 0) {
         tmt = loadAcquire(TMT[worker]);
         // 並行 reader が committing なら無視できない．
@@ -505,6 +504,7 @@ void TxExecutor::ssn_parallel_commit() {
   read_set_.clear();
   write_set_.clear();
   ++eres_->local_commit_counts_;
+  TMT[thid_]->lastcstamp_.store(cstamp_, std::memory_order_release);
   return;
 }
 

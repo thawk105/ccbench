@@ -34,7 +34,6 @@ class TxExecutor {
   uint64_t gcstart_, gcstop_;
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
-  uint32_t abort_cause_ = 0;
 
   std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>>
       read_set_;
@@ -61,7 +60,7 @@ class TxExecutor {
   SetElement<Tuple> *searchWriteSet(uint64_t key);
   void tbegin();
   char *tread(uint64_t key);
-  void twrite(uint64_t key, const bool& quit);
+  void twrite(uint64_t key);
   void commit();
   void abort();
   void mainte();

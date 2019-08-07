@@ -127,7 +127,7 @@ char *TxExecutor::tread(uint64_t key) {
   return ver->val_;
 }
 
-void TxExecutor::twrite(uint64_t key, const bool& quit) {
+void TxExecutor::twrite(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -180,21 +180,20 @@ void TxExecutor::twrite(uint64_t key, const bool& quit) {
       if (this->txid_ <= rivaltid) {
         /* <= の理由 : txid_ は最後にコミットが成功したタイムスタンプの
          * 最大値を全ワーカー間で取り，その最大値 + 1 である．
-         * 例えば，全体がずっとアボートし続けた時，この最大値 + 1 が多くのワーカーの
-         * txid_ となりうることは容易に想像できる．
+         * 例えば，全体がずっとアボートし続けた時，この最大値 + 1
+         * が多くのワーカーの txid_ となりうることは容易に想像できる．
          * 他のワーカーが書いているものを参照していた場合， == が成り立つ．
          * < のみでは == が検出できず，無限に lates を参照し続けることになる．
          *
          * no-wait で abort させても性能劣化はほぼ起きていない．
          * 性能が向上されるケースもある．
          */
-        // if (1) { 
+        // if (1) {
         this->status_ = TransactionStatus::aborted;
         gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
         sres_->local_write_latency_ += rdtscp() - start;
 #endif
-        this->abort_cause_ = rivaltid;
         return;
       }
 
@@ -220,7 +219,6 @@ void TxExecutor::twrite(uint64_t key, const bool& quit) {
 #if ADD_ANALYSIS
       sres_->local_write_latency_ += rdtscp() - start;
 #endif
-      this->abort_cause_ = vertmp->cstamp_.load(memory_order_acquire);
       return;
     }
 
