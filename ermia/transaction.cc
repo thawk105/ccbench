@@ -201,8 +201,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
     if (expected->status_.load(memory_order_acquire) ==
         VersionStatus::inFlight) {
       this->status_ = TransactionStatus::aborted;
-      TransactionTable *tmt = loadAcquire(TMT[thid_]);
-      tmt->status_.store(TransactionStatus::aborted, memory_order_release);
+      TMT[thid_]->status_.store(TransactionStatus::aborted, memory_order_release);
       gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
       eres_->local_write_latency_ += rdtscp() - start;
@@ -225,8 +224,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       // Writers must abort if they would overwirte a version created after
       // their snapshot.
       this->status_ = TransactionStatus::aborted;
-      TransactionTable *tmt = loadAcquire(TMT[thid_]);
-      tmt->status_.store(TransactionStatus::aborted, memory_order_release);
+      TMT[thid_]->status_.store(TransactionStatus::aborted, memory_order_release);
       gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
       eres_->local_write_latency_ += rdtscp() - start;

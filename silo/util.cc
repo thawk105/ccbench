@@ -25,6 +25,7 @@
 #include "../include/masstree_wrapper.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/tsc.hh"
 #include "../include/zipf.hh"
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
@@ -176,4 +177,14 @@ void makeDB() {
     thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
                      (i + 1) * (TUPLE_NUM / maxthread) - 1);
   for (auto &th : thv) th.join();
+}
+
+void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
+  epoch_timer_stop = rdtscp();
+  if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
+                 EPOCH_TIME * CLOCKS_PER_US * 1000) &&
+      chkEpochLoaded()) {
+    atomicAddGE();
+    epoch_timer_start = epoch_timer_stop;
+  }
 }

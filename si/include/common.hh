@@ -12,14 +12,12 @@
 #ifdef GLOBAL_VALUE_DEFINE
 #define GLOBAL
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> CCtr(0);
-alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<size_t> Running(0);
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 #else
 #define GLOBAL extern
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> CCtr;
-alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<size_t> Running;
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif

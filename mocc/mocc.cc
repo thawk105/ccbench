@@ -113,8 +113,8 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
+  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
   std::vector<char> readys(THREAD_NUM);
-  std::vector<Result> res(THREAD_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),

@@ -5,6 +5,7 @@
 #include <sys/syscall.h>  //syscall(SYS_gettid),
 #include <sys/types.h>    //syscall(SYS_gettid),
 #include <unistd.h>       //syscall(SYS_gettid),
+#include <x86intrin.h>
 
 #include <iostream>
 #include <string>  //string
@@ -12,6 +13,7 @@
 
 #define GLOBAL_VALUE_DEFINE
 
+#include "../include/atomic_wrapper.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/fence.hh"
@@ -32,49 +34,44 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern void display_procedure_vector(std::vector<Procedure> &pro);
 extern void displayDB();
 extern void displayPRO();
+extern void isReady(const std::vector<char>& readys);
 extern void makeDB();
 extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                           FastZipf &zipf, size_t tuple_num, size_t max_ope,
                           size_t thread_num, size_t rratio, bool rmw, bool ycsb,
                           bool partition, size_t thread_id);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
-                                            const size_t thnm);
-extern void waitForReadyOfAllThread(std::atomic<size_t> &running,
-                                    const size_t thnm);
 extern void sleepMs(size_t ms);
+extern void waitForReady(const std::vector<char>& readys);
 
-static void *worker(void *arg) {
-  Result &res = *(Result *)arg;
+void worker(size_t thid, char& ready, const bool& start, const bool& quit, Result& res) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(res.thid_, (Result *)arg);
+  TxExecutor trans(thid, (Result*)&res);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
 
 #if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(res.thid_));
+  MasstreeWrapper<Tuple>::thread_init(int(thid));
 #endif
 
 #ifdef Linux
-  setThreadAffinity(res.thid_);
+  setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n",
   // sysconf(_SC_NPROCESSORS_CONF));
 #endif  // Linux
 
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-
-  // start work (transaction)
-  for (;;) {
+  storeRelease(ready, 1);
+  while (!loadAcquire(start)) _mm_pause();
+  while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, res.thid_);
+                  RRATIO, RMW, YCSB, false, thid);
 #if KEY_SORT
     std::sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
 
   RETRY:
-    if (Result::Finish_.load(std::memory_order_acquire)) return nullptr;
-    trans.tbegin();
 
+    trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
       if ((*itr).ope_ == Ope::READ) {
@@ -94,45 +91,36 @@ static void *worker(void *arg) {
       }
     }
 
-    // commit - write phase
     trans.commit();
   }
 
-  return nullptr;
+  return;
 }
 
 int main(const int argc, const char *argv[]) try {
   chkArg(argc, argv);
   makeDB();
-  // displayDB();
 
-  // displayPRO();
-
-  Result rsob[THREAD_NUM];
-  Result &rsroot = rsob[0];
-  pthread_t thread[THREAD_NUM];
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    int ret;
-    rsob[i].thid_ = i;
-    ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
-    if (ret) ERR;
-  }
-
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  alignas(CACHE_LINE_SIZE) bool start = false;
+  alignas(CACHE_LINE_SIZE) bool quit = false;
+  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
+  std::vector<char> readys(THREAD_NUM);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < THREAD_NUM; ++i)
+    thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
+                     std::ref(quit), std::ref(res[i]));
+  waitForReady(readys);
+  storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish_.store(true, std::memory_order_release);
+  storeRelease(quit, true);
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(thread[i], nullptr);
-    rsroot.addLocalAllResult(rsob[i]);
+    res[0].addLocalAllResult(res[i]);
   }
-
-  rsroot.extime_ = EXTIME;
-  rsroot.displayAllResult();
-
-  // displayDB();
+  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {

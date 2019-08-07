@@ -20,6 +20,7 @@
 #include "../include/masstree_wrapper.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
+#include "../include/result.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/tuple.hh"
@@ -57,6 +58,7 @@ void chkArg(const int argc, const char *argv[]) {
          << std::is_move_constructible<Procedure>::value << endl;
     cout << "Procedure : is_move_assignable : "
          << std::is_move_assignable<Procedure>::value << endl;
+    cout << "Result size " << sizeof(Result) << endl;
     exit(0);
   }
 

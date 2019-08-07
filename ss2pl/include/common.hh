@@ -9,7 +9,6 @@
 
 #ifdef GLOBAL_VALUE_DEFINE
 #define GLOBAL
-GLOBAL std::atomic<size_t> Running(0);
 
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
@@ -17,7 +16,6 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 
 #else
 #define GLOBAL extern
-GLOBAL std::atomic<size_t> Running;
 
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;

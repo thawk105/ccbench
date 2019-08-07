@@ -15,6 +15,7 @@
 #include "include/common.hh"
 #include "include/transaction.hh"
 
+#include "../include/atomic_wrapper.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/fileio.hh"
@@ -27,62 +28,30 @@
 
 using namespace std;
 
-extern void chkArg(const int argc, char *argv[]);
+extern void chkArg(const int argc, char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 extern bool chkEpochLoaded();
+extern void isReady(const std::vector<char>& readys);
+extern void leaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop);
 extern void displayDB();
 extern void displayPRO();
-extern void genLogFile(std::string &logpath, const int thid);
+extern void genLogFile(std::string& logpath, const int thid);
 extern void makeDB();
-extern void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
-                          FastZipf &zipf, size_t tuple_num, size_t max_ope,
+extern void makeProcedure(std::vector<Procedure>& pro, Xoroshiro128Plus& rnd,
+                          FastZipf& zipf, size_t tuple_num, size_t max_ope,
                           size_t thread_num, size_t rratio, bool rmw, bool ycsb,
                           bool partition, size_t thread_id);
-extern void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
-                                            size_t thnm);
-extern void waitForReadyOfAllThread(std::atomic<size_t> &running, size_t thnm);
+extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
-static void *epoch_worker(void *arg) {
-  /* 1. 40msごとに global epoch を必要に応じてインクリメントする
-   * 2. 十分条件
-   * 全ての worker が最新の epoch を読み込んでいる。
-   * */
-  Result &res = *(Result *)(arg);
-
-  setThreadAffinity(res.thid_);
-  // printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-
-  uint64_t epochTimerStart, epochTimerStop;
-  epochTimerStart = rdtscp();
-  for (;;) {
-    if (Result::Finish_.load(memory_order_acquire)) return nullptr;
-
-    usleep(1);
-
-    epochTimerStop = rdtscp();
-    // chkEpochLoaded は最新のグローバルエポックを
-    //全てのワーカースレッドが読み込んだか確認する．
-    if (chkClkSpan(epochTimerStart, epochTimerStop,
-                   EPOCH_TIME * CLOCKS_PER_US * 1000) &&
-        chkEpochLoaded()) {
-      atomicAddGE();
-      epochTimerStart = epochTimerStop;
-    }
-  }
-  //----------
-
-  return nullptr;
-}
-
-static void *worker(void *arg) {
-  Result &res = *(Result *)(arg);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit,
+            Result& res) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxnExecutor trans(res.thid_, (Result *)arg);
+  TxnExecutor trans(thid, (Result*)&res);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  uint64_t epoch_timer_start, epoch_timer_stop;
 
   // std::string logpath;
   // genLogFile(logpath, res.thid_);
@@ -90,30 +59,31 @@ static void *worker(void *arg) {
   // trans.logfile.ftruncate(10^9);
 
 #if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(res.thid_));
+  MasstreeWrapper<Tuple>::thread_init(int(thid));
 #endif
 
-  setThreadAffinity(res.thid_);
+#ifdef Linux
+  setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
-  ReadyAndWaitForReadyOfAllThread(Running, THREAD_NUM);
-
-  // start work(transaction)
-  for (;;) {
-#if PARTITION_TABLE
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, res.thid_);
-#else
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, res.thid_);
 #endif
 
+  storeRelease(ready, 1);
+  while (!loadAcquire(start)) _mm_pause();
+  if (thid == 0) epoch_timer_start = rdtscp();
+  while (!loadAcquire(quit)) {
+    if (thid == 0) leaderWork(epoch_timer_start, epoch_timer_stop);
+#if PARTITION_TABLE
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, true, thid);
+#else
+    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
+                  RRATIO, RMW, YCSB, false, thid);
+#endif
   RETRY:
-    trans.tbegin();
-    if (Result::Finish_.load(memory_order_acquire)) return nullptr;
 
-    // Read phase
+    trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
       if ((*itr).ope_ == Ope::READ) {
@@ -128,9 +98,7 @@ static void *worker(void *arg) {
       }
     }
 
-    // Validation phase
-    bool varesult = trans.validationPhase();
-    if (varesult) {
+    if (trans.validationPhase()) {
       trans.writePhase();
       ++res.local_commit_counts_;
     } else {
@@ -140,40 +108,33 @@ static void *worker(void *arg) {
     }
   }
 
-  return NULL;
+  return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   chkArg(argc, argv);
   makeDB();
 
-  // displayDB();
-  // displayPRO();
-
-  Result rsob[THREAD_NUM];
-  pthread_t thread[THREAD_NUM];
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    int ret;
-    rsob[i] = Result(CLOCKS_PER_US, EXTIME, i, THREAD_NUM);
-    if (i == 0)
-      ret = pthread_create(&thread[i], NULL, epoch_worker, (void *)(&rsob[i]));
-    else
-      ret = pthread_create(&thread[i], NULL, worker, (void *)(&rsob[i]));
-    if (ret) ERR;
-  }
-
-  waitForReadyOfAllThread(Running, THREAD_NUM);
+  alignas(CACHE_LINE_SIZE) bool start = false;
+  alignas(CACHE_LINE_SIZE) bool quit = false;
+  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
+  std::vector<char> readys(THREAD_NUM);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < THREAD_NUM; ++i)
+    thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
+                     std::ref(quit), std::ref(res[i]));
+  waitForReady(readys);
+  storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
     sleepMs(1000);
   }
-  Result::Finish_.store(true, std::memory_order_release);
+  storeRelease(quit, true);
+  for (auto& th : thv) th.join();
 
-  Result &rsroot = rsob[0];
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(thread[i], NULL);
-    rsroot.addLocalAllResult(rsob[i]);
+    res[0].addLocalAllResult(res[i]);
   }
-  rsroot.displayAllResult();
+  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {
