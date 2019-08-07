@@ -74,10 +74,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
       if ((*itr).ope_ == Ope::READ) {
         trans.tread((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
-        trans.twrite((*itr).key_);
+        trans.twrite((*itr).key_, std::ref(quit));
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
         trans.tread((*itr).key_);
-        trans.twrite((*itr).key_);
+        trans.twrite((*itr).key_, std::ref(quit));
       } else {
         ERR;
       }
