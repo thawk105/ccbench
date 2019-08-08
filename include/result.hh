@@ -32,6 +32,8 @@ class Result {
   uint64_t local_vali_latency_ = 0;
   uint64_t local_validation_failure_by_tid_ = 0;
   uint64_t local_validation_failure_by_writelock_ = 0;
+  uint64_t local_version_malloc_ = 0;
+  uint64_t local_version_reuse_ = 0;
   uint64_t local_write_latency_ = 0;
 #endif
 
@@ -59,6 +61,8 @@ class Result {
   uint64_t total_vali_latency_ = 0;
   uint64_t total_validation_failure_by_tid_ = 0;
   uint64_t total_validation_failure_by_writelock_ = 0;
+  uint64_t total_version_malloc_ = 0;
+  uint64_t total_version_reuse_ = 0;
   uint64_t total_write_latency_ = 0;
   // not exist local version.
   uint64_t total_latency_ = 0;
@@ -99,6 +103,9 @@ class Result {
                               size_t thread_num);
   void displayValidationFailureByTidRate();
   void displayValidationFailureByWritelockRate();
+  void displayVersionMalloc();
+  void displayVersionReuse();
+
 #endif
 
   void addLocalAllResult(const Result &other);
@@ -127,5 +134,7 @@ class Result {
   void addLocalValiLatency(const uint64_t count);
   void addLocalValidationFailureByTid(const uint64_t count);
   void addLocalValidationFailureByWritelock(const uint64_t count);
+  void addLocalVersionMalloc(const uint64_t count);
+  void addLocalVersionReuse(const uint64_t count);
 #endif
 };

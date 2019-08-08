@@ -15,7 +15,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
 				 -DADD_ANALYSIS=1 \
-				 -DINLINE_VERSION_OPT=0 \
+				 -DINLINE_VERSION_OPT=1 \
 				 -DMASSTREE_USE=1 \
 				 -DPARTITION_TABLE=0 \
 				 -DSINGLE_EXEC=0 \

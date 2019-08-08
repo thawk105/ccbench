@@ -219,6 +219,16 @@ void Result::displayValidationFailureByWritelockRate() {
   }
 }
 
+void Result::displayVersionMalloc() {
+  if (total_version_malloc_)
+    cout << "version_malloc:\t" << total_version_malloc_ << endl;
+}
+
+void Result::displayVersionReuse() {
+  if (total_version_reuse_)
+    cout << "version_reuse:\t" << total_version_reuse_ << endl;
+}
+
 void Result::displayWriteLatencyRate(size_t clocks_per_us, size_t extime,
                                      size_t thread_num) {
   if (total_write_latency_) {
@@ -314,12 +324,20 @@ void Result::addLocalValiLatency(const uint64_t count) {
   total_vali_latency_ += count;
 }
 
-void Result::addLocalValidationFailureByTid(uint64_t count) {
+void Result::addLocalValidationFailureByTid(const uint64_t count) {
   total_validation_failure_by_tid_ += count;
 }
 
-void Result::addLocalValidationFailureByWritelock(uint64_t count) {
+void Result::addLocalValidationFailureByWritelock(const uint64_t count) {
   total_validation_failure_by_writelock_ += count;
+}
+
+void Result::addLocalVersionMalloc(const uint64_t count) {
+  total_version_malloc_ += count;
+}
+
+void Result::addLocalVersionReuse(const uint64_t count) {
+  total_version_reuse_ += count;
 }
 
 void Result::addLocalWriteLatency(const uint64_t count) {
@@ -352,6 +370,8 @@ void Result::displayAllResult(size_t clocks_per_us, size_t extime,
   displayValiLatencyRate(clocks_per_us, extime, thread_num);
   displayValidationFailureByTidRate();
   displayValidationFailureByWritelockRate();
+  displayVersionMalloc();
+  displayVersionReuse();
 #endif
   displayAbortCounts();
   displayCommitCounts();
@@ -389,5 +409,7 @@ void Result::addLocalAllResult(const Result &other) {
   addLocalValidationFailureByTid(other.local_validation_failure_by_tid_);
   addLocalValidationFailureByWritelock(
       other.local_validation_failure_by_writelock_);
+  addLocalVersionMalloc(other.local_version_malloc_);
+  addLocalVersionReuse(other.local_version_reuse_);
 #endif
 }

@@ -213,10 +213,16 @@ void TxExecutor::twrite(uint64_t key) {
   Version *newObject;
   if (reuse_version_from_gc_.empty()) {
     newObject = new Version(0, this->wts_.ts_);
+#if ADD_ANALYSIS
+    ++cres_->local_version_malloc_;
+#endif
   } else {
     newObject = reuse_version_from_gc_.back();
     reuse_version_from_gc_.pop_back();
     newObject->set(0, this->wts_.ts_);
+#if ADD_ANALYSIS
+    ++cres_->local_version_reuse_;
+#endif
   }
   write_set_.emplace_back(key, tuple, newObject);
 
