@@ -13,6 +13,7 @@ class Result {
 #if ADD_ANALYSIS
   uint64_t local_abort_by_operation_ = 0;
   uint64_t local_abort_by_validation_ = 0;
+  uint64_t local_commit_latency_ = 0;
   uint64_t local_backoff_latency_ = 0;
   uint64_t local_extra_reads_ = 0;
   uint64_t local_gc_counts_ = 0;
@@ -39,6 +40,7 @@ class Result {
 #if ADD_ANALYSIS
   uint64_t total_abort_by_operation_ = 0;
   uint64_t total_abort_by_validation_ = 0;
+  uint64_t total_commit_latency_ = 0;
   uint64_t total_backoff_latency_ = 0;
   uint64_t total_extra_reads_ = 0;
   uint64_t total_gc_counts_ = 0;
@@ -70,6 +72,8 @@ class Result {
 #if ADD_ANALYSIS
   void displayAbortByOperationRate();   // abort by operation rate;
   void displayAbortByValidationRate();  // abort by validation rate;
+  void displayCommitLatencyRate(size_t clocks_per_us, size_t extime,
+                                 size_t thread_num);
   void displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
                                  size_t thread_num);
   void displayExtraReads();
@@ -103,6 +107,7 @@ class Result {
 #if ADD_ANALYSIS
   void addLocalAbortByOperation(const uint64_t count);
   void addLocalAbortByValidation(const uint64_t count);
+  void addLocalCommitLatency(const uint64_t count);
   void addLocalBackoffLatency(const uint64_t count);
   void addLocalExtraReads(const uint64_t count);
   void addLocalGCCounts(const uint64_t count);

@@ -54,6 +54,19 @@ void Result::displayAbortByValidationRate() {
   }
 }
 
+void Result::displayCommitLatencyRate(size_t clocks_per_us, size_t extime,
+                                       size_t thread_num) {
+  if (total_commit_latency_) {
+    long double rate;
+    rate =
+        (long double)total_commit_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+    cout << fixed << setprecision(4) << "commit_latency_rate:\t" << rate
+         << endl;
+  }
+}
+
 void Result::displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
                                        size_t thread_num) {
   if (total_backoff_latency_) {
@@ -235,6 +248,10 @@ void Result::addLocalAbortByValidation(const uint64_t count) {
   total_abort_by_validation_ += count;
 }
 
+void Result::addLocalCommitLatency(const uint64_t count) {
+  total_commit_latency_ += count;
+}
+
 void Result::addLocalBackoffLatency(const uint64_t count) {
   total_backoff_latency_ += count;
 }
@@ -315,6 +332,7 @@ void Result::displayAllResult(size_t clocks_per_us, size_t extime,
 #if ADD_ANALYSIS
   displayAbortByOperationRate();
   displayAbortByValidationRate();
+  displayCommitLatencyRate(clocks_per_us, extime, thread_num);
   displayBackoffLatencyRate(clocks_per_us, extime, thread_num);
   displayExtraReads();
   displayGCCounts();
@@ -348,6 +366,7 @@ void Result::addLocalAllResult(const Result &other) {
 #if ADD_ANALYSIS
   addLocalAbortByOperation(other.local_abort_by_operation_);
   addLocalAbortByValidation(other.local_abort_by_validation_);
+  addLocalCommitLatency(other.local_backoff_latency_);
   addLocalBackoffLatency(other.local_backoff_latency_);
   addLocalExtraReads(other.local_extra_reads_);
   addLocalGCCounts(other.local_gc_counts_);

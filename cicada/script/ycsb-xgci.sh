@@ -1,7 +1,7 @@
 #ycsbB-xrs.sh(cicada)
-tuple=1000000
+tuple=100000000
 maxope=10
-rratio=50
+rratio=95
 rmw=off
 skew=0
 ycsb=on
@@ -11,7 +11,7 @@ cpu_mhz=2100
 io_time_ns=5
 group_commit_timeout_us=2
 gci=10
-extime=3
+extime=30
 epoch=3
 
 host=`hostname`
@@ -24,12 +24,12 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_cicada_ycsbA_tuple1m_gci10us-1s.dat
+result=result_cicada_ycsbB_tuple100m_gci10us_224th.dat
 rm $result
-echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-make_procedure_latency_rate, avg-read_latency_rate, avg-write_latency_rate, avg-vali_latency_rate, avg-gc_latency_rate" >> $result
+echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-make_procedure_latency_rate, avg-read_latency_rate, avg-write_latency_rate, avg-vali_latency_rate, avg-gc_latency_rate avg-maxrss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us gci $extime" >> $result
 
-for ((gci=10; gci<=1000000; gci*=10))
+for ((gci=10; gci<=10; gci*=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $extime"
   echo "Thread number $thread"
@@ -42,6 +42,7 @@ do
   sumWL=0
   sumVL=0
   sumGL=0
+  sumRE=0
   maxTH=0
   maxAR=0
   maxCA=0
@@ -60,16 +61,21 @@ do
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
-    tmpML=`grep make_latency_rate ./exp.txt | awk '{print $2}'`
+    tmpML=`grep make_procedure_latency_rate ./exp.txt | awk '{print $2}'`
     tmpRL=`grep read_latency_rate ./exp.txt | awk '{print $2}'`
     tmpWL=`grep write_latency_rate ./exp.txt | awk '{print $2}'`
     tmpVL=`grep vali_latency_rate ./exp.txt | awk '{print $2}'`
     tmpGL=`grep gc_latency_rate ./exp.txt | awk '{print $2}'`
+    tmpRE=`grep maxrss ./exp.txt | awk '{print $2}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
     sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
     sumCA=`echo "$sumCA + $tmpCA" | bc`
+    sumML=`echo "scale=4; $sumML + $tmpML" | bc | xargs printf %.4f`
+    sumRL=`echo "scale=4; $sumRL + $tmpRL" | bc | xargs printf %.4f`
     sumWL=`echo "scale=4; $sumWL + $tmpWL" | bc | xargs printf %.4f`
+    sumVL=`echo "scale=4; $sumVL + $tmpVL" | bc | xargs printf %.4f`
     sumGL=`echo "scale=4; $sumGL + $tmpGL" | bc | xargs printf %.4f`
+    sumRE=`echo "$sumRE + $tmpRE" | bc`
     echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
   
     if test $i -eq 1 ; then
@@ -115,10 +121,11 @@ do
   avgWL=`echo "scale=4; $sumWL / $epoch" | bc | xargs printf %.4f`
   avgVL=`echo "scale=4; $sumVL / $epoch" | bc | xargs printf %.4f`
   avgGL=`echo "scale=4; $sumGL / $epoch" | bc | xargs printf %.4f`
+  avgRE=`echo "$sumRE / $epoch" | bc`
   echo "sumTH: $sumTH, sumAR: $sumAR, sumCA: $sumCA"
   echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
   echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
   echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
   echo ""
-  echo "$gci $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA $avgML $avgRL $avgWL $avgVL $avgGL" >> $result
+  echo "$gci $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA $avgML $avgRL $avgWL $avgVL $avgGL $avgRE" >> $result
 done

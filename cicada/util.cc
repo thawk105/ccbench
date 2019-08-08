@@ -77,6 +77,7 @@ void chkArg(const int argc, char *argv[]) {
          << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
     cout << "Result:\t" << sizeof(Result) << endl;
+    cout << "uint64_t_64byte: " << sizeof(uint64_t_64byte) << endl;
     exit(0);
   }
 
@@ -296,14 +297,28 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
 
+#if INLINE_VERSION_OPT
+#else
+  Version *version;
+  if (posix_memalign((void**)&version, CACHE_LINE_SIZE, (end-start+1) * sizeof(Version))) ERR;
+#endif
+
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tuple;
     tuple = TxExecutor::get_tuple(Table, i);
     tuple->min_wts_ = initts;
     tuple->gClock_.store(0, std::memory_order_release);
+
+#if INLINE_VERSION_OPT
     tuple->latest_ = &tuple->inline_version_;
     tuple->inline_version_.set(0, initts, nullptr, VersionStatus::committed);
     tuple->inline_version_.val_[0] = '\0';
+#else
+    tuple->latest_ = &version[i-start];
+    (tuple->latest_.load(std::memory_order_acquire))->set(0, initts, nullptr, VersionStatus::committed);
+    (tuple->latest_.load(std::memory_order_acquire))->val_[0] = '\0';
+#endif
+
 #if MASSTREE_USE
     MT.insert_value(i, tuple);
 #endif
@@ -333,7 +348,7 @@ void makeDB(uint64_t *initial_wts) {
 
 void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Result>& res) {
   bool gc_update = true;
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     // check all thread's flag raising
     if (__atomic_load_n(&(GCFlag[i].obj_), __ATOMIC_ACQUIRE) == 0) {
       gc_update = false;
@@ -369,7 +384,7 @@ void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Re
     MinRts.store(minr, memory_order_release);
 
     // downgrade gc flag
-    for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
       __atomic_store_n(&(GCFlag[i].obj_), 0, __ATOMIC_RELEASE);
       __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
     }

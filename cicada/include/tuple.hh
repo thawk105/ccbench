@@ -10,7 +10,10 @@ using namespace std;
 
 class Tuple {
  public:
-  alignas(CACHE_LINE_SIZE) Version inline_version_;
+  alignas(CACHE_LINE_SIZE) 
+#if INLINE_VERSION_OPT
+  Version inline_version_;
+#endif
   atomic<Version *> latest_;
   atomic<uint64_t> min_wts_;
   atomic<uint8_t> gClock_;
@@ -19,7 +22,6 @@ class Tuple {
 
   Version *ldAcqLatest() { return latest_.load(std::memory_order_acquire); }
 
-  // inline
   bool getGCRight(uint8_t thid) {
     uint8_t expected, desired(thid);
     expected = this->gClock_.load(std::memory_order_acquire);
@@ -34,6 +36,8 @@ class Tuple {
 
   void returnGCRight() { this->gClock_.store(0, std::memory_order_release); }
 
+#if INLINE_VERSION_OPT
+  // inline
   bool getInlineVersionRight() {
     VersionStatus expected, desired(VersionStatus::pending);
     expected = this->inline_version_.status_.load(std::memory_order_acquire);
@@ -50,4 +54,5 @@ class Tuple {
     this->inline_version_.status_.store(VersionStatus::unused,
                                         std::memory_order_release);
   }
+#endif
 };

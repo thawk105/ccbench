@@ -15,14 +15,19 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
 				 -DADD_ANALYSIS=1 \
+				 -DINLINE_VERSION_OPT=0 \
+				 -DMASSTREE_USE=1 \
 				 -DPARTITION_TABLE=0 \
 				 -DSINGLE_EXEC=0 \
 				 -DUSE_BACKOFF=1 \
-				 -DMASSTREE_USE=1 \
 
 # SINGLE_EXEC option can be executed only non conflict workload.
 # スレッドごとにアクセスするブロックをパーティションで分割し，同一キーに対しては
 # write -> read の順序を維持する．
+#
+# SINGLE_EXEC の時は，INLINE_VERSION_OPT をオンにする．そうでないとバグるかもしれない．
+# すなわちレコードヘッダが latest pointer を持っていて，その先にシングルバージョンがあるケースは想定していない．
+# レコードヘッダにインラインバージョンさせた方が早そうなので，そうで無いケースは実装していない．
 
 ifeq ($(shell hostname), chris41.omni.hpcc.jp)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release

@@ -202,20 +202,27 @@ void TxExecutor::twrite(uint64_t key) {
     return;
   }
 
+#if INLINE_VERSION_OPT
   if (tuple->getInlineVersionRight()) {
     tuple->inline_version_.set(0, this->wts_.ts_);
     write_set_.emplace_back(key, tuple, &tuple->inline_version_);
+    goto FINISH_TWRITE;
+  } 
+#endif
+
+  Version *newObject;
+  if (reuse_version_from_gc_.empty()) {
+    newObject = new Version(0, this->wts_.ts_);
   } else {
-    Version *newObject;
-    if (reuse_version_from_gc_.empty()) {
-      newObject = new Version(0, this->wts_.ts_);
-    } else {
-      newObject = reuse_version_from_gc_.back();
-      reuse_version_from_gc_.pop_back();
-      newObject->set(0, this->wts_.ts_);
-    }
-    write_set_.emplace_back(key, tuple, newObject);
+    newObject = reuse_version_from_gc_.back();
+    reuse_version_from_gc_.pop_back();
+    newObject->set(0, this->wts_.ts_);
   }
+  write_set_.emplace_back(key, tuple, newObject);
+
+#if INLINE_VERSION_OPT
+FINISH_TWRITE:
+#endif
 
 #if ADD_ANALYSIS
   cres_->local_write_latency_ += rdtscp() - start;
@@ -464,21 +471,16 @@ void TxExecutor::pwal() {
 inline void TxExecutor::cpv()  // commit pending versions
 {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-#if SINGLE_EXEC
     memcpy((*itr).newObject_->val_, write_val_, VAL_SIZE);
-    (*itr).newObject_->status_.store(VersionStatus::committed,
-                                     std::memory_order_release);
+#if SINGLE_EXEC
     (*itr).newObject_->set(0, this->wts_.ts_);
 #else
     gcq_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).newObject_,
                              (*itr).newObject_->wts_));
-    memcpy((*itr).newObject_->val_, write_val_, VAL_SIZE);
+#endif
     (*itr).newObject_->status_.store(VersionStatus::committed,
                                      std::memory_order_release);
-#endif
   }
-
-  // std::cout << gcq_.size() << std::endl;
 }
 
 void TxExecutor::gcpv() {
@@ -503,10 +505,12 @@ void TxExecutor::wSetClean() {
     if ((*itr).finish_version_install_)
       (*itr).newObject_->status_.store(VersionStatus::aborted,
                                        std::memory_order_release);
-    else if ((*itr).newObject_ != &(*itr).rcdptr_->inline_version_)
-      reuse_version_from_gc_.emplace_back((*itr).newObject_);
-    else
+#if INLINE_VERSION_OPT
+    else if ((*itr).newObject_ == &(*itr).rcdptr_->inline_version_)
       (*itr).rcdptr_->returnInlineVersionRight();
+#endif
+    else
+      reuse_version_from_gc_.emplace_back((*itr).newObject_);
   }
 
   write_set_.clear();
@@ -622,8 +626,12 @@ void TxExecutor::mainte() {
     while (!gcq_.empty()) {
       if (gcq_.front().wts_ >= MinRts.load(memory_order_acquire)) break;
 
-      // (a) acquiring the garbage collection lock succeeds
-      if (gcq_.front().rcdptr_->getGCRight(thid_) == false) {
+      /* 
+       * (a) acquiring the garbage collection lock succeeds
+       * thid_+1 : leader thread id is 0.
+       * so, if we get right by id 0, other worker thread can't detect.
+       */
+      if (gcq_.front().rcdptr_->getGCRight(thid_+1) == false) {
         // fail acquiring the lock
         gcq_.pop_front();
         continue;
@@ -650,13 +658,25 @@ void TxExecutor::mainte() {
       while (delTarget != nullptr) {
         // nextポインタ退避
         Version *tmp = delTarget->next_.load(std::memory_order_acquire);
-        if (delTarget != &tuple->inline_version_)
-          reuse_version_from_gc_.emplace_back(delTarget);
-        else
+
+#if INLINE_VERSION_OPT
+        if (delTarget == &tuple->inline_version_)
           gcq_.front().rcdptr_->returnInlineVersionRight();
+        else
+          reuse_version_from_gc_.emplace_back(delTarget);
+        goto FINISH_PUSH_BACK_REUSE_VERSION;
+#endif
+
+        reuse_version_from_gc_.emplace_back(delTarget);
+
+#if INLINE_VERSION_OPT
+FINISH_PUSH_BACK_REUSE_VERSION:
+#endif
+
 #if ADD_ANALYSIS
         ++cres_->local_gc_version_counts_;
 #endif
+
         delTarget = tmp;
       }
 
@@ -680,6 +700,9 @@ void TxExecutor::mainte() {
 }
 
 void TxExecutor::writePhase() {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
   if (GROUP_COMMIT) {
     // check time out of commit pending versions
     chkGcpvTimeout();
@@ -697,4 +720,7 @@ void TxExecutor::writePhase() {
   write_set_.clear();
   ++continuing_commit_;
   ++cres_->local_commit_counts_;
+#if ADD_ANALYSIS
+  cres_->local_commit_latency_ += rdtscp() - start;
+#endif
 }
