@@ -124,6 +124,29 @@ void Result::displayMakeProcedureLatencyRate(size_t clocks_per_us, size_t extime
   }
 }
 
+void Result::displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
+    size_t thread_num) {
+  long double sum_rate = 0;
+
+  if (total_make_procedure_latency_) {
+    sum_rate += (long double)total_make_procedure_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+  }
+  if (total_read_latency_) {
+    sum_rate += (long double)total_read_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+  }
+  if (total_write_latency_) {
+    sum_rate += (long double)total_write_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+  }
+  if (total_vali_latency_) {
+    sum_rate += (long double)total_vali_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+  }
+  if (total_gc_latency_) {
+    sum_rate += (long double)total_gc_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+  }
+
+  cout << fixed << setprecision(4) << "other_work:\t" << (1.0 - sum_rate) << endl;
+}
+
 void Result::displayPreemptiveAbortsCounts() {
   if (total_preemptive_aborts_counts_)
     cout << "preemptive_aborts_counts:\t" << total_preemptive_aborts_counts_
@@ -358,6 +381,7 @@ void Result::displayAllResult(size_t clocks_per_us, size_t extime,
   displayGCTMTElementsCounts();
   displayGCVersionCounts();
   displayMakeProcedureLatencyRate(clocks_per_us, extime, thread_num);
+  displayOtherWorkLatencyRate(clocks_per_us, extime, thread_num);
   displayPreemptiveAbortsCounts();
   displayRatioOfPreemptiveAbortToTotalAbort();
   displayReadLatencyRate(clocks_per_us, extime, thread_num);

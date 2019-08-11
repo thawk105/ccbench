@@ -8,6 +8,7 @@
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
+#include "../../include/config.hh"
 #include "../../include/debug.hh"
 #include "../../include/inline.hh"
 #include "../../include/procedure.hh"
@@ -72,7 +73,15 @@ class TxExecutor {
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);
-    // gcq.resize(MAX_OPE);
+
+    if (PRE_RESERVE_VERSION) {
+      reuse_version_from_gc_.resize(PRE_RESERVE_VERSION);
+      reuse_version_from_gc_.clear();
+      Version* ver;
+      if (posix_memalign((void**)&ver, PAGE_SIZE, PRE_RESERVE_VERSION * sizeof(Version))) ERR;
+      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
+        reuse_version_from_gc_.emplace_back(&ver[i]);
+    }
 
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid_);
 

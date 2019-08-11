@@ -30,13 +30,13 @@ using std::cout, std::endl;
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void chkArg(const int argc, char *argv[]) {
-  if (argc != 15) {
+  if (argc != 16) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
             "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
-            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US EXTIME"
+            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION EXTIME"
          << endl
          << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 3" << endl
+    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 100 3" << endl
          << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
             "100)"
@@ -60,6 +60,7 @@ void chkArg(const int argc, char *argv[]) {
             "timeout(micro seconds)."
          << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
+    cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation." << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -90,6 +91,7 @@ void chkArg(const int argc, char *argv[]) {
   chkInt(argv[12]);
   chkInt(argv[13]);
   chkInt(argv[14]);
+  chkInt(argv[15]);
 
   TUPLE_NUM = atoi(argv[1]);
   MAX_OPE = atoi(argv[2]);
@@ -104,7 +106,8 @@ void chkArg(const int argc, char *argv[]) {
   IO_TIME_NS = atof(argv[11]);
   GROUP_COMMIT_TIMEOUT_US = atoi(argv[12]);
   GC_INTER_US = atoi(argv[13]);
-  EXTIME = atoi(argv[14]);
+  PRE_RESERVE_VERSION = atoi(argv[14]);
+  EXTIME = atoi(argv[15]);
 
   if (RRATIO > 100) {
     cout << "rratio [%%] must be 0 ~ 100)" << endl;

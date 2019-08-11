@@ -88,6 +88,8 @@ class Result {
   void displayGCVersionCounts();
   void displayMakeProcedureLatencyRate(size_t clocks_per_us, size_t extime,
       size_t thread_num);
+  void displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
+      size_t thread_num);
   void displayPreemptiveAbortsCounts();
   void displayRatioOfPreemptiveAbortToTotalAbort();
   void displayReadLatencyRate(size_t clocks_per_us, size_t extime,

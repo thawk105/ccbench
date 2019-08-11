@@ -46,6 +46,7 @@ GLOBAL size_t CLOCKS_PER_US;            // US = micro(µ) seconds
 GLOBAL size_t IO_TIME_NS;               // nano second
 GLOBAL size_t GROUP_COMMIT_TIMEOUT_US;  // micro seconds
 GLOBAL size_t GC_INTER_US;              // garbage collection interval
+GLOBAL size_t PRE_RESERVE_VERSION;
 GLOBAL size_t EXTIME;
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThreadWtsArray;
