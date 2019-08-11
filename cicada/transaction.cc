@@ -253,6 +253,8 @@ bool TxExecutor::validation() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
+#if SINGLE_EXEC
+#else
   if (continuing_commit_ < 5) {
     // Two optimizations can add unnecessary overhead under low contention
     // because they do not improve the performance of uncontended workloads.
@@ -380,8 +382,6 @@ bool TxExecutor::validation() {
     }
   }
 
-#if SINGLE_EXEC
-#else
   // (b) every currently visible version v of the records in the write set
   // satisfies (v.rts) <= (tx.ts)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
