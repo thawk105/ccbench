@@ -70,6 +70,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
     if (thid == 0) leaderWork(epoch_timer_start, epoch_timer_stop);
+
+
 #if PARTITION_TABLE
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, true, thid, res);
@@ -77,6 +79,11 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, false, thid, res);
 #endif
+
+#if PROCEDURE_SORT
+    sort(trans.pro_set_.begin(), trans.pro_set_.end());
+#endif
+
   RETRY:
 
     trans.tbegin();
