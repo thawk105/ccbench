@@ -35,7 +35,8 @@ extern bool chkSpan(struct timeval& start, struct timeval& stop,
                     long threshold);
 extern void isReady(const std::vector<char>& readys);
 extern void makeDB(uint64_t* initial_wts);
-extern void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Result>& res);
+extern void leaderWork([[maybe_unused]] Backoff& backoff,
+                       [[maybe_unused]] std::vector<Result>& res);
 extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
@@ -51,8 +52,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   // 使わないとしても実体が欲しい．
   Backoff backoff;
 #if USE_BACKOFF
-  if (thid == 0)
-    backoff.init(CLOCKS_PER_US);
+  if (thid == 0) backoff.init(CLOCKS_PER_US);
 #endif
 
 #ifdef Linux
@@ -73,14 +73,14 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(quit)) {
     if (thid == 0) leaderWork(std::ref(backoff), std::ref(res));
 
-    /* シングル実行で絶対に競合を起こさないワークロードにおいて，
-     * 自トランザクションで read した後に write するのは複雑になる．
-     * write した後に read であれば，write set から read
-     * するので挙動がシンプルになる．
-     * スレッドごとにアクセスブロックを作る形でパーティションを作って
-     * スレッド間の競合を無くした後に sort して同一キーに対しては
-     * write - read とする．
-     * */
+      /* シングル実行で絶対に競合を起こさないワークロードにおいて，
+       * 自トランザクションで read した後に write するのは複雑になる．
+       * write した後に read であれば，write set から read
+       * するので挙動がシンプルになる．
+       * スレッドごとにアクセスブロックを作る形でパーティションを作って
+       * スレッド間の競合を無くした後に sort して同一キーに対しては
+       * write - read とする．
+       * */
 #if SINGLE_EXEC
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, true, thid, myres);
@@ -142,7 +142,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 #endif
     }
   }
-  
+
   return;
 }
 
@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) try {
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                       std::ref(quit), std::ref(res));
+                     std::ref(quit), std::ref(res));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {

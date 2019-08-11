@@ -28,10 +28,10 @@
 #include "include/common.hh"
 #include "include/transaction.hh"
 
-extern void chkArg(const int argc, const char *argv[]);
+extern void chkArg(const int argc, const char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
-extern void display_procedure_vector(std::vector<Procedure> &pro);
+extern void display_procedure_vector(std::vector<Procedure>& pro);
 extern void displayDB();
 extern void displayPRO();
 extern void isReady(const std::vector<char>& readys);
@@ -39,7 +39,8 @@ extern void makeDB();
 extern void sleepMs(size_t ms);
 extern void waitForReady(const std::vector<char>& readys);
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit, Result& res) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit,
+            Result& res) {
   Xoroshiro128Plus rnd;
   rnd.init();
   TxExecutor trans(thid, (Result*)&res);
@@ -93,7 +94,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit, Resul
   return;
 }
 
-int main(const int argc, const char *argv[]) try {
+int main(const int argc, const char* argv[]) try {
   chkArg(argc, argv);
   makeDB();
 

@@ -56,7 +56,7 @@ void Result::displayAbortByValidationRate() {
 }
 
 void Result::displayCommitLatencyRate(size_t clocks_per_us, size_t extime,
-                                       size_t thread_num) {
+                                      size_t thread_num) {
   if (total_commit_latency_) {
     long double rate;
     rate =
@@ -113,39 +113,56 @@ void Result::displayGCVersionCounts() {
     cout << "gc_version_counts:\t" << total_gc_version_counts_ << endl;
 }
 
-void Result::displayMakeProcedureLatencyRate(size_t clocks_per_us, size_t extime,
-                                    size_t thread_num) {
+void Result::displayMakeProcedureLatencyRate(size_t clocks_per_us,
+                                             size_t extime, size_t thread_num) {
   if (total_make_procedure_latency_) {
     long double rate;
     rate =
         (long double)total_make_procedure_latency_ /
         ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
         thread_num;
-    cout << fixed << setprecision(4) << "make_procedure_latency_rate:\t" << rate << endl;
+    cout << fixed << setprecision(4) << "make_procedure_latency_rate:\t" << rate
+         << endl;
   }
 }
 
 void Result::displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
-    size_t thread_num) {
+                                         size_t thread_num) {
   long double sum_rate = 0;
 
   if (total_make_procedure_latency_) {
-    sum_rate += (long double)total_make_procedure_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+    sum_rate +=
+        (long double)total_make_procedure_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
   }
   if (total_read_latency_) {
-    sum_rate += (long double)total_read_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+    sum_rate +=
+        (long double)total_read_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
   }
   if (total_write_latency_) {
-    sum_rate += (long double)total_write_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+    sum_rate +=
+        (long double)total_write_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
   }
   if (total_vali_latency_) {
-    sum_rate += (long double)total_vali_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+    sum_rate +=
+        (long double)total_vali_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
   }
   if (total_gc_latency_) {
-    sum_rate += (long double)total_gc_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
+    sum_rate +=
+        (long double)total_gc_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
   }
 
-  cout << fixed << setprecision(4) << "other_work_latency_rate:\t" << (1.0 - sum_rate) << endl;
+  cout << fixed << setprecision(4) << "other_work_latency_rate:\t"
+       << (1.0 - sum_rate) << endl;
 }
 
 void Result::displayPreemptiveAbortsCounts() {

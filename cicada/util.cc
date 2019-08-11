@@ -36,7 +36,8 @@ void chkArg(const int argc, char *argv[]) {
             "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION EXTIME"
          << endl
          << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 100 3" << endl
+    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 100 3"
+         << endl
          << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
             "100)"
@@ -60,7 +61,8 @@ void chkArg(const int argc, char *argv[]) {
             "timeout(micro seconds)."
          << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
-    cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation." << endl;
+    cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
+         << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -303,7 +305,9 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
 #if INLINE_VERSION_OPT
 #else
   Version *version;
-  if (posix_memalign((void**)&version, CACHE_LINE_SIZE, (end-start+1) * sizeof(Version))) ERR;
+  if (posix_memalign((void **)&version, CACHE_LINE_SIZE,
+                     (end - start + 1) * sizeof(Version)))
+    ERR;
 #endif
 
   for (uint64_t i = start; i <= end; ++i) {
@@ -317,8 +321,9 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
     tuple->inline_version_.set(0, initts, nullptr, VersionStatus::committed);
     tuple->inline_version_.val_[0] = '\0';
 #else
-    tuple->latest_ = &version[i-start];
-    (tuple->latest_.load(std::memory_order_acquire))->set(0, initts, nullptr, VersionStatus::committed);
+    tuple->latest_ = &version[i - start];
+    (tuple->latest_.load(std::memory_order_acquire))
+        ->set(0, initts, nullptr, VersionStatus::committed);
     (tuple->latest_.load(std::memory_order_acquire))->val_[0] = '\0';
 #endif
 
@@ -349,7 +354,8 @@ void makeDB(uint64_t *initial_wts) {
   for (auto &th : thv) th.join();
 }
 
-void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Result>& res) {
+void leaderWork([[maybe_unused]] Backoff &backoff,
+                [[maybe_unused]] std::vector<Result> &res) {
   bool gc_update = true;
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     // check all thread's flag raising
@@ -365,8 +371,8 @@ void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Re
     if (GROUP_COMMIT == 0) {
       minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
     } else {
-      minr = __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_),
-                             __ATOMIC_ACQUIRE);
+      minr =
+          __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_), __ATOMIC_ACQUIRE);
     }
 
     for (unsigned int i = 1; i < THREAD_NUM; ++i) {
@@ -396,7 +402,7 @@ void leaderWork([[maybe_unused]]Backoff& backoff, [[maybe_unused]]std::vector<Re
 #if USE_BACKOFF
   if (backoff.check_update_backoff()) {
     uint64_t sum_committed_txs(0);
-    for (auto& th : res) {
+    for (auto &th : res) {
       sum_committed_txs += th.local_commit_counts_;
       backoff.update_backoff(sum_committed_txs);
     }

@@ -141,9 +141,10 @@ char *TxExecutor::tread(uint64_t key) {
 #endif
 
 #if INLINE_VERSION_PROMOTION
-  if (version != &(tuple->inline_version_)
-      && MinRts.load(std::memory_order_acquire) > version->ldAcqWts()
-      && tuple->inline_version_.status_.load(std::memory_order_acquire) == VersionStatus::unused) {
+  if (version != &(tuple->inline_version_) &&
+      MinRts.load(std::memory_order_acquire) > version->ldAcqWts() &&
+      tuple->inline_version_.status_.load(std::memory_order_acquire) ==
+          VersionStatus::unused) {
     twrite(key);
     if ((*this->pro_set_.begin()).ronly_)
       (*this->pro_set_.begin()).ronly_ = false;
@@ -218,7 +219,7 @@ void TxExecutor::twrite(uint64_t key) {
     tuple->inline_version_.set(0, this->wts_.ts_);
     write_set_.emplace_back(key, tuple, &tuple->inline_version_);
     goto FINISH_TWRITE;
-  } 
+  }
 #endif
 
   Version *newObject;
@@ -640,12 +641,12 @@ void TxExecutor::mainte() {
     while (!gcq_.empty()) {
       if (gcq_.front().wts_ >= MinRts.load(memory_order_acquire)) break;
 
-      /* 
+      /*
        * (a) acquiring the garbage collection lock succeeds
        * thid_+1 : leader thread id is 0.
        * so, if we get right by id 0, other worker thread can't detect.
        */
-      if (gcq_.front().rcdptr_->getGCRight(thid_+1) == false) {
+      if (gcq_.front().rcdptr_->getGCRight(thid_ + 1) == false) {
         // fail acquiring the lock
         gcq_.pop_front();
         continue;
@@ -684,7 +685,7 @@ void TxExecutor::mainte() {
         reuse_version_from_gc_.emplace_back(delTarget);
 
 #if INLINE_VERSION_OPT
-FINISH_PUSH_BACK_REUSE_VERSION:
+      FINISH_PUSH_BACK_REUSE_VERSION:
 #endif
 
 #if ADD_ANALYSIS

@@ -78,7 +78,9 @@ class TxExecutor {
       reuse_version_from_gc_.resize(PRE_RESERVE_VERSION);
       reuse_version_from_gc_.clear();
       Version* ver;
-      if (posix_memalign((void**)&ver, PAGE_SIZE, PRE_RESERVE_VERSION * sizeof(Version))) ERR;
+      if (posix_memalign((void**)&ver, PAGE_SIZE,
+                         PRE_RESERVE_VERSION * sizeof(Version)))
+        ERR;
       for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
         reuse_version_from_gc_.emplace_back(&ver[i]);
     }
@@ -91,7 +93,7 @@ class TxExecutor {
 
   void abort();
   bool chkGcpvTimeout();
-  void cpv();     // commit pending versions
+  void cpv();  // commit pending versions
   void displayWset();
   void earlyAbort();
   void gcpv();    // group commit pending versions

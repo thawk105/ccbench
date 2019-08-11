@@ -10,9 +10,9 @@ using namespace std;
 
 class Tuple {
  public:
-  alignas(CACHE_LINE_SIZE) 
+  alignas(CACHE_LINE_SIZE)
 #if INLINE_VERSION_OPT
-  Version inline_version_;
+      Version inline_version_;
 #endif
   atomic<Version *> latest_;
   atomic<uint64_t> min_wts_;

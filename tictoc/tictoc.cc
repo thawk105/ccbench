@@ -26,7 +26,7 @@
 #include "include/common.hh"
 #include "include/transaction.hh"
 
-extern void chkArg(const int argc, char *argv[]);
+extern void chkArg(const int argc, char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 extern void displayDB();
@@ -37,7 +37,7 @@ extern void sleepMs(size_t ms);
 extern void waitForReady(const std::vector<char>& readys);
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-    Result& res) {
+            Result& res) {
   Xoroshiro128Plus rnd;
   rnd.init();
   TxExecutor trans(thid, (Result*)&res);
@@ -92,7 +92,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   chkArg(argc, argv);
   makeDB();
 
