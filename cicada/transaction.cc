@@ -139,6 +139,17 @@ char *TxExecutor::tread(uint64_t key) {
 #if ADD_ANALYSIS
   cres_->local_read_latency_ += rdtscp() - start;
 #endif
+
+#if INLINE_VERSION_PROMOTION
+  if (version != &(tuple->inline_version_)
+      && MinRts.load(std::memory_order_acquire) > version->ldAcqWts()
+      && tuple->inline_version_.status_.load(std::memory_order_acquire) == VersionStatus::unused) {
+    twrite(key);
+    if ((*this->pro_set_.begin()).ronly_)
+      (*this->pro_set_.begin()).ronly_ = false;
+  }
+#endif
+
   return version->val_;
 }
 
@@ -241,8 +252,6 @@ bool TxExecutor::validation() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
-#if SINGLE_EXEC
-#else
   if (continuing_commit_ < 5) {
     // Two optimizations can add unnecessary overhead under low contention
     // because they do not improve the performance of uncontended workloads.
@@ -316,7 +325,6 @@ bool TxExecutor::validation() {
     }
     (*itr).finish_version_install_ = true;
   }
-#endif
 
   // Read timestamp update
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
@@ -506,7 +514,7 @@ void TxExecutor::gcpv() {
   }
 }
 
-void TxExecutor::wSetClean() {
+void TxExecutor::writeSetClean() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).finish_version_install_)
       (*itr).newObject_->status_.store(VersionStatus::aborted,
@@ -523,7 +531,7 @@ void TxExecutor::wSetClean() {
 }
 
 void TxExecutor::earlyAbort() {
-  wSetClean();
+  writeSetClean();
   read_set_.clear();
 
   if (GROUP_COMMIT) {
@@ -551,7 +559,7 @@ void TxExecutor::earlyAbort() {
 }
 
 void TxExecutor::abort() {
-  wSetClean();
+  writeSetClean();
   read_set_.clear();
 
   // pending versionのステータスをabortedに変更

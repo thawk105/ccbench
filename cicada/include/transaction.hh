@@ -89,22 +89,22 @@ class TxExecutor {
     gcstart_ = start_;
   }
 
+  void abort();
+  bool chkGcpvTimeout();
+  void cpv();     // commit pending versions
+  void displayWset();
+  void earlyAbort();
+  void gcpv();    // group commit pending versions
+  void mainte();  // maintenance
+  void precpv();  // pre-commit pending versions
+  void pwal();    // parallel write ahead log.
+  void swal();
   void tbegin();
   char* tread(uint64_t key);
   void twrite(uint64_t key);
   bool validation();
   void writePhase();
-  void swal();
-  void pwal();    // parallel write ahead log.
-  void precpv();  // pre-commit pending versions
-  void cpv();     // commit pending versions
-  void gcpv();    // group commit pending versions
-  bool chkGcpvTimeout();
-  void earlyAbort();
-  void abort();
-  void wSetClean();
-  void displayWset();
-  void mainte();  // maintenance
+  void writeSetClean();
 
   static INLINE Tuple* get_tuple(Tuple* table, uint64_t key) {
     return &table[key];

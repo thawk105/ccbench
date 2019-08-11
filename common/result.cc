@@ -29,7 +29,8 @@ void Result::displayCommitCounts() {
 
 void Result::displayTps(size_t extime) {
   uint64_t result = total_commit_counts_ / extime;
-  cout << "Throughput(tps):\t" << result << endl;
+  cout << "latency[ns]:\t" << powl(10.0, 9.0) / result << endl;
+  cout << "throughput[tps]:\t" << result << endl;
 }
 
 #if ADD_ANALYSIS
@@ -144,7 +145,7 @@ void Result::displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
     sum_rate += (long double)total_gc_latency_ / ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) / thread_num;
   }
 
-  cout << fixed << setprecision(4) << "other_work:\t" << (1.0 - sum_rate) << endl;
+  cout << fixed << setprecision(4) << "other_work_latency_rate:\t" << (1.0 - sum_rate) << endl;
 }
 
 void Result::displayPreemptiveAbortsCounts() {
