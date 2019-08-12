@@ -7,7 +7,6 @@
 #include "../include/atomic_wrapper.hh"
 #include "../include/debug.hh"
 #include "../include/tsc.hh"
-#include "include/common.hh"
 #include "include/transaction.hh"
 #include "include/version.hh"
 
@@ -150,9 +149,15 @@ void TxExecutor::twrite(uint64_t key) {
   Version *expected, *desired;
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();
+#if ADD_ANALYSIS
+    ++sres_->local_version_malloc_;
+#endif
   } else {
     desired = gcobject_.reuse_version_from_gc_.back();
     gcobject_.reuse_version_from_gc_.pop_back();
+#if ADD_ANALYSIS
+    ++sres_->local_version_reuse_;
+#endif
   }
   desired->cstamp_.store(
       this->txid_,

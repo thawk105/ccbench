@@ -6,7 +6,7 @@
 #include "../../include/cache_line_size.hh"
 #include "../../include/int64byte.hh"
 #include "../../include/masstree_wrapper.hh"
-#include "transaction.hh"
+#include "transaction_table.hh"
 #include "tuple.hh"
 
 #ifdef GLOBAL_VALUE_DEFINE
@@ -33,8 +33,11 @@ GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL size_t CLOCKS_PER_US;
 GLOBAL size_t GC_INTER_US;  // garbage collection interval
+GLOBAL size_t PRE_RESERVE_VERSION;
 GLOBAL size_t EXTIME;
 // -----
+
+#include "transaction.hh"
 
 alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 alignas(CACHE_LINE_SIZE) GLOBAL

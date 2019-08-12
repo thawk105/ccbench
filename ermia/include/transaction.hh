@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "../../include/config.hh"
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
 #include "../../include/string.hh"
@@ -54,6 +55,17 @@ class TxExecutor {
     read_set_.reserve(MAX_OPE);
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);
+
+    if (PRE_RESERVE_VERSION) {
+      gcobject_.reuse_version_from_gc_.resize(PRE_RESERVE_VERSION);
+      gcobject_.reuse_version_from_gc_.clear();
+      Version *ver;
+      if (posix_memalign((void **)&ver, PAGE_SIZE,
+                         PRE_RESERVE_VERSION * sizeof(Version)))
+        ERR;
+      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
+        gcobject_.reuse_version_from_gc_.emplace_back(&ver[i]);
+    }
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
   }

@@ -25,7 +25,7 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-result=result_cicada_ycsbB_tuple100m_gci10us_224th.dat
+result=result_cicada-single_ycsbB_tuple100m_gci10us_224th.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-make_procedure_latency_rate, avg-read_latency_rate, avg-write_latency_rate, avg-vali_latency_rate, avg-gc_latency_rate avg-other_work_latency_rate avg-maxrss version_malloc version_reuse" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime" >> $result

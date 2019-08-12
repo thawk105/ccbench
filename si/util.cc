@@ -22,19 +22,18 @@
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
-#include "include/tuple.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void chkArg(const int argc, const char *argv[]) {
-  if (argc != 11) {
+  if (argc != 12) {
     // if (argc != 1) {
     cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "
-            "YCSB CPU_MHZ GC_INTER_US EXTIME"
+            "YCSB CPU_MHZ GC_INTER_US PRE_RESERVE_VERSION EXTIME"
          << endl;
-    cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 10 3" << endl;
+    cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 10 10000 3" << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
@@ -46,6 +45,8 @@ void chkArg(const int argc, const char *argv[]) {
         << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
         << endl;
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
+    cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
+         << endl;
     cout << "EXTIME: execution time [sec]" << endl;
 
     cout << "Tuple " << sizeof(Tuple) << endl;
@@ -74,7 +75,8 @@ void chkArg(const int argc, const char *argv[]) {
   std::string argst = argv[7];
   CLOCKS_PER_US = atof(argv[8]);
   GC_INTER_US = atoi(argv[9]);
-  EXTIME = atoi(argv[10]);
+  PRE_RESERVE_VERSION = atoi(argv[10]);
+  EXTIME = atoi(argv[11]);
 
   if (THREAD_NUM < 1) {
     cout << "1 thread is minimum."

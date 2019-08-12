@@ -5,8 +5,6 @@
 
 #include "../../include/cache_line_size.hh"
 
-#include "si_op_element.hh"
-
 enum class VersionStatus : uint8_t {
   inFlight,
   committed,

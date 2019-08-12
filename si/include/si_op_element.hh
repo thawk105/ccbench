@@ -2,7 +2,7 @@
 
 #include "../../include/op_element.hh"
 
-#include "transaction.hh"
+#include "transaction_table.hh"
 #include "version.hh"
 
 template <typename T>
@@ -41,9 +41,6 @@ class GCElement : public OpElement<T> {
     this->cstamp_ = cstamp;
   }
 };
-
-// forward declaration.
-class TransactionTable;
 
 class GCTMTElement {
  public:

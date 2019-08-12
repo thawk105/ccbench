@@ -171,10 +171,16 @@ void TxExecutor::ssn_twrite(unsigned int key) {
   Version *expected, *desired;
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();
+#if ADD_ANALYSIS
+    ++eres_->local_version_malloc_;
+#endif
   } else {
     desired = gcobject_.reuse_version_from_gc_.back();
     gcobject_.reuse_version_from_gc_.pop_back();
     desired->init();
+#if ADD_ANALYSIS
+    ++eres_->local_version_reuse_;
+#endif
   }
   uint64_t tmptid = this->thid_;
   tmptid = tmptid << 1;

@@ -6,16 +6,15 @@
 
 #include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
 
+#include "../../include/config.hh"
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
 #include "../../include/string.hh"
 #include "../../include/util.hh"
+#include "common.hh"
 #include "garbage_collection.hh"
 #include "tuple.hh"
 #include "version.hh"
-
-// forward declaration
-class TransactionTable;
 
 enum class TransactionStatus : uint8_t {
   inFlight,
@@ -53,6 +52,17 @@ class TxExecutor {
     write_set_.reserve(max_ope);
     pro_set_.reserve(max_ope);
 
+    if (PRE_RESERVE_VERSION) {
+      gcobject_.reuse_version_from_gc_.resize(PRE_RESERVE_VERSION);
+      gcobject_.reuse_version_from_gc_.clear();
+      Version *ver;
+      if (posix_memalign((void **)&ver, PAGE_SIZE,
+                         PRE_RESERVE_VERSION * sizeof(Version)))
+        ERR;
+      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
+        gcobject_.reuse_version_from_gc_.emplace_back(&ver[i]);
+    }
+
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }
 
@@ -68,21 +78,4 @@ class TxExecutor {
   void dispRS();
 
   static Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
-};
-
-// for MVCC SSN
-class TransactionTable {
- public:
-  alignas(CACHE_LINE_SIZE) std::atomic<uint32_t> txid_;
-  std::atomic<uint32_t> lastcstamp_;
-
-  TransactionTable(uint32_t txid, uint32_t lastcstamp) {
-    this->txid_.store(txid, std::memory_order_relaxed);
-    this->lastcstamp_.store(lastcstamp, std::memory_order_relaxed);
-  }
-
-  void set(uint32_t txid, uint32_t lastcstamp) {
-    this->txid_.store(txid, std::memory_order_relaxed);
-    this->lastcstamp_.store(lastcstamp, std::memory_order_relaxed);
-  }
 };
