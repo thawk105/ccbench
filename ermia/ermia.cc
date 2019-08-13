@@ -51,7 +51,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
 #ifdef Linux
   setThreadAffinity(thid);
-  // printf("Thread #%zu: on CPU %d\n", res.thid_, sched_getcpu());
+  // printf("Thread #%zu: on CPU %d\n", thid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n",
   // sysconf(_SC_NPROCESSORS_CONF));
 #endif  // Linux
@@ -68,7 +68,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, false, thid, res);
-  RETRY:
     // transaction begin
     trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
@@ -100,6 +99,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     // maintenance phase
     // garbage collection
     trans.mainte();
+  RETRY:
+    continue;
   }
 
   return;

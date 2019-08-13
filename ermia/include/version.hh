@@ -101,9 +101,7 @@ class Version {
   char val_[VAL_SIZE];
 
   Version() {
-    psstamp_.init(0, UINT32_MAX & ~(TIDFLAG));
-    status_.store(VersionStatus::inFlight, std::memory_order_release);
-    readers_.store(0, std::memory_order_release);
+    init();
   }
 
   void init() {

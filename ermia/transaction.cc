@@ -39,7 +39,7 @@ void TxExecutor::tbegin() {
   tmt = loadAcquire(TMT[thid_]);
   uint32_t lastcstamp;
   if (this->status_ == TransactionStatus::aborted)
-    lastcstamp = this->txid_ = tmt->lastcstamp_.load(std::memory_order_acquire);
+    lastcstamp = this->txid_ = tmt->lastcstamp_.load(memory_order_acquire);
   else
     lastcstamp = this->txid_ = cstamp_;
 
@@ -103,20 +103,18 @@ char *TxExecutor::ssn_tread(unsigned int key) {
 #endif
 
   // if v not in t.writes:
-  Version *ver = tuple->latest_.load(std::memory_order_acquire);
+  Version *ver = tuple->latest_.load(memory_order_acquire);
   if (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
     ver = ver->committed_prev_;
   }
-  uint64_t verCstamp = ver->cstamp_.load(memory_order_acquire);
-  while (txid_ < (verCstamp >> TIDFLAG)) {
+  while (txid_ < ver->cstamp_.load(memory_order_acquire)) {
     // printf("txid %d, (verCstamp >> 1) %d\n", txid, verCstamp >> 1);
     // fflush(stdout);
     ver = ver->committed_prev_;
     if (ver == NULL) {
-      cout << "txid : " << txid_ << ", verCstamp : " << verCstamp << endl;
+      cout << "txid : " << txid_ << ", ver->cstamp_: " << ver->cstamp_.load(memory_order_acquire) << endl;
       ERR;
     }
-    verCstamp = ver->cstamp_.load(memory_order_acquire);
   }
 
   if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
@@ -182,11 +180,8 @@ void TxExecutor::ssn_twrite(unsigned int key) {
     ++eres_->local_version_reuse_;
 #endif
   }
-  uint64_t tmptid = this->thid_;
-  tmptid = tmptid << 1;
-  tmptid |= 1;
   desired->cstamp_.store(
-      tmptid,
+      this->txid_,
       memory_order_relaxed);  // read operation, write operation,
                               // ガベコレからアクセスされるので， CAS 前に格納
 
@@ -200,20 +195,26 @@ void TxExecutor::ssn_twrite(unsigned int key) {
 #endif
 
   Version *vertmp;
-  expected = tuple->latest_.load(std::memory_order_acquire);
+  expected = tuple->latest_.load(memory_order_acquire);
   for (;;) {
     // w-w conflict
     // first updater wins rule
     if (expected->status_.load(memory_order_acquire) ==
         VersionStatus::inFlight) {
-      this->status_ = TransactionStatus::aborted;
-      TMT[thid_]->status_.store(TransactionStatus::aborted,
-                                memory_order_release);
-      gcobject_.reuse_version_from_gc_.emplace_back(desired);
+      if (this->txid_ <= expected->cstamp_.load(memory_order_acquire)) {
+        this->status_ = TransactionStatus::aborted;
+        TMT[thid_]->status_.store(TransactionStatus::aborted,
+                                  memory_order_release);
+        gcobject_.reuse_version_from_gc_.emplace_back(desired);
 #if ADD_ANALYSIS
-      eres_->local_write_latency_ += rdtscp() - start;
+        eres_->local_write_latency_ += rdtscp() - start;
 #endif
-      return;
+        return;
+      }
+
+      _mm_pause();
+      expected = tuple->latest_.load(memory_order_acquire);
+      continue;
     }
 
     // 先頭バージョンが committed バージョンでなかった時
@@ -225,8 +226,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
     }
 
     // vertmp は commit済み最新バージョン
-    uint64_t verCstamp = vertmp->cstamp_.load(memory_order_acquire);
-    if (txid_ < (verCstamp >> 1)) {
+    if (txid_ < vertmp->cstamp_.load(memory_order_acquire)) {
       //  write - write conflict, first-updater-wins rule.
       // Writers must abort if they would overwirte a version created after
       // their snapshot.
@@ -510,7 +510,7 @@ void TxExecutor::ssn_parallel_commit() {
   read_set_.clear();
   write_set_.clear();
   ++eres_->local_commit_counts_;
-  TMT[thid_]->lastcstamp_.store(cstamp_, std::memory_order_release);
+  TMT[thid_]->lastcstamp_.store(cstamp_, memory_order_release);
   return;
 }
 
