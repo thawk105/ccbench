@@ -53,7 +53,7 @@ do
       perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
     fi
   
-    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+    tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`

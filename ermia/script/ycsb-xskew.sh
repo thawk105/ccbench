@@ -7,6 +7,7 @@ skew=0
 ycsb=on
 cpu_mhz=2100
 gci=10
+prv=10000
 extime=3
 epoch=3
 
@@ -24,7 +25,7 @@ fi
 result=result_ermia_ycsbA_tuple1k_skew0-099.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
+echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $prv $extime" >> $result
 
 for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
 do
@@ -36,7 +37,7 @@ do
   fi
   skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
 
-  echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
+  echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $prv $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -51,13 +52,13 @@ do
   for ((i=1; i <= epoch; ++i))
   do
     if test $host = $dbs11 ; then
-    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $prv $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $prv $extime > exp.txt
     fi
   
-    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+    tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
