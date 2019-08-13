@@ -181,8 +181,7 @@ void TxExecutor::twrite(uint64_t key) {
     // w-w conflict with concurrent transactions.
     if (expected->status_.load(memory_order_acquire) ==
         VersionStatus::inFlight) {
-      uint64_t rivaltid = expected->cstamp_.load(memory_order_acquire);
-      if (this->txid_ <= rivaltid) {
+      if (this->txid_ <= expected->cstamp_.load(memory_order_acquire)) {
         /* <= の理由 : txid_ は最後にコミットが成功したタイムスタンプの
          * 最大値を全ワーカー間で取り，その最大値 + 1 である．
          * 例えば，全体がずっとアボートし続けた時，この最大値 + 1
