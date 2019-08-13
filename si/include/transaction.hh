@@ -34,9 +34,9 @@ class TxExecutor {
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
 
-  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>>
+  std::vector<SetElement<Tuple>>
       read_set_;
-  std::vector<SetElement<Tuple>, tbb::scalable_allocator<SetElement<Tuple>>>
+  std::vector<SetElement<Tuple>>
       write_set_;
   std::vector<Procedure> pro_set_;
 

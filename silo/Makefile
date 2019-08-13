@@ -28,7 +28,8 @@ ifeq ($(shell hostname), dbs11)
 LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release
 endif
 
-LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
+#LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
+LIBS = -lpthread -lmimalloc
 ifneq ($(shell hostname), chris41.omni.hpcc.jp)
 ifneq ($(shell hostname), dbs11)
 LIBS = -lpthread

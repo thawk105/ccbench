@@ -32,13 +32,10 @@ class TxExecutor {
  public:
   TransactionStatus status_ = TransactionStatus::invalid;
   TimeStamp wts_;
-  std::vector<ReadElement<Tuple>, tbb::scalable_allocator<ReadElement<Tuple>>>
-      read_set_;
-  std::vector<WriteElement<Tuple>, tbb::scalable_allocator<WriteElement<Tuple>>>
-      write_set_;
-  std::deque<GCElement<Tuple>, tbb::scalable_allocator<GCElement<Tuple>>> gcq_;
-  std::deque<Version*, tbb::scalable_allocator<Version*>>
-      reuse_version_from_gc_;
+  std::vector<ReadElement<Tuple>> read_set_;
+  std::vector<WriteElement<Tuple>> write_set_;
+  std::deque<GCElement<Tuple>> gcq_;
+  std::deque<Version*> reuse_version_from_gc_;
   std::vector<Procedure> pro_set_;
   Result* cres_ = nullptr;
 
