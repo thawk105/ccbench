@@ -19,15 +19,9 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -DTEMPERATURE_RESET_OPT=1 \
 				 -DADD_ANALYSIS=1 \
 
-ifeq ($(shell hostname), chris41.omni.hpcc.jp)
-LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7.1.0_libc2.12_kernel2.6.32_release
-endif
-ifeq ($(shell hostname), dbs11)
-LDFLAGS = -L/home/tanabe/package/tbb/build/linux_intel64_gcc_cc7_libc2.27_kernel4.15.0_release -L/usr/local/lib
-endif
-
-#LIBS = -lpthread -ltbbmalloc_proxy -ltbbmalloc
+LDFLAGS = -L../third_party/mimalloc/out/release
 LIBS = -lpthread -lmimalloc
+
 ifneq ($(shell hostname), chris41.omni.hpcc.jp)
 ifneq ($(shell hostname), dbs11)
 LIBS = -lpthread
