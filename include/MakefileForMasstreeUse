@@ -1,5 +1,5 @@
 
-MASSOBJ = ../masstree/compiler.o ../masstree/misc.o ../masstree/libjson.a
+MASSOBJ = ../third_party/masstree/compiler.o ../third_party/masstree/misc.o ../third_party/masstree/libjson.a
 
 DEPSDIR := .deps
 DEPCFLAGS = #-MD -MF $(DEPSDIR)/$*.d -MP
@@ -16,17 +16,17 @@ ifneq ($(strip $(NOSUPERPAGE)), )
   CPPFLAGS += -DNOSUPERPAGE
 endif
 
-%.o: %.c ../masstree/config.h #$(DEPSDIR)/stamp
+%.o: %.c ../third_party/masstree/config.h #$(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CFLAGS) $(DEPCFLAGS) $(DEFINES) -c -o $@ $<
 
-%.o: %.cc ../masstree/config.h #$(DEPSDIR)/stamp
+%.o: %.cc ../third_party/masstree/config.h #$(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CFLAGS) $(DEPCFLAGS) $(DEFINES) -c -o $@ $<
 
 %.S: %.o
 	objdump -S $< > $@
 
-../masstree/libjson.a: ../masstree/json.o ../masstree/string.o ../masstree/straccum.o ../masstree/str.o ../masstree/msgpack.o \
-	../masstree/clp.o ../masstree/kvrandom.o ../masstree/compiler.o ../masstree/memdebug.o ../masstree/kvthread.o
+../third_party/masstree/libjson.a: ../third_party/masstree/json.o ../third_party/masstree/string.o ../third_party/masstree/straccum.o ../third_party/masstree/str.o ../third_party/masstree/msgpack.o \
+	../third_party/masstree/clp.o ../third_party/masstree/kvrandom.o ../third_party/masstree/compiler.o ../third_party/masstree/memdebug.o ../third_party/masstree/kvthread.o
 	@/bin/rm -f $@
 	$(AR) cru $@ $^
 
