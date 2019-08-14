@@ -9,11 +9,11 @@ git clone https...this repository
 cd ccbench
 source bootstrap.sh
 ```
-Processing of bootstrap.sh :
-git submodule init, update.
-Build third_party/masstree, third_party/mimalloc
-Export LD_LIBRARY_PATH to mimalloc library. 
-So it's script should be executed by "source" command.
+Processing of bootstrap.sh :  
+git submodule init, update. <br>
+Build third_party/masstree, third_party/mimalloc.<br>
+Export LD_LIBRARY_PATH to mimalloc library.<br>
+So it's script should be executed by "source" command.<br>
 
 ---
 
