@@ -27,4 +27,4 @@ cmake -DMI_SECURE=ON ../..
 make -j
 
 cd ../../../../
-export $LD_LIBRARY_PATH=$PWD/third_party/mimalloc/out/release:$LD_LIBRARY_PATH
+source ./setting.sh
