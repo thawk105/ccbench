@@ -4,8 +4,6 @@
 #include <map>
 #include <vector>
 
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
-
 #include "../../include/config.hh"
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"

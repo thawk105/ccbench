@@ -9,8 +9,6 @@
 #include "tuple.hh"
 #include "version.hh"
 
-#include "/home/tanabe/package/tbb/include/tbb/scalable_allocator.h"
-
 // forward declaration
 class TransactionTable;
 

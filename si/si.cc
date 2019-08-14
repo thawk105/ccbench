@@ -64,6 +64,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, false, thid, res);
+  RETRY:
     trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
@@ -88,7 +89,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
     // maintenance phase
     // garbage collection
-  RETRY:
     trans.mainte();
   }
 
