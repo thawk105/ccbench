@@ -27,4 +27,6 @@ cmake -DMI_SECURE=ON ../..
 make -j
 
 cd ../../../../
-source ./setting.sh
+
+# setting path, so this script should be executed by "source" command.
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/third_party/mimalloc/out/release
