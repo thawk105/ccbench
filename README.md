@@ -2,6 +2,21 @@
 
 ---
 
+## Prepare using
+```
+cmake install
+git clone https...this repository
+cd ccbench
+source bootstrap.sh
+```
+Processing of bootstrap.sh :
+git submodule init, update.
+Build third_party/masstree, third_party/mimalloc
+Export LD_LIBRARY_PATH to mimalloc library. 
+So it's script should be executed by "source" command.
+
+---
+
 ## Snapshot Isolation
 snapshot isolation.  
 ### Implemented
