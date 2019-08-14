@@ -4,7 +4,7 @@
 
 ## Prepare using
 ```
-cmake install
+install cmake by yourself.
 git clone https...this repository
 cd ccbench
 source bootstrap.sh
