@@ -67,6 +67,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 #endif
 
   RETRY:
+    if (loadAcquire(quit)) break;
 
     trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();

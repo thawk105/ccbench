@@ -6,7 +6,7 @@ include $(REL)Makefile
 SS2PL_ALLSRC = $(SS2PL_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=4
+VAL_SIZE=1000
 
 CC = g++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \

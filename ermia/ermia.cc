@@ -62,13 +62,12 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(start)) _mm_pause();
   trans.gcstart_ = rdtscp();
   while (!loadAcquire(quit)) {
-    if (thid == 0) {
-      leaderWork(std::ref(gcob));
-    }
-
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, false, thid, res);
-    // transaction begin
+  RETRY:
+    if (thid == 0) leaderWork(std::ref(gcob));
+    if (loadAcquire(quit)) break;
+
     trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
@@ -99,8 +98,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     // maintenance phase
     // garbage collection
     trans.mainte();
-  RETRY:
-    continue;
   }
 
   return;

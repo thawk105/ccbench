@@ -71,8 +71,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    if (thid == 0) leaderWork(std::ref(backoff), std::ref(res));
-
       /* シングル実行で絶対に競合を起こさないワークロードにおいて，
        * 自トランザクションで read した後に write するのは複雑になる．
        * write した後に read であれば，write set から read
@@ -96,6 +94,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 #endif
 
   RETRY:
+    if (thid == 0) leaderWork(std::ref(backoff), std::ref(res));
+    if (loadAcquire(quit)) break;
+
     trans.tbegin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {

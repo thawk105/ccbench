@@ -58,14 +58,14 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
-    if (thid == 0) leaderWork(epoch_timer_start, epoch_timer_stop, res);
-
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, false, thid, res);
 #if KEY_SORT
     sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
   RETRY:
+    if (thid == 0) leaderWork(epoch_timer_start, epoch_timer_stop, res);
+    if (loadAcquire(quit)) break;
 
     trans.begin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();

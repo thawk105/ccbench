@@ -8,7 +8,7 @@ include $(REL)Makefile
 SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=4
+VAL_SIZE=1000
 
 CC = g++
 CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
