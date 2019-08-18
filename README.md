@@ -4,7 +4,7 @@
 
 ## Prepare using
 ```
-cmake install
+install cmake by yourself.
 git clone https...this repository
 cd ccbench
 source bootstrap.sh
@@ -12,8 +12,12 @@ source bootstrap.sh
 Processing of bootstrap.sh :  
 git submodule init, update. <br>
 Build third_party/masstree, third_party/mimalloc.<br>
-Export LD_LIBRARY_PATH to mimalloc library.<br>
+Export LD_LIBRARY_PATH to ./third_party/mimalloc/out/release for using mimalloc library.<br>
+<br>
 So it's script should be executed by "source" command.<br>
+I recommend you that you also add LD_LIBRARY_PATH to your ~/.bashrc by yourself.
+<br>
+Each protocols has own Makefile, so you should build each.
 
 ---
 
