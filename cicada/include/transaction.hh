@@ -99,7 +99,7 @@ class TxExecutor {
   void tbegin();
   char* tread(uint64_t key);
   void twrite(uint64_t key);
-  bool validation();
+  bool validation(const bool& quit);
   void writePhase();
   void writeSetClean();
 

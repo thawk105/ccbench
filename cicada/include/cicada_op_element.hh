@@ -24,12 +24,14 @@ class WriteElement : public OpElement<T> {
  public:
   using OpElement<T>::OpElement;
 
-  Version *newObject_;
+  Version* newObject_;
+  bool rmw_;
   bool finish_version_install_;
 
-  WriteElement(uint64_t key, T *rcdptr, Version *newOb)
+  WriteElement(uint64_t key, T* rcdptr, Version* newOb, bool rmw)
       : OpElement<T>::OpElement(key, rcdptr) {
-    this->newObject_ = newOb;
+    newObject_ = newOb;
+    rmw_ = rmw;
     finish_version_install_ = false;
   }
 

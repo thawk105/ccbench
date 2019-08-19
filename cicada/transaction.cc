@@ -37,14 +37,17 @@ void TxExecutor::tbegin() {
   this->rts_ = MinWts.load(std::memory_order_acquire) - 1;
   __atomic_store_n(&(ThreadRtsArray[thid_].obj_), this->rts_, __ATOMIC_RELEASE);
 
-  // one-sided synchronization
-  // tanabe... disabled.
-  // When the database size is small that all record can be on
-  // cache, remote worker's clock can also be on cache after one-sided
-  // synchronization.
-  // After that, by transaction processing, cache line invalidation
-  // often occurs and degrade throughput.
-  /*
+  /* one-sided synchronization
+   * tanabe... disabled.
+   * When the database size is small that all record can be on
+   * cache, remote worker's clock can also be on cache after one-sided
+   * synchronization.
+   * After that, by transaction processing, cache line invalidation
+   * often occurs and degrade throughput.
+   * If you set any size of database,
+   * it can't improve performance of tps.
+   * It is for progress-guarantee or fairness or like these.
+   *
   stop = rdtscp();
   if (chkClkSpan(start, stop, 100 * CLOCKS_PER_US)) {
     uint64_t maxwts;
@@ -81,9 +84,10 @@ char *TxExecutor::tread(uint64_t key) {
       cres_->local_read_latency_ += rdtscp() - start;
 #endif
       return write_val_;
-      // tanabe の実験では，スレッドごとに新しく書く値は決まっている．
+      // in exp of tanabe, the new value was already decided for performance optimization.
     }
   }
+
   // if n E read set
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
@@ -116,14 +120,12 @@ char *TxExecutor::tread(uint64_t key) {
   }
 
   version = tuple->ldAcqLatest();
-  if (version->ldAcqStatus() == VersionStatus::pending) {
-    if (version->ldAcqWts() < trts)
-      while (version->ldAcqStatus() == VersionStatus::pending)
-        ;
-  }
-  while (version->ldAcqWts() > trts ||
-         version->ldAcqStatus() != VersionStatus::committed) {
+  while (version->ldAcqWts() > trts)
     version = version->ldAcqNext();
+  while (version->ldAcqStatus() != VersionStatus::committed) {
+    while (version->ldAcqStatus() == VersionStatus::pending);
+    if (version->ldAcqStatus() == VersionStatus::aborted)
+      version = version->ldAcqNext();
   }
 #endif
 
@@ -146,8 +148,10 @@ char *TxExecutor::tread(uint64_t key) {
       tuple->inline_version_.status_.load(std::memory_order_acquire) ==
           VersionStatus::unused) {
     twrite(key);
-    if ((*this->pro_set_.begin()).ronly_)
+    if ((*this->pro_set_.begin()).ronly_) {
       (*this->pro_set_.begin()).ronly_ = false;
+      read_set_.emplace_back(key, tuple, version);
+    }
   }
 #endif
 
@@ -169,6 +173,14 @@ void TxExecutor::twrite(uint64_t key) {
     }
   }
 
+  bool rmw(false);
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+    if ((*itr).key_ == key) {
+      rmw = true;
+      break;
+    }
+  }
+
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -179,45 +191,54 @@ void TxExecutor::twrite(uint64_t key) {
 #endif
 
 #if SINGLE_EXEC
-  write_set_.emplace_back(key, tuple, &tuple->inline_version_);
+  write_set_.emplace_back(key, tuple, &tuple->inline_version_, rmw);
 #if ADD_ANALYSIS
   cres_->local_write_latency_ += rdtscp() - start;
 #endif
 #else
-  Version *version = tuple->ldAcqLatest();
 
-  // Search version (for early abort check)
-  // search latest (committed or pending) version and use for early abort check
-  // pending version may be committed, so use for early abort check.
+  Version *version = tuple->ldAcqLatest();
   while (version->ldAcqStatus() == VersionStatus::aborted)
     version = version->ldAcqNext();
+  if (rmw) {
+    // Search version (for early abort check)
+    // search latest (committed or pending) version and use for early abort check
+    // pending version may be committed, so use for early abort check.
 
-  // early abort check(EAC)
-  // here, version->status is commit or pending.
+    // early abort check(EAC)
+    // here, version->status is commit or pending.
+    if (version->wts_.load(memory_order_acquire) > this->wts_.ts_) {
+      // if pending, it don't have to be aborted.
+      // But it may be aborted, so early abort.
+      // if committed, it must be aborted in validaiton phase due to order of
+      // newest to oldest.
+      this->status_ = TransactionStatus::abort;
+#if ADD_ANALYSIS
+      cres_->local_write_latency_ += rdtscp() - start;
+#endif
+      return;
+    }
+  } else {
+    // not rmw
+    while (version->wts_.load(memory_order_acquire) > this->wts_.ts_
+        || version->ldAcqStatus() == VersionStatus::aborted)
+      version = version->ldAcqNext();
+  }
+
   if ((version->ldAcqRts() > this->wts_.ts_) &&
       (version->ldAcqStatus() == VersionStatus::committed)) {
     // it must be aborted in validation phase, so early abort.
     this->status_ = TransactionStatus::abort;
 #if ADD_ANALYSIS
-    cres_->local_write_latency_ += rdtscp() - start;
+      cres_->local_write_latency_ += rdtscp() - start;
 #endif
-    return;
-  } else if (version->wts_.load(memory_order_acquire) > this->wts_.ts_) {
-    // if pending, it don't have to be aborted.
-    // But it may be aborted, so early abort.
-    // if committed, it must be aborted in validaiton phase due to order of
-    // newest to oldest.
-    this->status_ = TransactionStatus::abort;
-#if ADD_ANALYSIS
-    cres_->local_write_latency_ += rdtscp() - start;
-#endif
-    return;
+     return;
   }
 
 #if INLINE_VERSION_OPT
   if (tuple->getInlineVersionRight()) {
     tuple->inline_version_.set(0, this->wts_.ts_);
-    write_set_.emplace_back(key, tuple, &tuple->inline_version_);
+    write_set_.emplace_back(key, tuple, &tuple->inline_version_, rmw);
     goto FINISH_TWRITE;
   }
 #endif
@@ -236,7 +257,7 @@ void TxExecutor::twrite(uint64_t key) {
     ++cres_->local_version_reuse_;
 #endif
   }
-  write_set_.emplace_back(key, tuple, newObject);
+  write_set_.emplace_back(key, tuple, newObject, rmw);
 
 #if INLINE_VERSION_OPT
 FINISH_TWRITE:
@@ -249,7 +270,7 @@ FINISH_TWRITE:
   return;
 }
 
-bool TxExecutor::validation() {
+bool TxExecutor::validation(const bool& quit) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -274,6 +295,11 @@ bool TxExecutor::validation() {
       Version *version = (*itr).rcdptr_->ldAcqLatest();
       while (version->ldAcqStatus() != VersionStatus::committed)
         version = version->ldAcqNext();
+      if ((*itr).rmw_ == false) {
+        while (version->ldAcqWts() > this->wts_.ts_
+            || version->ldAcqStatus() != VersionStatus::committed)
+          version = version->ldAcqNext();
+      }
 
       if (version->ldAcqRts() > this->wts_.ts_) {
 #if ADD_ANALYSIS
@@ -286,45 +312,64 @@ bool TxExecutor::validation() {
 
   // Install pending version
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    Version *expected, *version;
+    Version *expected, *version, *pre_version;
     for (;;) {
       version = expected = (*itr).rcdptr_->ldAcqLatest();
 
-      if (version->ldAcqStatus() == VersionStatus::pending) {
+      if ((*itr).rmw_ == true) {
+        if (version->ldAcqStatus() == VersionStatus::pending) {
+          if (this->wts_.ts_ < version->ldAcqWts()) {
+#if ADD_ANALYSIS
+            cres_->local_vali_latency_ += rdtscp() - start;
+#endif
+            return false;
+          }
+          while (version->ldAcqStatus() == VersionStatus::pending)
+            ;
+        }
+
+        while (version->ldAcqStatus() != VersionStatus::committed)
+          version = version->ldAcqNext();
+        // to avoid cascading aborts.
+        // install pending version step blocks concurrent
+        // transactions that share the same visible version
+        // and have higher timestamp than (tx.ts).
+
+        // to keep versions ordered by wts in the version list
+        // if version is pending version, concurrent transaction that has lower
+        // timestamp is aborted.
         if (this->wts_.ts_ < version->ldAcqWts()) {
 #if ADD_ANALYSIS
           cres_->local_vali_latency_ += rdtscp() - start;
 #endif
           return false;
         }
-        while (version->ldAcqStatus() == VersionStatus::pending)
-          ;
+      } else {
+        // not rmw
+        while (version->ldAcqStatus() != VersionStatus::committed
+            || version->ldAcqWts() > this->wts_.ts_) {
+          pre_version = version;
+          version = version->ldAcqNext();
+        }
       }
-
-      while (version->ldAcqStatus() != VersionStatus::committed)
-        version = version->ldAcqNext();
-      // to avoid cascading aborts.
-      // install pending version step blocks concurrent
-      // transactions that share the same visible version
-      // and have higher timestamp than (tx.ts).
-
-      // to keep versions ordered by wts in the version list
-      // if version is pending version, concurrent transaction that has lower
-      // timestamp is aborted.
-      if (this->wts_.ts_ < version->ldAcqWts()) {
-#if ADD_ANALYSIS
-        cres_->local_vali_latency_ += rdtscp() - start;
-#endif
-        return false;
-      }
+        
 
       (*itr).newObject_->status_.store(VersionStatus::pending,
                                        memory_order_release);
-      (*itr).newObject_->strRelNext((*itr).rcdptr_->ldAcqLatest());
-      if ((*itr).rcdptr_->latest_.compare_exchange_strong(
-              expected, (*itr).newObject_, memory_order_acq_rel,
+      if ((*itr).rmw_ == true || version == expected) {
+        // Latter half of condition meanings that it was not traversaling version list.
+        (*itr).newObject_->strRelNext((*itr).rcdptr_->ldAcqLatest());
+        if ((*itr).rcdptr_->latest_.compare_exchange_strong(
+                expected, (*itr).newObject_, memory_order_acq_rel,
+                memory_order_acquire))
+          break;
+      } else {
+        (*itr).newObject_->strRelNext(version);
+        if (pre_version->next_.compare_exchange_strong(
+              version, (*itr).newObject_, memory_order_acq_rel,
               memory_order_acquire))
-        break;
+          break;
+      }
     }
     (*itr).finish_version_install_ = true;
   }
@@ -347,38 +392,28 @@ bool TxExecutor::validation() {
   // currently visible version to the transaction.
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Version *version, *init;
-    for (;;) {
-      version = init = (*itr).rcdptr_->ldAcqLatest();
+    version = init = (*itr).rcdptr_->ldAcqLatest();
 
-      if (version->ldAcqStatus() == VersionStatus::pending &&
-          version->ldAcqWts() < this->wts_.ts_) {
-        // pending version であり，観測範囲内であれば，
-        // その termination を見届ける必要がある．
-        // 最終的にコミットされたら，View が壊れる．
-        // 元々それを読まなければいけなかったのでアボート
-        while (version->ldAcqStatus() == VersionStatus::pending)
-          ;
-        if (version->ldAcqStatus() == VersionStatus::committed) {
-#if ADD_ANALYSIS
-          cres_->local_vali_latency_ += rdtscp() - start;
-#endif
-          return false;
+    while (version->ldAcqWts() >= this->wts_.ts_)
+      version = version->ldAcqNext();
+
+    while (version->ldAcqStatus() != VersionStatus::committed) {
+      while (version->ldAcqStatus() == VersionStatus::pending) {
+        if (quit) {
+          if (this->wts_.ts_ == version->wts_.load(memory_order_acquire)) printf("my version wait!\n");
         }
       }
+      if (version->ldAcqStatus() == VersionStatus::committed) break;
+      else version = version->ldAcqNext();
+    }
 
-      while (version->ldAcqStatus() != VersionStatus::committed ||
-             version->ldAcqWts() > this->wts_.ts_)
-        version = version->ldAcqNext();
-
-      if ((*itr).ver_ != version) {
+    if ((*itr).ver_ == version) {
+      break;
+    } else {
 #if ADD_ANALYSIS
-        cres_->local_vali_latency_ += rdtscp() - start;
+      cres_->local_vali_latency_ += rdtscp() - start;
 #endif
-        return false;
-      }
-
-      if (init == (*itr).rcdptr_->ldAcqLatest()) break;
-      // else, the validation was interrupted.
+      return false;
     }
   }
 
@@ -562,12 +597,6 @@ void TxExecutor::earlyAbort() {
 void TxExecutor::abort() {
   writeSetClean();
   read_set_.clear();
-
-  // pending versionのステータスをabortedに変更
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    (*itr).newObject_->status_.store(VersionStatus::aborted,
-                                     std::memory_order_release);
-  }
 
   if (GROUP_COMMIT) {
     chkGcpvTimeout();

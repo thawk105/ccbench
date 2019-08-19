@@ -36,7 +36,7 @@ void chkArg(const int argc, char *argv[]) {
             "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION EXTIME"
          << endl
          << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 100 3"
+    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 10000 3"
          << endl
          << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
