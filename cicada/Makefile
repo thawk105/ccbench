@@ -19,6 +19,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -DINLINE_VERSION_OPT=1 \
 				 -DMASSTREE_USE=1 \
 				 -DPARTITION_TABLE=0 \
+				 -DREUSE_VERSION=0 \
 				 -DSINGLE_EXEC=0 \
 				 -DUSE_BACKOFF=1 \
 
@@ -30,8 +31,8 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 # すなわちレコードヘッダが latest pointer を持っていて，その先にシングルバージョンがあるケースは想定していない．
 # レコードヘッダにインラインバージョンさせた方が早そうなので，そうで無いケースは実装していない．
 
-LDFLAGS = -L../third_party/mimalloc/out/release
-LIBS = -lpthread -lmimalloc
+LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
+LIBS = -lpthread -lmimalloc-debug
 
 OBJS1 = $(CICADA_SRCS1:.cc=.o)
 

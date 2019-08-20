@@ -314,7 +314,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
     Tuple *tuple;
     tuple = TxExecutor::get_tuple(Table, i);
     tuple->min_wts_ = initts;
-    tuple->gClock_.store(0, std::memory_order_release);
+    tuple->gc_lock_.store(0, std::memory_order_release);
 
 #if INLINE_VERSION_OPT
     tuple->latest_ = &tuple->inline_version_;

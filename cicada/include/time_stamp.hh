@@ -19,13 +19,13 @@ class TimeStamp {
     clockBoost_ = CLOCK_PER_US;
   }
 
-  inline void generateTimeStampFirst(unsigned char tid) {
+  inline void generateTimeStampFirst(uint8_t tid) {
     localClock_ = rdtscp();
-    ts_ = (localClock_ << 8) | tid;
+    ts_ = (localClock_ << (sizeof(tid)*8)) | tid;
     thid_ = tid;
   }
 
-  inline void generateTimeStamp(unsigned char tid) {
+  inline void generateTimeStamp(uint8_t tid) {
     uint64_t tmp = rdtscp();
     uint64_t elapsedTime = tmp - localClock_;
     if (tmp < localClock_) elapsedTime = 0;
@@ -34,6 +34,6 @@ class TimeStamp {
     localClock_ += elapsedTime;
     localClock_ += clockBoost_;
 
-    ts_ = (localClock_ << 8) | tid;
+    ts_ = (localClock_ << (sizeof(tid)*8)) | tid;
   }
 };

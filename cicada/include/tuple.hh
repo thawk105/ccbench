@@ -12,29 +12,29 @@ class Tuple {
  public:
   alignas(CACHE_LINE_SIZE)
 #if INLINE_VERSION_OPT
-      Version inline_version_;
+  Version inline_version_;
 #endif
   atomic<Version *> latest_;
   atomic<uint64_t> min_wts_;
-  atomic<uint8_t> gClock_;
+  atomic<uint8_t> gc_lock_;
 
-  Tuple() : latest_(nullptr), gClock_(0) {}
+  Tuple() : latest_(nullptr), gc_lock_(0) {}
 
   Version *ldAcqLatest() { return latest_.load(std::memory_order_acquire); }
 
   bool getGCRight(uint8_t thid) {
     uint8_t expected, desired(thid);
-    expected = this->gClock_.load(std::memory_order_acquire);
+    expected = this->gc_lock_.load(std::memory_order_acquire);
     for (;;) {
       if (expected != 0) return false;
-      if (this->gClock_.compare_exchange_weak(expected, desired,
+      if (this->gc_lock_.compare_exchange_weak(expected, desired,
                                               std::memory_order_acq_rel,
                                               std::memory_order_acquire))
         return true;
     }
   }
 
-  void returnGCRight() { this->gClock_.store(0, std::memory_order_release); }
+  void returnGCRight() { this->gc_lock_.store(0, std::memory_order_release); }
 
 #if INLINE_VERSION_OPT
   // inline

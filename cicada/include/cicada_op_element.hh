@@ -1,6 +1,6 @@
 #pragma once
 
-#include "./version.hh"
+#include "version.hh"
 
 template <typename T>
 class ReadElement : public OpElement<T> {
