@@ -101,20 +101,26 @@ inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
       }
     }
 
-    if ((rnd.next() % 100) < rratio) {
-      pro.emplace_back(Ope::READ, tmpkey);
-      wonly_flag = false;
+    if (rmw) {
+      pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
     } else {
-      ronly_flag = false;
-      if (rmw) {
-        pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
+      if ((rnd.next() % 100) < rratio) {
+        wonly_flag = false;
+        pro.emplace_back(Ope::READ, tmpkey);
       } else {
+        ronly_flag = false;
         pro.emplace_back(Ope::WRITE, tmpkey);
       }
     }
   }
-  (*pro.begin()).ronly_ = ronly_flag;
-  (*pro.begin()).wonly_ = wonly_flag;
+
+  if (rmw) {
+    (*pro.begin()).ronly_ = false;
+    (*pro.begin()).wonly_ = false;
+  } else {
+    (*pro.begin()).ronly_ = ronly_flag;
+    (*pro.begin()).wonly_ = wonly_flag;
+  }
 #if ADD_ANALYSIS
   res.local_make_procedure_latency_ += rdtscp() - start;
 #endif
