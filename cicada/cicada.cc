@@ -124,7 +124,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
       ++res[thid].local_commit_counts_;
     } else {
       // Validation phase
-      if (!trans.validation(quit)) {
+      if (!trans.validation()) {
         trans.abort();
         goto RETRY;
       }

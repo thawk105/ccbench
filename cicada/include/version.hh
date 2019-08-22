@@ -88,7 +88,7 @@ class Version {
     return version;
   }
 
-  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait, uint8_t thid) {
+  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait) {
     Version* version = this;
     if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending) {
       //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));

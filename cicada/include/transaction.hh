@@ -109,6 +109,7 @@ class TxExecutor {
 #endif // if REUSE_VERSION
       }
 #else // if INLINE_VERSION_OPT
+
 #if REUSE_VERSION
       reuse_version_from_gc_.emplace_back(delTarget);
 #else // if REUSE_VERSION
@@ -153,6 +154,7 @@ class TxExecutor {
     Version* newVersion = reuse_version_from_gc_.back();
     reuse_version_from_gc_.pop_back();
     newVersion->set(0, this->wts_.ts_);
+    return newVersion;
   }
 #else
 #if ADD_ANALYSIS
@@ -179,7 +181,7 @@ class TxExecutor {
     for (auto itr = write_set_.begin();
          itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
       if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) < CONTINUING_COMMIT_THRESHOLD) {
-        Version *version = (*itr).rcdptr_->ldAcqLatest()->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false, thid_);
+        Version *version = (*itr).rcdptr_->ldAcqLatest()->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false);
         if ((*itr).rmw_ == false) {
           while (version->ldAcqWts() > this->wts_.ts_
               || version->ldAcqStatus() != VersionStatus::committed)
@@ -212,9 +214,9 @@ class TxExecutor {
 
   void resetContinuingCommitInReadWriteSet() {
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
-      ++(*itr).rcdptr_->continuing_commit_;
+      (*itr).rcdptr_->continuing_commit_.store(0, memory_order_release);
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
-      ++(*itr).rcdptr_->continuing_commit_;
+      (*itr).rcdptr_->continuing_commit_.store(0, memory_order_release);
   }
 
   ReadElement<Tuple>* searchReadSet(const uint64_t key) {
@@ -237,7 +239,7 @@ class TxExecutor {
   void tbegin();
   char* tread(const uint64_t key);
   void twrite(const uint64_t key);
-  bool validation(const bool& quit);
+  bool validation();
   void writePhase();
 
   void writeSetClean() {

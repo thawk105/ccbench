@@ -223,13 +223,12 @@ void TxExecutor::twrite(const uint64_t key) {
   
   Version *newVersion = newVersionGeneration();
   write_set_.emplace_back(key, tuple, newVersion, rmw);
-
 #endif // if SINGLE_EXEC
   decideLocalWriteLatency();
   return;
 }
 
-bool TxExecutor::validation(const bool& quit) {
+bool TxExecutor::validation() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif // if ADD_ANALYSIS
@@ -242,8 +241,6 @@ bool TxExecutor::validation(const bool& quit) {
   auto decideLocalValiLatency = []{};
 #endif // if ADD_ANALYSIS
 
-#if SINGLE_EXEC
-#else // if SINGLE_EXEC
   if (!precheckInValidation()) {
     decideLocalValiLatency();
     return false;
@@ -300,10 +297,8 @@ bool TxExecutor::validation(const bool& quit) {
       version = version->ldAcqNext();
     // if write after read occured, it may happen "==".
 
-    version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true, thid_);
-    if ((*itr).ver_ == version) {
-      break;
-    } else {
+    version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true);
+    if ((*itr).ver_ != version) {
       decideLocalValiLatency();
       return false;
     }
@@ -313,12 +308,10 @@ bool TxExecutor::validation(const bool& quit) {
   // satisfies (v.rts) <= (tx.ts)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *version = (*itr).newObject_->ldAcqNext();
-    while (version->ldAcqStatus() == VersionStatus::pending){
-    }
+    while (version->ldAcqStatus() == VersionStatus::pending);
     while (version->ldAcqStatus() != VersionStatus::committed) {
       version = version->ldAcqNext();
-      while (version->ldAcqStatus() == VersionStatus::pending){
-      }
+      while (version->ldAcqStatus() == VersionStatus::pending);
     }
 
     if (version->ldAcqRts() > this->wts_.ts_) {
@@ -326,7 +319,6 @@ bool TxExecutor::validation(const bool& quit) {
       return false;
     }
   }
-#endif
 
   decideLocalValiLatency();
   return true;

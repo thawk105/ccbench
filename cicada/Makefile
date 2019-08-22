@@ -6,10 +6,10 @@ include $(REL)Makefile
 CICADA_ALLSRC = $(CICADA_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=1000
+VAL_SIZE=4
 
 CC = g++
-CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
+CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
@@ -19,7 +19,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -DINLINE_VERSION_OPT=1 \
 				 -DMASSTREE_USE=1 \
 				 -DPARTITION_TABLE=0 \
-				 -DREUSE_VERSION=0 \
+				 -DREUSE_VERSION=1 \
 				 -DSINGLE_EXEC=0 \
 				 -DUSE_BACKOFF=1 \
 
@@ -32,7 +32,7 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 # レコードヘッダにインラインバージョンさせた方が早そうなので，そうで無いケースは実装していない．
 
 LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
-LIBS = -lpthread -lmimalloc-debug
+LIBS = -lpthread -lmimalloc
 
 OBJS1 = $(CICADA_SRCS1:.cc=.o)
 
