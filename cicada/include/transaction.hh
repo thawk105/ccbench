@@ -43,7 +43,6 @@ class TxExecutor {
   uint64_t start_, stop_;                // for one-sided synchronization
   uint64_t grpcmt_start_, grpcmt_stop_;  // for group commit
   uint64_t gcstart_, gcstop_;            // for garbage collection
-  uint64_t continuing_commit_ = 0;
 
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
@@ -209,6 +208,13 @@ class TxExecutor {
     }
   }
 
+  void resetContinuingCommitInReadWriteSet() {
+    for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
+      ++(*itr).rcdptr_->continuing_commit_;
+    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
+      ++(*itr).rcdptr_->continuing_commit_;
+  }
+
   ReadElement<Tuple>* searchReadSet(const uint64_t key) {
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
       if ((*itr).key_ == key) return &(*itr);
@@ -231,7 +237,30 @@ class TxExecutor {
   void twrite(const uint64_t key);
   bool validation(const bool& quit);
   void writePhase();
-  void writeSetClean();
+
+  void writeSetClean() {
+    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+      if ((*itr).finish_version_install_) {
+        (*itr).newObject_->status_.store(VersionStatus::aborted,
+                                         std::memory_order_release);
+        continue;
+      }
+
+#if INLINE_VERSION_OPT
+      if ((*itr).newObject_ == &(*itr).rcdptr_->inline_version_) {
+        (*itr).rcdptr_->returnInlineVersionRight();
+        continue;
+      }
+#endif
+
+#if REUSE_VERSION
+      reuse_version_from_gc_.emplace_back((*itr).newObject_);
+#else
+      delete (*itr).newObject_;
+#endif
+    }
+    write_set_.clear();
+  }
 
   static INLINE Tuple* get_tuple(Tuple* table, uint64_t key) {
     return &table[key];

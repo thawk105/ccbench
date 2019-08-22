@@ -16,6 +16,7 @@ class Tuple {
 #endif
   atomic<Version *> latest_;
   atomic<uint64_t> min_wts_;
+  atomic<uint64_t> continuing_commit_;
   atomic<uint8_t> gc_lock_;
 
   Tuple() : latest_(nullptr), gc_lock_(0) {}

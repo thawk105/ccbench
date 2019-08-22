@@ -248,7 +248,6 @@ bool TxExecutor::validation(const bool& quit) {
     Version *expected, *version, *pre_version;
     for (;;) {
       version = expected = (*itr).rcdptr_->ldAcqLatest();
-
       if ((*itr).rmw_ == true) {
         version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false);
         // to avoid cascading aborts.
@@ -431,7 +430,11 @@ inline void TxExecutor::cpv()  // commit pending versions
 #endif
     (*itr).newObject_->status_.store(VersionStatus::committed,
                                      std::memory_order_release);
+    ++(*itr).rcdptr_->continuing_commit_;
   }
+
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
+    ++(*itr).rcdptr_->continuing_commit_;
 }
 
 void TxExecutor::gcpv() {
@@ -451,32 +454,8 @@ void TxExecutor::gcpv() {
   }
 }
 
-void TxExecutor::writeSetClean() {
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).finish_version_install_) {
-      (*itr).newObject_->status_.store(VersionStatus::aborted,
-                                       std::memory_order_release);
-      continue;
-    }
-
-#if INLINE_VERSION_OPT
-    if ((*itr).newObject_ == &(*itr).rcdptr_->inline_version_) {
-      (*itr).rcdptr_->returnInlineVersionRight();
-      continue;
-    }
-#endif
-
-#if REUSE_VERSION
-    reuse_version_from_gc_.emplace_back((*itr).newObject_);
-#else
-    delete (*itr).newObject_;
-#endif
-  }
-
-  write_set_.clear();
-}
-
 void TxExecutor::earlyAbort() {
+  resetContinuingCommitInReadWriteSet();
   writeSetClean();
   read_set_.clear();
 
@@ -505,6 +484,7 @@ void TxExecutor::earlyAbort() {
 }
 
 void TxExecutor::abort() {
+  resetContinuingCommitInReadWriteSet();
   writeSetClean();
   read_set_.clear();
 
