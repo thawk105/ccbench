@@ -19,6 +19,8 @@
 #include "tuple.hh"
 #include "version.hh"
 
+#define CONTINUING_COMMIT_THRESHOLD 5
+
 enum class TransactionStatus : uint8_t {
   invalid,
   inflight,
@@ -161,23 +163,23 @@ class TxExecutor {
   }
 
   bool precheckInValidation() {
-    if (continuing_commit_ < 5) {
-      // Two optimizations can add unnecessary overhead under low contention
-      // because they do not improve the performance of uncontended workloads.
-      // Each thread adaptively omits both steps if the recent transactions have
-      // been committed (5 in a row in our implementation).
-      //
-      // Sort write set by contention
-      partial_sort(write_set_.begin(),
-                   write_set_.begin() + (write_set_.size() / 2),
-                   write_set_.end());
+    // Two optimizations can add unnecessary overhead under low contention
+    // because they do not improve the performance of uncontended workloads.
+    // Each thread adaptively omits both steps if the recent transactions have
+    // been committed (5 in a row in our implementation).
+    //
+    // Sort write set by contention
+    partial_sort(write_set_.begin(),
+                 write_set_.begin() + (write_set_.size() / 2),
+                 write_set_.end());
 
-      // Pre-check version consistency
-      // (b) every currently visible version v of the records in the write set
-      // satisfies (v.rts) <= (tx.ts)
-      for (auto itr = write_set_.begin();
-           itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
-        Version *version = (*itr).rcdptr_->ldAcqLatest()->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false);
+    // Pre-check version consistency
+    // (b) every currently visible version v of the records in the write set
+    // satisfies (v.rts) <= (tx.ts)
+    for (auto itr = write_set_.begin();
+         itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
+      if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) < CONTINUING_COMMIT_THRESHOLD) {
+        Version *version = (*itr).rcdptr_->ldAcqLatest()->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false, thid_);
         if ((*itr).rmw_ == false) {
           while (version->ldAcqWts() > this->wts_.ts_
               || version->ldAcqStatus() != VersionStatus::committed)

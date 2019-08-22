@@ -121,7 +121,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     // write phase execute logging and commit pending versions, but r-only tx
     // can skip it.
     if ((*trans.pro_set_.begin()).ronly_) {
-      ++trans.continuing_commit_;
       ++res[thid].local_commit_counts_;
     } else {
       // Validation phase

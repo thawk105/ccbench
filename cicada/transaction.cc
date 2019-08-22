@@ -76,20 +76,24 @@ char *TxExecutor::tread(const uint64_t key) {
   uint64_t start = rdtscp();
 #endif // if ADD_ANALYSIS
 
+#if ADD_ANALYSIS
+  auto decideLocalReadLatency = [this,start] {
+    cres_->local_read_latency_ += rdtscp() - start;
+  };
+#else
+  auto decideLocalReadLatency = []{};
+#endif // if ADD_ANALYSIS
+
   // read-own-writes
   // if n E write set
   if (searchWriteSet(key)) {
-#if ADD_ANALYSIS
-    cres_->local_read_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+    decideLocalReadLatency();
     return write_val_;
   }
 
   auto inr = searchReadSet(key);
   if (inr) {
-#if ADD_ANALYSIS
-    cres_->local_read_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+    decideLocalReadLatency();
     return inr->ver_->val_;
   }
 
@@ -132,10 +136,7 @@ char *TxExecutor::tread(const uint64_t key) {
   if ((*this->pro_set_.begin()).ronly_ == false) {
     read_set_.emplace_back(key, tuple, version);
   }
-
-#if ADD_ANALYSIS
-  cres_->local_read_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+  decideLocalReadLatency();
 
 #if INLINE_VERSION_PROMOTION
   inlineVersionPromotion(key, tuple, version);
@@ -150,10 +151,16 @@ void TxExecutor::twrite(const uint64_t key) {
   uint64_t start = rdtscp();
 #endif // if ADD_ANALYSIS
 
-  if (searchWriteSet(key)) {
 #if ADD_ANALYSIS
+  auto decideLocalWriteLatency = [this,start] {
     cres_->local_write_latency_ += rdtscp() - start;
+  };
+#else
+  auto decideLocalWriteLatency = []{};
 #endif // if ADD_ANALYSIS
+
+  if (searchWriteSet(key)) {
+    decideLocalWriteLatency();
     return;
   }
 
@@ -171,11 +178,8 @@ void TxExecutor::twrite(const uint64_t key) {
 
 #if SINGLE_EXEC
   write_set_.emplace_back(key, tuple, &tuple->inline_version_, rmw);
-#if ADD_ANALYSIS
-  cres_->local_write_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+  decideLocalWriteLatency();
 #else
-
   Version *version = tuple->ldAcqLatest()->skipTheStatusVersionAfterThis(VersionStatus::aborted, false);
   if (rmw) {
     // Search version (for early abort check)
@@ -190,9 +194,7 @@ void TxExecutor::twrite(const uint64_t key) {
       // if committed, it must be aborted in validaiton phase due to order of
       // newest to oldest.
       this->status_ = TransactionStatus::abort;
-#if ADD_ANALYSIS
-      cres_->local_write_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+      decideLocalWriteLatency();
       return;
     }
   } else {
@@ -206,26 +208,24 @@ void TxExecutor::twrite(const uint64_t key) {
       (version->ldAcqStatus() == VersionStatus::committed)) {
     // it must be aborted in validation phase, so early abort.
     this->status_ = TransactionStatus::abort;
-#if ADD_ANALYSIS
-      cres_->local_write_latency_ += rdtscp() - start;
-#endif
-     return;
+    decideLocalWriteLatency();
+    return;
   }
 
 #if INLINE_VERSION_OPT
   if (tuple->getInlineVersionRight()) {
     tuple->inline_version_.set(0, this->wts_.ts_);
     write_set_.emplace_back(key, tuple, &tuple->inline_version_, rmw);
+    decideLocalWriteLatency();
+    return;
   }
 #endif
   
   Version *newVersion = newVersionGeneration();
   write_set_.emplace_back(key, tuple, newVersion, rmw);
-#endif // if SINGLE_EXEC
 
-#if ADD_ANALYSIS
-  cres_->local_write_latency_ += rdtscp() - start;
-#endif
+#endif // if SINGLE_EXEC
+  decideLocalWriteLatency();
   return;
 }
 
@@ -234,12 +234,18 @@ bool TxExecutor::validation(const bool& quit) {
   uint64_t start = rdtscp();
 #endif // if ADD_ANALYSIS
 
+#if ADD_ANALYSIS
+  auto decideLocalValiLatency = [this,start] {
+    cres_->local_vali_latency_ += rdtscp() - start;
+  };
+#else
+  auto decideLocalValiLatency = []{};
+#endif // if ADD_ANALYSIS
+
 #if SINGLE_EXEC
 #else // if SINGLE_EXEC
   if (!precheckInValidation()) {
-#if ADD_ANALYSIS
-    cres_->local_vali_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+    decideLocalValiLatency();
     return false;
   }
 
@@ -249,23 +255,11 @@ bool TxExecutor::validation(const bool& quit) {
     for (;;) {
       version = expected = (*itr).rcdptr_->ldAcqLatest();
       if ((*itr).rmw_ == true) {
-        version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false);
-        // to avoid cascading aborts.
-        // install pending version step blocks concurrent
-        // transactions that share the same visible version
-        // and have higher timestamp than (tx.ts).
-
-        // to keep versions ordered by wts in the version list
-        // if version is pending version, concurrent transaction that has lower
-        // timestamp is aborted.
         if (this->wts_.ts_ < version->ldAcqWts()) {
-#if ADD_ANALYSIS
-          cres_->local_vali_latency_ += rdtscp() - start;
-#endif
+          decideLocalValiLatency();
           return false;
         }
       } else {
-        // not rmw
         while (version->ldAcqWts() > this->wts_.ts_) {
           pre_version = version;
           version = version->ldAcqNext();
@@ -304,15 +298,13 @@ bool TxExecutor::validation(const bool& quit) {
 
     while (version->ldAcqWts() >= this->wts_.ts_)
       version = version->ldAcqNext();
-    // if inline version promotion occured, it may happen "==".
+    // if write after read occured, it may happen "==".
 
-    version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true);
+    version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true, thid_);
     if ((*itr).ver_ == version) {
       break;
     } else {
-#if ADD_ANALYSIS
-      cres_->local_vali_latency_ += rdtscp() - start;
-#endif
+      decideLocalValiLatency();
       return false;
     }
   }
@@ -320,21 +312,23 @@ bool TxExecutor::validation(const bool& quit) {
   // (b) every currently visible version v of the records in the write set
   // satisfies (v.rts) <= (tx.ts)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).newObject_ == (*itr).newObject_->ldAcqNext()) NNN;
     Version *version = (*itr).newObject_->ldAcqNext();
-    version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true, this);
+    while (version->ldAcqStatus() == VersionStatus::pending){
+    }
+    while (version->ldAcqStatus() != VersionStatus::committed) {
+      version = version->ldAcqNext();
+      while (version->ldAcqStatus() == VersionStatus::pending){
+      }
+    }
+
     if (version->ldAcqRts() > this->wts_.ts_) {
-#if ADD_ANALYSIS
-      cres_->local_vali_latency_ += rdtscp() - start;
-#endif
+      decideLocalValiLatency();
       return false;
     }
   }
 #endif
 
-#if ADD_ANALYSIS
-  cres_->local_vali_latency_ += rdtscp() - start;
-#endif
+  decideLocalValiLatency();
   return true;
 }
 
@@ -464,7 +458,6 @@ void TxExecutor::earlyAbort() {
   }
 
   this->wts_.set_clockBoost(CLOCKS_PER_US);
-  continuing_commit_ = 0;
   this->status_ = TransactionStatus::abort;
   ++cres_->local_abort_counts_;
 
@@ -493,7 +486,6 @@ void TxExecutor::abort() {
   }
 
   this->wts_.set_clockBoost(CLOCKS_PER_US);
-  continuing_commit_ = 0;
   ++cres_->local_abort_counts_;
 
 #if USE_BACKOFF
@@ -628,7 +620,6 @@ void TxExecutor::writePhase() {
   this->wts_.set_clockBoost(0);
   read_set_.clear();
   write_set_.clear();
-  ++continuing_commit_;
   ++cres_->local_commit_counts_;
 #if ADD_ANALYSIS
   cres_->local_commit_latency_ += rdtscp() - start;

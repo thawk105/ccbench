@@ -88,12 +88,20 @@ class Version {
     return version;
   }
 
-  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait) {
+  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait, uint8_t thid) {
     Version* version = this;
-    if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending);
+    if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending) {
+      //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));
+      //printf("version: %p, next: %p\n", version, version->ldAcqNext());
+      //if (version == version->ldAcqNext()) ERR;
+    }
     while (version->ldAcqStatus() != status) {
       version = version->ldAcqNext();
-      if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending);
+      if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending) {
+        //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));
+        //printf("version: %p, next: %p\n", version, version->ldAcqNext());
+        //if(version == version->ldAcqNext()) ERR;
+      }
     }
     return version;
   }
