@@ -318,9 +318,9 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
     tuple->continuing_commit_.store(0, std::memory_order_release);
 
 #if INLINE_VERSION_OPT
-    tuple->latest_ = &tuple->inline_version_;
-    tuple->inline_version_.set(0, initts, nullptr, VersionStatus::committed);
-    tuple->inline_version_.val_[0] = '\0';
+    tuple->latest_ = &tuple->inline_ver_;
+    tuple->inline_ver_.set(0, initts, nullptr, VersionStatus::committed);
+    tuple->inline_ver_.val_[0] = '\0';
 #else
     tuple->latest_ = &version[i - start];
     (tuple->latest_.load(std::memory_order_acquire))

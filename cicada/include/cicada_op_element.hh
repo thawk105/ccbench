@@ -7,11 +7,12 @@ class ReadElement : public OpElement<T> {
  public:
   using OpElement<T>::OpElement;
 
-  Version *ver_;
+  Version *later_ver_, *ver_;
 
-  ReadElement(uint64_t key, T *rcdptr, Version *ver)
+  ReadElement(uint64_t key, T *rcdptr, Version* later_ver, Version* ver)
       : OpElement<T>::OpElement(key, rcdptr) {
-    this->ver_ = ver;
+    later_ver_ = later_ver;   
+    ver_ = ver;
   }
 
   bool operator<(const ReadElement &right) const {
@@ -24,13 +25,14 @@ class WriteElement : public OpElement<T> {
  public:
   using OpElement<T>::OpElement;
 
-  Version* newObject_;
+  Version *later_ver_, *new_ver_;
   bool rmw_;
   bool finish_version_install_;
 
-  WriteElement(uint64_t key, T* rcdptr, Version* newOb, bool rmw)
+  WriteElement(uint64_t key, T* rcdptr, Version* later_ver, Version* new_ver, bool rmw)
       : OpElement<T>::OpElement(key, rcdptr) {
-    newObject_ = newOb;
+    later_ver_ = later_ver;
+    new_ver_ = new_ver;
     rmw_ = rmw;
     finish_version_install_ = false;
   }

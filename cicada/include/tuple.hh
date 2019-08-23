@@ -12,7 +12,7 @@ class Tuple {
  public:
   alignas(CACHE_LINE_SIZE)
 #if INLINE_VERSION_OPT
-  Version inline_version_;
+  Version inline_ver_;
 #endif
   atomic<Version *> latest_;
   atomic<uint64_t> min_wts_;
@@ -41,10 +41,10 @@ class Tuple {
   // inline
   bool getInlineVersionRight() {
     VersionStatus expected, desired(VersionStatus::pending);
-    expected = this->inline_version_.status_.load(std::memory_order_acquire);
+    expected = this->inline_ver_.status_.load(std::memory_order_acquire);
     for (;;) {
       if (expected != VersionStatus::unused) return false;
-      if (this->inline_version_.status_.compare_exchange_weak(
+      if (this->inline_ver_.status_.compare_exchange_weak(
               expected, desired, std::memory_order_acq_rel,
               std::memory_order_acquire))
         return true;
@@ -52,7 +52,7 @@ class Tuple {
   }
 
   void returnInlineVersionRight() {
-    this->inline_version_.status_.store(VersionStatus::unused,
+    this->inline_ver_.status_.store(VersionStatus::unused,
                                         std::memory_order_release);
   }
 #endif

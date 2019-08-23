@@ -79,31 +79,41 @@ class Version {
   }
 
   Version* skipTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait) {
-    Version* version = this;
-    if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending);
-    while (version->ldAcqStatus() == status) {
-      version = version->ldAcqNext();
-      if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending);
+    Version* ver = this;
+    VersionStatus local_status = ver->ldAcqStatus();
+    if (pendingWait) while(local_status == VersionStatus::pending) {
+      local_status = ver->ldAcqStatus();
     }
-    return version;
+    while (local_status == status) {
+      ver = ver->ldAcqNext();
+      local_status = ver->ldAcqStatus();
+      if (pendingWait) while(local_status == VersionStatus::pending) {
+        local_status = ver->ldAcqStatus();
+      }
+    }
+    return ver;
   }
 
   Version* skipNotTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait) {
-    Version* version = this;
-    if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending) {
+    Version* ver = this;
+    VersionStatus local_status = ver->ldAcqStatus();
+    if (pendingWait) while(local_status == VersionStatus::pending) {
+      local_status = ver->ldAcqStatus();
       //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));
       //printf("version: %p, next: %p\n", version, version->ldAcqNext());
       //if (version == version->ldAcqNext()) ERR;
     }
-    while (version->ldAcqStatus() != status) {
-      version = version->ldAcqNext();
-      if (pendingWait) while(version->ldAcqStatus() == VersionStatus::pending) {
+    while (local_status != status) {
+      ver = ver->ldAcqNext();
+      local_status = ver->ldAcqStatus();
+      if (pendingWait) while(local_status == VersionStatus::pending) {
+        local_status = ver->ldAcqStatus();
         //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));
         //printf("version: %p, next: %p\n", version, version->ldAcqNext());
         //if(version == version->ldAcqNext()) ERR;
       }
     }
-    return version;
+    return ver;
   }
 
   void strRelNext(Version *next) {  // store release next = strRelNext

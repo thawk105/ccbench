@@ -99,7 +99,7 @@ class TxExecutor {
       Version *tmp = delTarget->next_.load(std::memory_order_acquire);
 
 #if INLINE_VERSION_OPT
-      if (delTarget == &(tuple->inline_version_)) {
+      if (delTarget == &(tuple->inline_ver_)) {
         gcq_.front().rcdptr_->returnInlineVersionRight();
       } else {
 #if REUSE_VERSION
@@ -125,15 +125,15 @@ class TxExecutor {
 
   void gcpv();    // group commit pending versions
 
-  void inlineVersionPromotion(const uint64_t key, Tuple* tuple, Version* version) {
-    if (version != &(tuple->inline_version_) &&
-        MinRts.load(std::memory_order_acquire) > version->ldAcqWts() &&
-        tuple->inline_version_.status_.load(std::memory_order_acquire) ==
+  void inlineVersionPromotion(const uint64_t key, Tuple* tuple, Version* later_ver, Version* ver) {
+    if (ver != &(tuple->inline_ver_) &&
+        MinRts.load(std::memory_order_acquire) > ver->ldAcqWts() &&
+        tuple->inline_ver_.status_.load(std::memory_order_acquire) ==
             VersionStatus::unused) {
       twrite(key);
       if ((*pro_set_.begin()).ronly_) {
         (*pro_set_.begin()).ronly_ = false;
-        read_set_.emplace_back(key, tuple, version);
+        read_set_.emplace_back(key, tuple, later_ver, ver);
       }
     }
   }
@@ -175,20 +175,35 @@ class TxExecutor {
                  write_set_.begin() + (write_set_.size() / 2),
                  write_set_.end());
 
-    // Pre-check version consistency
-    // (b) every currently visible version v of the records in the write set
-    // satisfies (v.rts) <= (tx.ts)
+    /* Pre-check version consistency
+     * every currently visible version v of the records in the write set
+     * satisfies (v.rts) <= (tx.ts)
+     * satisfies (v.wts) < tx.ts (wts order)
+     */
     for (auto itr = write_set_.begin();
          itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
       if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) < CONTINUING_COMMIT_THRESHOLD) {
-        Version *version = (*itr).rcdptr_->ldAcqLatest()->skipNotTheStatusVersionAfterThis(VersionStatus::committed, false);
-        if ((*itr).rmw_ == false) {
-          while (version->ldAcqWts() > this->wts_.ts_
-              || version->ldAcqStatus() != VersionStatus::committed)
-            version = version->ldAcqNext();
+        Version *ver;
+        if ((*itr).rmw_) {
+          ver = (*itr).rcdptr_->ldAcqLatest();
+          if (ver->ldAcqWts() > this->wts_.ts_
+              || ver->ldAcqRts() > this->wts_.ts_) return false;
+        } else {
+        if ((*itr).later_ver_) 
+          ver = (*itr).later_ver_;
+        else
+          ver = (*itr).rcdptr_->ldAcqLatest();
+        VersionStatus status = ver->ldAcqStatus();
+        // status use 2 times.
+        // so it avoid load acquire 2 times by using local variable.
+        while (ver->ldAcqWts() > this->wts_.ts_
+            || status != VersionStatus::committed) {
+          if (ver->ldAcqWts() > this->wts_.ts_) (*itr).later_ver_ = ver;
+          ver = ver->ldAcqNext();
+          status = ver->ldAcqStatus();
         }
-
-        if (version->ldAcqRts() > this->wts_.ts_) return false;
+        if (ver->ldAcqRts() > this->wts_.ts_) return false;
+        }
       }
     }
 
@@ -245,22 +260,22 @@ class TxExecutor {
   void writeSetClean() {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       if ((*itr).finish_version_install_) {
-        (*itr).newObject_->status_.store(VersionStatus::aborted,
+        (*itr).new_ver_->status_.store(VersionStatus::aborted,
                                          std::memory_order_release);
         continue;
       }
 
 #if INLINE_VERSION_OPT
-      if ((*itr).newObject_ == &(*itr).rcdptr_->inline_version_) {
+      if ((*itr).new_ver_ == &(*itr).rcdptr_->inline_ver_) {
         (*itr).rcdptr_->returnInlineVersionRight();
         continue;
       }
 #endif
 
 #if REUSE_VERSION
-      reuse_version_from_gc_.emplace_back((*itr).newObject_);
+      reuse_version_from_gc_.emplace_back((*itr).new_ver_);
 #else
-      delete (*itr).newObject_;
+      delete (*itr).new_ver_;
 #endif
     }
     write_set_.clear();

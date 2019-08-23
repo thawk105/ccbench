@@ -107,9 +107,9 @@ char *TxExecutor::tread(const uint64_t key) {
 #endif // if MASSTREE_USE
 
   // Search version
-  Version *version;
+  Version *ver, *later_ver(nullptr);
 #if SINGLE_EXEC
-  version = &tuple->inline_version_;
+  ver = &tuple->inline_ver_;
 #else
   uint64_t trts;
   if ((*this->pro_set_.begin()).ronly_) {
@@ -118,31 +118,40 @@ char *TxExecutor::tread(const uint64_t key) {
     trts = this->wts_.ts_;
   }
 
-  version = tuple->ldAcqLatest();
-  while (version->ldAcqWts() > trts)
-    version = version->ldAcqNext();
-  while (version->ldAcqStatus() != VersionStatus::committed) {
-    while (version->ldAcqStatus() == VersionStatus::pending);
-    if (version->ldAcqStatus() == VersionStatus::aborted)
-      version = version->ldAcqNext();
+  ver = tuple->ldAcqLatest();
+  VersionStatus status = ver->ldAcqStatus();
+  while (ver->ldAcqWts() > trts) {
+    later_ver = ver;
+    ver = ver->ldAcqNext();
+    status = ver->ldAcqStatus();
+  }
+  while (status != VersionStatus::committed) {
+    while (status == VersionStatus::pending) {
+      status = ver->ldAcqStatus();
+    }
+    if (status == VersionStatus::aborted) {
+      later_ver = ver;
+      ver = ver->ldAcqNext();
+      status = ver->ldAcqStatus();
+    }
   }
 #endif
-
+  
   // for fairness
   // ultimately, it is wasteful in prototype system.
-  memcpy(return_val_, version->val_, VAL_SIZE);
+  memcpy(return_val_, ver->val_, VAL_SIZE);
 
   // if read-only, not track or validate read_set_
   if ((*this->pro_set_.begin()).ronly_ == false) {
-    read_set_.emplace_back(key, tuple, version);
+    read_set_.emplace_back(key, tuple, later_ver, ver);
   }
   decideLocalReadLatency();
 
 #if INLINE_VERSION_PROMOTION
-  inlineVersionPromotion(key, tuple, version);
+  inlineVersionPromotion(key, tuple, later_ver, ver);
 #endif // if INLINE_VERSION_PROMOTION
 
-  return version->val_;
+  return ver->val_;
 }
 
 void TxExecutor::twrite(const uint64_t key) {
@@ -177,10 +186,10 @@ void TxExecutor::twrite(const uint64_t key) {
 #endif // if MASSTREE_USE
 
 #if SINGLE_EXEC
-  write_set_.emplace_back(key, tuple, &tuple->inline_version_, rmw);
+  write_set_.emplace_back(key, tuple, nullptr, &tuple->inline_ver_, rmw);
   decideLocalWriteLatency();
 #else
-  Version *version = tuple->ldAcqLatest()->skipTheStatusVersionAfterThis(VersionStatus::aborted, false);
+  Version *later_ver(nullptr), *ver(tuple->ldAcqLatest());
   if (rmw) {
     // Search version (for early abort check)
     // search latest (committed or pending) version and use for early abort check
@@ -188,7 +197,7 @@ void TxExecutor::twrite(const uint64_t key) {
 
     // early abort check(EAC)
     // here, version->status is commit or pending.
-    if (version->wts_.load(memory_order_acquire) > this->wts_.ts_) {
+    if (ver->wts_.load(memory_order_acquire) > this->wts_.ts_) {
       // if pending, it don't have to be aborted.
       // But it may be aborted, so early abort.
       // if committed, it must be aborted in validaiton phase due to order of
@@ -199,13 +208,14 @@ void TxExecutor::twrite(const uint64_t key) {
     }
   } else {
     // not rmw
-    while (version->wts_.load(memory_order_acquire) > this->wts_.ts_
-        || version->ldAcqStatus() == VersionStatus::aborted)
-      version = version->ldAcqNext();
+    while (ver->wts_.load(memory_order_acquire) > this->wts_.ts_) {
+      later_ver = ver;
+      ver = ver->ldAcqNext();
+    }
   }
 
-  if ((version->ldAcqRts() > this->wts_.ts_) &&
-      (version->ldAcqStatus() == VersionStatus::committed)) {
+  if ((ver->ldAcqRts() > this->wts_.ts_) &&
+      (ver->ldAcqStatus() == VersionStatus::committed)) {
     // it must be aborted in validation phase, so early abort.
     this->status_ = TransactionStatus::abort;
     decideLocalWriteLatency();
@@ -214,15 +224,14 @@ void TxExecutor::twrite(const uint64_t key) {
 
 #if INLINE_VERSION_OPT
   if (tuple->getInlineVersionRight()) {
-    tuple->inline_version_.set(0, this->wts_.ts_);
-    write_set_.emplace_back(key, tuple, &tuple->inline_version_, rmw);
+    tuple->inline_ver_.set(0, this->wts_.ts_);
+    write_set_.emplace_back(key, tuple, later_ver, &tuple->inline_ver_, rmw);
     decideLocalWriteLatency();
     return;
   }
 #endif
-  
-  Version *newVersion = newVersionGeneration();
-  write_set_.emplace_back(key, tuple, newVersion, rmw);
+  Version *new_ver = newVersionGeneration();
+  write_set_.emplace_back(key, tuple, later_ver, new_ver, rmw);
 #endif // if SINGLE_EXEC
   decideLocalWriteLatency();
   return;
@@ -248,33 +257,40 @@ bool TxExecutor::validation() {
 
   // Install pending version
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    Version *expected, *version, *pre_version;
+    Version *expected(nullptr), *ver, *pre_ver;
     for (;;) {
-      version = expected = (*itr).rcdptr_->ldAcqLatest();
-      if ((*itr).rmw_ == true) {
-        if (this->wts_.ts_ < version->ldAcqWts()) {
+      if ((*itr).rmw_) {
+        ver = expected = (*itr).rcdptr_->ldAcqLatest();
+        if (this->wts_.ts_ < ver->ldAcqWts()) {
           decideLocalValiLatency();
           return false;
         }
       } else {
-        while (version->ldAcqWts() > this->wts_.ts_) {
-          pre_version = version;
-          version = version->ldAcqNext();
+        if ((*itr).later_ver_) {
+          pre_ver = (*itr).later_ver_;
+          ver = pre_ver->ldAcqNext();
+        } else {
+          ver = expected = (*itr).rcdptr_->ldAcqLatest();
+        }
+        while (ver->ldAcqWts() > this->wts_.ts_) {
+          (*itr).later_ver_ = ver;
+          pre_ver = ver;
+          ver = ver->ldAcqNext();
         }
       }
 
-      if ((*itr).rmw_ == true || version == expected) {
+      if ((*itr).rmw_ == true || ver == expected) {
         // Latter half of condition meanings that it was not traversaling version list in not rmw mode.
-        (*itr).newObject_->strRelNext(expected);
+        (*itr).new_ver_->strRelNext(expected);
         if ((*itr).rcdptr_->latest_.compare_exchange_strong(
-                expected, (*itr).newObject_, memory_order_acq_rel,
+                expected, (*itr).new_ver_, memory_order_acq_rel,
                 memory_order_acquire)) {
           break;
          }
       } else {
-        (*itr).newObject_->strRelNext(version);
-        if (pre_version->next_.compare_exchange_strong(
-              version, (*itr).newObject_, memory_order_acq_rel,
+        (*itr).new_ver_->strRelNext(ver);
+        if (pre_ver->next_.compare_exchange_strong(
+              ver, (*itr).new_ver_, memory_order_acq_rel,
               memory_order_acquire)) {
           break;
         }
@@ -290,15 +306,16 @@ bool TxExecutor::validation() {
   //(a) every previously visible version v of the records in the read set is the
   // currently visible version to the transaction.
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    Version *version, *init;
-    version = init = (*itr).rcdptr_->ldAcqLatest();
+    Version *ver;
+    if ((*itr).later_ver_) ver = (*itr).later_ver_;
+    else ver = (*itr).rcdptr_->ldAcqLatest();
 
-    while (version->ldAcqWts() >= this->wts_.ts_)
-      version = version->ldAcqNext();
+    while (ver->ldAcqWts() >= this->wts_.ts_)
+      ver = ver->ldAcqNext();
     // if write after read occured, it may happen "==".
 
-    version = version->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true);
-    if ((*itr).ver_ != version) {
+    ver = ver->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true);
+    if ((*itr).ver_ != ver) {
       decideLocalValiLatency();
       return false;
     }
@@ -307,14 +324,20 @@ bool TxExecutor::validation() {
   // (b) every currently visible version v of the records in the write set
   // satisfies (v.rts) <= (tx.ts)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    Version *version = (*itr).newObject_->ldAcqNext();
-    while (version->ldAcqStatus() == VersionStatus::pending);
-    while (version->ldAcqStatus() != VersionStatus::committed) {
-      version = version->ldAcqNext();
-      while (version->ldAcqStatus() == VersionStatus::pending);
+    Version *ver = (*itr).new_ver_->ldAcqNext();
+    VersionStatus status = ver->ldAcqStatus();
+    while (status == VersionStatus::pending) {
+      status = ver->ldAcqStatus();
+    }
+    while (status != VersionStatus::committed) {
+      ver = ver->ldAcqNext();
+      status = ver->ldAcqStatus();
+      while (status == VersionStatus::pending) {
+        status = ver->ldAcqStatus();
+      }
     }
 
-    if (version->ldAcqRts() > this->wts_.ts_) {
+    if (ver->ldAcqRts() > this->wts_.ts_) {
       decideLocalValiLatency();
       return false;
     }
@@ -330,7 +353,7 @@ void TxExecutor::swal() {
 
     int i = 0;
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-      SLogSet[i] = (*itr).newObject_;
+      SLogSet[i] = (*itr).new_ver_;
       ++i;
     }
 
@@ -343,7 +366,7 @@ void TxExecutor::swal() {
   } else {  // group commit
     SwalLock.w_lock();
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-      SLogSet[GROUP_COMMIT_INDEX[0].obj_] = (*itr).newObject_;
+      SLogSet[GROUP_COMMIT_INDEX[0].obj_] = (*itr).new_ver_;
       ++GROUP_COMMIT_INDEX[0].obj_;
     }
 
@@ -370,7 +393,7 @@ void TxExecutor::pwal() {
   if (!GROUP_COMMIT) {
     int i = 0;
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-      PLogSet[thid_][i] = (*itr).newObject_;
+      PLogSet[thid_][i] = (*itr).new_ver_;
       ++i;
     }
 
@@ -381,7 +404,7 @@ void TxExecutor::pwal() {
     }  // spin-wait
   } else {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-      PLogSet[thid_][GROUP_COMMIT_INDEX[thid_].obj_] = (*itr).newObject_;
+      PLogSet[thid_][GROUP_COMMIT_INDEX[thid_].obj_] = (*itr).new_ver_;
       ++GROUP_COMMIT_INDEX[this->thid_].obj_;
     }
 
@@ -407,14 +430,14 @@ void TxExecutor::pwal() {
 inline void TxExecutor::cpv()  // commit pending versions
 {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    memcpy((*itr).newObject_->val_, write_val_, VAL_SIZE);
+    memcpy((*itr).new_ver_->val_, write_val_, VAL_SIZE);
 #if SINGLE_EXEC
-    (*itr).newObject_->set(0, this->wts_.ts_);
+    (*itr).new_ver_->set(0, this->wts_.ts_);
 #else
-    gcq_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).newObject_,
-                             (*itr).newObject_->wts_));
+    gcq_.push_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).new_ver_,
+                             (*itr).new_ver_->wts_));
 #endif
-    (*itr).newObject_->status_.store(VersionStatus::committed,
+    (*itr).new_ver_->status_.store(VersionStatus::committed,
                                      std::memory_order_release);
     ++(*itr).rcdptr_->continuing_commit_;
   }
