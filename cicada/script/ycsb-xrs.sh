@@ -1,8 +1,8 @@
-#ycsbB-xrs.sh(cicada)
+#ycsb-xrs.sh(cicada)
 maxope=10
 rratioary=(50 95 100)
 rmw=off
-skew=0.9
+skew=0
 ycsb=on
 wal=off
 group_commit=off
@@ -25,17 +25,17 @@ if  test $host = $dbs11 ; then
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=1000
+make clean; make -j KEY_SIZE=8 VAL_SIZE=4
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_cicada_ycsbA_tuple1k-100m_val1k_skew09.dat
+    result=result_cicada_ycsbA_tuple1k-1g.dat
   elif test $rratio = 95 ; then
-    result=result_cicada_ycsbB_tuple1k-100m_val1k_skew09.dat
+    result=result_cicada_ycsbB_tuple1k-1g.dat
   elif test $rratio = 100 ; then
-    result=result_cicada_ycsbC_tuple1k-100m_val1k_skew09.dat
+    result=result_cicada_ycsbC_tuple1k-1g.dat
   else
     echo "BUG"
     exit 1
@@ -45,7 +45,7 @@ do
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime" >> $result
   
-  for ((tuple=1000; tuple<=100000000; tuple*=10))
+  for ((tuple=1000; tuple<=1000000000; tuple*=10))
   do
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime"
     echo "Thread number $thread"

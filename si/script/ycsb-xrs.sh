@@ -3,7 +3,7 @@ maxope=10
 thread=224
 rratioary=(50 95 100)
 rmw=off
-skew=0.9
+skew=0
 ycsb=on
 cpumhz=2100
 gci=10
@@ -22,17 +22,17 @@ thread=224
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=1000
+make clean; make -j KEY_SIZE=8 VAL_SIZE=4
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_si_ycsbA_tuple1k-100m_val1k_skew09.dat
+    result=result_si_ycsbA_tuple1k-1g.dat
   elif test $rratio = 95 ; then
-    result=result_si_ycsbB_tuple1k-100m_val1k_skew09.dat
+    result=result_si_ycsbB_tuple1k-1g.dat
   elif test $rratio = 100 ; then
-    result=result_si_ycsbC_tuple1k-100m_val1k_skew09.dat
+    result=result_si_ycsbC_tuple1k-1g.dat
   else
     echo "BUG"
     exit 1
