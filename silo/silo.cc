@@ -32,6 +32,7 @@ extern void chkArg(const int argc, char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 extern bool chkEpochLoaded();
+extern void displayParameter();
 extern void isReady(const std::vector<char>& readys);
 extern void leaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop);
 extern void displayDB();
@@ -83,7 +84,11 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 #endif
 
   RETRY:
-    if (thid == 0) leaderWork(epoch_timer_start, epoch_timer_stop);
+    if (thid == 0) {
+      leaderWork(epoch_timer_start, epoch_timer_stop);
+      //printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
+    }
+
     if (loadAcquire(quit)) break;
 
     trans.tbegin();
@@ -116,6 +121,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
 int main(int argc, char* argv[]) try {
   chkArg(argc, argv);
+  //displayParameter();
   makeDB();
 
   alignas(CACHE_LINE_SIZE) bool start = false;

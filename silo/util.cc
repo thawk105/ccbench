@@ -136,6 +136,19 @@ void displayDB() {
   }
 }
 
+void displayParameter() {
+  cout << "TUPLE_NUM:\t" << TUPLE_NUM << endl;
+  cout << "MAX_OPE:\t" << MAX_OPE << endl;
+  cout << "THREAD_NUM:\t" << THREAD_NUM << endl;
+  cout << "RRATIO:\t" << RRATIO << endl;
+  cout << "RMW:\t" << RMW << endl;
+  cout << "ZIPF_SKEW:\t" << ZIPF_SKEW << endl;
+  cout << "YCSB:\t" << YCSB << endl;
+  cout << "CLOCKS_PER_US:\t" << CLOCKS_PER_US << endl;
+  cout << "EPOCH_TIME:\t" << EPOCH_TIME << endl;
+  cout << "EXTIME:\t" << EXTIME << endl;
+}
+
 void genLogFile(std::string &logpath, const int thid) {
   genLogFileName(logpath, thid);
   createEmptyFile(logpath);
