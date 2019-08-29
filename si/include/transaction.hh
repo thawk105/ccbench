@@ -51,14 +51,9 @@ class TxExecutor {
     pro_set_.reserve(max_ope);
 
     if (PRE_RESERVE_VERSION) {
-      gcobject_.reuse_version_from_gc_.resize(PRE_RESERVE_VERSION);
-      gcobject_.reuse_version_from_gc_.clear();
-      Version *ver;
-      if (posix_memalign((void **)&ver, PAGE_SIZE,
-                         PRE_RESERVE_VERSION * sizeof(Version)))
-        ERR;
-      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
-        gcobject_.reuse_version_from_gc_.emplace_back(&ver[i]);
+      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i) {
+        gcobject_.reuse_version_from_gc_.emplace_back(new Version());
+      }
     }
 
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);

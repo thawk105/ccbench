@@ -302,14 +302,6 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
 
-#if INLINE_VERSION_OPT
-#else
-  Version *version;
-  if (posix_memalign((void **)&version, CACHE_LINE_SIZE,
-                     (end - start + 1) * sizeof(Version)))
-    ERR;
-#endif
-
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tuple;
     tuple = TxExecutor::get_tuple(Table, i);
@@ -322,7 +314,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
     tuple->inline_ver_.set(0, initts, nullptr, VersionStatus::committed);
     tuple->inline_ver_.val_[0] = '\0';
 #else
-    tuple->latest_ = &version[i - start];
+    tuple->latest_.store(new Version(), std::memory_order_release);
     (tuple->latest_.load(std::memory_order_acquire))
         ->set(0, initts, nullptr, VersionStatus::committed);
     (tuple->latest_.load(std::memory_order_acquire))->val_[0] = '\0';

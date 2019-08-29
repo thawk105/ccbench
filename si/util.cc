@@ -156,9 +156,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     Tuple *tmp;
     Version *verTmp;
     tmp = TxExecutor::get_tuple(Table, i);
-    if (posix_memalign((void **)&tmp->latest_, CACHE_LINE_SIZE,
-                       sizeof(Version)) != 0)
-      ERR;
+    tmp->latest_.store(new Version(), std::memory_order_release);
     tmp->min_cstamp_ = 0;
     verTmp = tmp->latest_.load(std::memory_order_acquire);
     verTmp->cstamp_ = 0;
