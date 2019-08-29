@@ -28,6 +28,8 @@ class Result {
   uint64_t local_temperature_resets_ = 0;
   uint64_t local_timestamp_history_fail_counts_ = 0;
   uint64_t local_timestamp_history_success_counts_ = 0;
+  uint64_t local_TMT_element_malloc_ = 0;
+  uint64_t local_TMT_element_reuse_ = 0;
   uint64_t local_tree_traversal_ = 0;
   uint64_t local_vali_latency_ = 0;
   uint64_t local_validation_failure_by_tid_ = 0;
@@ -57,6 +59,8 @@ class Result {
   uint64_t total_temperature_resets_ = 0;
   uint64_t total_timestamp_history_fail_counts_ = 0;
   uint64_t total_timestamp_history_success_counts_ = 0;
+  uint64_t total_TMT_element_malloc_ = 0;
+  uint64_t total_TMT_element_reuse_ = 0;
   uint64_t total_tree_traversal_ = 0;
   uint64_t total_vali_latency_ = 0;
   uint64_t total_validation_failure_by_tid_ = 0;
@@ -99,6 +103,8 @@ class Result {
   void displayTimestampHistorySuccessCounts();
   void displayTimestampHistoryFailCounts();
   void displayTreeTraversal();
+  void displayTMTElementMalloc();
+  void displayTMTElementReuse();
   void displayWriteLatencyRate(size_t clocks_per_us, size_t extime,
                                size_t thread_num);
   void displayValiLatencyRate(size_t clocks_per_us, size_t extime,
@@ -131,6 +137,8 @@ class Result {
   void addLocalTimestampHistorySuccessCounts(const uint64_t count);
   void addLocalTimestampHistoryFailCounts(const uint64_t count);
   void addLocalTemperatureResets(uint64_t count);
+  void addLocalTMTElementsMalloc(const uint64_t count);
+  void addLocalTMTElementsReuse(const uint64_t count);
   void addLocalTreeTraversal(const uint64_t count);
   void addLocalWriteLatency(const uint64_t count);
   void addLocalValiLatency(const uint64_t count);

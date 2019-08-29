@@ -12,18 +12,10 @@
 #include "common.hh"
 #include "ermia_op_element.hh"
 #include "garbage_collection.hh"
+#include "transaction_status.hh"
+#include "transaction_table.hh"
 #include "tuple.hh"
 #include "version.hh"
-
-// forward declaration
-class TransactionTable;
-
-enum class TransactionStatus : uint8_t {
-  inFlight,
-  committing,
-  committed,
-  aborted,
-};
 
 using namespace std;
 
@@ -56,9 +48,15 @@ class TxExecutor {
     write_set_.reserve(MAX_OPE);
     pro_set_.reserve(MAX_OPE);
 
+    if (PRE_RESERVE_TMT_ELEMENT) {
+      TransactionTable *tmt;
+      if (posix_memalign((void**)&tmt, PAGE_SIZE, PRE_RESERVE_TMT_ELEMENT * sizeof(TransactionTable))) ERR;
+
+      for (size_t i = 0; i < PRE_RESERVE_TMT_ELEMENT; ++i)
+        gcobject_.reuse_TMT_element_from_gc_.emplace_back(&tmt[i]);
+    }
+
     if (PRE_RESERVE_VERSION) {
-      gcobject_.reuse_version_from_gc_.resize(PRE_RESERVE_VERSION);
-      gcobject_.reuse_version_from_gc_.clear();
       Version *ver;
       if (posix_memalign((void **)&ver, PAGE_SIZE,
                          PRE_RESERVE_VERSION * sizeof(Version)))
@@ -118,30 +116,3 @@ class TxExecutor {
   }
 };
 
-// for MVCC SSN
-class TransactionTable {
- public:
-  alignas(CACHE_LINE_SIZE) std::atomic<uint32_t> txid_;
-  std::atomic<uint32_t> cstamp_;
-  std::atomic<uint32_t> sstamp_;
-  std::atomic<uint32_t> lastcstamp_;
-  std::atomic<TransactionStatus> status_;
-
-  TransactionTable(uint32_t txid, uint32_t cstamp, uint32_t sstamp,
-                   uint32_t lastcstamp, TransactionStatus status) {
-    this->txid_.store(txid, memory_order_relaxed);
-    this->cstamp_.store(cstamp, memory_order_relaxed);
-    this->sstamp_.store(sstamp, memory_order_relaxed);
-    this->lastcstamp_.store(lastcstamp, memory_order_relaxed);
-    this->status_.store(status, memory_order_relaxed);
-  }
-
-  void set(uint32_t txid, uint32_t cstamp, uint32_t sstamp, uint32_t lastcstamp,
-           TransactionStatus status) {
-    this->txid_.store(txid, memory_order_relaxed);
-    this->cstamp_.store(cstamp, memory_order_relaxed);
-    this->sstamp_.store(sstamp, memory_order_relaxed);
-    this->lastcstamp_.store(lastcstamp, memory_order_relaxed);
-    this->status_.store(status, memory_order_relaxed);
-  }
-};

@@ -46,10 +46,16 @@ void TxExecutor::tbegin() {
   if (gcobject_.reuse_TMT_element_from_gc_.empty()) {
     newElement = new TransactionTable(0, 0, UINT32_MAX, lastcstamp,
                                       TransactionStatus::inFlight);
+#if ADD_ANALYSIS
+    ++eres_->local_TMT_element_malloc_;
+#endif
   } else {
     newElement = gcobject_.reuse_TMT_element_from_gc_.back();
     gcobject_.reuse_TMT_element_from_gc_.pop_back();
     newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inFlight);
+#if ADD_ANALYSIS
+    ++eres_->local_TMT_element_reuse_;
+#endif
   }
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {

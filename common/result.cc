@@ -224,6 +224,16 @@ void Result::displayTreeTraversal() {
     cout << "tree_traversal:\t" << total_tree_traversal_ << endl;
 }
 
+void Result::displayTMTElementMalloc() {
+  if (total_TMT_element_malloc_)
+    cout << "TMT_element_malloc:\t" << total_TMT_element_malloc_ << endl;
+}
+
+void Result::displayTMTElementReuse() {
+  if (total_TMT_element_reuse_)
+    cout << "TMT_element_reuse:\t" << total_TMT_element_reuse_ << endl;
+}
+
 void Result::displayValiLatencyRate(size_t clocks_per_us, size_t extime,
                                     size_t thread_num) {
   if (total_vali_latency_) {
@@ -349,6 +359,14 @@ void Result::addLocalTemperatureResets(const uint64_t count) {
   total_temperature_resets_ += count;
 }
 
+void Result::addLocalTMTElementsMalloc(const uint64_t count) {
+  total_TMT_element_malloc_ += count;
+}
+
+void Result::addLocalTMTElementsReuse(const uint64_t count) {
+  total_TMT_element_reuse_ += count;
+}
+
 void Result::addLocalTimestampHistoryFailCounts(const uint64_t count) {
   total_timestamp_history_fail_counts_ += count;
 }
@@ -407,6 +425,8 @@ void Result::displayAllResult(size_t clocks_per_us, size_t extime,
   displayTemperatureResets();
   displayTimestampHistorySuccessCounts();
   displayTimestampHistoryFailCounts();
+  displayTMTElementMalloc();
+  displayTMTElementReuse();
   displayTreeTraversal();
   displayWriteLatencyRate(clocks_per_us, extime, thread_num);
   displayValiLatencyRate(clocks_per_us, extime, thread_num);

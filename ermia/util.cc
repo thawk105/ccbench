@@ -29,12 +29,12 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void chkArg(const int argc, const char *argv[]) {
-  if (argc != 12) {
+  if (argc != 13) {
     // if (argc != 1) {
     cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
             "ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US PRE_RESERVE_VERSION EXTIME"
          << endl;
-    cout << "example: ./ermia.exe 200 10 24 50 off 0 off 2100 10 10000 3"
+    cout << "example: ./ermia.exe 200 10 24 50 off 0 off 2100 10 1000 10000 3"
          << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
     cout << "MAX_OPE(int): total numbers of operations" << endl;
@@ -47,6 +47,8 @@ void chkArg(const int argc, const char *argv[]) {
         << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
         << endl;
     cout << "GC_INTER_US : garbage collection interval [usec]" << endl;
+    cout << "PRE_RESERVE_TMT_ELEMENT: pre-prepare memory for version generation."
+         << endl;
     cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
          << endl;
     cout << "EXTIME: execution time [sec]" << endl;
@@ -65,9 +67,11 @@ void chkArg(const int argc, const char *argv[]) {
   chkInt(argv[2]);
   chkInt(argv[3]);
   chkInt(argv[4]);
+  chkInt(argv[6]);
   chkInt(argv[8]);
   chkInt(argv[9]);
   chkInt(argv[10]);
+  chkInt(argv[11]);
 
   TUPLE_NUM = atoi(argv[1]);
   MAX_OPE = atoi(argv[2]);
@@ -78,8 +82,9 @@ void chkArg(const int argc, const char *argv[]) {
   string argst = argv[7];
   CLOCKS_PER_US = atof(argv[8]);
   GC_INTER_US = atoi(argv[9]);
-  PRE_RESERVE_VERSION = atoi(argv[10]);
-  EXTIME = atoi(argv[11]);
+  PRE_RESERVE_TMT_ELEMENT = atoi(argv[10]);
+  PRE_RESERVE_VERSION = atoi(argv[11]);
+  EXTIME = atoi(argv[12]);
 
   if (THREAD_NUM < 1) {
     cout << "1 is minimum thread number."
