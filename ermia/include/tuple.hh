@@ -10,10 +10,10 @@ class Tuple {
  public:
   alignas(CACHE_LINE_SIZE) std::atomic<Version *> latest_;
   std::atomic<uint32_t> min_cstamp_;
-  std::atomic<uint8_t> g_clock_;
+  std::atomic<uint8_t> gc_lock_;
 
   Tuple() {
     latest_.store(nullptr);
-    g_clock_.store(0, std::memory_order_release);
+    gc_lock_.store(0, std::memory_order_release);
   }
 };

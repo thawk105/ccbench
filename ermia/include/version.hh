@@ -91,9 +91,6 @@ class Version {
   alignas(CACHE_LINE_SIZE) Psstamp
       psstamp_;  // Version access stamp, eta(V), Version successor stamp, pi(V)
   Version *prev_;            // Pointer to overwritten version
-  Version *committed_prev_;  // Pointer to the next committed version, to reduce
-                             // serach cost.
-
   std::atomic<uint64_t> readers_;  // summarize all of V's readers.
   std::atomic<uint32_t> cstamp_;   // Version creation stamp, c(V)
   std::atomic<VersionStatus> status_;

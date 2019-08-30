@@ -59,9 +59,7 @@ void TxExecutor::tbegin() {
   }
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    do {
-      tmt = loadAcquire(TMT[i]);
-    } while (tmt == nullptr);
+    tmt = loadAcquire(TMT[i]);
     this->txid_ = max(this->txid_, tmt->lastcstamp_.load(memory_order_acquire));
   }
   this->txid_ += 1;
@@ -81,21 +79,25 @@ char *TxExecutor::ssn_tread(unsigned int key) {
   start = rdtscp();
 #endif
 
+#if ADD_ANALYSIS
+  auto decideLocalReadLatency = [this,start] {
+    eres_->local_read_latency_ += rdtscp() - start;
+  };
+#else
+  auto decideLocalReadLatency = []{};
+#endif
+
   // if it already access the key object once.
   // w
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) {
-#if ADD_ANALYSIS
-    eres_->local_read_latency_ += rdtscp() - start;
-#endif
+    decideLocalReadLatency();
     return writeVal;
   }
 
   SetElement<Tuple> *inR = searchReadSet(key);
   if (inR) {
-#if ADD_ANALYSIS
-    eres_->local_read_latency_ += rdtscp() - start;
-#endif
+    decideLocalReadLatency();
     return inR->ver_->val_;
   }
 
@@ -110,18 +112,9 @@ char *TxExecutor::ssn_tread(unsigned int key) {
 
   // if v not in t.writes:
   Version *ver = tuple->latest_.load(memory_order_acquire);
-  if (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
-    ver = ver->committed_prev_;
-  }
-  while (txid_ < ver->cstamp_.load(memory_order_acquire)) {
-    // printf("txid %d, (verCstamp >> 1) %d\n", txid, verCstamp >> 1);
-    // fflush(stdout);
-    ver = ver->committed_prev_;
-    if (ver == NULL) {
-      cout << "txid : " << txid_ << ", ver->cstamp_: " << ver->cstamp_.load(memory_order_acquire) << endl;
-      ERR;
-    }
-  }
+  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed
+      || txid_ < ver->cstamp_.load(memory_order_acquire))
+    ver = ver->prev_;
 
   if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
     // no overwrite yet
@@ -134,18 +127,14 @@ char *TxExecutor::ssn_tread(unsigned int key) {
 
   verify_exclusion_or_abort();
   if (this->status_ == TransactionStatus::aborted) {
-#if ADD_ANALYSIS
-    eres_->local_read_latency_ += rdtscp() - start;
-#endif
+    decideLocalReadLatency();
     return nullptr;
   }
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
   memcpy(returnVal, ver->val_, VAL_SIZE);
-#if ADD_ANALYSIS
-  eres_->local_read_latency_ += rdtscp() - start;
-#endif
+  decideLocalReadLatency();
   return ver->val_;
 }
 
@@ -154,17 +143,20 @@ void TxExecutor::ssn_twrite(unsigned int key) {
   uint64_t start = rdtscp();
 #endif
 
+#if ADD_ANALYSIS
+  auto decideLocalWriteLatency = [this,start] {
+    eres_->local_write_latency_ += rdtscp() - start;
+  };
+#else
+  auto decideLocalWriteLatency = []{};
+#endif
+
   // if it already wrote the key object once.
   SetElement<Tuple> *inW = searchWriteSet(key);
   if (inW) {
-#if ADD_ANALYSIS
-    eres_->local_write_latency_ += rdtscp() - start;
-#endif
+    decideLocalWriteLatency();
     return;
   }
-  // tanabe の実験では，スレッドごとに書き込む新しい値が決まっている．
-  // であれば，コミットが確定し，version status を committed にして other worker
-  // に visible になるときに memcpy するのが一番無駄が少ない．
 
   // if v not in t.writes:
   //
@@ -189,7 +181,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
   desired->cstamp_.store(
       this->txid_,
       memory_order_relaxed);  // read operation, write operation,
-                              // ガベコレからアクセスされるので， CAS 前に格納
+  // it is also accessed by garbage collection.
 
 #if MASSTREE_USE
   Tuple *tuple = MT.get_value(key);
@@ -212,9 +204,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
         TMT[thid_]->status_.store(TransactionStatus::aborted,
                                   memory_order_release);
         gcobject_.reuse_version_from_gc_.emplace_back(desired);
-#if ADD_ANALYSIS
-        eres_->local_write_latency_ += rdtscp() - start;
-#endif
+        decideLocalWriteLatency();
         return;
       }
 
@@ -223,15 +213,13 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       continue;
     }
 
-    // 先頭バージョンが committed バージョンでなかった時
+    // if latest version is not comitted.
     vertmp = expected;
     while (vertmp->status_.load(memory_order_acquire) !=
-           VersionStatus::committed) {
-      vertmp = vertmp->committed_prev_;
-      if (vertmp == nullptr) ERR;
-    }
+           VersionStatus::committed)
+      vertmp = vertmp->prev_;
 
-    // vertmp は commit済み最新バージョン
+    // vertmp is latest committed version.
     if (txid_ < vertmp->cstamp_.load(memory_order_acquire)) {
       //  write - write conflict, first-updater-wins rule.
       // Writers must abort if they would overwirte a version created after
@@ -240,28 +228,25 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       TMT[thid_]->status_.store(TransactionStatus::aborted,
                                 memory_order_release);
       gcobject_.reuse_version_from_gc_.emplace_back(desired);
-#if ADD_ANALYSIS
-      eres_->local_write_latency_ += rdtscp() - start;
-#endif
+      decideLocalWriteLatency();
       return;
     }
 
     desired->prev_ = expected;
-    desired->committed_prev_ = vertmp;
     if (tuple->latest_.compare_exchange_strong(
             expected, desired, memory_order_acq_rel, memory_order_acquire))
       break;
   }
 
-  // ver->committed_prev_->sstamp_ に TID を入れる
+  // ver->prev_->sstamp_ に TID を入れる
   uint64_t tmpTID = thid_;
   tmpTID = tmpTID << 1;
   tmpTID |= 1;
-  desired->committed_prev_->psstamp_.atomicStoreSstamp(tmpTID);
+  desired->prev_->psstamp_.atomicStoreSstamp(tmpTID);
 
   // update eta with w:r edge
   this->pstamp_ =
-      max(this->pstamp_, desired->committed_prev_->psstamp_.atomicLoadPstamp());
+      max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
   write_set_.emplace_back(key, tuple, desired);
 
   //  avoid false positive
@@ -276,9 +261,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
   }
 
   verify_exclusion_or_abort();
-#if ADD_ANALYSIS
-  eres_->local_write_latency_ += rdtscp() - start;
-#endif
+  decideLocalWriteLatency();
   return;
 }
 
@@ -296,7 +279,7 @@ void TxExecutor::ssn_commit() {
   // finalize eta(T)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     pstamp_ =
-        max(pstamp_, (*itr).ver_->committed_prev_->psstamp_.atomicLoadPstamp());
+        max(pstamp_, (*itr).ver_->prev_->psstamp_.atomicLoadPstamp());
   }
 
   // finalize pi(T)
@@ -338,7 +321,7 @@ void TxExecutor::ssn_commit() {
   verCstamp &= ~(1);
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(verSstamp);
+    (*itr).ver_->prev_->psstamp_.atomicStoreSstamp(verSstamp);
     // initialize new version
     (*itr).ver_->psstamp_.atomicStorePstamp(cstamp_);
     (*itr).ver_->cstamp_ = verCstamp;
@@ -362,7 +345,7 @@ void TxExecutor::ssn_commit() {
 
 void TxExecutor::ssn_parallel_commit() {
   this->status_ = TransactionStatus::committing;
-  TransactionTable *tmt = loadAcquire(TMT[thid_]);
+  TransactionTable *tmt = TMT[thid_];
   tmt->status_.store(TransactionStatus::committing);
 
   this->cstamp_ = ++Lsn;
@@ -381,31 +364,17 @@ void TxExecutor::ssn_parallel_commit() {
     if (v_sstamp & TIDFLAG) {
       // identify worker by using TID
       uint8_t worker = (v_sstamp >> TIDFLAG);
-      if (worker == thid_) {
-        // it mustn't occur "worker == thid_", so it's error.
-        dispWS();
-        dispRS();
-        ERR;
-      }
       // もし worker が inFlight (read phase 実行中) だったら
       // このトランザクションよりも新しい commit timestamp でコミットされる．
       // 従って pi となりえないので，スキップ．
       // そうでないなら，チェック
-      /*cout << "tmt : " << tmt << endl;
-      cout << "worker : " << worker << endl;
-      cout << "v_sstamp : " << v_sstamp << endl;
-      cout << "UINT32_MAX : " << UINT32_MAX << endl;*/
       tmt = loadAcquire(TMT[worker]);
       if (tmt->status_.load(memory_order_acquire) ==
           TransactionStatus::committing) {
         // worker は ssn_parallel_commit() に突入している
-        // cstamp が確実に取得されるまで待機 (cstamp は初期値 0)
+        // cstamp が確実に取得されるまで待機 (tmt のcstamp は初期値 0)
         while (tmt->cstamp_.load(memory_order_acquire) == 0)
           ;
-        if (tmt->status_.load(memory_order_acquire) ==
-            TransactionStatus::aborted)
-          continue;
-
         // worker->cstamp_ が this->cstamp_ より小さいなら pi になる可能性あり
         if (tmt->cstamp_.load(memory_order_acquire) < this->cstamp_) {
           // parallel_commit 終了待ち（sstamp確定待ち)
@@ -428,7 +397,10 @@ void TxExecutor::ssn_parallel_commit() {
   uint64_t one = 1;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     // for r in v.prev.readers
-    uint64_t rdrs = (*itr).ver_->readers_.load(memory_order_acquire);
+    Version *ver = (*itr).ver_;
+    while (ver->status_.load(memory_order_acquire) != VersionStatus::committed)
+      ver = ver->prev_;
+    uint64_t rdrs = ver->readers_.load(memory_order_acquire);
     for (unsigned int worker = 0; worker < THREAD_NUM; ++worker) {
       if ((rdrs & (one << worker)) ? 1 : 0) {
         tmt = loadAcquire(TMT[worker]);
@@ -436,14 +408,10 @@ void TxExecutor::ssn_parallel_commit() {
         // inFlight なら無視できる．なぜならそれが commit
         // する時にはこのトランザクションよりも 大きい cstamp を有し， eta
         // となりえないから．
-        while (tmt->status_.load(memory_order_acquire) ==
+        if (tmt->status_.load(memory_order_acquire) ==
                TransactionStatus::committing) {
           while (tmt->cstamp_.load(memory_order_acquire) == 0)
             ;
-          if (tmt->status_.load(memory_order_acquire) ==
-              TransactionStatus::aborted)
-            continue;
-
           // worker->cstamp_ が this->cstamp_ より小さいなら eta
           // になる可能性あり
           if (tmt->cstamp_.load(memory_order_acquire) < this->cstamp_) {
@@ -463,10 +431,10 @@ void TxExecutor::ssn_parallel_commit() {
     // re-read pstamp in case we missed any reader
     this->pstamp_ =
         min(this->pstamp_,
-            (*itr).ver_->committed_prev_->psstamp_.atomicLoadPstamp());
+            ver->psstamp_.atomicLoadPstamp());
   }
 
-  tmt = loadAcquire(TMT[thid_]);
+  tmt = TMT[thid_];
   // ssn_check_exclusion
   if (pstamp_ < sstamp_) {
     status_ = TransactionStatus::committed;
@@ -495,19 +463,18 @@ void TxExecutor::ssn_parallel_commit() {
   verSstamp = verSstamp << TIDFLAG;
   verSstamp &= ~(TIDFLAG);
 
-  uint64_t verCstamp = cstamp_;
-  verCstamp = verCstamp << TIDFLAG;
-  verCstamp &= ~(TIDFLAG);
-
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(verSstamp);
-    (*itr).ver_->cstamp_.store(verCstamp, memory_order_release);
+    Version *next_committed = (*itr).ver_->prev_;
+    while (next_committed->status_.load(memory_order_acquire) != VersionStatus::committed)
+      next_committed = next_committed->prev_;
+    next_committed->psstamp_.atomicStoreSstamp(verSstamp);
+    (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
     (*itr).ver_->psstamp_.atomicStorePstamp(this->cstamp_);
     (*itr).ver_->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     memcpy((*itr).ver_->val_, writeVal, VAL_SIZE);
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
     gcobject_.gcq_for_version_.emplace_back(
-        GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, verCstamp));
+        GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
   }
 
   // logging
@@ -522,11 +489,12 @@ void TxExecutor::ssn_parallel_commit() {
 
 void TxExecutor::abort() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    (*itr).ver_->committed_prev_->psstamp_.atomicStoreSstamp(UINT32_MAX &
+    Version* next_committed = (*itr).ver_->prev_;
+    while (next_committed->status_.load(memory_order_acquire) != VersionStatus::committed)
+      next_committed = next_committed->prev_;
+    next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX &
                                                              ~(TIDFLAG));
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
-    gcobject_.gcq_for_version_.emplace_back(GCElement(
-        (*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_ << TIDFLAG));
   }
   write_set_.clear();
 

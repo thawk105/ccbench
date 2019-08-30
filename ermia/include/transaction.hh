@@ -21,26 +21,25 @@ using namespace std;
 
 class TxExecutor {
  public:
-  uint32_t cstamp_ = 0;  // Transaction end time, c(T)
-  TransactionStatus status_ =
-      TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
-  uint32_t pstamp_ = 0;             // Predecessor high-water mark, η (T)
-  uint32_t sstamp_ = UINT32_MAX;    // Successor low-water mark, pi (T)
-  vector<SetElement<Tuple>> read_set_;
-  vector<SetElement<Tuple>> write_set_;
-  GarbageCollection gcobject_;
-  vector<Procedure> pro_set_;
-  uint32_t pre_gc_threshold_ = 0;
-
-  uint8_t thid_;  // thread ID
-  uint32_t
-      txid_;  // TID and begin timestamp - the current log sequence number (LSN)
-  Result *eres_;
-
-  uint64_t gcstart_, gcstop_;  // counter for garbage collection
-
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
+  uint8_t thid_;  // thread ID
+  uint32_t cstamp_ = 0;  // Transaction end time, c(T)
+  uint32_t pstamp_ = 0;             // Predecessor high-water mark, η (T)
+  uint32_t sstamp_ = UINT32_MAX;    // Successor low-water mark, pi (T)
+  uint32_t pre_gc_threshold_ = 0;
+  uint32_t
+      txid_;  // TID and begin timestamp - the current log sequence number (LSN)
+  uint64_t gcstart_, gcstop_;  // counter for garbage collection
+
+  vector<SetElement<Tuple>> read_set_;
+  vector<SetElement<Tuple>> write_set_;
+  vector<Procedure> pro_set_;
+
+  Result *eres_;
+  TransactionStatus status_ =
+      TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
+  GarbageCollection gcobject_;
 
   TxExecutor(uint8_t thid, Result *eres) : thid_(thid), eres_(eres) {
     gcobject_.set_thid_(thid);
@@ -49,20 +48,13 @@ class TxExecutor {
     pro_set_.reserve(MAX_OPE);
 
     if (PRE_RESERVE_TMT_ELEMENT) {
-      TransactionTable *tmt;
-      if (posix_memalign((void**)&tmt, PAGE_SIZE, PRE_RESERVE_TMT_ELEMENT * sizeof(TransactionTable))) ERR;
-
       for (size_t i = 0; i < PRE_RESERVE_TMT_ELEMENT; ++i)
-        gcobject_.reuse_TMT_element_from_gc_.emplace_back(&tmt[i]);
+        gcobject_.reuse_TMT_element_from_gc_.emplace_back(new TransactionTable());
     }
 
     if (PRE_RESERVE_VERSION) {
-      Version *ver;
-      if (posix_memalign((void **)&ver, PAGE_SIZE,
-                         PRE_RESERVE_VERSION * sizeof(Version)))
-        ERR;
       for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
-        gcobject_.reuse_version_from_gc_.emplace_back(&ver[i]);
+        gcobject_.reuse_version_from_gc_.emplace_back(new Version());
     }
 
     genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
@@ -83,31 +75,23 @@ class TxExecutor {
 
   void upReadersBits(Version *ver) {
     uint64_t expected, desired;
+    expected = ver->readers_.load(memory_order_acquire);
     for (;;) {
-      expected = ver->readers_.load(memory_order_acquire);
-    RETRY_URB:
-      if (expected & (1 << thid_)) break;
       desired = expected | (1 << thid_);
       if (ver->readers_.compare_exchange_weak(
               expected, desired, memory_order_acq_rel, memory_order_acquire))
         break;
-      else
-        goto RETRY_URB;
     }
   }
 
   void downReadersBits(Version *ver) {
     uint64_t expected, desired;
+    expected = ver->readers_.load(memory_order_acquire);
     for (;;) {
-      expected = ver->readers_.load(memory_order_acquire);
-    RETRY_DRB:
-      if (!(expected & (1 << thid_))) break;
       desired = expected & ~(1 << thid_);
       if (ver->readers_.compare_exchange_weak(
               expected, desired, memory_order_acq_rel, memory_order_acquire))
         break;
-      else
-        goto RETRY_DRB;
     }
   }
 

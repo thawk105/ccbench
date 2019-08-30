@@ -55,13 +55,13 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
 
   // my customized Rapid garbage collection inspired from Cicada (sigmod 2017).
   while (!gcq_for_version_.empty()) {
-    if ((gcq_for_version_.front().cstamp_ >> 1) >= threshold) break;
+    if (gcq_for_version_.front().cstamp_ >= threshold) break;
 
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
     uint8_t one = 1;
     Tuple *tuple = gcq_for_version_.front().rcdptr_;
-    if (!tuple->g_clock_.compare_exchange_strong(
+    if (!tuple->gc_lock_.compare_exchange_strong(
             zero, one, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
       gcq_for_version_.pop_front();
@@ -73,30 +73,24 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     // the version was cleaned by other threads
     if (gcq_for_version_.front().cstamp_ <= tuple->min_cstamp_) {
       // releases the lock
-      tuple->g_clock_.store(0, std::memory_order_release);
+      tuple->gc_lock_.store(0, std::memory_order_release);
       gcq_for_version_.pop_front();
       continue;
     }
     // this pointer may be dangling.
 
-    Version *delTarget = gcq_for_version_.front().ver_->committed_prev_;
+    Version *delTarget = gcq_for_version_.front().ver_->prev_;
     if (delTarget == nullptr) {
-      tuple->g_clock_.store(0, std::memory_order_release);
-      gcq_for_version_.pop_front();
-      continue;
-    }
-    delTarget = delTarget->prev_;
-    if (delTarget == nullptr) {
-      tuple->g_clock_.store(0, std::memory_order_release);
+      tuple->gc_lock_.store(0, std::memory_order_release);
       gcq_for_version_.pop_front();
       continue;
     }
 
     // the thread detaches the rest of the version list from v
-    gcq_for_version_.front().ver_->committed_prev_->prev_ = nullptr;
+    gcq_for_version_.front().ver_->prev_ = nullptr;
     // updates record.min_wts
     tuple->min_cstamp_.store(
-        gcq_for_version_.front().ver_->committed_prev_->cstamp_,
+        gcq_for_version_.front().ver_->cstamp_,
         memory_order_release);
 
     while (delTarget != nullptr) {
@@ -110,7 +104,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     }
 
     // releases the lock
-    tuple->g_clock_.store(0, std::memory_order_release);
+    tuple->gc_lock_.store(0, std::memory_order_release);
     gcq_for_version_.pop_front();
   }
 

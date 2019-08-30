@@ -192,7 +192,6 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     // cstamp, sstamp の最下位ビットは TID フラグ
     // 1の時はTID, 0の時はstamp
     verTmp->prev_ = nullptr;
-    verTmp->committed_prev_ = nullptr;
     verTmp->status_.store(VersionStatus::committed, std::memory_order_release);
     verTmp->readers_.store(0, std::memory_order_release);
 #if MASSTREE_USE
@@ -237,14 +236,15 @@ void naiveGarbageCollection(const bool &quit) {
       if (quit == true) return;
 
       verTmp = Table[i].latest_.load(memory_order_acquire);
-      if (verTmp->status_.load(memory_order_acquire) !=
+      while (verTmp->status_.load(memory_order_acquire) !=
           VersionStatus::committed)
-        verTmp = verTmp->committed_prev_;
+        verTmp = verTmp->prev_;
       // この時点で， verTmp はコミット済み最新バージョン
 
       uint64_t verCstamp = verTmp->cstamp_.load(memory_order_acquire);
-      while (mintxID < (verCstamp >> 1)) {
-        verTmp = verTmp->committed_prev_;
+      while (mintxID < (verCstamp >> 1)
+          || verTmp->status_.load(memory_order_acquire) != VersionStatus::committed) {
+        verTmp = verTmp->prev_;
         if (verTmp == nullptr) break;
         verCstamp = verTmp->cstamp_.load(memory_order_acquire);
       }
@@ -252,7 +252,9 @@ void naiveGarbageCollection(const bool &quit) {
       // verTmp は mintxID によって到達可能．
 
       // ssn commit protocol によってverTmp->commited_prev までアクセスされる．
-      verTmp = verTmp->committed_prev_;
+      verTmp = verTmp->prev_;
+      while (verTmp->status_.load(memory_order_acquire) != VersionStatus::committed)
+      verTmp = verTmp->prev_;
       if (verTmp == nullptr) continue;
 
       // verTmp->prev_ からガベコレ可能
