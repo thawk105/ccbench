@@ -466,6 +466,8 @@ void Result::addLocalAllResult(const Result &other) {
       other.local_timestamp_history_fail_counts_);
   addLocalTemperatureResets(other.local_temperature_resets_);
   addLocalTreeTraversal(other.local_tree_traversal_);
+  addLocalTMTElementsMalloc(other.local_TMT_element_malloc_);
+  addLocalTMTElementsReuse(other.local_TMT_element_reuse_);
   addLocalWriteLatency(other.local_write_latency_);
   addLocalValiLatency(other.local_vali_latency_);
   addLocalValidationFailureByTid(other.local_validation_failure_by_tid_);
