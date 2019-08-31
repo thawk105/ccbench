@@ -79,8 +79,9 @@ void chkArg(const int argc, const char *argv[]) {
   std::string argst = argv[7];
   CLOCKS_PER_US = atof(argv[8]);
   GC_INTER_US = atoi(argv[9]);
-  PRE_RESERVE_VERSION = atoi(argv[10]);
-  EXTIME = atoi(argv[11]);
+  PRE_RESERVE_TMT_ELEMENT = atoi(argv[10]);
+  PRE_RESERVE_VERSION = atoi(argv[11]);
+  EXTIME = atoi(argv[12]);
 
   if (THREAD_NUM < 1) {
     cout << "1 thread is minimum."
