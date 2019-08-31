@@ -71,14 +71,14 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-      /* シングル実行で絶対に競合を起こさないワークロードにおいて，
-       * 自トランザクションで read した後に write するのは複雑になる．
-       * write した後に read であれば，write set から read
-       * するので挙動がシンプルになる．
-       * スレッドごとにアクセスブロックを作る形でパーティションを作って
-       * スレッド間の競合を無くした後に sort して同一キーに対しては
-       * write - read とする．
-       * */
+    /* シングル実行で絶対に競合を起こさないワークロードにおいて，
+     * 自トランザクションで read した後に write するのは複雑になる．
+     * write した後に read であれば，write set から read
+     * するので挙動がシンプルになる．
+     * スレッドごとにアクセスブロックを作る形でパーティションを作って
+     * スレッド間の競合を無くした後に sort して同一キーに対しては
+     * write - read とする．
+     * */
 #if SINGLE_EXEC
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, true, thid, myres);

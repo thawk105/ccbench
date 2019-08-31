@@ -74,15 +74,15 @@ void TxExecutor::tbegin() {
 char *TxExecutor::tread(const uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif // if ADD_ANALYSIS
+#endif  // if ADD_ANALYSIS
 
 #if ADD_ANALYSIS
-  auto decideLocalReadLatency = [this,start] {
+  auto decideLocalReadLatency = [this, start] {
     cres_->local_read_latency_ += rdtscp() - start;
   };
 #else
-  auto decideLocalReadLatency = []{};
-#endif // if ADD_ANALYSIS
+  auto decideLocalReadLatency = [] {};
+#endif  // if ADD_ANALYSIS
 
   // read-own-writes
   // if n E write set
@@ -101,10 +101,10 @@ char *TxExecutor::tread(const uint64_t key) {
   Tuple *tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++cres_->local_tree_traversal_;
-#endif // if ADD_ANALYSIS
+#endif  // if ADD_ANALYSIS
 #else
   Tuple *tuple = get_tuple(Table, key);
-#endif // if MASSTREE_USE
+#endif  // if MASSTREE_USE
 
   // Search version
   Version *ver, *later_ver(nullptr);
@@ -136,7 +136,7 @@ char *TxExecutor::tread(const uint64_t key) {
     }
   }
 #endif
-  
+
   // for fairness
   // ultimately, it is wasteful in prototype system.
   memcpy(return_val_, ver->val_, VAL_SIZE);
@@ -149,24 +149,23 @@ char *TxExecutor::tread(const uint64_t key) {
 
 #if INLINE_VERSION_PROMOTION
   inlineVersionPromotion(key, tuple, later_ver, ver);
-#endif // if INLINE_VERSION_PROMOTION
+#endif  // if INLINE_VERSION_PROMOTION
 
   return ver->val_;
 }
 
 void TxExecutor::twrite(const uint64_t key) {
-
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif // if ADD_ANALYSIS
+#endif  // if ADD_ANALYSIS
 
 #if ADD_ANALYSIS
-  auto decideLocalWriteLatency = [this,start] {
+  auto decideLocalWriteLatency = [this, start] {
     cres_->local_write_latency_ += rdtscp() - start;
   };
 #else
-  auto decideLocalWriteLatency = []{};
-#endif // if ADD_ANALYSIS
+  auto decideLocalWriteLatency = [] {};
+#endif  // if ADD_ANALYSIS
 
   if (searchWriteSet(key)) {
     decideLocalWriteLatency();
@@ -180,10 +179,10 @@ void TxExecutor::twrite(const uint64_t key) {
   Tuple *tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++cres_->local_tree_traversal_;
-#endif // if ADD_ANALYSIS
+#endif  // if ADD_ANALYSIS
 #else
   Tuple *tuple = get_tuple(Table, key);
-#endif // if MASSTREE_USE
+#endif  // if MASSTREE_USE
 
 #if SINGLE_EXEC
   write_set_.emplace_back(key, tuple, nullptr, &tuple->inline_ver_, rmw);
@@ -192,8 +191,8 @@ void TxExecutor::twrite(const uint64_t key) {
   Version *later_ver(nullptr), *ver(tuple->ldAcqLatest());
   if (rmw) {
     // Search version (for early abort check)
-    // search latest (committed or pending) version and use for early abort check
-    // pending version may be committed, so use for early abort check.
+    // search latest (committed or pending) version and use for early abort
+    // check pending version may be committed, so use for early abort check.
 
     // early abort check(EAC)
     // here, version->status is commit or pending.
@@ -232,7 +231,7 @@ void TxExecutor::twrite(const uint64_t key) {
 #endif
   Version *new_ver = newVersionGeneration();
   write_set_.emplace_back(key, tuple, later_ver, new_ver, rmw);
-#endif // if SINGLE_EXEC
+#endif  // if SINGLE_EXEC
   decideLocalWriteLatency();
   return;
 }
@@ -240,15 +239,15 @@ void TxExecutor::twrite(const uint64_t key) {
 bool TxExecutor::validation() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif // if ADD_ANALYSIS
+#endif  // if ADD_ANALYSIS
 
 #if ADD_ANALYSIS
-  auto decideLocalValiLatency = [this,start] {
+  auto decideLocalValiLatency = [this, start] {
     cres_->local_vali_latency_ += rdtscp() - start;
   };
 #else
-  auto decideLocalValiLatency = []{};
-#endif // if ADD_ANALYSIS
+  auto decideLocalValiLatency = [] {};
+#endif  // if ADD_ANALYSIS
 
   if (!precheckInValidation()) {
     decideLocalValiLatency();
@@ -280,18 +279,19 @@ bool TxExecutor::validation() {
       }
 
       if ((*itr).rmw_ == true || ver == expected) {
-        // Latter half of condition meanings that it was not traversaling version list in not rmw mode.
+        // Latter half of condition meanings that it was not traversaling
+        // version list in not rmw mode.
         (*itr).new_ver_->strRelNext(expected);
         if ((*itr).rcdptr_->latest_.compare_exchange_strong(
                 expected, (*itr).new_ver_, memory_order_acq_rel,
                 memory_order_acquire)) {
           break;
-         }
+        }
       } else {
         (*itr).new_ver_->strRelNext(ver);
-        if (pre_ver->next_.compare_exchange_strong(
-              ver, (*itr).new_ver_, memory_order_acq_rel,
-              memory_order_acquire)) {
+        if (pre_ver->next_.compare_exchange_strong(ver, (*itr).new_ver_,
+                                                   memory_order_acq_rel,
+                                                   memory_order_acquire)) {
           break;
         }
       }
@@ -307,11 +307,12 @@ bool TxExecutor::validation() {
   // currently visible version to the transaction.
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Version *ver;
-    if ((*itr).later_ver_) ver = (*itr).later_ver_;
-    else ver = (*itr).rcdptr_->ldAcqLatest();
+    if ((*itr).later_ver_)
+      ver = (*itr).later_ver_;
+    else
+      ver = (*itr).rcdptr_->ldAcqLatest();
 
-    while (ver->ldAcqWts() >= this->wts_.ts_)
-      ver = ver->ldAcqNext();
+    while (ver->ldAcqWts() >= this->wts_.ts_) ver = ver->ldAcqNext();
     // if write after read occured, it may happen "==".
 
     ver = ver->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true);
@@ -438,7 +439,7 @@ inline void TxExecutor::cpv()  // commit pending versions
                              (*itr).new_ver_->wts_));
 #endif
     (*itr).new_ver_->status_.store(VersionStatus::committed,
-                                     std::memory_order_release);
+                                   std::memory_order_release);
     ++(*itr).rcdptr_->continuing_commit_;
   }
 

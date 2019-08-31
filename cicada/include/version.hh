@@ -26,7 +26,7 @@ class Version {
  public:
   alignas(CACHE_LINE_SIZE) atomic<uint64_t> rts_;
   atomic<uint64_t> wts_;
-  atomic<Version *> next_;
+  atomic<Version*> next_;
   atomic<VersionStatus> status_;  // commit record
 
   char val_[VAL_SIZE];
@@ -44,7 +44,10 @@ class Version {
   }
 
   void displayInfo() {
-    printf("Version::displayInfo(): rts_: %lu: wts_: %lu: next_: %p: status_: %u\n", ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t)ldAcqStatus());
+    printf(
+        "Version::displayInfo(): rts_: %lu: wts_: %lu: next_: %p: status_: "
+        "%u\n",
+        ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t)ldAcqStatus());
   }
 
   Version* latestCommittedVersionAfterThis() {
@@ -54,7 +57,7 @@ class Version {
     return version;
   }
 
-  Version *ldAcqNext() { return next_.load(std::memory_order_acquire); }
+  Version* ldAcqNext() { return next_.load(std::memory_order_acquire); }
 
   uint64_t ldAcqRts() { return rts_.load(std::memory_order_acquire); }
 
@@ -71,52 +74,59 @@ class Version {
     next_.store(nullptr, memory_order_release);
   }
 
-  void set(const uint64_t rts, const uint64_t wts, Version *next, const VersionStatus status) {
+  void set(const uint64_t rts, const uint64_t wts, Version* next,
+           const VersionStatus status) {
     rts_.store(rts, memory_order_relaxed);
     wts_.store(wts, memory_order_relaxed);
     status_.store(status, memory_order_release);
     next_.store(next, memory_order_release);
   }
 
-  Version* skipTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait) {
+  Version* skipTheStatusVersionAfterThis(const VersionStatus status,
+                                         const bool pendingWait) {
     Version* ver = this;
     VersionStatus local_status = ver->ldAcqStatus();
-    if (pendingWait) while(local_status == VersionStatus::pending) {
-      local_status = ver->ldAcqStatus();
-    }
+    if (pendingWait)
+      while (local_status == VersionStatus::pending) {
+        local_status = ver->ldAcqStatus();
+      }
     while (local_status == status) {
       ver = ver->ldAcqNext();
       local_status = ver->ldAcqStatus();
-      if (pendingWait) while(local_status == VersionStatus::pending) {
-        local_status = ver->ldAcqStatus();
-      }
+      if (pendingWait)
+        while (local_status == VersionStatus::pending) {
+          local_status = ver->ldAcqStatus();
+        }
     }
     return ver;
   }
 
-  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status, const bool pendingWait) {
+  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status,
+                                            const bool pendingWait) {
     Version* ver = this;
     VersionStatus local_status = ver->ldAcqStatus();
-    if (pendingWait) while(local_status == VersionStatus::pending) {
-      local_status = ver->ldAcqStatus();
-      //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));
-      //printf("version: %p, next: %p\n", version, version->ldAcqNext());
-      //if (version == version->ldAcqNext()) ERR;
-    }
+    if (pendingWait)
+      while (local_status == VersionStatus::pending) {
+        local_status = ver->ldAcqStatus();
+        // printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() &
+        // UINT8_MAX)); printf("version: %p, next: %p\n", version,
+        // version->ldAcqNext()); if (version == version->ldAcqNext()) ERR;
+      }
     while (local_status != status) {
       ver = ver->ldAcqNext();
       local_status = ver->ldAcqStatus();
-      if (pendingWait) while(local_status == VersionStatus::pending) {
-        local_status = ver->ldAcqStatus();
-        //printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() & UINT8_MAX));
-        //printf("version: %p, next: %p\n", version, version->ldAcqNext());
-        //if(version == version->ldAcqNext()) ERR;
-      }
+      if (pendingWait)
+        while (local_status == VersionStatus::pending) {
+          local_status = ver->ldAcqStatus();
+          // printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() &
+          // UINT8_MAX)); printf("version: %p, next: %p\n", version,
+          // version->ldAcqNext()); if(version == version->ldAcqNext()) ERR;
+        }
     }
     return ver;
   }
 
-  void strRelNext(Version *next) {  // store release next = strRelNext
+  void strRelNext(Version* next) {  // store release next = strRelNext
     next_.store(next, std::memory_order_release);
   }
 };

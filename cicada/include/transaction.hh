@@ -87,10 +87,10 @@ class TxExecutor {
   void displayWriteSet();
   void earlyAbort();
 
-  void gcAfterThisVersion(const Tuple *tuple, Version* delTarget) {
+  void gcAfterThisVersion(const Tuple* tuple, Version* delTarget) {
     while (delTarget != nullptr) {
       // escape next pointer
-      Version *tmp = delTarget->next_.load(std::memory_order_acquire);
+      Version* tmp = delTarget->next_.load(std::memory_order_acquire);
 
 #if INLINE_VERSION_OPT
       if (delTarget == &(tuple->inline_ver_)) {
@@ -98,18 +98,18 @@ class TxExecutor {
       } else {
 #if REUSE_VERSION
         reuse_version_from_gc_.emplace_back(delTarget);
-#else // if REUSE_VERSION
+#else   // if REUSE_VERSION
         delete delTarget;
-#endif // if REUSE_VERSION
+#endif  // if REUSE_VERSION
       }
-#else // if INLINE_VERSION_OPT
+#else  // if INLINE_VERSION_OPT
 
 #if REUSE_VERSION
       reuse_version_from_gc_.emplace_back(delTarget);
-#else // if REUSE_VERSION
+#else   // if REUSE_VERSION
       delete delTarget;
-#endif // if REUSE_VERSION
-#endif // if INLINE_VERSION_OPT
+#endif  // if REUSE_VERSION
+#endif  // if INLINE_VERSION_OPT
 #if ADD_ANALYSIS
       ++cres_->local_gc_version_counts_;
 #endif
@@ -117,9 +117,10 @@ class TxExecutor {
     }
   }
 
-  void gcpv();    // group commit pending versions
+  void gcpv();  // group commit pending versions
 
-  void inlineVersionPromotion(const uint64_t key, Tuple* tuple, Version* later_ver, Version* ver) {
+  void inlineVersionPromotion(const uint64_t key, Tuple* tuple,
+                              Version* later_ver, Version* ver) {
     if (ver != &(tuple->inline_ver_) &&
         MinRts.load(std::memory_order_acquire) > ver->ldAcqWts() &&
         tuple->inline_ver_.status_.load(std::memory_order_acquire) ==
@@ -136,25 +137,25 @@ class TxExecutor {
 
   Version* newVersionGeneration() {
 #if REUSE_VERSION
-  if (reuse_version_from_gc_.empty()) {
+    if (reuse_version_from_gc_.empty()) {
+#if ADD_ANALYSIS
+      ++cres_->local_version_malloc_;
+#endif
+      return new Version(0, this->wts_.ts_);
+    } else {
+#if ADD_ANALYSIS
+      ++cres_->local_version_reuse_;
+#endif
+      Version* newVersion = reuse_version_from_gc_.back();
+      reuse_version_from_gc_.pop_back();
+      newVersion->set(0, this->wts_.ts_);
+      return newVersion;
+    }
+#else
 #if ADD_ANALYSIS
     ++cres_->local_version_malloc_;
 #endif
     return new Version(0, this->wts_.ts_);
-  } else {
-#if ADD_ANALYSIS
-    ++cres_->local_version_reuse_;
-#endif
-    Version* newVersion = reuse_version_from_gc_.back();
-    reuse_version_from_gc_.pop_back();
-    newVersion->set(0, this->wts_.ts_);
-    return newVersion;
-  }
-#else
-#if ADD_ANALYSIS
-  ++cres_->local_version_malloc_;
-#endif
-  return new Version(0, this->wts_.ts_);
 #endif
   }
 
@@ -176,27 +177,29 @@ class TxExecutor {
      */
     for (auto itr = write_set_.begin();
          itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
-      if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) < CONTINUING_COMMIT_THRESHOLD) {
-        Version *ver;
+      if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) <
+          CONTINUING_COMMIT_THRESHOLD) {
+        Version* ver;
         if ((*itr).rmw_) {
           ver = (*itr).rcdptr_->ldAcqLatest();
-          if (ver->ldAcqWts() > this->wts_.ts_
-              || ver->ldAcqRts() > this->wts_.ts_) return false;
+          if (ver->ldAcqWts() > this->wts_.ts_ ||
+              ver->ldAcqRts() > this->wts_.ts_)
+            return false;
         } else {
-        if ((*itr).later_ver_) 
-          ver = (*itr).later_ver_;
-        else
-          ver = (*itr).rcdptr_->ldAcqLatest();
-        VersionStatus status = ver->ldAcqStatus();
-        // status use 2 times.
-        // so it avoid load acquire 2 times by using local variable.
-        while (ver->ldAcqWts() > this->wts_.ts_
-            || status != VersionStatus::committed) {
-          if (ver->ldAcqWts() > this->wts_.ts_) (*itr).later_ver_ = ver;
-          ver = ver->ldAcqNext();
-          status = ver->ldAcqStatus();
-        }
-        if (ver->ldAcqRts() > this->wts_.ts_) return false;
+          if ((*itr).later_ver_)
+            ver = (*itr).later_ver_;
+          else
+            ver = (*itr).rcdptr_->ldAcqLatest();
+          VersionStatus status = ver->ldAcqStatus();
+          // status use 2 times.
+          // so it avoid load acquire 2 times by using local variable.
+          while (ver->ldAcqWts() > this->wts_.ts_ ||
+                 status != VersionStatus::committed) {
+            if (ver->ldAcqWts() > this->wts_.ts_) (*itr).later_ver_ = ver;
+            ver = ver->ldAcqNext();
+            status = ver->ldAcqStatus();
+          }
+          if (ver->ldAcqRts() > this->wts_.ts_) return false;
         }
       }
     }
@@ -232,7 +235,7 @@ class TxExecutor {
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
       if ((*itr).key_ == key) return &(*itr);
     }
-    
+
     return nullptr;
   }
 
@@ -255,7 +258,7 @@ class TxExecutor {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       if ((*itr).finish_version_install_) {
         (*itr).new_ver_->status_.store(VersionStatus::aborted,
-                                         std::memory_order_release);
+                                       std::memory_order_release);
         continue;
       }
 

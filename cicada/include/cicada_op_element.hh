@@ -9,9 +9,9 @@ class ReadElement : public OpElement<T> {
 
   Version *later_ver_, *ver_;
 
-  ReadElement(uint64_t key, T *rcdptr, Version* later_ver, Version* ver)
+  ReadElement(uint64_t key, T *rcdptr, Version *later_ver, Version *ver)
       : OpElement<T>::OpElement(key, rcdptr) {
-    later_ver_ = later_ver;   
+    later_ver_ = later_ver;
     ver_ = ver;
   }
 
@@ -29,7 +29,8 @@ class WriteElement : public OpElement<T> {
   bool rmw_;
   bool finish_version_install_;
 
-  WriteElement(uint64_t key, T* rcdptr, Version* later_ver, Version* new_ver, bool rmw)
+  WriteElement(uint64_t key, T *rcdptr, Version *later_ver, Version *new_ver,
+               bool rmw)
       : OpElement<T>::OpElement(key, rcdptr) {
     later_ver_ = later_ver;
     new_ver_ = new_ver;

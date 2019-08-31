@@ -21,7 +21,7 @@ class TimeStamp {
 
   inline void generateTimeStampFirst(uint8_t tid) {
     localClock_ = rdtscp();
-    ts_ = (localClock_ << (sizeof(tid)*8)) | tid;
+    ts_ = (localClock_ << (sizeof(tid) * 8)) | tid;
     thid_ = tid;
   }
 
@@ -34,6 +34,6 @@ class TimeStamp {
     localClock_ += elapsedTime;
     localClock_ += clockBoost_;
 
-    ts_ = (localClock_ << (sizeof(tid)*8)) | tid;
+    ts_ = (localClock_ << (sizeof(tid) * 8)) | tid;
   }
 };
