@@ -13,7 +13,7 @@ class TransactionTable {
   std::atomic<uint32_t> lastcstamp_;
   std::atomic<TransactionStatus> status_;
 
-  TransactionTable(){}
+  TransactionTable() {}
 
   TransactionTable(uint32_t txid, uint32_t cstamp, uint32_t sstamp,
                    uint32_t lastcstamp, TransactionStatus status) {
@@ -33,4 +33,3 @@ class TransactionTable {
     this->status_.store(status, memory_order_relaxed);
   }
 };
-

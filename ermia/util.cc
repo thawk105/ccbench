@@ -32,7 +32,8 @@ void chkArg(const int argc, const char *argv[]) {
   if (argc != 13) {
     // if (argc != 1) {
     cout << "usage: ./ermia.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
-            "ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US PRE_RESERVE_VERSION EXTIME"
+            "ZIPF_SKEW YCSB CPU_MHZ GC_INTER_US PRE_RESERVE_TMT_ELEMENT "
+            "PRE_RESERVE_VERSION EXTIME"
          << endl;
     cout << "example: ./ermia.exe 200 10 24 50 off 0 off 2100 10 1000 10000 3"
          << endl;
@@ -47,8 +48,9 @@ void chkArg(const int argc, const char *argv[]) {
         << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
         << endl;
     cout << "GC_INTER_US : garbage collection interval [usec]" << endl;
-    cout << "PRE_RESERVE_TMT_ELEMENT: pre-prepare memory for version generation."
-         << endl;
+    cout
+        << "PRE_RESERVE_TMT_ELEMENT: pre-prepare memory for version generation."
+        << endl;
     cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
          << endl;
     cout << "EXTIME: execution time [sec]" << endl;
@@ -237,13 +239,14 @@ void naiveGarbageCollection(const bool &quit) {
 
       verTmp = Table[i].latest_.load(memory_order_acquire);
       while (verTmp->status_.load(memory_order_acquire) !=
-          VersionStatus::committed)
+             VersionStatus::committed)
         verTmp = verTmp->prev_;
       // この時点で， verTmp はコミット済み最新バージョン
 
       uint64_t verCstamp = verTmp->cstamp_.load(memory_order_acquire);
-      while (mintxID < (verCstamp >> 1)
-          || verTmp->status_.load(memory_order_acquire) != VersionStatus::committed) {
+      while (mintxID < (verCstamp >> 1) ||
+             verTmp->status_.load(memory_order_acquire) !=
+                 VersionStatus::committed) {
         verTmp = verTmp->prev_;
         if (verTmp == nullptr) break;
         verCstamp = verTmp->cstamp_.load(memory_order_acquire);
@@ -253,8 +256,9 @@ void naiveGarbageCollection(const bool &quit) {
 
       // ssn commit protocol によってverTmp->commited_prev までアクセスされる．
       verTmp = verTmp->prev_;
-      while (verTmp->status_.load(memory_order_acquire) != VersionStatus::committed)
-      verTmp = verTmp->prev_;
+      while (verTmp->status_.load(memory_order_acquire) !=
+             VersionStatus::committed)
+        verTmp = verTmp->prev_;
       if (verTmp == nullptr) continue;
 
       // verTmp->prev_ からガベコレ可能

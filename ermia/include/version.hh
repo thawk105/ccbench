@@ -90,16 +90,14 @@ class Version {
  public:
   alignas(CACHE_LINE_SIZE) Psstamp
       psstamp_;  // Version access stamp, eta(V), Version successor stamp, pi(V)
-  Version *prev_;            // Pointer to overwritten version
+  Version *prev_;                  // Pointer to overwritten version
   std::atomic<uint64_t> readers_;  // summarize all of V's readers.
   std::atomic<uint32_t> cstamp_;   // Version creation stamp, c(V)
   std::atomic<VersionStatus> status_;
 
   char val_[VAL_SIZE];
 
-  Version() {
-    init();
-  }
+  Version() { init(); }
 
   void init() {
     psstamp_.init(0, UINT32_MAX & ~(TIDFLAG));

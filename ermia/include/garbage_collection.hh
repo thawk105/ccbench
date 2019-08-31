@@ -21,14 +21,10 @@ class GarbageCollection {
       GC_threshold_;  // share for all object (meaning all thread).
 
  public:
-  std::deque<TransactionTable*>
-      gcq_for_TMT_;
-  std::deque<TransactionTable*>
-      reuse_TMT_element_from_gc_;
-  std::deque<GCElement<Tuple>>
-      gcq_for_version_;
-  std::deque<Version*>
-      reuse_version_from_gc_;
+  std::deque<TransactionTable*> gcq_for_TMT_;
+  std::deque<TransactionTable*> reuse_TMT_element_from_gc_;
+  std::deque<GCElement<Tuple>> gcq_for_version_;
+  std::deque<Version*> reuse_version_from_gc_;
   uint8_t thid_;
 
   GarbageCollection() {}

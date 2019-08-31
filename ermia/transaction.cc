@@ -80,11 +80,11 @@ char *TxExecutor::ssn_tread(unsigned int key) {
 #endif
 
 #if ADD_ANALYSIS
-  auto decideLocalReadLatency = [this,start] {
+  auto decideLocalReadLatency = [this, start] {
     eres_->local_read_latency_ += rdtscp() - start;
   };
 #else
-  auto decideLocalReadLatency = []{};
+  auto decideLocalReadLatency = [] {};
 #endif
 
   // if it already access the key object once.
@@ -112,8 +112,8 @@ char *TxExecutor::ssn_tread(unsigned int key) {
 
   // if v not in t.writes:
   Version *ver = tuple->latest_.load(memory_order_acquire);
-  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed
-      || txid_ < ver->cstamp_.load(memory_order_acquire))
+  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed ||
+         txid_ < ver->cstamp_.load(memory_order_acquire))
     ver = ver->prev_;
 
   if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
@@ -144,11 +144,11 @@ void TxExecutor::ssn_twrite(unsigned int key) {
 #endif
 
 #if ADD_ANALYSIS
-  auto decideLocalWriteLatency = [this,start] {
+  auto decideLocalWriteLatency = [this, start] {
     eres_->local_write_latency_ += rdtscp() - start;
   };
 #else
-  auto decideLocalWriteLatency = []{};
+  auto decideLocalWriteLatency = [] {};
 #endif
 
   // if it already wrote the key object once.
@@ -278,8 +278,7 @@ void TxExecutor::ssn_commit() {
 
   // finalize eta(T)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    pstamp_ =
-        max(pstamp_, (*itr).ver_->prev_->psstamp_.atomicLoadPstamp());
+    pstamp_ = max(pstamp_, (*itr).ver_->prev_->psstamp_.atomicLoadPstamp());
   }
 
   // finalize pi(T)
@@ -409,7 +408,7 @@ void TxExecutor::ssn_parallel_commit() {
         // する時にはこのトランザクションよりも 大きい cstamp を有し， eta
         // となりえないから．
         if (tmt->status_.load(memory_order_acquire) ==
-               TransactionStatus::committing) {
+            TransactionStatus::committing) {
           while (tmt->cstamp_.load(memory_order_acquire) == 0)
             ;
           // worker->cstamp_ が this->cstamp_ より小さいなら eta
@@ -429,9 +428,7 @@ void TxExecutor::ssn_parallel_commit() {
       }
     }
     // re-read pstamp in case we missed any reader
-    this->pstamp_ =
-        min(this->pstamp_,
-            ver->psstamp_.atomicLoadPstamp());
+    this->pstamp_ = min(this->pstamp_, ver->psstamp_.atomicLoadPstamp());
   }
 
   tmt = TMT[thid_];
@@ -465,7 +462,8 @@ void TxExecutor::ssn_parallel_commit() {
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *next_committed = (*itr).ver_->prev_;
-    while (next_committed->status_.load(memory_order_acquire) != VersionStatus::committed)
+    while (next_committed->status_.load(memory_order_acquire) !=
+           VersionStatus::committed)
       next_committed = next_committed->prev_;
     next_committed->psstamp_.atomicStoreSstamp(verSstamp);
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
@@ -489,11 +487,11 @@ void TxExecutor::ssn_parallel_commit() {
 
 void TxExecutor::abort() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    Version* next_committed = (*itr).ver_->prev_;
-    while (next_committed->status_.load(memory_order_acquire) != VersionStatus::committed)
+    Version *next_committed = (*itr).ver_->prev_;
+    while (next_committed->status_.load(memory_order_acquire) !=
+           VersionStatus::committed)
       next_committed = next_committed->prev_;
-    next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX &
-                                                             ~(TIDFLAG));
+    next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
   }
   write_set_.clear();

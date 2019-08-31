@@ -23,10 +23,10 @@ class TxExecutor {
  public:
   char returnVal[VAL_SIZE] = {};
   char writeVal[VAL_SIZE] = {};
-  uint8_t thid_;  // thread ID
-  uint32_t cstamp_ = 0;  // Transaction end time, c(T)
-  uint32_t pstamp_ = 0;             // Predecessor high-water mark, η (T)
-  uint32_t sstamp_ = UINT32_MAX;    // Successor low-water mark, pi (T)
+  uint8_t thid_;                  // thread ID
+  uint32_t cstamp_ = 0;           // Transaction end time, c(T)
+  uint32_t pstamp_ = 0;           // Predecessor high-water mark, η (T)
+  uint32_t sstamp_ = UINT32_MAX;  // Successor low-water mark, pi (T)
   uint32_t pre_gc_threshold_ = 0;
   uint32_t
       txid_;  // TID and begin timestamp - the current log sequence number (LSN)
@@ -49,7 +49,8 @@ class TxExecutor {
 
     if (PRE_RESERVE_TMT_ELEMENT) {
       for (size_t i = 0; i < PRE_RESERVE_TMT_ELEMENT; ++i)
-        gcobject_.reuse_TMT_element_from_gc_.emplace_back(new TransactionTable());
+        gcobject_.reuse_TMT_element_from_gc_.emplace_back(
+            new TransactionTable());
     }
 
     if (PRE_RESERVE_VERSION) {
@@ -99,4 +100,3 @@ class TxExecutor {
     return &table[key];
   }
 };
-

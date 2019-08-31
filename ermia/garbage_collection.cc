@@ -89,9 +89,8 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     // the thread detaches the rest of the version list from v
     gcq_for_version_.front().ver_->prev_ = nullptr;
     // updates record.min_wts
-    tuple->min_cstamp_.store(
-        gcq_for_version_.front().ver_->cstamp_,
-        memory_order_release);
+    tuple->min_cstamp_.store(gcq_for_version_.front().ver_->cstamp_,
+                             memory_order_release);
 
     while (delTarget != nullptr) {
       // next pointer escape

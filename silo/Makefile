@@ -8,10 +8,10 @@ include $(REL)Makefile
 SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=1000
+VAL_SIZE=4
 
 CC = g++
-CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
+CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
@@ -21,8 +21,8 @@ CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
 				 -DPARTITION_TABLE=0 \
 				 -DPROCEDURE_SORT=0 \
 
-LDFLAGS = -L../third_party/mimalloc/out/release
-LIBS = -lpthread -lmimalloc
+LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
+LIBS = -lpthread #-lmimalloc
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)

@@ -24,15 +24,11 @@ class GarbageCollection {
   // deque を使うのは，どこまでサイズが肥大するか不明瞭であるから．
   // vector のリサイズは要素の全コピーが発生するなどして重いから．
 #ifdef CCTR_ON
-  std::deque<TransactionTable*>
-      gcq_for_TMT_;
-  std::deque<TransactionTable*>
-      reuse_TMT_element_from_gc_;
+  std::deque<TransactionTable *> gcq_for_TMT_;
+  std::deque<TransactionTable *> reuse_TMT_element_from_gc_;
 #endif  // CCTR_ON
-  std::deque<GCElement<Tuple>>
-      gcq_for_versions_;
-  std::deque<Version*>
-      reuse_version_from_gc_;
+  std::deque<GCElement<Tuple>> gcq_for_versions_;
+  std::deque<Version *> reuse_version_from_gc_;
   uint8_t thid_;
 
   GarbageCollection() {

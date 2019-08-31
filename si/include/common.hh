@@ -33,6 +33,7 @@ GLOBAL double ZIPF_SKEW;
 GLOBAL bool YCSB;
 GLOBAL size_t CLOCKS_PER_US;
 GLOBAL size_t GC_INTER_US;  // garbage collection interval
+GLOBAL size_t PRE_RESERVE_TMT_ELEMENT;
 GLOBAL size_t PRE_RESERVE_VERSION;
 GLOBAL size_t EXTIME;
 // -----

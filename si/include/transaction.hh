@@ -32,10 +32,8 @@ class TxExecutor {
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
 
-  std::vector<SetElement<Tuple>>
-      read_set_;
-  std::vector<SetElement<Tuple>>
-      write_set_;
+  std::vector<SetElement<Tuple>> read_set_;
+  std::vector<SetElement<Tuple>> write_set_;
   std::vector<Procedure> pro_set_;
 
   GarbageCollection gcobject_;
@@ -49,6 +47,12 @@ class TxExecutor {
     read_set_.reserve(max_ope);
     write_set_.reserve(max_ope);
     pro_set_.reserve(max_ope);
+
+    if (PRE_RESERVE_TMT_ELEMENT) {
+      for (size_t i = 0; i < PRE_RESERVE_TMT_ELEMENT; ++i)
+        gcobject_.reuse_TMT_element_from_gc_.emplace_back(
+            new TransactionTable());
+    }
 
     if (PRE_RESERVE_VERSION) {
       for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i) {
