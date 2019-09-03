@@ -1,5 +1,5 @@
 #ycsb-xrs.sh(cicada)
-tuple=100000000
+tuple=1000
 maxope=10
 rratioary=(50 95 100)
 rmw=off
@@ -12,7 +12,7 @@ io_time_ns=5
 group_commit_timeout_us=2
 gci=10
 prv=10000
-extime=3
+extime=10
 epoch=3
 
 host=`hostname`
@@ -32,11 +32,11 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_cicada_ycsbA_tuple100m_skew0-099.dat
+    result=result_cicada_ycsbA_tuple1k_skew0-099.dat
   elif test $rratio = 95 ; then
-    result=result_cicada_ycsbB_tuple100m_skew0-099.dat
+    result=result_cicada_ycsbB_tuple1k_skew0-099.dat
   elif test $rratio = 100 ; then
-    result=result_cicada_ycsbC_tuple100m_skew0-099.dat
+    result=result_cicada_ycsbC_tuple1k_skew0-099.dat
   else
     echo "BUG"
     exit 1

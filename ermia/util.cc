@@ -69,7 +69,6 @@ void chkArg(const int argc, const char *argv[]) {
   chkInt(argv[2]);
   chkInt(argv[3]);
   chkInt(argv[4]);
-  chkInt(argv[6]);
   chkInt(argv[8]);
   chkInt(argv[9]);
   chkInt(argv[10]);
