@@ -76,24 +76,20 @@ char *TxExecutor::tread(const uint64_t key) {
   uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
-#if ADD_ANALYSIS
-  auto decideLocalReadLatency = [this, start] {
-    cres_->local_read_latency_ += rdtscp() - start;
-  };
-#else
-  auto decideLocalReadLatency = [] {};
-#endif  // if ADD_ANALYSIS
-
   // read-own-writes
   // if n E write set
   if (searchWriteSet(key)) {
-    decideLocalReadLatency();
+#if ADD_ANALYSIS
+    cres_->local_read_latency_ += rdtscp() - start;
+#endif
     return write_val_;
   }
 
   auto inr = searchReadSet(key);
   if (inr) {
-    decideLocalReadLatency();
+#if ADD_ANALYSIS
+    cres_->local_read_latency_ += rdtscp() - start;
+#endif
     return inr->ver_->val_;
   }
 
@@ -145,7 +141,9 @@ char *TxExecutor::tread(const uint64_t key) {
   if ((*this->pro_set_.begin()).ronly_ == false) {
     read_set_.emplace_back(key, tuple, later_ver, ver);
   }
-  decideLocalReadLatency();
+#if ADD_ANALYSIS
+  cres_->local_read_latency_ += rdtscp() - start;
+#endif
 
 #if INLINE_VERSION_PROMOTION
   inlineVersionPromotion(key, tuple, later_ver, ver);
@@ -159,16 +157,10 @@ void TxExecutor::twrite(const uint64_t key) {
   uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
-#if ADD_ANALYSIS
-  auto decideLocalWriteLatency = [this, start] {
-    cres_->local_write_latency_ += rdtscp() - start;
-  };
-#else
-  auto decideLocalWriteLatency = [] {};
-#endif  // if ADD_ANALYSIS
-
   if (searchWriteSet(key)) {
-    decideLocalWriteLatency();
+#if ADD_ANALYSIS
+    cres_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
     return;
   }
 
@@ -186,10 +178,12 @@ void TxExecutor::twrite(const uint64_t key) {
 
 #if SINGLE_EXEC
   write_set_.emplace_back(key, tuple, nullptr, &tuple->inline_ver_, rmw);
-  decideLocalWriteLatency();
+#if ADD_ANALYSIS
+  cres_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
 #else
   Version *later_ver(nullptr), *ver(tuple->ldAcqLatest());
-  if (rmw) {
+  if (rmw || WRITE_LATEST_ONLY) {
     // Search version (for early abort check)
     // search latest (committed or pending) version and use for early abort
     // check pending version may be committed, so use for early abort check.
@@ -202,7 +196,9 @@ void TxExecutor::twrite(const uint64_t key) {
       // if committed, it must be aborted in validaiton phase due to order of
       // newest to oldest.
       this->status_ = TransactionStatus::abort;
-      decideLocalWriteLatency();
+#if ADD_ANALYSIS
+      cres_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
       return;
     }
   } else {
@@ -217,7 +213,9 @@ void TxExecutor::twrite(const uint64_t key) {
       (ver->ldAcqStatus() == VersionStatus::committed)) {
     // it must be aborted in validation phase, so early abort.
     this->status_ = TransactionStatus::abort;
-    decideLocalWriteLatency();
+#if ADD_ANALYSIS
+    cres_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
     return;
   }
 
@@ -225,14 +223,18 @@ void TxExecutor::twrite(const uint64_t key) {
   if (tuple->getInlineVersionRight()) {
     tuple->inline_ver_.set(0, this->wts_.ts_);
     write_set_.emplace_back(key, tuple, later_ver, &tuple->inline_ver_, rmw);
-    decideLocalWriteLatency();
+#if ADD_ANALYSIS
+    cres_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
     return;
   }
 #endif
   Version *new_ver = newVersionGeneration();
   write_set_.emplace_back(key, tuple, later_ver, new_ver, rmw);
 #endif  // if SINGLE_EXEC
-  decideLocalWriteLatency();
+#if ADD_ANALYSIS
+  cres_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
   return;
 }
 
@@ -241,16 +243,10 @@ bool TxExecutor::validation() {
   uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
-#if ADD_ANALYSIS
-  auto decideLocalValiLatency = [this, start] {
-    cres_->local_vali_latency_ += rdtscp() - start;
-  };
-#else
-  auto decideLocalValiLatency = [] {};
-#endif  // if ADD_ANALYSIS
-
   if (!precheckInValidation()) {
-    decideLocalValiLatency();
+#if ADD_ANALYSIS
+    cres_->local_vali_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
     return false;
   }
 
@@ -258,10 +254,12 @@ bool TxExecutor::validation() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *expected(nullptr), *ver, *pre_ver;
     for (;;) {
-      if ((*itr).rmw_) {
+      if ((*itr).rmw_ || WRITE_LATEST_ONLY) {
         ver = expected = (*itr).rcdptr_->ldAcqLatest();
         if (this->wts_.ts_ < ver->ldAcqWts()) {
-          decideLocalValiLatency();
+#if ADD_ANALYSIS
+          cres_->local_vali_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
           return false;
         }
       } else {
@@ -278,7 +276,7 @@ bool TxExecutor::validation() {
         }
       }
 
-      if ((*itr).rmw_ == true || ver == expected) {
+      if ((*itr).rmw_ == true || WRITE_LATEST_ONLY || ver == expected) {
         // Latter half of condition meanings that it was not traversaling
         // version list in not rmw mode.
         (*itr).new_ver_->strRelNext(expected);
@@ -317,7 +315,9 @@ bool TxExecutor::validation() {
 
     ver = ver->skipNotTheStatusVersionAfterThis(VersionStatus::committed, true);
     if ((*itr).ver_ != ver) {
-      decideLocalValiLatency();
+#if ADD_ANALYSIS
+      cres_->local_vali_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
       return false;
     }
   }
@@ -339,12 +339,16 @@ bool TxExecutor::validation() {
     }
 
     if (ver->ldAcqRts() > this->wts_.ts_) {
-      decideLocalValiLatency();
+#if ADD_ANALYSIS
+      cres_->local_vali_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
       return false;
     }
   }
 
-  decideLocalValiLatency();
+#if ADD_ANALYSIS
+  cres_->local_vali_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
   return true;
 }
 

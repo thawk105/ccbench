@@ -17,22 +17,29 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DADD_ANALYSIS=1 \
 				 -DINLINE_VERSION_PROMOTION=1 \
 				 -DINLINE_VERSION_OPT=1 \
-				 -DMASSTREE_USE=1 \
+				 -DMASSTREE_USE=0 \
 				 -DPARTITION_TABLE=0 \
 				 -DREUSE_VERSION=1 \
 				 -DSINGLE_EXEC=0 \
 				 -DUSE_BACKOFF=1 \
+				 -DWRITE_LATEST_ONLY=0 \
 
-# SINGLE_EXEC option can be executed only non conflict workload.
-# スレッドごとにアクセスするブロックをパーティションで分割し，同一キーに対しては
-# write -> read の順序を維持する．
-#
-# SINGLE_EXEC の時は，INLINE_VERSION_OPT をオンにする．そうでないとバグるかもしれない．
-# すなわちレコードヘッダが latest pointer を持っていて，その先にシングルバージョンがあるケースは想定していない．
-# レコードヘッダにインラインバージョンさせた方が早そうなので，そうで無いケースは実装していない．
+# WRITE_LATEST_ONLY : for all write. 
+# original model adapt write-latest-only-rule for RMW
+# , not for blind write.
 
-LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
-LIBS = -lpthread -lmimalloc
+# SINGLE_EXEC option can be executed 
+# only non conflict workload.
+# It must use PARTION_TABLE for dividing 
+# table to realize non conflict workload.
+# If SINGLE_EXEC, it must use INLINE_VERSION_OPT.
+# Because SINGLE_EXEC mode use inline version.
+
+LDFLAGS = -L../third_party/mimalloc/out/release \
+					-L../third_party/mimalloc/out/debug \
+					-L../third_party/tbb/build/linux_intel64_gcc_cc7.4.0_libc2.27_kernel4.15.0_release \
+
+LIBS = -lpthread -lmimalloc-debug
 
 OBJS1 = $(CICADA_SRCS1:.cc=.o)
 

@@ -81,6 +81,18 @@ class TxExecutor {
     gcstart_ = start_;
   }
 
+  ~TxExecutor() {
+    for (auto itr = reuse_version_from_gc_.begin(); itr != reuse_version_from_gc_.end(); ++itr) {
+      if ((*itr)->status_ == VersionStatus::unused)
+        delete (*itr);
+    }
+    reuse_version_from_gc_.clear();
+    read_set_.clear();
+    write_set_.clear();
+    gcq_.clear();
+    pro_set_.clear();
+  }
+
   void abort();
   bool chkGcpvTimeout();
   void cpv();  // commit pending versions
@@ -260,6 +272,9 @@ class TxExecutor {
         (*itr).new_ver_->status_.store(VersionStatus::aborted,
                                        std::memory_order_release);
         continue;
+      } else {
+        (*itr).new_ver_->status_.store(VersionStatus::unused,
+            std::memory_order_release);
       }
 
 #if INLINE_VERSION_OPT

@@ -33,6 +33,7 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 extern bool chkSpan(struct timeval& start, struct timeval& stop,
                     long threshold);
+extern void deleteDB();
 extern void isReady(const std::vector<char>& readys);
 extern void makeDB(uint64_t* initial_wts);
 extern void leaderWork([[maybe_unused]] Backoff& backoff,
@@ -172,6 +173,7 @@ int main(int argc, char* argv[]) try {
     res[0].addLocalAllResult(res[i]);
   }
   res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  deleteDB();
 
   return 0;
 } catch (bad_alloc) {

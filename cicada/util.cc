@@ -326,6 +326,52 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
   }
 }
 
+void partTableDelete([[maybe_unused]] size_t thid,
+                   uint64_t start, uint64_t end) {
+
+  for (uint64_t i = start; i <= end; ++i) {
+    Tuple *tuple;
+    tuple = TxExecutor::get_tuple(Table, i);
+    Version *ver = tuple->latest_;
+    while (ver != nullptr) {
+#if INLINE_VERSION_OPT
+      if (ver == &tuple->inline_ver_) {
+        ver = ver->next_.load(memory_order_acquire);
+        continue;
+      }
+#endif
+      Version *del = ver;
+      ver = ver->next_.load(memory_order_acquire);
+      delete del;
+    }
+  }
+}
+
+void deleteDB() {
+  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  std::vector<std::thread> thv;
+  for (size_t i = 0; i < maxthread; ++i)
+    thv.emplace_back(partTableDelete, i, i * (TUPLE_NUM / maxthread),
+                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+  for (auto &th : thv) th.join();
+
+  delete Table;
+#if MASSTREE_USE
+  MT.remove_tree();
+#endif
+  delete ThreadRtsArrayForGroup;
+  delete ThreadWtsArray;
+  delete ThreadRtsArray;
+  delete GROUP_COMMIT_INDEX;
+  delete GROUP_COMMIT_COUNTER;
+  delete GCFlag;
+  delete GCExecuteFlag;
+  delete SLogSet;
+  for (uint i = 0; i < THREAD_NUM; ++i)
+    delete PLogSet[i];
+  delete PLogSet;
+}
+
 void makeDB(uint64_t *initial_wts) {
   if (posix_memalign((void **)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) !=
       0)
