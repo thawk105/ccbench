@@ -123,6 +123,5 @@ do
     echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
     echo ""
     echo "$val $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
-  Done
   done
 done
