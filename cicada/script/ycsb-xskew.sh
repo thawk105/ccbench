@@ -12,8 +12,8 @@ io_time_ns=5
 group_commit_timeout_us=2
 gci=10
 prv=10000
-extime=10
-epoch=3
+extime=5
+epoch=5
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
