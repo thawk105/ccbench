@@ -82,9 +82,9 @@ class TxExecutor {
   }
 
   ~TxExecutor() {
-    for (auto itr = reuse_version_from_gc_.begin(); itr != reuse_version_from_gc_.end(); ++itr) {
-      if ((*itr)->status_ == VersionStatus::unused)
-        delete (*itr);
+    for (auto itr = reuse_version_from_gc_.begin();
+         itr != reuse_version_from_gc_.end(); ++itr) {
+      if ((*itr)->status_ == VersionStatus::unused) delete (*itr);
     }
     reuse_version_from_gc_.clear();
     read_set_.clear();
@@ -99,7 +99,7 @@ class TxExecutor {
   void displayWriteSet();
   void earlyAbort();
 
-  void gcAfterThisVersion([[maybe_unused]]Tuple* tuple, Version* delTarget) {
+  void gcAfterThisVersion([[maybe_unused]] Tuple* tuple, Version* delTarget) {
     while (delTarget != nullptr) {
       // escape next pointer
       Version* tmp = delTarget->next_.load(std::memory_order_acquire);
@@ -117,9 +117,9 @@ class TxExecutor {
       delete delTarget;
 #endif  // if REUSE_VERSION
 
-[[maybe_unused]]gcAfterThisVersion_NEXT_LOOP:
+      [[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
 #if ADD_ANALYSIS
-      ++cres_->local_gc_version_counts_;
+          ++cres_->local_gc_version_counts_;
 #endif
       delTarget = tmp;
     }
@@ -147,13 +147,13 @@ class TxExecutor {
 
   void mainte();  // maintenance
 
-  Version* newVersionGeneration([[maybe_unused]]Tuple *tuple) {
+  Version* newVersionGeneration([[maybe_unused]] Tuple* tuple) {
 #if INLINE_VERSION_OPT
-  if (tuple->getInlineVersionRight()) {
-    tuple->inline_ver_.set(0, this->wts_.ts_);
-    return &(tuple->inline_ver_);
-  }
-#endif // if INLINE_VERSION_OPT
+    if (tuple->getInlineVersionRight()) {
+      tuple->inline_ver_.set(0, this->wts_.ts_);
+      return &(tuple->inline_ver_);
+    }
+#endif  // if INLINE_VERSION_OPT
 
 #if REUSE_VERSION
     if (!reuse_version_from_gc_.empty()) {
@@ -236,13 +236,6 @@ class TxExecutor {
     }
   }
 
-  void resetContinuingCommitInReadWriteSet() {
-    for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
-      (*itr).rcdptr_->continuing_commit_.store(0, memory_order_release);
-    for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
-      (*itr).rcdptr_->continuing_commit_.store(0, memory_order_release);
-  }
-
   ReadElement<Tuple>* searchReadSet(const uint64_t key) {
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
       if ((*itr).key_ == key) return &(*itr);
@@ -268,6 +261,7 @@ class TxExecutor {
 
   void writeSetClean() {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+      (*itr).rcdptr_->continuing_commit_.store(0, memory_order_release);
       if ((*itr).finish_version_install_) {
         (*itr).new_ver_->status_.store(VersionStatus::aborted,
                                        std::memory_order_release);
@@ -282,7 +276,7 @@ class TxExecutor {
 
 #if REUSE_VERSION
         (*itr).new_ver_->status_.store(VersionStatus::unused,
-            std::memory_order_release);
+                                       std::memory_order_release);
         reuse_version_from_gc_.emplace_back((*itr).new_ver_);
 #else
         delete (*itr).new_ver_;

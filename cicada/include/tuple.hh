@@ -29,8 +29,8 @@ class Tuple {
     for (;;) {
       if (expected != 0) return false;
       if (this->gc_lock_.compare_exchange_strong(expected, desired,
-                                               std::memory_order_acq_rel,
-                                               std::memory_order_acquire))
+                                                 std::memory_order_acq_rel,
+                                                 std::memory_order_acquire))
         return true;
     }
   }

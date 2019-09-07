@@ -83,9 +83,11 @@ void TxExecutor::tread(const uint64_t key) {
 #if MASSTREE_USE
   Tuple *tuple;
   tuple = MT.get_value(key);
+
 #if ADD_ANALYSIS
   ++cres_->local_tree_traversal_;
 #endif  // if ADD_ANALYSIS
+
 #else
   Tuple *tuple = get_tuple(Table, key);
 #endif  // if MASSTREE_USE
@@ -93,6 +95,7 @@ void TxExecutor::tread(const uint64_t key) {
   // Search version
   Version *ver, *later_ver;
   later_ver = nullptr;
+
 #if SINGLE_EXEC
   ver = &tuple->inline_ver_;
 #else
@@ -130,15 +133,17 @@ void TxExecutor::tread(const uint64_t key) {
 #if INLINE_VERSION_PROMOTION
 #if ADD_ANALYSIS
   cres_->local_read_latency_ += rdtscp() - start;
-#endif // if ADD_ANALYSIS
+#endif  // if ADD_ANALYSIS
   inlineVersionPromotion(key, tuple, later_ver, ver);
 #endif  // if INLINE_VERSION_PROMOTION
 #endif  // if INLINE_VERSION_OPT
 
 FINISH_TREAD:
+
 #if ADD_ANALYSIS
-    cres_->local_read_latency_ += rdtscp() - start;
+  cres_->local_read_latency_ += rdtscp() - start;
 #endif
+
   return;
 }
 
@@ -154,11 +159,14 @@ void TxExecutor::twrite(const uint64_t key) {
   if (searchReadSet(key)) rmw = true;
 
   Tuple *tuple;
+
 #if MASSTREE_USE
   tuple = MT.get_value(key);
+
 #if ADD_ANALYSIS
   ++cres_->local_tree_traversal_;
 #endif  // if ADD_ANALYSIS
+
 #else
   tuple = get_tuple(Table, key);
 #endif  // if MASSTREE_USE
@@ -202,15 +210,15 @@ void TxExecutor::twrite(const uint64_t key) {
 
   Version *new_ver;
   new_ver = newVersionGeneration(tuple);
-  if (new_ver->ldAcqStatus() == VersionStatus::committed) {while(true){NNN; sleep(1);}}
   write_set_.emplace_back(key, tuple, later_ver, new_ver, rmw);
-
 #endif  // if SINGLE_EXEC
 
 FINISH_TWRITE:
+
 #if ADD_ANALYSIS
   cres_->local_write_latency_ += rdtscp() - start;
 #endif  // if ADD_ANALYSIS
+
   return;
 }
 
@@ -220,17 +228,14 @@ bool TxExecutor::validation() {
 #endif  // if ADD_ANALYSIS
 
   bool result(true);
-#if 1
   if (!precheckInValidation()) {
     result = false;
     goto FINISH_VALIDATION;
   }
-#endif
 
   // Install pending version
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *expected(nullptr), *ver, *pre_ver;
-    if ((*itr).new_ver_->ldAcqStatus() == VersionStatus::committed) {while (true) {NNN; sleep(1);}}
     for (;;) {
       if ((*itr).rmw_ || WRITE_LATEST_ONLY) {
         ver = expected = (*itr).rcdptr_->ldAcqLatest();
@@ -259,20 +264,6 @@ bool TxExecutor::validation() {
         if ((*itr).rcdptr_->latest_.compare_exchange_strong(
                 expected, (*itr).new_ver_, memory_order_acq_rel,
                 memory_order_acquire)) {
-#if 0
-          if ((*itr).new_ver_ == (*itr).new_ver_->ldAcqNext()) {
-            while(true) {
-              NNN; 
-              displayWriteSet(); 
-              printf("new_ver:\t");
-              (*itr).new_ver_->displayInfo();
-              printf("new_ver_next:\t");
-              (*itr).new_ver_->ldAcqNext()->displayInfo();
-              if ((*itr).new_ver_->ldAcqStatus() == VersionStatus::committed) NNN;
-              sleep(1);
-            }
-          }
-#endif
           break;
         }
       } else {
@@ -282,14 +273,6 @@ bool TxExecutor::validation() {
                                                    memory_order_acquire)) {
           break;
         }
-      }
-    }
-    if ((*itr).new_ver_ == (*itr).new_ver_->ldAcqNext()) {
-      while(true) {
-        NNN; 
-        displayWriteSet(); 
-        if ((*itr).new_ver_ == &(*itr).rcdptr_->inline_ver_) NNN;
-        sleep(1);
       }
     }
     (*itr).finish_version_install_ = true;
@@ -311,16 +294,12 @@ bool TxExecutor::validation() {
     while (ver->ldAcqWts() >= this->wts_.ts_) ver = ver->ldAcqNext();
     // if write after read occured, it may happen "==".
 
-    while (ver->ldAcqStatus() == VersionStatus::pending) {
-      //if (quit) printf("thid %u wait for thid %lu\n", thid_, ver->ldAcqWts() & 0b11111111);
-    }
+    while (ver->ldAcqStatus() == VersionStatus::pending)
+      ;
     while (ver->ldAcqStatus() != VersionStatus::committed) {
       ver = ver->ldAcqNext();
-      while (ver->ldAcqStatus() == VersionStatus::pending) {
-        if (this->wts_.ts_ < ver->ldAcqWts()) ERR;
-        //if (quit) printf("thid %u wait for thid %lu\n", thid_, ver->ldAcqWts() & 0b11111111);
-        //if (quit && ver == ver->ldAcqNext()) NNN;
-      }
+      while (ver->ldAcqStatus() == VersionStatus::pending)
+        ;
     }
     if ((*itr).ver_ != ver) {
       result = false;
@@ -332,16 +311,12 @@ bool TxExecutor::validation() {
   // satisfies (v.rts) <= (tx.ts)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *ver = (*itr).new_ver_->ldAcqNext();
-    while (ver->ldAcqStatus() == VersionStatus::pending) {
-      //if (quit) printf("thid %u wait for thid %lu\n", thid_, ver->ldAcqWts() & 0b11111111);
-    }
-    while (ver->ldAcqStatus()!= VersionStatus::committed) {
+    while (ver->ldAcqStatus() == VersionStatus::pending)
+      ;
+    while (ver->ldAcqStatus() != VersionStatus::committed) {
       ver = ver->ldAcqNext();
-      while (ver->ldAcqStatus() == VersionStatus::pending) {
-        if (this->wts_.ts_ < ver->ldAcqWts()) ERR;
-        //if (quit) printf("thid %u wait for thid %lu\n", thid_, ver->ldAcqWts() & 0b11111111);
-      }
-      //if (quit && ver == ver->ldAcqNext()) NNN;
+      while (ver->ldAcqStatus() == VersionStatus::pending)
+        ;
     }
 
     if (ver->ldAcqRts() > this->wts_.ts_) {
@@ -447,7 +422,7 @@ inline void TxExecutor::cpv()  // commit pending versions
     (*itr).new_ver_->status_.store(VersionStatus::committed,
                                    std::memory_order_release);
     gcq_.emplace_back(GCElement((*itr).key_, (*itr).rcdptr_, (*itr).new_ver_,
-                             this->wts_.ts_));
+                                this->wts_.ts_));
     ++(*itr).rcdptr_->continuing_commit_;
   }
 }
@@ -470,7 +445,6 @@ void TxExecutor::gcpv() {
 }
 
 void TxExecutor::earlyAbort() {
-  resetContinuingCommitInReadWriteSet();
   writeSetClean();
   read_set_.clear();
 
@@ -498,7 +472,6 @@ void TxExecutor::earlyAbort() {
 }
 
 void TxExecutor::abort() {
-  resetContinuingCommitInReadWriteSet();
   writeSetClean();
   read_set_.clear();
 

@@ -326,9 +326,8 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
   }
 }
 
-void partTableDelete([[maybe_unused]] size_t thid,
-                   uint64_t start, uint64_t end) {
-
+void partTableDelete([[maybe_unused]] size_t thid, uint64_t start,
+                     uint64_t end) {
   for (uint64_t i = start; i <= end; ++i) {
     Tuple *tuple;
     tuple = TxExecutor::get_tuple(Table, i);
@@ -367,8 +366,7 @@ void deleteDB() {
   delete GCFlag;
   delete GCExecuteFlag;
   delete SLogSet;
-  for (uint i = 0; i < THREAD_NUM; ++i)
-    delete PLogSet[i];
+  for (uint i = 0; i < THREAD_NUM; ++i) delete PLogSet[i];
   delete PLogSet;
 }
 

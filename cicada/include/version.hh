@@ -45,9 +45,10 @@ class Version {
 
   void displayInfo() {
     printf(
-        "Version::displayInfo(): this: %p rts_: %lu: wts_: %lu: next_: %p: status_: "
-        "%u\n", this,
-        ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t)ldAcqStatus());
+        "Version::displayInfo(): this: %p rts_: %lu: wts_: %lu: next_: %p: "
+        "status_: "
+        "%u\n",
+        this, ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t)ldAcqStatus());
   }
 
   Version* latestCommittedVersionAfterThis() {
@@ -105,11 +106,13 @@ class Version {
                                             const bool pendingWait) {
     Version* ver = this;
     if (pendingWait)
-      while (ver->ldAcqStatus() == VersionStatus::pending);
+      while (ver->ldAcqStatus() == VersionStatus::pending)
+        ;
     while (ver->ldAcqStatus() != status) {
       ver = ver->ldAcqNext();
       if (pendingWait)
-        while (ver->ldAcqStatus() == VersionStatus::pending);
+        while (ver->ldAcqStatus() == VersionStatus::pending)
+          ;
     }
     return ver;
   }
