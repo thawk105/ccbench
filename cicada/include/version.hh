@@ -45,8 +45,8 @@ class Version {
 
   void displayInfo() {
     printf(
-        "Version::displayInfo(): rts_: %lu: wts_: %lu: next_: %p: status_: "
-        "%u\n",
+        "Version::displayInfo(): this: %p rts_: %lu: wts_: %lu: next_: %p: status_: "
+        "%u\n", this,
         ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t)ldAcqStatus());
   }
 
@@ -104,24 +104,12 @@ class Version {
   Version* skipNotTheStatusVersionAfterThis(const VersionStatus status,
                                             const bool pendingWait) {
     Version* ver = this;
-    VersionStatus local_status = ver->ldAcqStatus();
     if (pendingWait)
-      while (local_status == VersionStatus::pending) {
-        local_status = ver->ldAcqStatus();
-        // printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() &
-        // UINT8_MAX)); printf("version: %p, next: %p\n", version,
-        // version->ldAcqNext()); if (version == version->ldAcqNext()) ERR;
-      }
-    while (local_status != status) {
+      while (ver->ldAcqStatus() == VersionStatus::pending);
+    while (ver->ldAcqStatus() != status) {
       ver = ver->ldAcqNext();
-      local_status = ver->ldAcqStatus();
       if (pendingWait)
-        while (local_status == VersionStatus::pending) {
-          local_status = ver->ldAcqStatus();
-          // printf("Th#%u: wait: %lu\n", thid, (version->ldAcqWts() &
-          // UINT8_MAX)); printf("version: %p, next: %p\n", version,
-          // version->ldAcqNext()); if(version == version->ldAcqNext()) ERR;
-        }
+        while (ver->ldAcqStatus() == VersionStatus::pending);
     }
     return ver;
   }

@@ -28,7 +28,7 @@ class Tuple {
     expected = this->gc_lock_.load(std::memory_order_acquire);
     for (;;) {
       if (expected != 0) return false;
-      if (this->gc_lock_.compare_exchange_weak(expected, desired,
+      if (this->gc_lock_.compare_exchange_strong(expected, desired,
                                                std::memory_order_acq_rel,
                                                std::memory_order_acquire))
         return true;
@@ -44,7 +44,7 @@ class Tuple {
     expected = this->inline_ver_.status_.load(std::memory_order_acquire);
     for (;;) {
       if (expected != VersionStatus::unused) return false;
-      if (this->inline_ver_.status_.compare_exchange_weak(
+      if (this->inline_ver_.status_.compare_exchange_strong(
               expected, desired, std::memory_order_acq_rel,
               std::memory_order_acquire))
         return true;

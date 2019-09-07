@@ -99,29 +99,25 @@ class TxExecutor {
   void displayWriteSet();
   void earlyAbort();
 
-  void gcAfterThisVersion(const Tuple* tuple, Version* delTarget) {
+  void gcAfterThisVersion([[maybe_unused]]Tuple* tuple, Version* delTarget) {
     while (delTarget != nullptr) {
       // escape next pointer
       Version* tmp = delTarget->next_.load(std::memory_order_acquire);
 
 #if INLINE_VERSION_OPT
       if (delTarget == &(tuple->inline_ver_)) {
-        gcq_.front().rcdptr_->returnInlineVersionRight();
-      } else {
-#if REUSE_VERSION
-        reuse_version_from_gc_.emplace_back(delTarget);
-#else   // if REUSE_VERSION
-        delete delTarget;
-#endif  // if REUSE_VERSION
+        tuple->returnInlineVersionRight();
+        goto gcAfterThisVersion_NEXT_LOOP;
       }
-#else  // if INLINE_VERSION_OPT
+#endif  // if INLINE_VERSION_OPT
 
 #if REUSE_VERSION
       reuse_version_from_gc_.emplace_back(delTarget);
 #else   // if REUSE_VERSION
       delete delTarget;
 #endif  // if REUSE_VERSION
-#endif  // if INLINE_VERSION_OPT
+
+[[maybe_unused]]gcAfterThisVersion_NEXT_LOOP:
 #if ADD_ANALYSIS
       ++cres_->local_gc_version_counts_;
 #endif
@@ -131,6 +127,8 @@ class TxExecutor {
 
   void gcpv();  // group commit pending versions
 
+#if INLINE_VERSION_OPT
+#if INLINE_VERSION_PROMOTION
   void inlineVersionPromotion(const uint64_t key, Tuple* tuple,
                               Version* later_ver, Version* ver) {
     if (ver != &(tuple->inline_ver_) &&
@@ -144,17 +142,21 @@ class TxExecutor {
       }
     }
   }
+#endif
+#endif
 
   void mainte();  // maintenance
 
-  Version* newVersionGeneration() {
+  Version* newVersionGeneration([[maybe_unused]]Tuple *tuple) {
+#if INLINE_VERSION_OPT
+  if (tuple->getInlineVersionRight()) {
+    tuple->inline_ver_.set(0, this->wts_.ts_);
+    return &(tuple->inline_ver_);
+  }
+#endif // if INLINE_VERSION_OPT
+
 #if REUSE_VERSION
-    if (reuse_version_from_gc_.empty()) {
-#if ADD_ANALYSIS
-      ++cres_->local_version_malloc_;
-#endif
-      return new Version(0, this->wts_.ts_);
-    } else {
+    if (!reuse_version_from_gc_.empty()) {
 #if ADD_ANALYSIS
       ++cres_->local_version_reuse_;
 #endif
@@ -163,12 +165,12 @@ class TxExecutor {
       newVersion->set(0, this->wts_.ts_);
       return newVersion;
     }
-#else
+#endif
+
 #if ADD_ANALYSIS
     ++cres_->local_version_malloc_;
 #endif
     return new Version(0, this->wts_.ts_);
-#endif
   }
 
   bool precheckInValidation() {
@@ -202,14 +204,12 @@ class TxExecutor {
             ver = (*itr).later_ver_;
           else
             ver = (*itr).rcdptr_->ldAcqLatest();
-          VersionStatus status = ver->ldAcqStatus();
-          // status use 2 times.
-          // so it avoid load acquire 2 times by using local variable.
-          while (ver->ldAcqWts() > this->wts_.ts_ ||
-                 status != VersionStatus::committed) {
-            if (ver->ldAcqWts() > this->wts_.ts_) (*itr).later_ver_ = ver;
+          while (ver->ldAcqWts() > this->wts_.ts_) {
+            (*itr).later_ver_ = ver;
             ver = ver->ldAcqNext();
-            status = ver->ldAcqStatus();
+          }
+          while (ver->ldAcqStatus() != VersionStatus::committed) {
+            ver = ver->ldAcqNext();
           }
           if (ver->ldAcqRts() > this->wts_.ts_) return false;
         }
@@ -261,7 +261,7 @@ class TxExecutor {
 
   void swal();
   void tbegin();
-  char* tread(const uint64_t key);
+  void tread(const uint64_t key);
   void twrite(const uint64_t key);
   bool validation();
   void writePhase();
@@ -273,22 +273,21 @@ class TxExecutor {
                                        std::memory_order_release);
         continue;
       } else {
-        (*itr).new_ver_->status_.store(VersionStatus::unused,
-            std::memory_order_release);
-      }
-
 #if INLINE_VERSION_OPT
-      if ((*itr).new_ver_ == &(*itr).rcdptr_->inline_ver_) {
-        (*itr).rcdptr_->returnInlineVersionRight();
-        continue;
-      }
+        if ((*itr).new_ver_ == &(*itr).rcdptr_->inline_ver_) {
+          (*itr).rcdptr_->returnInlineVersionRight();
+          continue;
+        }
 #endif
 
 #if REUSE_VERSION
-      reuse_version_from_gc_.emplace_back((*itr).new_ver_);
+        (*itr).new_ver_->status_.store(VersionStatus::unused,
+            std::memory_order_release);
+        reuse_version_from_gc_.emplace_back((*itr).new_ver_);
 #else
-      delete (*itr).new_ver_;
+        delete (*itr).new_ver_;
 #endif
+      }
     }
     write_set_.clear();
   }

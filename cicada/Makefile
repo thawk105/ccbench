@@ -17,7 +17,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DADD_ANALYSIS=1 \
 				 -DINLINE_VERSION_PROMOTION=1 \
 				 -DINLINE_VERSION_OPT=1 \
-				 -DMASSTREE_USE=0 \
+				 -DMASSTREE_USE=1 \
 				 -DPARTITION_TABLE=0 \
 				 -DREUSE_VERSION=1 \
 				 -DSINGLE_EXEC=0 \
@@ -39,7 +39,7 @@ LDFLAGS = -L../third_party/mimalloc/out/release \
 					-L../third_party/mimalloc/out/debug \
 					-L../third_party/tbb/build/linux_intel64_gcc_cc7.4.0_libc2.27_kernel4.15.0_release \
 
-LIBS = -lpthread -lmimalloc-debug
+LIBS = -lpthread -lmimalloc
 
 OBJS1 = $(CICADA_SRCS1:.cc=.o)
 
