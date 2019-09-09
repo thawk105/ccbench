@@ -30,9 +30,9 @@ int main(const int argc, const char* argv[]) try {
   for (size_t i = 0; i < TRIAL; ++i)
     ++Ctr[zipf() % LENGTH];
 
-  cout << "number : count" << endl;
+  cout << "#number : count" << endl;
   for (size_t i = 0; i < LENGTH; ++i) {
-    cout << i << " : " << Ctr[i] << endl;
+    cout << i << " " << (double)Ctr[i] / (double)TRIAL << endl;
   }
 
   return 0;
