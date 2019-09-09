@@ -74,39 +74,27 @@ void TxExecutor::tbegin() {
   status_ = TransactionStatus::inFlight;
 }
 
-char *TxExecutor::tread(uint64_t key) {
+void TxExecutor::tread(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
 
   // if it already access the key object once.
-  SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) {
-#if ADD_ANALYSIS
-    sres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return write_val_;
-  }
+  if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
-  SetElement<Tuple> *inR = searchReadSet(key);
-  if (inR) {
-#if ADD_ANALYSIS
-    sres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return inR->ver_->val_;
-  }
-
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++sres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
 
   // if v not in t.writes:
-  Version *ver = tuple->latest_.load(std::memory_order_acquire);
+  Version *ver;
+  ver = tuple->latest_.load(std::memory_order_acquire);
   if (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
     ver = ver->committed_prev_;
   }
@@ -126,10 +114,11 @@ char *TxExecutor::tread(uint64_t key) {
   // ultimately, it is wasteful in prototype system.
   memcpy(return_val_, ver->val_, VAL_SIZE);
 
+FINISH_TREAD:
 #if ADD_ANALYSIS
   sres_->local_read_latency_ += rdtscp() - start;
 #endif
-  return ver->val_;
+  return;
 }
 
 void TxExecutor::twrite(uint64_t key) {

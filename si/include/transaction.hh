@@ -66,7 +66,7 @@ class TxExecutor {
   SetElement<Tuple> *searchReadSet(uint64_t key);
   SetElement<Tuple> *searchWriteSet(uint64_t key);
   void tbegin();
-  char *tread(uint64_t key);
+  void tread(uint64_t key);
   void twrite(uint64_t key);
   void commit();
   void abort();

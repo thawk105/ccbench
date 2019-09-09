@@ -20,6 +20,7 @@ extern void writeValGenerator(char* writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
  public:
+   alignas(CACHE_LINE_SIZE)
   int thid_;
   std::vector<RWLock*> r_lock_list_;
   std::vector<RWLock*> w_lock_list_;
@@ -45,7 +46,7 @@ class TxExecutor {
   SetElement<Tuple>* searchReadSet(uint64_t key);
   SetElement<Tuple>* searchWriteSet(uint64_t key);
   void tbegin();
-  char* tread(uint64_t key);
+  void tread(uint64_t key);
   void twrite(uint64_t key);
   void commit();
   void abort();

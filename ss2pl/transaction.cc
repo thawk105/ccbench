@@ -50,22 +50,22 @@ void TxExecutor::commit() {
 
 void TxExecutor::tbegin() { this->status_ = TransactionStatus::inFlight; }
 
-char *TxExecutor::tread(uint64_t key) {
+void TxExecutor::tread(uint64_t key) {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif // ADD_ANALYSIS
+
   // if it already access the key object once.
-  // w
-  SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW != nullptr) return write_val_;
+  if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
-  SetElement<Tuple> *inR = searchReadSet(key);
-  if (inR != nullptr) return inR->val_;
-
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++sres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
 
 #ifdef DLR0
@@ -78,17 +78,24 @@ char *TxExecutor::tread(uint64_t key) {
     read_set_.emplace_back(key, tuple, tuple->val_);
   } else {
     this->status_ = TransactionStatus::aborted;
-    return nullptr;
+    goto FINISH_TREAD;
   }
 #endif
 
-  return return_val_;
+FINISH_TREAD:
+#if ADD_ANALYSIS
+  sres_->local_read_latency_ += rdtscp() - start;
+#endif
+  return;
 }
 
 void TxExecutor::twrite(uint64_t key) {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
   // if it already wrote the key object once.
-  SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) return;
+  if (searchWriteSet(key)) goto FINISH_TWRITE;
 
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
     if ((*rItr).key_ == key) {  // hit
@@ -97,7 +104,7 @@ void TxExecutor::twrite(uint64_t key) {
 #elif defined(DLR1)
       if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
         this->status_ = TransactionStatus::aborted;
-        return;
+        goto FINISH_TWRITE;
       }
 #endif
 
@@ -113,17 +120,18 @@ void TxExecutor::twrite(uint64_t key) {
       }
 
       read_set_.erase(rItr);
-      return;
+      goto FINISH_TWRITE;
     }
   }
 
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++sres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
 
 #if DLR0
@@ -131,12 +139,17 @@ void TxExecutor::twrite(uint64_t key) {
 #elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
     this->status_ = TransactionStatus::aborted;
-    return;
+    goto FINISH_TWRITE;
   }
 #endif
 
   w_lock_list_.emplace_back(&tuple->lock_);
   write_set_.emplace_back(key, tuple);
+
+FINISH_TWRITE:
+#if ADD_ANALYSIS
+  sres_->local_write_latency_ += rdtscp() - start;
+#endif // ADD_ANALYSIS
   return;
 }
 
