@@ -1,7 +1,7 @@
 #ycsb-xrratio.sh(silo)
-tuple=100000000
+tuple=50
 maxope=10
-rratio=50
+rratio=0
 rmw=off
 skew=0
 ycsb=on
@@ -20,12 +20,16 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-result=result_silo_tuple100m_rratio0-100.dat
+cd ../
+make clean; make -j VAL_SIZE=4
+cd script/
+
+result=result_silo_tuple50_rratio10-100.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 
-for ((rratio=0; rratio<=100; rratio+=10))
+for ((rratio=10; rratio<=100; rratio+=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
   
@@ -47,7 +51,7 @@ do
       perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
     fi
   
-    tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
+    tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
