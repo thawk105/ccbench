@@ -17,7 +17,7 @@ REL := ../common/
 include $(REL)Makefile
 
 CC = g++
-CFLAGS = -c -pipe -g -O2 -std=c++17 -march=native \
+CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -Wall -Wextra -Wchkp -Winvalid-memory-model -Wdangling-else \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
