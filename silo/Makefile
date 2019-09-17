@@ -22,7 +22,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DPROCEDURE_SORT=0 \
 
 LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
-LIBS = -lpthread #-lmimalloc
+LIBS = -lpthread -lmimalloc
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)
