@@ -117,6 +117,10 @@ char *TxExecutor::tread(uint64_t key) {
   this->appro_commit_ts_ = max(this->appro_commit_ts_, v1.wts);
   read_set_.emplace_back(key, tuple, return_val_, v1);
 
+#if SLEEP_READ_PHASE
+  sleepTics(SLEEP_READ_PHASE);
+#endif 
+
 #if ADD_ANALYSIS
   tres_->local_read_latency_ += rdtscp() - start;
 #endif

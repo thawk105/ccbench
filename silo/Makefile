@@ -7,8 +7,16 @@ REL := ../common/
 include $(REL)Makefile
 SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
+# start of initialization of some parameters.
 KEY_SIZE=8
 VAL_SIZE=4
+ADD_ANALYSIS=1
+MASSTREE_USE=1
+PARTITION_TABLE=0
+PROCEDURE_SORT=0
+
+SLEEP_READ_PHASE=0 # # of tics
+# end of initialization
 
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
@@ -16,10 +24,11 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
-				 -DADD_ANALYSIS=1 \
-				 -DMASSTREE_USE=1 \
-				 -DPARTITION_TABLE=0 \
-				 -DPROCEDURE_SORT=0 \
+				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
+				 -DMASSTREE_USE=$(MASSTREE_USE) \
+				 -DPARTITION_TABLE=$(PARTITION_TABLE) \
+				 -DPROCEDURE_SORT=$(PROCEDURE_SORT) \
+				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
 LIBS = -lpthread -lmimalloc

@@ -108,7 +108,13 @@ char *TxnExecutor::tread(uint64_t key) {
   }
 
   read_set_.emplace_back(key, tuple, return_val_,
-                         expected);  // emplace の方が性能が良い
+                         expected);
+  // emplace is often better performance than push_back.
+
+#if SLEEP_READ_PHASE
+  sleepTics(SLEEP_READ_PHASE);
+#endif
+
 #if ADD_ANALYSIS
   sres_->local_read_latency_ += rdtscp() - start;
 #endif

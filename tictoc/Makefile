@@ -5,8 +5,17 @@ REL := ../common/
 include $(REL)Makefile
 TICTOC_ALLSRC = $(TICTOC_SRCS1) $(wildcard include/*.hh)
 
+# start of initialization of some parameters
 KEY_SIZE=8
 VAL_SIZE=4
+NO_WAIT_LOCKING_IN_VALIDATION=1
+PREEMPTIVE_ABORTS=1
+TIMESTAMP_HISTORY=1
+MASSTREE_USE=1
+ADD_ANALYSIS=1
+
+SLEEP_READ_PHASE=0 # # of tics
+#end of initialization
 
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
@@ -14,11 +23,11 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
 				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
-				 -DNO_WAIT_LOCKING_IN_VALIDATION=1 \
-				 -DPREEMPTIVE_ABORTS=1 \
-				 -DTIMESTAMP_HISTORY=1 \
-				 -DMASSTREE_USE=1 \
-				 -DADD_ANALYSIS=1 \
+				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
+				 -DMASSTREE_USE=$(MASSTREE_USE) \
+				 -DNO_WAIT_LOCKING_IN_VALIDATION=$(NO_WAIT_LOCKING_IN_VALIDATION) \
+				 -DPREEMPTIVE_ABORTS=$(PREEMPTIVE_ABORTS) \
+				 -DTIMESTAMP_HISTORY=$(SLEEP_READ_PHASE) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release
 LIBS = -lpthread -lmimalloc

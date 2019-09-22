@@ -355,9 +355,6 @@ void deleteDB() {
   for (auto &th : thv) th.join();
 
   delete Table;
-#if MASSTREE_USE
-  MT.remove_tree();
-#endif
   delete ThreadRtsArrayForGroup;
   delete ThreadWtsArray;
   delete ThreadRtsArray;

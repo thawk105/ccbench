@@ -126,3 +126,9 @@ inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
 #endif
 }
 
+[[maybe_unused]] inline void sleepTics(size_t tics) {
+  uint64_t start(rdtscp());
+  while (rdtscp() - start < tics);
+}
+
+
