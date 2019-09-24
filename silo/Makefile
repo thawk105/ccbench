@@ -9,7 +9,7 @@ SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 # start of initialization of some parameters.
 KEY_SIZE=8
-VAL_SIZE=4
+VAL_SIZE=100000
 ADD_ANALYSIS=1
 MASSTREE_USE=1
 PARTITION_TABLE=0
@@ -21,9 +21,10 @@ SLEEP_READ_PHASE=0 # # of tics
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
-				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
+				 -DKEY_SIZE=$(KEY_SIZE) \
+				 -DVAL_SIZE=$(VAL_SIZE) \
 				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 				 -DPARTITION_TABLE=$(PARTITION_TABLE) \

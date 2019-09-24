@@ -8,11 +8,11 @@ TICTOC_ALLSRC = $(TICTOC_SRCS1) $(wildcard include/*.hh)
 # start of initialization of some parameters
 KEY_SIZE=8
 VAL_SIZE=4
+ADD_ANALYSIS=1
+MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=1
 PREEMPTIVE_ABORTS=1
 TIMESTAMP_HISTORY=1
-MASSTREE_USE=1
-ADD_ANALYSIS=1
 
 SLEEP_READ_PHASE=0 # # of tics
 #end of initialization

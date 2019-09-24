@@ -7,17 +7,21 @@ SS2PL_ALLSRC = $(SS2PL_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
+ADD_ANALYSIS=1
+KEY_SORT=0
+MASSTREE_USE=1
 
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
          -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
          -D$(shell uname) \
          -D$(shell hostname) \
-         -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
-         -DMASSTREE_USE=1 \
-         -DKEY_SORT=0 \
          -DDLR1 \
-         -DADD_ANALYSIS=1 \
+         -DKEY_SIZE=$(KEY_SIZE) \
+				 -DVAL_SIZE=$(VAL_SIZE) \
+         -DADD_ANALYSIS=$(ADD_ANALYSIS) \
+         -DKEY_SORT=$(KEY_SORT) \
+         -DMASSTREE_USE=$(MASSTREE_USE) \
 
 # dead lock resolution.
 # DLR0 ... timeout

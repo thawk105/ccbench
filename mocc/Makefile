@@ -7,17 +7,23 @@ MOCC_ALLSRC = $(MOCC_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
+ADD_ANALYSIS=1
+KEY_SORT=0
+MASSTREE_USE=1
+TEMPERATURE_RESET_OPT=1
 
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
-			 	 -DRWLOCK -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
-				 -DMASSTREE_USE=1 \
-				 -DKEY_SORT=0 \
-				 -DTEMPERATURE_RESET_OPT=1 \
-				 -DADD_ANALYSIS=1 \
+			 	 -DRWLOCK \
+				 -DKEY_SIZE=$(KEY_SIZE) \
+				 -DVAL_SIZE=$(VAL_SIZE) \
+				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
+				 -DKEY_SORT=$(KEY_SORT) \
+				 -DMASSTREE_USE=$(MASSTREE_USE) \
+				 -DTEMPERATURE_RESET_OPT=$(TEMPERATURE_RESET_OPT) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release
 LIBS = -lpthread -lmimalloc

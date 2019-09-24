@@ -7,15 +7,18 @@ ERMIA_ALLSRC = $(ERMIA_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
 VAL_SIZE=4
+ADD_ANALYSIS=1
+MASSTREE_USE=1
 
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -Wall -Wextra -Wdangling-else -Wchkp -Winvalid-memory-model \
-				 -DKEY_SIZE=$(KEY_SIZE) -DVAL_SIZE=$(VAL_SIZE) \
 				 -D$(shell uname) \
 				 -D$(shell hostname) \
-				 -DMASSTREE_USE=1 \
-				 -DADD_ANALYSIS=1 \
+				 -DKEY_SIZE=$(KEY_SIZE) \
+				 -DVAL_SIZE=$(VAL_SIZE) \
+				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
+				 -DMASSTREE_USE=$(MASSTREE_USE) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release
 LIBS = -lpthread -lmimalloc
