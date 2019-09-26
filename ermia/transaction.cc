@@ -5,6 +5,7 @@
 #include <bitset>
 
 #include "../include/atomic_wrapper.hh"
+#include "../include/backoff.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/tsc.hh"
@@ -479,6 +480,20 @@ void TxExecutor::abort() {
 
   read_set_.clear();
   ++eres_->local_abort_counts_;
+
+#if BACK_OFF
+
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  eres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+
+#endif
 }
 
 void TxExecutor::verify_exclusion_or_abort() {
