@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 
+#include "../include/backoff.hh"
 #include "../include/debug.hh"
 #include "../include/inline.hh"
 #include "../include/masstree_wrapper.hh"
@@ -256,6 +257,20 @@ void TxExecutor::abort() {
   write_set_.clear();
   cll_.clear();
   ++tres_->local_abort_counts_;
+
+#if BACK_OFF
+
+#if ADD_ANALYSIS
+  uint64_t start(rdtscp());
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  ++tres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+
+#endif
 }
 
 void TxExecutor::writePhase() {
