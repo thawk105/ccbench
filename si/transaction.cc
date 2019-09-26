@@ -5,6 +5,7 @@
 #include <bitset>
 
 #include "../include/atomic_wrapper.hh"
+#include "../include/backoff.hh"
 #include "../include/debug.hh"
 #include "../include/tsc.hh"
 #include "include/transaction.hh"
@@ -266,6 +267,18 @@ void TxExecutor::abort() {
   read_set_.clear();
   write_set_.clear();
   ++sres_->local_abort_counts_;
+
+#if BACK_OFF
+#if ADD_ANALYSIS
+  uint64_t start(rdtscp());
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  sres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+#endif
 }
 
 void TxExecutor::dispWS() {

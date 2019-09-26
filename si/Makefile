@@ -8,6 +8,7 @@ SI_ALLSRC = $(SI_SRCS1) $(wildcard include/*.hh)
 KEY_SIZE=8
 VAL_SIZE=4
 ADD_ANALYSIS=1
+BACK_OFF=1
 MASSTREE_USE=1
 
 CC = g++
@@ -20,6 +21,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DKEY_SIZE=$(KEY_SIZE) \
 				 -DVAL_SIZE=$(VAL_SIZE) \
 				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
+				 -DBACK_OFF=$(BACK_OFF) \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release

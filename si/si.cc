@@ -11,6 +11,7 @@
 
 #define GLOBAL_VALUE_DEFINE
 
+#include "../include/backoff.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/int64byte.hh"
@@ -37,12 +38,14 @@ extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            Result& res) {
-  TxExecutor trans(thid, MAX_OPE, (Result*)&res);
+            std::vector<Result>& res) {
+  Result& myres = std::ref(res[thid]);
+  TxExecutor trans(thid, MAX_OPE, (Result*)&myres);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   GarbageCollection gcob;
+  Backoff backoff(CLOCKS_PER_US);
 
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(thid));
@@ -61,9 +64,12 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   trans.gcstart_ = rdtscp();
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, res);
+                  RRATIO, RMW, YCSB, false, thid, myres);
   RETRY:
-    if (thid == 0) leaderWork(std::ref(gcob));
+    if (thid == 0) {
+      leaderWork(std::ref(gcob));
+      leaderBackoffWork(backoff, res);
+    }
     if (loadAcquire(quit)) break;
 
     trans.tbegin();
@@ -107,7 +113,7 @@ int main(const int argc, const char* argv[]) try {
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res[i]));
+                     std::ref(quit), std::ref(res));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
