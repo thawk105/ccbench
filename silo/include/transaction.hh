@@ -17,6 +17,12 @@
 
 using namespace std;
 
+enum class TransactionStatus : uint8_t {
+  kInFlight,
+  kCommitted,
+  kAborted,
+};
+
 class TxnExecutor {
  public:
   vector<ReadElement<Tuple>> read_set_;
@@ -26,7 +32,12 @@ class TxnExecutor {
   vector<LogRecord> log_set_;
   LogHeader latest_log_header_;
 
+  TransactionStatus status_;
   unsigned int thid_;
+  unsigned int lock_num_;
+  /* lock_num_ ...
+   * the number of locks in local write set.
+   */
   Result* sres_;
 
   File logfile_;
@@ -45,6 +56,7 @@ class TxnExecutor {
 
     // latest_log_header_.init();
 
+    lock_num_ = 0;
     max_rset_.obj_ = 0;
     max_wset_.obj_ = 0;
 
@@ -52,9 +64,9 @@ class TxnExecutor {
   }
 
   void displayWriteSet();
-  void tbegin();
-  void tread(uint64_t key);
-  void twrite(uint64_t key);
+  void begin();
+  void read(uint64_t key);
+  void write(uint64_t key);
   bool validationPhase();
   void abort();
   void writePhase();

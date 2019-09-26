@@ -23,7 +23,8 @@ extern void displayDB();
 
 using namespace std;
 
-void TxnExecutor::tbegin() {
+void TxnExecutor::begin() {
+  status_ = TransactionStatus::kInFlight;
   max_wset_.obj_ = 0;
   max_rset_.obj_ = 0;
 }
@@ -44,7 +45,7 @@ ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
-void TxnExecutor::tread(uint64_t key) {
+void TxnExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -111,7 +112,7 @@ FINISH_READ:
   return;
 }
 
-void TxnExecutor::twrite(uint64_t key) {
+void TxnExecutor::write(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
@@ -152,6 +153,9 @@ bool TxnExecutor::validationPhase() {
    * lock write_set_ sorted.*/
   sort(write_set_.begin(), write_set_.end());
   lockWriteSet();
+#if NO_WAIT_LOCKING_IN_VALIDATION
+  if (this->status_ == TransactionStatus::kAborted) return false;
+#endif
 
   asm volatile("" ::: "memory");
   atomicStoreThLocalEpoch(thid_, atomicLoadGE());
@@ -171,6 +175,7 @@ bool TxnExecutor::validationPhase() {
 #if ADD_ANALYSIS
       sres_->local_vali_latency_ += rdtscp() - start;
 #endif
+      this->status_ = TransactionStatus::kAborted;
       return false;
     }
     // 2
@@ -181,6 +186,7 @@ bool TxnExecutor::validationPhase() {
 #if ADD_ANALYSIS
       sres_->local_vali_latency_ += rdtscp() - start;
 #endif
+      this->status_ = TransactionStatus::kAborted;
       return false;
     }
     max_rset_ = max(max_rset_, check);
@@ -190,6 +196,7 @@ bool TxnExecutor::validationPhase() {
 #if ADD_ANALYSIS
   sres_->local_vali_latency_ += rdtscp() - start;
 #endif
+  this->status_ = TransactionStatus::kCommitted;
   return true;
 }
 
@@ -272,10 +279,15 @@ void TxnExecutor::writePhase() {
 void TxnExecutor::lockWriteSet() {
   Tidword expected, desired;
 
+  this->lock_num_ = 0;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     for (;;) {
       if (expected.lock) {
+#if NO_WAIT_LOCKING_IN_VALIDATION
+        this->status_ = TransactionStatus::kAborted;
+        return;
+#endif
         expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
       } else {
         desired = expected;
@@ -285,6 +297,7 @@ void TxnExecutor::lockWriteSet() {
           break;
       }
     }
+    ++this->lock_num_;
 
     max_wset_ = max(max_wset_, expected);
   }
@@ -294,10 +307,14 @@ void TxnExecutor::unlockWriteSet() {
   Tidword expected, desired;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+#if NO_WAIT_LOCKING_IN_VALIDATION
+    if (this->lock_num_ == 0) return;
+#endif
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     desired = expected;
     desired.lock = 0;
     storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
+    --this->lock_num_;
   }
 }
 
