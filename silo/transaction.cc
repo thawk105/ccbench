@@ -12,6 +12,7 @@
 #include "include/log.hh"
 #include "include/transaction.hh"
 
+#include "../include/backoff.hh"
 #include "../include/debug.hh"
 #include "../include/fileio.hh"
 #include "../include/masstree_wrapper.hh"
@@ -205,6 +206,18 @@ void TxnExecutor::abort() {
 
   read_set_.clear();
   write_set_.clear();
+
+#if BACK_OFF
+#if ADD_ANALYSIS
+  uint64_t start(rdtscp());
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  sres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+#endif
 }
 
 void TxnExecutor::wal(uint64_t ctid) {

@@ -16,6 +16,7 @@
 #include "include/transaction.hh"
 
 #include "../include/atomic_wrapper.hh"
+#include "../include/backoff.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/fileio.hh"
@@ -43,12 +44,14 @@ extern void waitForReady(const std::vector<char>& readys);
 extern void sleepMs(size_t ms);
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            Result& res) {
+            std::vector<Result>& res) {
+  Result& myres = std::ref(res[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxnExecutor trans(thid, (Result*)&res);
+  TxnExecutor trans(thid, (Result*)&myres);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   uint64_t epoch_timer_start, epoch_timer_stop;
+  Backoff backoff(CLOCKS_PER_US);
 
   // std::string logpath;
   // genLogFile(logpath, res.thid_);
@@ -75,7 +78,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
                   RRATIO, RMW, YCSB, true, thid, res);
 #else
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, res);
+                  RRATIO, RMW, YCSB, false, thid, myres);
 #endif
 
 #if PROCEDURE_SORT
@@ -85,6 +88,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
+      leaderBackoffWork(backoff, res);
       // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     }
 
@@ -107,10 +111,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
     if (trans.validationPhase()) {
       trans.writePhase();
-      ++res.local_commit_counts_;
+      ++myres.local_commit_counts_;
     } else {
       trans.abort();
-      ++res.local_abort_counts_;
+      ++myres.local_abort_counts_;
       goto RETRY;
     }
   }
@@ -130,7 +134,7 @@ int main(int argc, char* argv[]) try {
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res[i]));
+                     std::ref(quit), std::ref(res));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
