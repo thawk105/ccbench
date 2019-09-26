@@ -86,6 +86,13 @@ void chkArg(const int argc, char *argv[]) {
     ERR;
   }
 
+  if (argrmw == "on")
+    RMW = true;
+  else if (argrmw == "off")
+    RMW = false;
+  else
+    ERR;
+
   if (argycsb == "on")
     YCSB = true;
   else if (argycsb == "off")
