@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iostream>
 
+#include "result.hh"
 #include "tsc.hh"
 #include "util.hh"
 
@@ -102,6 +103,16 @@ class Backoff {
     }
   }
 };
+
+[[maybe_unused]] inline void leaderBackoffWork([[maybe_unused]] Backoff& backoff, [[maybe_unused]] std::vector<Result>& res) {
+  if (backoff.check_update_backoff()) {
+    uint64_t sum_committed_txs(0);
+    for (auto &th : res) {
+      sum_committed_txs += th.local_commit_counts_;
+      backoff.update_backoff(sum_committed_txs);
+    }
+  }
+}
 
 #ifdef GLOBAL_VALUE_DEFINE
 std::atomic<double> Backoff::Backoff_(0);

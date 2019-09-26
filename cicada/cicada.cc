@@ -52,7 +52,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   // backoff: leader work に渡せないとエラーになってしまうので，
   // 使わないとしても実体が欲しい．
   Backoff backoff;
-#if USE_BACKOFF
+#if BACKOFF
   if (thid == 0) backoff.init(CLOCKS_PER_US);
 #endif
 

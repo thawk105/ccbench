@@ -433,13 +433,7 @@ void leaderWork([[maybe_unused]] Backoff &backoff,
     }
   }
 
-#if USE_BACKOFF
-  if (backoff.check_update_backoff()) {
-    uint64_t sum_committed_txs(0);
-    for (auto &th : res) {
-      sum_committed_txs += th.local_commit_counts_;
-      backoff.update_backoff(sum_committed_txs);
-    }
-  }
+#if BACKOFF
+  leaderBackoffWork(backoff, res);
 #endif
 }
