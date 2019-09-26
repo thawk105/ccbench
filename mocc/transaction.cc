@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "../include/atomic_wrapper.hh"
+#include "../include/backoff.hh"
 #include "../include/debug.hh"
 #include "../include/tsc.hh"
 #include "include/atomic_tool.hh"
@@ -647,6 +648,19 @@ void TxExecutor::abort() {
   write_set_.clear();
 
   ++mres_->local_abort_counts_;
+
+#if BACK_OFF
+#if ADD_ANALYSIS
+  uint64_t start(rdtscp());
+#endif
+
+  Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+  mres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+#endif
+
   return;
 }
 
