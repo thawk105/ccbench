@@ -127,12 +127,22 @@ void TxExecutor::twrite(uint64_t key) {
 #endif
 
   // if it already wrote the key object once.
-  SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) {
+  if (searchWriteSet(key)) goto FINISH_WRITE;
+
+  Tuple *tuple;
+  SetElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+  } else {
+#if MASSTREE_USE
+    tuple = MT.get_value(key);
 #if ADD_ANALYSIS
-    sres_->local_write_latency_ += rdtscp() - start;
+    ++sres_->local_tree_traversal_;
 #endif
-    return;
+#else
+    tuple = get_tuple(Table, key);
+#endif
   }
 
   // if v not in t.writes:
@@ -154,21 +164,13 @@ void TxExecutor::twrite(uint64_t key) {
     ++sres_->local_version_reuse_;
 #endif
   }
+
   desired->cstamp_.store(
       this->txid_,
       memory_order_relaxed);  // storing before CAS because it will be accessed
                               // from read operation, write operation and
                               // garbage collection.
   desired->status_.store(VersionStatus::inFlight, memory_order_relaxed);
-
-#if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
-#if ADD_ANALYSIS
-  ++sres_->local_tree_traversal_;
-#endif
-#else
-  Tuple *tuple = get_tuple(Table, key);
-#endif
 
   Version *vertmp;
   expected = tuple->latest_.load(std::memory_order_acquire);
@@ -190,12 +192,9 @@ void TxExecutor::twrite(uint64_t key) {
         // if (1) {
         this->status_ = TransactionStatus::aborted;
         gcobject_.reuse_version_from_gc_.emplace_back(desired);
-#if ADD_ANALYSIS
-        sres_->local_write_latency_ += rdtscp() - start;
-#endif
+        goto FINISH_WRITE;
         return;
       }
-
       expected = tuple->latest_.load(std::memory_order_acquire);
       continue;
     }
@@ -215,10 +214,7 @@ void TxExecutor::twrite(uint64_t key) {
       // their snapshot.
       this->status_ = TransactionStatus::aborted;
       gcobject_.reuse_version_from_gc_.emplace_back(desired);
-#if ADD_ANALYSIS
-      sres_->local_write_latency_ += rdtscp() - start;
-#endif
-      return;
+      goto FINISH_WRITE;
     }
 
     desired->prev_ = expected;
@@ -228,10 +224,14 @@ void TxExecutor::twrite(uint64_t key) {
       break;
   }
 
+  write_set_.emplace_back(key, tuple, desired);
+
+FINISH_WRITE:
+
 #if ADD_ANALYSIS
   sres_->local_write_latency_ += rdtscp() - start;
 #endif
-  write_set_.emplace_back(key, tuple, desired);
+  return;
 }
 
 void TxExecutor::commit() {

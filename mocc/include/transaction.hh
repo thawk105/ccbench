@@ -66,8 +66,9 @@ class TxExecutor {
   T *searchRLL(uint64_t key);
   void removeFromCLL(uint64_t key);
   void begin();
-  char *read(uint64_t key);
+  void read(uint64_t key);
   void write(uint64_t key);
+  void read_write(uint64_t key);
   void lock(uint64_t key, Tuple *tuple, bool mode);
   void construct_RLL();  // invoked on abort;
   void unlockCLL();

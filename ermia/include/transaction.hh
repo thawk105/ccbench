@@ -64,8 +64,8 @@ class TxExecutor {
   SetElement<Tuple> *searchReadSet(unsigned int key);
   SetElement<Tuple> *searchWriteSet(unsigned int key);
   void tbegin();
-  char *ssn_tread(unsigned int key);
-  void ssn_twrite(unsigned int key);
+  void ssn_tread(uint64_t key);
+  void ssn_twrite(uint64_t key);
   void ssn_commit();
   void ssn_parallel_commit();
   void abort();

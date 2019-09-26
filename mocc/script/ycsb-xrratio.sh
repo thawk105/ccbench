@@ -2,7 +2,7 @@
 tuple=50
 maxope=10
 rratio=0
-rmw=off
+rmw=on
 skew=0
 ycsb=on
 cpumhz=2100
@@ -25,7 +25,7 @@ cd ../
 make clean; make -j VAL_SIZE=4
 cd script/
 
-result=result_mocc_tuple50_rratio10-100.dat
+result=result_mocc_tuple50_rratio0-100.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime" >> $result

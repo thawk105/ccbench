@@ -154,22 +154,26 @@ void TxExecutor::twrite(const uint64_t key) {
 
   if (searchWriteSet(key)) goto FINISH_TWRITE;
 
+  Tuple *tuple;
   bool rmw;
   rmw = false;
-  if (searchReadSet(key)) rmw = true;
-
-  Tuple *tuple;
-
+  ReadElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    rmw = true;
+    tuple = re->rcdptr_;
+  } else {
 #if MASSTREE_USE
-  tuple = MT.get_value(key);
+    tuple = MT.get_value(key);
 
 #if ADD_ANALYSIS
-  ++cres_->local_tree_traversal_;
+    ++cres_->local_tree_traversal_;
 #endif  // if ADD_ANALYSIS
 
 #else
-  tuple = get_tuple(Table, key);
+    tuple = get_tuple(Table, key);
 #endif  // if MASSTREE_USE
+  }
 
 #if SINGLE_EXEC
   write_set_.emplace_back(key, tuple, nullptr, &tuple->inline_ver_, rmw);

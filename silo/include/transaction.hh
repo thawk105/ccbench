@@ -53,7 +53,7 @@ class TxnExecutor {
 
   void displayWriteSet();
   void tbegin();
-  char* tread(uint64_t key);
+  void tread(uint64_t key);
   void twrite(uint64_t key);
   bool validationPhase();
   void abort();

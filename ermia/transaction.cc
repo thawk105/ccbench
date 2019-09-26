@@ -73,45 +73,29 @@ void TxExecutor::tbegin() {
   status_ = TransactionStatus::inFlight;
 }
 
-char *TxExecutor::ssn_tread(unsigned int key) {
+void TxExecutor::ssn_tread(uint64_t key) {
 #if ADD_ANALYSIS
-  uint64_t start;
-  start = rdtscp();
-#endif
-
-#if ADD_ANALYSIS
-  auto decideLocalReadLatency = [this, start] {
-    eres_->local_read_latency_ += rdtscp() - start;
-  };
-#else
-  auto decideLocalReadLatency = [] {};
+  uint64_t start(rdtscp());
 #endif
 
   // if it already access the key object once.
   // w
-  SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) {
-    decideLocalReadLatency();
-    return writeVal;
-  }
+  if (searchWriteSet(key)) goto FINISH_TREAD;
+  if (searchReadSet(key)) goto FINISH_TREAD;
 
-  SetElement<Tuple> *inR = searchReadSet(key);
-  if (inR) {
-    decideLocalReadLatency();
-    return inR->ver_->val_;
-  }
-
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++eres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
 
   // if v not in t.writes:
-  Version *ver = tuple->latest_.load(memory_order_acquire);
+  Version *ver;
+  ver = tuple->latest_.load(memory_order_acquire);
   while (ver->status_.load(memory_order_acquire) != VersionStatus::committed ||
          txid_ < ver->cstamp_.load(memory_order_acquire))
     ver = ver->prev_;
@@ -126,36 +110,48 @@ char *TxExecutor::ssn_tread(unsigned int key) {
   upReadersBits(ver);
 
   verify_exclusion_or_abort();
-  if (this->status_ == TransactionStatus::aborted) {
-    decideLocalReadLatency();
-    return nullptr;
-  }
+  if (this->status_ == TransactionStatus::aborted) goto FINISH_TREAD;
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
   memcpy(returnVal, ver->val_, VAL_SIZE);
-  decideLocalReadLatency();
-  return ver->val_;
+
+FINISH_TREAD:
+#if ADD_ANALYSIS
+  eres_->local_read_latency_ += rdtscp() - start;
+#endif
+  return;
 }
 
-void TxExecutor::ssn_twrite(unsigned int key) {
+void TxExecutor::ssn_twrite(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
 
-#if ADD_ANALYSIS
-  auto decideLocalWriteLatency = [this, start] {
-    eres_->local_write_latency_ += rdtscp() - start;
-  };
-#else
-  auto decideLocalWriteLatency = [] {};
-#endif
-
   // if it already wrote the key object once.
-  SetElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) {
-    decideLocalWriteLatency();
-    return;
+  if (searchWriteSet(key)) goto FINISH_TWRITE;
+
+  //  avoid false positive
+  Tuple *tuple;
+  tuple = nullptr;
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+    if ((*itr).key_ == key) {
+      downReadersBits((*itr).ver_);
+      tuple = (*itr).rcdptr_;
+      read_set_.erase(itr);
+      break;
+    }
+  }
+
+  if (!tuple) {
+#if MASSTREE_USE
+    tuple = MT.get_value(key);
+#if ADD_ANALYSIS
+    ++eres_->local_tree_traversal_;
+#endif
+#else
+    tuple = get_tuple(Table, key);
+#endif
   }
 
   // if v not in t.writes:
@@ -183,15 +179,6 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       memory_order_relaxed);  // read operation, write operation,
   // it is also accessed by garbage collection.
 
-#if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
-#if ADD_ANALYSIS
-  ++eres_->local_tree_traversal_;
-#endif
-#else
-  Tuple *tuple = get_tuple(Table, key);
-#endif
-
   Version *vertmp;
   expected = tuple->latest_.load(memory_order_acquire);
   for (;;) {
@@ -204,11 +191,9 @@ void TxExecutor::ssn_twrite(unsigned int key) {
         TMT[thid_]->status_.store(TransactionStatus::aborted,
                                   memory_order_release);
         gcobject_.reuse_version_from_gc_.emplace_back(desired);
-        decideLocalWriteLatency();
-        return;
+        goto FINISH_TWRITE;
       }
 
-      _mm_pause();
       expected = tuple->latest_.load(memory_order_acquire);
       continue;
     }
@@ -228,8 +213,7 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       TMT[thid_]->status_.store(TransactionStatus::aborted,
                                 memory_order_release);
       gcobject_.reuse_version_from_gc_.emplace_back(desired);
-      decideLocalWriteLatency();
-      return;
+      goto FINISH_TWRITE;
     }
 
     desired->prev_ = expected;
@@ -239,7 +223,8 @@ void TxExecutor::ssn_twrite(unsigned int key) {
   }
 
   // ver->prev_->sstamp_ に TID を入れる
-  uint64_t tmpTID = thid_;
+  uint64_t tmpTID;
+  tmpTID = thid_;
   tmpTID = tmpTID << 1;
   tmpTID |= 1;
   desired->prev_->psstamp_.atomicStoreSstamp(tmpTID);
@@ -249,19 +234,12 @@ void TxExecutor::ssn_twrite(unsigned int key) {
       max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
   write_set_.emplace_back(key, tuple, desired);
 
-  //  avoid false positive
-  auto itr = read_set_.begin();
-  while (itr != read_set_.end()) {
-    if ((*itr).key_ == key) {
-      read_set_.erase(itr);
-      downReadersBits(vertmp);
-      break;
-    } else
-      itr++;
-  }
-
   verify_exclusion_or_abort();
-  decideLocalWriteLatency();
+
+FINISH_TWRITE:
+#if ADD_ANALYSIS
+  eres_->local_write_latency_ += rdtscp() - start;
+#endif
   return;
 }
 

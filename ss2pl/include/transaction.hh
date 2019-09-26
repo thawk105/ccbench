@@ -20,8 +20,7 @@ extern void writeValGenerator(char* writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
  public:
-   alignas(CACHE_LINE_SIZE)
-  int thid_;
+  alignas(CACHE_LINE_SIZE) int thid_;
   std::vector<RWLock*> r_lock_list_;
   std::vector<RWLock*> w_lock_list_;
   TransactionStatus status_ = TransactionStatus::inFlight;
@@ -45,9 +44,10 @@ class TxExecutor {
 
   SetElement<Tuple>* searchReadSet(uint64_t key);
   SetElement<Tuple>* searchWriteSet(uint64_t key);
-  void tbegin();
-  void tread(uint64_t key);
-  void twrite(uint64_t key);
+  void begin();
+  void read(uint64_t key);
+  void write(uint64_t key);
+  void readWrite(uint64_t key);
   void commit();
   void abort();
   void unlockList();

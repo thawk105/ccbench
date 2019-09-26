@@ -44,40 +44,29 @@ ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
-char *TxnExecutor::tread(uint64_t key) {
+void TxnExecutor::tread(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
 
+  // these variable cause error (-fpermissive)
+  // "crosses initialization of ..."
+  // So it locate before first goto instruction.
+  Tidword expected, check;
+
+  if (searchReadSet(key) || searchWriteSet(key)) goto FINISH_READ;
+
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++sres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
-
-  // w
-  WriteElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) {
-#if ADD_ANALYSIS
-    sres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return write_val_;
-  }
-
-  // r
-  ReadElement<Tuple> *inR = searchReadSet(key);
-  if (inR) {
-#if ADD_ANALYSIS
-    sres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return inR->val_;
-  }
 
   //(a) reads the TID word, spinning until the lock is clear
-  Tidword expected, check;
 
   expected.obj_ = loadAcquire(tuple->tidword_.obj_);
   // check if it is locked.
@@ -107,18 +96,19 @@ char *TxnExecutor::tread(uint64_t key) {
 #endif
   }
 
-  read_set_.emplace_back(key, tuple, return_val_,
-                         expected);
+  read_set_.emplace_back(key, tuple, return_val_, expected);
   // emplace is often better performance than push_back.
 
 #if SLEEP_READ_PHASE
   sleepTics(SLEEP_READ_PHASE);
 #endif
 
+FINISH_READ:
+
 #if ADD_ANALYSIS
   sres_->local_read_latency_ += rdtscp() - start;
 #endif
-  return return_val_;
+  return;
 }
 
 void TxnExecutor::twrite(uint64_t key) {
@@ -126,24 +116,27 @@ void TxnExecutor::twrite(uint64_t key) {
   uint64_t start = rdtscp();
 #endif
 
-  WriteElement<Tuple> *inW = searchWriteSet(key);
-  if (inW) {
-#if ADD_ANALYSIS
-    sres_->local_write_latency_ += rdtscp() - start;
-#endif
-    return;
-  }
-
+  if (searchWriteSet(key)) goto FINISH_WRITE;
+  Tuple *tuple;
+  ReadElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+  } else {
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+    tuple = MT.get_value(key);
 #if ADD_ANALYSIS
-  ++sres_->local_tree_traversal_;
+    ++sres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+    tuple = get_tuple(Table, key);
 #endif
+  }
 
   write_set_.emplace_back(key, tuple);  // push の方が性能が良い
+
+FINISH_WRITE:
+
 #if ADD_ANALYSIS
   sres_->local_write_latency_ += rdtscp() - start;
 #endif

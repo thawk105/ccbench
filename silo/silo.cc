@@ -70,7 +70,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
-
 #if PARTITION_TABLE
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, true, thid, res);
@@ -86,7 +85,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
-      //printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
+      // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     }
 
     if (loadAcquire(quit)) break;
@@ -121,7 +120,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
 int main(int argc, char* argv[]) try {
   chkArg(argc, argv);
-  //displayParameter();
+  // displayParameter();
   makeDB();
 
   alignas(CACHE_LINE_SIZE) bool start = false;

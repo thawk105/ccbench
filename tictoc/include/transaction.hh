@@ -52,9 +52,9 @@ class TxExecutor {
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }
 
-  void tbegin();
-  char* tread(uint64_t key);
-  void twrite(uint64_t key);
+  void begin();
+  void read(uint64_t key);
+  void write(uint64_t key);
   bool validationPhase();
   bool preemptiveAborts(const TsWord& v1);
   void abort();

@@ -5,8 +5,8 @@ rratioary=(50)
 rmw=off
 skew=0.9
 ycsb=on
-extime=3
-epoch=3
+extime=5
+epoch=5
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -42,7 +42,7 @@ do
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
   
-  for ((slpclks = 0; slpclks <= 1000; slpclks += 100))
+  for ((slpclks = 0; slpclks <= 25000; slpclks += 500))
   do
     cd ../
     make clean; make -j SLEEP_READ_PHASE=$slpclks VAL_SIZE=4

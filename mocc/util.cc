@@ -185,7 +185,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     Epotemp epotemp(0, 1);
     size_t epotemp_index = i * sizeof(Tuple) / PER_XX_TEMP;
     // cout << "key:\t" << i << ", ep_index:\t" << ep_index << endl;
-    storeRelease(Epotemp_ary[epotemp_index].obj_, epotemp.obj_);
+    storeRelease(EpotempAry[epotemp_index].obj_, epotemp.obj_);
 #if MASSTREE_USE
     MT.insert_value(i, tmp);
 #endif
@@ -203,7 +203,7 @@ void makeDB() {
 
   size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
   // cout << "eptmp_length:\t" << eptmp_length << endl;
-  if (posix_memalign((void **)&Epotemp_ary, PAGE_SIZE,
+  if (posix_memalign((void **)&EpotempAry, PAGE_SIZE,
                      epotemp_length * sizeof(Epotemp)) != 0)
     ERR;
 
@@ -244,7 +244,7 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
     uint64_t nowepo = (loadAcquireGE()).obj;
     for (uint64_t i = 0; i < epotemp_length; ++i) {
       Epotemp epotemp(0, nowepo);
-      storeRelease(Epotemp_ary[i].obj_, epotemp.obj_);
+      storeRelease(EpotempAry[i].obj_, epotemp.obj_);
     }
 #if ADD_ANALYSIS
     res.local_temperature_resets += epotemp_length;

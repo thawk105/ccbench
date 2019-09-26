@@ -75,8 +75,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
       } else if ((*itr).ope_ == Ope::WRITE) {
         trans.write((*itr).key_);
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
-        trans.read((*itr).key_);
-        trans.write((*itr).key_);
+        // trans.read((*itr).key_);
+        // trans.write((*itr).key_);
+        trans.read_write((*itr).key_);
       } else {
         ERR;
       }

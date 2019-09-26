@@ -34,7 +34,7 @@ SetElement<Tuple> *TxExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
-void TxExecutor::tbegin() {
+void TxExecutor::begin() {
   this->status_ = TransactionStatus::inFlight;
   this->commit_ts_ = 0;
   this->appro_commit_ts_ = 0;
@@ -55,54 +55,37 @@ bool TxExecutor::preemptiveAborts(const TsWord &v1) {
   return false;
 }
 
-char *TxExecutor::tread(uint64_t key) {
+void TxExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
 
 #if SLEEP_READ_PHASE
   sleepTics(SLEEP_READ_PHASE);
-#endif 
-
-  SetElement<Tuple> *result;
-
-  result = searchWriteSet(key);
-  if (result != nullptr) {
-#if ADD_ANALYSIS
-    tres_->local_read_latency_ += rdtscp() - start;
 #endif
-    return write_val_;
-  }
 
-  result = searchReadSet(key);
-  if (result != nullptr) {
-#if ADD_ANALYSIS
-    tres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return result->val_;
-  }
-
+  // these variable cause error (-fpermissive)
+  // "crosses initialization of ..."
+  // So it locate before first goto instruction.
   TsWord v1, v2;
 
+  if (searchReadSet(key) || searchWriteSet(key)) goto FINISH_READ;
+
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++tres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
 
   v1.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
   for (;;) {
     if (v1.lock) {
 #if PREEMPTIVE_ABORTS
-      if (preemptiveAborts(v1)) {
-#if ADD_ANALYSIS
-        tres_->local_read_latency_ += rdtscp() - start;
-#endif
-        return 0;
-      }
+      if (preemptiveAborts(v1)) goto FINISH_READ;
 #endif
       v1.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
       continue;
@@ -121,42 +104,51 @@ char *TxExecutor::tread(uint64_t key) {
   this->appro_commit_ts_ = max(this->appro_commit_ts_, v1.wts);
   read_set_.emplace_back(key, tuple, return_val_, v1);
 
+FINISH_READ:
+
 #if ADD_ANALYSIS
   tres_->local_read_latency_ += rdtscp() - start;
 #endif
-  return return_val_;
+  return;
 }
 
-void TxExecutor::twrite(uint64_t key) {
+void TxExecutor::write(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
-  SetElement<Tuple> *result;
 
-  result = searchWriteSet(key);
-  if (result != nullptr) {
-#if ADD_ANALYSIS
-    tres_->local_write_latency_ += rdtscp() - start;
-#endif
-    return;
-  }
-
+  // these variable cause error (-fpermissive)
+  // "crosses initialization of ..."
+  // So it locate before first goto instruction.
   TsWord tsword;
+
+  if (searchWriteSet(key)) goto FINISH_WRITE;
+
+  Tuple *tuple;
+  SetElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+  } else {
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+    tuple = MT.get_value(key);
 #if ADD_ANALYSIS
-  ++tres_->local_tree_traversal_;
+    ++tres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+    tuple = get_tuple(Table, key);
 #endif
+  }
 
   tsword.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
   this->appro_commit_ts_ = max(this->appro_commit_ts_, tsword.rts() + 1);
+  write_set_.emplace_back(key, tuple, tsword);
+
+FINISH_WRITE:
+
 #if ADD_ANALYSIS
   tres_->local_write_latency_ += rdtscp() - start;
 #endif
-  write_set_.emplace_back(key, tuple, tsword);
 }
 
 bool TxExecutor::validationPhase() {

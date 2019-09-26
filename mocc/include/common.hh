@@ -41,7 +41,7 @@ GLOBAL size_t EXTIME;
 
 GLOBAL RWLock CtrLock;
 // temperature, min 0, max 20
-alignas(PAGE_SIZE) GLOBAL Epotemp *Epotemp_ary;
+alignas(PAGE_SIZE) GLOBAL Epotemp *EpotempAry;
 
 // for logging emulation
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *Start;

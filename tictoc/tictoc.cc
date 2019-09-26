@@ -48,7 +48,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 #endif
 
 #ifdef Linux
-  setThreadAffinity(thid);
+  // setThreadAffinity(thid);
+  size_t cpu_id = thid / 4 + thid % 4 * 28;
+  setThreadAffinity(cpu_id);
+  printf("Thread %zu, affi %zu\n", thid, cpu_id);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
@@ -62,16 +65,16 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   RETRY:
     if (loadAcquire(quit)) break;
 
-    trans.tbegin();
+    trans.begin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
       if ((*itr).ope_ == Ope::READ) {
-        trans.tread((*itr).key_);
+        trans.read((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
-        trans.twrite((*itr).key_);
+        trans.write((*itr).key_);
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
-        trans.tread((*itr).key_);
-        trans.twrite((*itr).key_);
+        trans.read((*itr).key_);
+        trans.write((*itr).key_);
       } else {
         ERR;
       }

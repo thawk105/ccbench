@@ -60,59 +60,50 @@ void TxExecutor::begin() {
   return;
 }
 
-char *TxExecutor::read(uint64_t key) {
+void TxExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
-  uint64_t start = rdtscp();
+  uint64_t start(rdtscp());
 #endif
 
+  // Default constructor of these variable cause error (-fpermissive)
+  // "crosses initialization of ..."
+  // So it locate before first goto instruction.
+  Epotemp loadepot;
+  Tidword expected, desired;
+
+  if (searchWriteSet(key)) goto FINISH_READ;
+  if (searchReadSet(key)) goto FINISH_READ;
+
+  Tuple *tuple;
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+  tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++mres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+  tuple = get_tuple(Table, key);
 #endif
-
-  // tuple exists in write set.
-  WriteElement<Tuple> *inW = searchWriteSet(key);
-  // if (inW) return inW->val_;
-  if (inW) {
-#if ADD_ANALYSIS
-    ++mres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return return_val_;
-  }
-
-  // tuple exists in read set.
-  ReadElement<Tuple> *inR = searchReadSet(key);
-  if (inR) {
-#if ADD_ANALYSIS
-    ++mres_->local_read_latency_ += rdtscp() - start;
-#endif
-    return inR->val_;
-  }
 
   // tuple doesn't exist in read/write set.
 #ifdef RWLOCK
-  LockElement<RWLock> *inRLL = searchRLL<LockElement<RWLock>>(key);
+  LockElement<RWLock> *inRLL;
+  inRLL = searchRLL<LockElement<RWLock>>(key);
 #endif  // RWLOCK
 #ifdef MQLOCK
-  LockElement<MQLock> *inRLL_ = searchRLL_<LockElement<MQLock>>(key);
+  LockElement<MQLock> *inRLL;
+  inRLL = searchRLL<LockElement<MQLock>>(key);
 #endif  // MQLOCK
 
-  Epotemp loadepot;
-  size_t epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
-  loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
-  bool needVerification = true;
-  ;
+  size_t epotemp_index;
+  epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
+  bool needVerification;
+  needVerification = true;
+
   if (inRLL != nullptr) {
     lock(key, tuple, inRLL->mode_);
     if (this->status_ == TransactionStatus::aborted) {
-#if ADD_ANALYSIS
-      ++mres_->local_read_latency_ += rdtscp() - start;
-#endif
-      return nullptr;
+      goto FINISH_READ;
     } else {
       needVerification = false;
     }
@@ -120,16 +111,12 @@ char *TxExecutor::read(uint64_t key) {
     // printf("key:\t%lu, temp:\t%lu\n", key, loadepot.temp_);
     lock(key, tuple, false);
     if (this->status_ == TransactionStatus::aborted) {
-#if ADD_ANALYSIS
-      ++mres_->local_read_latency_ += rdtscp() - start;
-#endif
-      return nullptr;
+      goto FINISH_READ;
     } else {
       needVerification = false;
     }
   }
 
-  Tidword expected, desired;
   if (needVerification) {
     expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
     for (;;) {
@@ -148,10 +135,7 @@ char *TxExecutor::read(uint64_t key) {
         if (key < CLL_.back().key_) {
           status_ = TransactionStatus::aborted;
           read_set_.emplace_back(key, tuple);
-#if ADD_ANALYSIS
-          ++mres_->local_read_latency_ += rdtscp() - start;
-#endif
-          return nullptr;
+          goto FINISH_READ;
         } else {
           expected.obj_ =
               __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
@@ -173,10 +157,12 @@ char *TxExecutor::read(uint64_t key) {
   }
 
   read_set_.emplace_back(expected, key, tuple, return_val_);
+
+FINISH_READ:
 #if ADD_ANALYSIS
-  ++mres_->local_read_latency_ += rdtscp() - start;
+  mres_->local_read_latency_ += rdtscp() - start;
 #endif
-  return return_val_;
+  return;
 }
 
 void TxExecutor::write(uint64_t key) {
@@ -184,54 +170,162 @@ void TxExecutor::write(uint64_t key) {
   uint64_t start = rdtscp();
 #endif
 
-  // tuple exists in write set.
-  WriteElement<Tuple> *inw = searchWriteSet(key);
-  if (inw) {
-#if ADD_ANALYSIS
-    mres_->local_write_latency_ += rdtscp() - start;
-#endif
-    return;
-  }
+  // these variable cause error (-fpermissive)
+  // "crosses initialization of ..."
+  // So it locate before first goto instruction.
+  Epotemp loadepot;
 
+  // tuple exists in write set.
+  if (searchWriteSet(key)) goto FINISH_WRITE;
+
+  Tuple *tuple;
+  ReadElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+  } else {
 #if MASSTREE_USE
-  Tuple *tuple = MT.get_value(key);
+    tuple = MT.get_value(key);
 #if ADD_ANALYSIS
-  ++mres_->local_tree_traversal_;
+    ++mres_->local_tree_traversal_;
 #endif
 #else
-  Tuple *tuple = get_tuple(Table, key);
+    tuple = get_tuple(Table, key);
 #endif
-
-  Epotemp loadepot;
-  size_t epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
-  loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
-  if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
-  if (this->status_ == TransactionStatus::aborted) {
-#if ADD_ANALYSIS
-    mres_->local_write_latency_ += rdtscp() - start;
-#endif
-    return;
   }
 
+  size_t epotemp_index;
+  epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
+  if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
+  if (this->status_ == TransactionStatus::aborted) goto FINISH_WRITE;
+
 #ifdef RWLOCK
-  LockElement<RWLock> *inRLL = searchRLL<LockElement<RWLock>>(key);
+  LockElement<RWLock> *inRLL;
+  inRLL = searchRLL<LockElement<RWLock>>(key);
 #endif  // RWLOCK
 #ifdef MQLOCK
   LockElement<MQLock> *inRLL = searchRLL<LockElement<MQLock>>(key);
 #endif  // MQLOCK
   if (inRLL != nullptr) lock(key, tuple, true);
-  if (this->status_ == TransactionStatus::aborted) {
-#if ADD_ANALYSIS
-    mres_->local_write_latency_ += rdtscp() - start;
-#endif
-    return;
-  }
+  if (this->status_ == TransactionStatus::aborted) goto FINISH_WRITE;
 
   // write_set_.emplace_back(key, write_val_);
   write_set_.emplace_back(key, tuple);
+
+FINISH_WRITE:
 #if ADD_ANALYSIS
   mres_->local_write_latency_ += rdtscp() - start;
 #endif
+  return;
+}
+
+void TxExecutor::read_write(uint64_t key) {
+  // Default constructor of these variable cause error (-fpermissive)
+  // "crosses initialization of ..."
+  // So it locate before first goto instruction.
+  Epotemp loadepot;
+  Tidword expected, desired;
+
+  Tuple *tuple;
+  if (searchWriteSet(key)) goto FINISH_ALL;
+  ReadElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+    goto FINISH_READ;
+  } else {
+#if MASSTREE_USE
+    tuple = MT.get_value(key);
+#if ADD_ANALYSIS
+    ++mres_->local_tree_traversal_;
+#endif
+#else
+    tuple = get_tuple(Table, key);
+#endif
+  }
+
+  // tuple doesn't exist in read/write set.
+#ifdef RWLOCK
+  LockElement<RWLock> *inRLL;
+  inRLL = searchRLL<LockElement<RWLock>>(key);
+#endif  // RWLOCK
+#ifdef MQLOCK
+  LockElement<MQLock> *inRLL;
+  inRLL = searchRLL<LockElement<MQLock>>(key);
+#endif  // MQLOCK
+
+  size_t epotemp_index;
+  epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
+  bool needVerification;
+  needVerification = true;
+
+  if (inRLL != nullptr) {
+    lock(key, tuple, inRLL->mode_);
+    if (this->status_ == TransactionStatus::aborted) {
+      goto FINISH_ALL;
+    } else {
+      needVerification = false;
+    }
+  } else if (loadepot.temp >= TEMP_THRESHOLD) {
+    // printf("key:\t%lu, temp:\t%lu\n", key, loadepot.temp_);
+    // this lock for write, so write-mode.
+    lock(key, tuple, true);
+    if (this->status_ == TransactionStatus::aborted) {
+      goto FINISH_ALL;
+    } else {
+      needVerification = false;
+    }
+  }
+
+  if (needVerification) {
+    expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+    for (;;) {
+#ifdef RWLOCK
+      while (tuple->rwlock_.ldAcqCounter() == W_LOCKED) {
+#endif  // RWLOCK
+        /* if you wait due to being write-locked, it may occur dead lock.
+        // it need to guarantee that this parts definitely progress.
+        // So it sholud wait expected.lock because it will be released
+        definitely.
+        //
+        // if expected.lock raise, opponent worker entered pre-commit phase.
+        expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_),
+        __ATOMIC_ACQUIRE);*/
+
+        if (key < CLL_.back().key_) {
+          status_ = TransactionStatus::aborted;
+          read_set_.emplace_back(key, tuple);
+          goto FINISH_READ;
+        } else {
+          expected.obj_ =
+              __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+        }
+      }
+
+      memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
+
+      desired.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+      if (expected == desired)
+        break;
+      else
+        expected.obj_ = desired.obj_;
+    }
+  } else {
+    // it already got read-lock.
+    expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+    memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
+  }
+
+  read_set_.emplace_back(expected, key, tuple, return_val_);
+
+FINISH_READ:
+
+  write_set_.emplace_back(key, tuple);
+
+FINISH_ALL:
+
   return;
 }
 
@@ -428,7 +522,7 @@ void TxExecutor::construct_RLL() {
     size_t epotemp_index = (*itr).key_ * sizeof(Tuple) / PER_XX_TEMP;
     if ((*itr).failed_verification_) {
       Epotemp expected, desired;
-      expected.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
+      expected.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
 
 #if TEMPERATURE_RESET_OPT
       uint64_t nowepo;
@@ -436,7 +530,7 @@ void TxExecutor::construct_RLL() {
       if (expected.epoch != nowepo) {
         desired.epoch = nowepo;
         desired.temp = 0;
-        storeRelease(Epotemp_ary[epotemp_index].obj_, desired.obj_);
+        storeRelease(EpotempAry[epotemp_index].obj_, desired.obj_);
 #if ADD_ANALYSIS
         ++mres_->local_temperature_resets_;
 #endif
@@ -455,7 +549,7 @@ void TxExecutor::construct_RLL() {
           break;
         }
 
-        if (compareExchange(Epotemp_ary[epotemp_index].obj_, expected.obj_,
+        if (compareExchange(EpotempAry[epotemp_index].obj_, expected.obj_,
                             desired.obj_))
           break;
       }
@@ -473,7 +567,7 @@ void TxExecutor::construct_RLL() {
     // if temprature >= threshold
     //  || r failed verification
     Epotemp loadepot;
-    loadepot.obj_ = loadAcquire(Epotemp_ary[epotemp_index].obj_);
+    loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
     if (loadepot.temp >= TEMP_THRESHOLD || (*itr).failed_verification_) {
 #ifdef RWLOCK
       RLL_.emplace_back((*itr).key_, &((*itr).rcdptr_->rwlock_), false);
