@@ -1,10 +1,10 @@
 #ycsb-xth.sh(mocc)
-tuple=50
-maxope=10
+tuple=10000000
+maxope=16
 #rratioary=(50 95 100)
-rratioary=(100)
-rmw=off
-skew=0
+rratioary=(50)
+rmw=on
+skew=0.99
 ycsb=on
 cpumhz=2100
 epochtime=40
@@ -23,13 +23,13 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=4
+make clean; make -j KEY_SIZE=8 VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_mocc_ycsbA_tuple1k-100m_val1k_skew09.dat
+    result=result_mocc_ycsbA_tuple10m_ope16_rmw_skew099.dat
   elif test $rratio = 95 ; then
     result=result_mocc_ycsbB_tuple1k-100m_val1k_skew09.dat
   elif test $rratio = 100 ; then

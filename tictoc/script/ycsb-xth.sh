@@ -3,8 +3,8 @@ tuple=10000000
 maxope=16
 #rratioary=(50 95 100)
 rratioary=(50)
-rmw=off
-skew=0.9
+rmw=on
+skew=0.99
 ycsb=on
 cpumhz=2100
 extime=3
@@ -21,13 +21,13 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=1000
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_tictoc_ycsb_tuple10m_skew09.dat
+    result=result_tictoc_ycsbA_tuple10m_ope16_rmw_skew099.dat
   elif test $rratio = 90 ; then
     result=result_tictoc_ycsb_tuple10m_skew08.dat
   elif test $rratio = 95 ; then
@@ -43,7 +43,7 @@ do
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
   
-  for ((thread=1; thread<=81; thread+=10))
+  for ((thread=28; thread<=224; thread+=28))
   do
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
     echo "Thread number $thread"

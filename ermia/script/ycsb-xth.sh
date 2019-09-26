@@ -1,4 +1,4 @@
-#ycsb-xth.sh(silo)
+#ycsb-xth.sh(ermia)
 tuple=10000000
 maxope=16
 #rratioary=(50 95 100)
@@ -6,10 +6,13 @@ rratioary=(50)
 rmw=on
 skew=0.99
 ycsb=on
-cpumhz=2100
-epochtime=40
+cpu_mhz=2100
+gci=10
+pre=100
+prv=10000
 extime=3
 epoch=3
+
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -18,7 +21,7 @@ dbs11="dbs11"
 #basically
 thread=24
 if  test $host = $dbs11 ; then
-thread=224
+  thread=224
 fi
 
 cd ../
@@ -28,13 +31,11 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_silo_ycsbA_tuple10m_oe16_rmw_skew099.dat
-  elif test $rratio = 90 ; then
-    result=result_silo_ycsbA_tuple1k-100m_val1k_skew09.dat
+    result=result_ermia_ycsbA_tuple10m_ope16_rmw_skew099.dat
   elif test $rratio = 95 ; then
-    result=result_silo_ycsbB_tuple1k-100m_val1k_skew09.dat
+    result=result_ermia_ycsbB_tuple1k-100m_val1k_skew09.dat
   elif test $rratio = 100 ; then
-    result=result_silo_ycsbC_tuple10m_ope2.dat
+    result=result_ermia_ycsbC_tuple1k-100m_val1k_skew09.dat
   else
     echo "BUG"
     exit 1
@@ -42,11 +43,12 @@ do
   rm $result
 
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
+  echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $pre $prv $extime" >> $result
   
   for ((thread=28; thread<=224; thread+=28))
   do
-    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
+    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $pre $prv $extime"
+    echo "Thread number $thread"
     
     sumTH=0
     sumAR=0
@@ -57,20 +59,20 @@ do
     minTH=0
     minAR=0
     minCA=0
-    for ((i = 1; i <= epoch; ++i))
+    for ((i=1; i <= epoch; ++i))
     do
       if test $host = $dbs11 ; then
-        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $pre $prv $extime > exp.txt
       fi
       if test $host = $chris41 ; then
-        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime > exp.txt
+      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $pre $prv $extime > exp.txt
       fi
     
       tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
       tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
       tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
       sumTH=`echo "$sumTH + $tmpTH" | bc`
-      sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
+      sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
       sumCA=`echo "$sumCA + $tmpCA" | bc`
       echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
     
@@ -107,8 +109,7 @@ do
       flag=`echo "$tmpCA < $minCA" | bc`
       if test $flag -eq 1 ; then
         minCA=$tmpCA
-      fi
-    
+      fi 
     done
     avgTH=`echo "$sumTH / $epoch" | bc`
     avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
@@ -118,6 +119,6 @@ do
     echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
     echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
     echo ""
-    echo "$thread $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
+    echo "$thread $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA" >> $result
   done
 done
