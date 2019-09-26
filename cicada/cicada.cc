@@ -48,13 +48,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   TxExecutor trans(thid, (Result*)&res[thid]);
   Result& myres = std::ref(res[thid]);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
-
-  // backoff: leader work に渡せないとエラーになってしまうので，
-  // 使わないとしても実体が欲しい．
-  Backoff backoff;
-#if BACKOFF
-  if (thid == 0) backoff.init(CLOCKS_PER_US);
-#endif
+  Backoff backoff(CLOCKS_PER_US);
 
 #ifdef Linux
   setThreadAffinity(thid);

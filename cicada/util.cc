@@ -433,7 +433,7 @@ void leaderWork([[maybe_unused]] Backoff &backoff,
     }
   }
 
-#if BACKOFF
+#if BACK_OFF
   leaderBackoffWork(backoff, res);
 #endif
 }

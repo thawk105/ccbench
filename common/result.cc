@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <iostream>
 
+#include "../include/debug.hh"
 #include "../include/result.hh"
 
 using std::cout;
@@ -448,8 +449,8 @@ void Result::addLocalAllResult(const Result &other) {
 #if ADD_ANALYSIS
   addLocalAbortByOperation(other.local_abort_by_operation_);
   addLocalAbortByValidation(other.local_abort_by_validation_);
-  addLocalCommitLatency(other.local_backoff_latency_);
   addLocalBackoffLatency(other.local_backoff_latency_);
+  addLocalCommitLatency(other.local_backoff_latency_);
   addLocalExtraReads(other.local_extra_reads_);
   addLocalGCCounts(other.local_gc_counts_);
   addLocalGCLatency(other.local_gc_latency_);

@@ -460,7 +460,7 @@ void TxExecutor::earlyAbort() {
   this->status_ = TransactionStatus::abort;
   ++cres_->local_abort_counts_;
 
-#if BACKOFF
+#if BACK_OFF
 
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -486,7 +486,7 @@ void TxExecutor::abort() {
   this->wts_.set_clockBoost(CLOCKS_PER_US);
   ++cres_->local_abort_counts_;
 
-#if BACKOFF
+#if BACK_OFF
 
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

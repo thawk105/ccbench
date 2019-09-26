@@ -25,6 +25,10 @@ class Backoff {
   uint64_t last_time_ = 0;
   size_t clocks_per_us_;
 
+  Backoff(size_t clocks_per_us) {
+    init(clocks_per_us);
+  }
+
   void init(size_t clocks_per_us) {
     last_time_ = rdtscp();
     clocks_per_us_ = clocks_per_us;
