@@ -85,6 +85,7 @@ inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
   bool ronly_flag(true), wonly_flag(true);
   for (size_t i = 0; i < max_ope; ++i) {
     uint64_t tmpkey;
+    // decide access destination key.
     if (ycsb) {
       if (partition) {
         size_t block_size = tuple_num / thread_num;
@@ -101,26 +102,22 @@ inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
       }
     }
 
-    if (rmw) {
-      pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
+    // decide operation type.
+    if ((rnd.next() % 100) < rratio) {
+      wonly_flag = false;
+      pro.emplace_back(Ope::READ, tmpkey);
     } else {
-      if ((rnd.next() % 100) < rratio) {
-        wonly_flag = false;
-        pro.emplace_back(Ope::READ, tmpkey);
+      ronly_flag = false;
+      if (rmw) {
+        pro.emplace_back(Ope::READ_MODIFY_WRITE, tmpkey);
       } else {
-        ronly_flag = false;
         pro.emplace_back(Ope::WRITE, tmpkey);
       }
     }
   }
 
-  if (rmw) {
-    (*pro.begin()).ronly_ = false;
-    (*pro.begin()).wonly_ = false;
-  } else {
-    (*pro.begin()).ronly_ = ronly_flag;
-    (*pro.begin()).wonly_ = wonly_flag;
-  }
+  (*pro.begin()).ronly_ = ronly_flag;
+  (*pro.begin()).wonly_ = wonly_flag;
 #if ADD_ANALYSIS
   res.local_make_procedure_latency_ += rdtscp() - start;
 #endif
