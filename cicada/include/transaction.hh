@@ -6,6 +6,7 @@
 #include <map>
 #include <queue>
 
+#include "../../include/backoff.hh"
 #include "../../include/config.hh"
 #include "../../include/debug.hh"
 #include "../../include/inline.hh"
@@ -98,6 +99,28 @@ class TxExecutor {
   void cpv();  // commit pending versions
   void displayWriteSet();
   void earlyAbort();
+  void mainte();  // maintenance
+  void gcpv();  // group commit pending versions
+  void precpv();  // pre-commit pending versions
+  void pwal();    // parallel write ahead log.
+  void swal();
+  void tbegin();
+  void tread(const uint64_t key);
+  void twrite(const uint64_t key);
+  bool validation();
+  void writePhase();
+
+  void backoff() {
+#if ADD_ANALYSIS
+    uint64_t start = rdtscp();
+#endif
+
+    Backoff::backoff(CLOCKS_PER_US);
+
+#if ADD_ANALYSIS
+    cres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+  }
 
   void gcAfterThisVersion([[maybe_unused]] Tuple* tuple, Version* delTarget) {
     while (delTarget != nullptr) {
@@ -125,7 +148,6 @@ class TxExecutor {
     }
   }
 
-  void gcpv();  // group commit pending versions
 
 #if INLINE_VERSION_OPT
 #if INLINE_VERSION_PROMOTION
@@ -145,7 +167,6 @@ class TxExecutor {
 #endif
 #endif
 
-  void mainte();  // maintenance
 
   Version* newVersionGeneration([[maybe_unused]] Tuple* tuple) {
 #if INLINE_VERSION_OPT
@@ -219,9 +240,6 @@ class TxExecutor {
     return true;
   }
 
-  void precpv();  // pre-commit pending versions
-  void pwal();    // parallel write ahead log.
-
   void readTimestampUpdateInValidation() {
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
       uint64_t expected;
@@ -251,13 +269,6 @@ class TxExecutor {
 
     return nullptr;
   }
-
-  void swal();
-  void tbegin();
-  void tread(const uint64_t key);
-  void twrite(const uint64_t key);
-  bool validation();
-  void writePhase();
 
   void writeSetClean() {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {

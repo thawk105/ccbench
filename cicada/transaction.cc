@@ -135,6 +135,7 @@ void TxExecutor::tread(const uint64_t key) {
   cres_->local_read_latency_ += rdtscp() - start;
 #endif  // if ADD_ANALYSIS
   inlineVersionPromotion(key, tuple, later_ver, ver);
+  goto END_TREAD;
 #endif  // if INLINE_VERSION_PROMOTION
 #endif  // if INLINE_VERSION_OPT
 
@@ -143,6 +144,8 @@ FINISH_TREAD:
 #if ADD_ANALYSIS
   cres_->local_read_latency_ += rdtscp() - start;
 #endif
+
+END_TREAD:
 
   return;
 }
@@ -162,6 +165,18 @@ void TxExecutor::twrite(const uint64_t key) {
   if (re) {
     rmw = true;
     tuple = re->rcdptr_;
+    /* 現時点で，シンプルな改造で re->later_ver_ 
+     * 情報を受け取って利用することは難しい．
+     * 何故なら，read only tx で発生した inline version promotion による
+     * write であれば，read-only 専用のタイムスタンプによるサーチにおいて
+     * later_ver であるが，write の later_ver には不適格．
+     * ここを考慮してゴニョゴニョしても，利益が小さくて性能が上がらなかった．*/
+    /* Now, it is difficult to use re->later_ver_ by simple customize.
+     * Because if this write is from inline version promotion which is from read only tx,
+     * the re->later_ver is suitable for read only search by read only timestamp.
+     * Of course, it is unsuitable for search for write.
+     * It is high cost to consider these things.
+     * I try many somethings but it can't improve performance. cost > profit.*/
   } else {
 #if MASSTREE_USE
     tuple = MT.get_value(key);
@@ -305,6 +320,9 @@ bool TxExecutor::validation() {
       while (ver->ldAcqStatus() == VersionStatus::pending)
         ;
     }
+    /* この部分は，オリジナル手法と異なる．
+     * 現在 view となるバージョンが，read operation 時の view と同一かをチェックしている．
+     * オリジナル手法はこれがないため，この実装より性能は良いが view が壊れている.*/
     if ((*itr).ver_ != ver) {
       result = false;
       goto FINISH_VALIDATION;
@@ -419,6 +437,16 @@ void TxExecutor::pwal() {
 inline void TxExecutor::cpv()  // commit pending versions
 {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    /* memcpy は commit 確定前に書くことと，確定後に書くことができる．
+     * 前提として，Cicada は OCC 性質を持つ．
+     * 従って， commit 確定前に書く場合，read phase 区間が伸びることで，
+     * updater に割り込まれやすくなって read validation failure 頻度が高くなり，
+     * 性能劣化する性質と，逆に read validation failure 頻度が高くなることで
+     * committed updater が減少し，競合が減少して性能向上という複雑な二面性を持つ．
+     * 確定後に書く気持ちは，read phase 区間をなるべく短くして，read validation failure 
+     * を起こしにくくして性能向上させる．しかし，この場合は区間がオーバーラップする
+     * tx が増えるため競合増加して性能劣化するかもしれないという複雑な二面性を持つ．
+     * 両方試してみた結果，特に変わらなかったため，確定後に書く．*/
     memcpy((*itr).new_ver_->val_, write_val_, VAL_SIZE);
 #if SINGLE_EXEC
     (*itr).new_ver_->set(0, this->wts_.ts_);
@@ -461,17 +489,7 @@ void TxExecutor::earlyAbort() {
   ++cres_->local_abort_counts_;
 
 #if BACK_OFF
-
-#if ADD_ANALYSIS
-  uint64_t start = rdtscp();
-#endif
-
-  Backoff::backoff(CLOCKS_PER_US);
-
-#if ADD_ANALYSIS
-  cres_->local_backoff_latency_ += rdtscp() - start;
-#endif
-
+  backoff();
 #endif
 }
 
@@ -487,17 +505,7 @@ void TxExecutor::abort() {
   ++cres_->local_abort_counts_;
 
 #if BACK_OFF
-
-#if ADD_ANALYSIS
-  uint64_t start = rdtscp();
-#endif
-
-  Backoff::backoff(CLOCKS_PER_US);
-
-#if ADD_ANALYSIS
-  cres_->local_backoff_latency_ += rdtscp() - start;
-#endif
-
+  backoff();
 #endif
 }
 
