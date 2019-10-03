@@ -82,6 +82,13 @@ void Result::displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
   }
 }
 
+void Result::displayEarlyAbortRate() {
+  if (total_early_aborts_) {
+    cout << fixed << setprecision(4) << "early_abort_rate:\t" << 
+      (long double)total_early_aborts_ / (long double)total_abort_counts_ << endl;
+  }
+}
+
 void Result::displayExtraReads() {
   if (total_extra_reads_)
     cout << "extra_reads:\t" << total_extra_reads_ << endl;
@@ -125,6 +132,12 @@ void Result::displayMakeProcedureLatencyRate(size_t clocks_per_us,
     cout << fixed << setprecision(4) << "make_procedure_latency_rate:\t" << rate
          << endl;
   }
+}
+
+void Result::displayMemcpys() {
+  if (total_memcpys) {
+    cout << "memcpys:\t" << total_memcpys << endl;
+   }
 }
 
 void Result::displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
@@ -318,6 +331,10 @@ void Result::addLocalBackoffLatency(const uint64_t count) {
   total_backoff_latency_ += count;
 }
 
+void Result::addLocalEarlyAborts(const uint64_t count) {
+  total_early_aborts_ += count;
+}
+
 void Result::addLocalExtraReads(const uint64_t count) {
   total_extra_reads_ += count;
 }
@@ -340,6 +357,10 @@ void Result::addLocalGCLatency(const uint64_t count) {
 
 void Result::addLocalMakeProcedureLatency(const uint64_t count) {
   total_make_procedure_latency_ += count;
+}
+
+void Result::addLocalMemcpys(const uint64_t count) {
+  total_memcpys += count;
 }
 
 void Result::addLocalPreemptiveAbortsCounts(const uint64_t count) {
@@ -412,12 +433,14 @@ void Result::displayAllResult(size_t clocks_per_us, size_t extime,
   displayAbortByValidationRate();
   displayCommitLatencyRate(clocks_per_us, extime, thread_num);
   displayBackoffLatencyRate(clocks_per_us, extime, thread_num);
+  displayEarlyAbortRate();
   displayExtraReads();
   displayGCCounts();
   displayGCLatencyRate(clocks_per_us, extime, thread_num);
   displayGCTMTElementsCounts();
   displayGCVersionCounts();
   displayMakeProcedureLatencyRate(clocks_per_us, extime, thread_num);
+  displayMemcpys();
   displayOtherWorkLatencyRate(clocks_per_us, extime, thread_num);
   displayPreemptiveAbortsCounts();
   displayRatioOfPreemptiveAbortToTotalAbort();
@@ -450,13 +473,15 @@ void Result::addLocalAllResult(const Result &other) {
   addLocalAbortByOperation(other.local_abort_by_operation_);
   addLocalAbortByValidation(other.local_abort_by_validation_);
   addLocalBackoffLatency(other.local_backoff_latency_);
-  addLocalCommitLatency(other.local_backoff_latency_);
+  addLocalCommitLatency(other.local_commit_latency_);
+  addLocalEarlyAborts(other.local_early_aborts_);
   addLocalExtraReads(other.local_extra_reads_);
   addLocalGCCounts(other.local_gc_counts_);
   addLocalGCLatency(other.local_gc_latency_);
   addLocalGCVersionCounts(other.local_gc_version_counts_);
   addLocalGCTMTElementsCounts(other.local_gc_TMT_elements_counts_);
   addLocalMakeProcedureLatency(other.local_make_procedure_latency_);
+  addLocalMemcpys(other.local_memcpys);
   addLocalPreemptiveAbortsCounts(other.local_preemptive_aborts_counts_);
   addLocalReadLatency(other.local_read_latency_);
   addLocalRtsupd(other.local_rtsupd_);

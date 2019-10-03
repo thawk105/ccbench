@@ -21,8 +21,8 @@ using namespace std;
 
 class TxExecutor {
  public:
-  char returnVal[VAL_SIZE] = {};
-  char writeVal[VAL_SIZE] = {};
+  char return_val_[VAL_SIZE] = {};
+  char write_val_[VAL_SIZE] = {};
   uint8_t thid_;                  // thread ID
   uint32_t cstamp_ = 0;           // Transaction end time, c(T)
   uint32_t pstamp_ = 0;           // Predecessor high-water mark, η (T)
@@ -58,7 +58,7 @@ class TxExecutor {
         gcobject_.reuse_version_from_gc_.emplace_back(new Version());
     }
 
-    genStringRepeatedNumber(writeVal, VAL_SIZE, thid);
+    genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }
 
   SetElement<Tuple> *searchReadSet(unsigned int key);

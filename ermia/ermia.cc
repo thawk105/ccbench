@@ -89,6 +89,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
       if (trans.status_ == TransactionStatus::aborted) {
         trans.abort();
+#if ADD_ANALYSIS
+        ++trans.eres_->local_early_aborts_;
+#endif
         goto RETRY;
       }
     }

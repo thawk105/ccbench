@@ -15,12 +15,14 @@ class Result {
   uint64_t local_abort_by_validation_ = 0;
   uint64_t local_commit_latency_ = 0;
   uint64_t local_backoff_latency_ = 0;
+  uint64_t local_early_aborts_ = 0;
   uint64_t local_extra_reads_ = 0;
   uint64_t local_gc_counts_ = 0;
   uint64_t local_gc_latency_ = 0;
   uint64_t local_gc_version_counts_ = 0;
   uint64_t local_gc_TMT_elements_counts_ = 0;
   uint64_t local_make_procedure_latency_ = 0;
+  uint64_t local_memcpys = 0;
   uint64_t local_preemptive_aborts_counts_ = 0;
   uint64_t local_read_latency_ = 0;
   uint64_t local_rtsupd_ = 0;
@@ -46,12 +48,14 @@ class Result {
   uint64_t total_abort_by_validation_ = 0;
   uint64_t total_commit_latency_ = 0;
   uint64_t total_backoff_latency_ = 0;
+  uint64_t total_early_aborts_ = 0;
   uint64_t total_extra_reads_ = 0;
   uint64_t total_gc_counts_ = 0;
   uint64_t total_gc_latency_ = 0;
   uint64_t total_gc_version_counts_ = 0;
   uint64_t total_gc_TMT_elements_counts_ = 0;
   uint64_t total_make_procedure_latency_ = 0;
+  uint64_t total_memcpys = 0;
   uint64_t total_preemptive_aborts_counts_ = 0;
   uint64_t total_read_latency_ = 0;
   uint64_t total_rtsupd_ = 0;
@@ -84,6 +88,7 @@ class Result {
                                  size_t thread_num);
   void displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
                                  size_t thread_num);
+  void displayEarlyAbortRate();
   void displayExtraReads();
   void displayGCCounts();
   void displayGCLatencyRate(size_t clocks_per_us, size_t extime,
@@ -92,6 +97,7 @@ class Result {
   void displayGCVersionCounts();
   void displayMakeProcedureLatencyRate(size_t clocks_per_us, size_t extime,
       size_t thread_num);
+  void displayMemcpys();
   void displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
       size_t thread_num);
   void displayPreemptiveAbortsCounts();
@@ -124,12 +130,14 @@ class Result {
   void addLocalAbortByValidation(const uint64_t count);
   void addLocalCommitLatency(const uint64_t count);
   void addLocalBackoffLatency(const uint64_t count);
+  void addLocalEarlyAborts(const uint64_t count);
   void addLocalExtraReads(const uint64_t count);
   void addLocalGCCounts(const uint64_t count);
   void addLocalGCLatency(const uint64_t count);
   void addLocalGCVersionCounts(const uint64_t count);
   void addLocalGCTMTElementsCounts(const uint64_t count);
   void addLocalMakeProcedureLatency(const uint64_t count);
+  void addLocalMemcpys(const uint64_t count);
   void addLocalPreemptiveAbortsCounts(const uint64_t count);
   void addLocalReadLatency(const uint64_t count);
   void addLocalRtsupd(const uint64_t count);

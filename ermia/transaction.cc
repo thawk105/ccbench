@@ -81,8 +81,7 @@ void TxExecutor::ssn_tread(uint64_t key) {
 
   // if it already access the key object once.
   // w
-  if (searchWriteSet(key)) goto FINISH_TREAD;
-  if (searchReadSet(key)) goto FINISH_TREAD;
+  if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
   Tuple *tuple;
 #if MASSTREE_USE
@@ -101,21 +100,27 @@ void TxExecutor::ssn_tread(uint64_t key) {
          txid_ < ver->cstamp_.load(memory_order_acquire))
     ver = ver->prev_;
 
-  if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG)))
+  if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG))) {
     // no overwrite yet
     read_set_.emplace_back(key, tuple, ver);
-  else
+  } else {
     // update pi with r:w edge
     this->sstamp_ =
         min(this->sstamp_, (ver->psstamp_.atomicLoadSstamp() >> TIDFLAG));
+  }
   upReadersBits(ver);
 
   verify_exclusion_or_abort();
-  if (this->status_ == TransactionStatus::aborted) goto FINISH_TREAD;
+  if (this->status_ == TransactionStatus::aborted) {
+    goto FINISH_TREAD;
+  }
 
   // for fairness
   // ultimately, it is wasteful in prototype system.
-  memcpy(returnVal, ver->val_, VAL_SIZE);
+  memcpy(this->return_val_, ver->val_, VAL_SIZE);
+#if ADD_ANALYSIS
+  ++eres_->local_memcpys;
+#endif
 
 FINISH_TREAD:
 #if ADD_ANALYSIS
@@ -310,7 +315,10 @@ void TxExecutor::ssn_commit() {
 
   // status, inFlight -> committed
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    memcpy((*itr).ver_->val_, writeVal, VAL_SIZE);
+    memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
+#if ADD_ANALYSIS
+    ++eres_->local_memcpys;
+#endif
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
   }
 
@@ -322,6 +330,9 @@ void TxExecutor::ssn_commit() {
 }
 
 void TxExecutor::ssn_parallel_commit() {
+#if ADD_ANALYSIS
+  uint64_t start(rdtscp());
+#endif
   this->status_ = TransactionStatus::committing;
   TransactionTable *tmt = TMT[thid_];
   tmt->status_.store(TransactionStatus::committing);
@@ -419,8 +430,13 @@ void TxExecutor::ssn_parallel_commit() {
   } else {
     status_ = TransactionStatus::aborted;
     tmt->status_.store(TransactionStatus::aborted, memory_order_release);
-    return;
+    goto FINISH_PARALLEL_COMMIT;
   }
+
+#if ADD_ANALYSIS
+  eres_->local_vali_latency_ += rdtscp() - start;
+  start = rdtscp();
+#endif
 
   // update eta
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
@@ -435,8 +451,8 @@ void TxExecutor::ssn_parallel_commit() {
   }
 
   // update pi
-  uint64_t verSstamp = this->sstamp_;
-  verSstamp = verSstamp << TIDFLAG;
+  uint64_t verSstamp;
+  verSstamp = this->sstamp_ << TIDFLAG;
   verSstamp &= ~(TIDFLAG);
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
@@ -448,7 +464,10 @@ void TxExecutor::ssn_parallel_commit() {
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
     (*itr).ver_->psstamp_.atomicStorePstamp(this->cstamp_);
     (*itr).ver_->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
-    memcpy((*itr).ver_->val_, writeVal, VAL_SIZE);
+    memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
+#if ADD_ANALYSIS
+    ++eres_->local_memcpys;
+#endif
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
     gcobject_.gcq_for_version_.emplace_back(
         GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
@@ -461,6 +480,11 @@ void TxExecutor::ssn_parallel_commit() {
   write_set_.clear();
   ++eres_->local_commit_counts_;
   TMT[thid_]->lastcstamp_.store(cstamp_, memory_order_release);
+
+FINISH_PARALLEL_COMMIT:
+#if ADD_ANALYSIS
+  eres_->local_commit_latency_ += rdtscp() - start;
+#endif
   return;
 }
 

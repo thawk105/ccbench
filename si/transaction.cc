@@ -114,6 +114,9 @@ void TxExecutor::tread(uint64_t key) {
   // for fairness
   // ultimately, it is wasteful in prototype system.
   memcpy(return_val_, ver->val_, VAL_SIZE);
+#if ADD_ANALYSIS
+  ++sres_->local_memcpys;
+#endif
 
 FINISH_TREAD:
 #if ADD_ANALYSIS
@@ -236,12 +239,18 @@ FINISH_WRITE:
 }
 
 void TxExecutor::commit() {
+#if ADD_ANALYSIS
+  uint64_t start(rdtscp());
+#endif
   this->cstamp_ = ++CCtr;
   status_ = TransactionStatus::committed;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
     memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
+#if ADD_ANALYSIS
+    ++sres_->local_memcpys;
+#endif
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
     gcobject_.gcq_for_versions_.emplace_back(
         GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, cstamp_));
@@ -252,6 +261,9 @@ void TxExecutor::commit() {
 
   TMT[thid_]->lastcstamp_.store(this->cstamp_, std::memory_order_release);
   ++sres_->local_commit_counts_;
+#if ADD_ANALYSIS
+  sres_->local_commit_latency_ += rdtscp() - start;
+#endif
   return;
 }
 
