@@ -400,14 +400,14 @@ void TxExecutor::ssn_parallel_commit() {
             if (tmt->status_.load(memory_order_acquire) ==
                 TransactionStatus::committed) {
               this->pstamp_ =
-                  min(this->pstamp_, tmt->cstamp_.load(memory_order_acquire));
+                  max(this->pstamp_, tmt->cstamp_.load(memory_order_acquire));
             }
           }
         }
       }
     }
     // re-read pstamp in case we missed any reader
-    this->pstamp_ = min(this->pstamp_, ver->psstamp_.atomicLoadPstamp());
+    this->pstamp_ = max(this->pstamp_, ver->psstamp_.atomicLoadPstamp());
   }
 
   tmt = TMT[thid_];
