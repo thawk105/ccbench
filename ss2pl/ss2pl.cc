@@ -65,10 +65,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
                   RRATIO, RMW, YCSB, false, thid, myres);
-#if KEY_SORT
-    std::sort(trans.pro_set_.begin(), trans.pro_set_.end());
-#endif
-
   RETRY:
     if (loadAcquire(quit)) break;
     if (thid == 0) leaderBackoffWork(backoff, res);

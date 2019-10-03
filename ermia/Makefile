@@ -6,9 +6,10 @@ include $(REL)Makefile
 ERMIA_ALLSRC = $(ERMIA_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=4
+VAL_SIZE=10000
 ADD_ANALYSIS=1
-BACK_OFF=1
+BACK_OFF=0
+KEY_SORT=0
 MASSTREE_USE=1
 
 CC = g++
@@ -20,6 +21,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DVAL_SIZE=$(VAL_SIZE) \
 				 -DADD_ANALYSIS=$(ADD_ANALYSIS) \
 				 -DBACK_OFF=$(BACK_OFF) \
+				 -DKEY_SORT=$(KEY_SORT) \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release

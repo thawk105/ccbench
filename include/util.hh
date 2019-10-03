@@ -118,6 +118,11 @@ inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
 
   (*pro.begin()).ronly_ = ronly_flag;
   (*pro.begin()).wonly_ = wonly_flag;
+
+#if KEY_SORT
+  std::sort(pro.begin(), pro.end());
+#endif // KEY_SORT
+
 #if ADD_ANALYSIS
   res.local_make_procedure_latency_ += rdtscp() - start;
 #endif
