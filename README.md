@@ -26,6 +26,7 @@ snapshot isolation.
 ### Implemented
 - modify
   - rapid garbage collection from Cicada's paper.
+  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
 
 ---
 
@@ -38,6 +39,8 @@ Strong Strict 2 Phase Lock.
 - Deadlock resolution  
   - nothing ... dlr0
   - No-Wait ... dlr1
+- modify  
+  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)  
 
 ---
 
@@ -45,6 +48,7 @@ Strong Strict 2 Phase Lock.
 It was proposed at SOSP'2013 by Stephen Tu.
 - modify
   - reduce roop in concurrency control protocol
+  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
 
 ---
 
@@ -61,6 +65,7 @@ Latch-free SSN was proposed at VLDB'2017 by Tianzheng Wang.
 - modify
   - Garbage Collection for Transaction Mapping Table
   - rapid garbage collection from Cicada's paper.
+  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
 
 ---
 
@@ -75,6 +80,7 @@ TicToc was proposed at SIGMOD'2016 by Xiangyao Yu.
     - Timestamp History
 - modify
   - reduce roop in concurrency control protocol
+  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
 
 ---
 
@@ -84,6 +90,7 @@ MOCC was proposed at VLDB'2017 by Tianzheng Wang.
 ### Implemented
 - modify
   - new temprature protocol reduces contentions and improves throughput much.
+  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
 
 ---
 
