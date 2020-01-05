@@ -2,13 +2,35 @@
 
 ---
 
+## Installing a binary distribution package
+On Debian/Ubuntu Linux, 
+```
+sudo apt-get install libgflags-dev cmake cmake-curses-gui
+```
+
 ## Prepare using
 ```
-install cmake by yourself.
-git clone https...this repository
-cd ccbench
-source bootstrap.sh
+$ git clone this_repository
+$ cd ccbench
+$ source bootstrap.sh
 ```
+Prepare gflags for command line options.
+```
+$ cd third_party/gflags
+$ mkdir build
+$ cd build
+$ ccmake ..
+  - Press 'c' to configure the build system and 'e' to ignore warnings.
+  - Set CMAKE_INSTALL_PREFIX and other CMake variables and options.
+  - Continue pressing 'c' until the option 'g' is available.
+  - Then press 'g' to generate the configuration files for GNU Make.
+$ make -j && make install
+```
+Prepare glog for command line options.
+```
+./autogen.sh && ./configure && make -j && make install
+```
+
 Processing of bootstrap.sh :  
 git submodule init, update. <br>
 Build third_party/masstree, third_party/mimalloc.<br>

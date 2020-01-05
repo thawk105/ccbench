@@ -26,6 +26,7 @@ cd secure
 cmake -DMI_SECURE=ON ../..
 make -j
 
+# prepare for tbb
 cd ../../../tbb
 make -j
 
