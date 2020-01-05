@@ -1,9 +1,9 @@
 #ycsb-xrs.sh(mocc)
-tuple=100000000
+tuple=1000000
 maxope=10
-rratioary=(50 95 100)
+rratioary=(95)
 rmw=off
-skew=0.9
+skew=0
 ycsb=on
 cpumhz=2100
 epochtime=40
@@ -26,7 +26,7 @@ do
   if test $rratio = 50; then
     result=result_mocc_ycsbA_tuple100m_skew09_val4-1k.dat
   elif test $rratio = 95; then
-    result=result_mocc_ycsbB_tuple100m_skew09_val4-1k.dat
+    result=result_mocc_ycsbB_tuple1m_val10-100k.dat
   elif test $rratio = 100; then
     result=result_mocc_ycsbC_tuple100m_skew09_val4-1k.dat
   else
@@ -38,13 +38,13 @@ do
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime" >> $result
   
-  for ((val = 4; val <= 1000; val += 100))
+  for ((val = 10; val <= 100000; val *= 10))
   do
     if test $val = 104 ; then
       val=100
     fi
     cd ../
-    make clean; make -j10 VAL_SIZE=$val
+    make clean; make -j VAL_SIZE=$val
     cd script
   
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime"

@@ -1,9 +1,9 @@
 #ycsb-xrs.sh(cicada)
-tuple=100000000
+tuple=1000000
 maxope=10
-rratioary=(50 95 100)
+rratioary=(95)
 rmw=off
-skew=0.9
+skew=0
 ycsb=on
 wal=off
 group_commit=off
@@ -30,7 +30,7 @@ do
   if test $rratio = 50; then
     result=result_cicada_ycsbA_tuple100m_skew09_val4-1k.dat
   elif test $rratio = 95; then
-    result=result_cicada_ycsbB_tuple100m_skew09_val4-1k.dat
+    result=result_cicada_ycsbB_tuple1m_val10-100k.dat
   elif test $rratio = 100; then
     result=result_cicada_ycsbC_tuple100m_skew09_val4-1k.dat
   else
@@ -42,7 +42,7 @@ do
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime" >> $result
   
-  for ((val = 4; val <= 1000; val += 100))
+  for ((val = 10; val <= 100000; val *= 10))
   do
     if test $val = 104 ; then
       val=100

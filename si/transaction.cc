@@ -247,7 +247,7 @@ void TxExecutor::commit() {
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
-    memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
+    std::memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
 #if ADD_ANALYSIS
     ++sres_->local_memcpys;
 #endif

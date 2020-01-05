@@ -6,8 +6,8 @@ rmw=off
 skew=0.9
 ycsb=on
 epochtime=40
-extime=5
-epoch=5
+extime=3
+epoch=3
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -30,7 +30,7 @@ fi
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
-    result=result_silo_ycsbA_tuple100m_skew09_slprp0-1000.dat
+    result=result_silo+no-wait_ycsbA_tuple100m_skew09_slprp0-1000.dat
   elif test $rratio = 95; then
     result=result_silo_ycsbB_tuple100m_skew09_val4-1k.dat
   elif test $rratio = 100; then

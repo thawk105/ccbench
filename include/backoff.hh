@@ -17,7 +17,8 @@ class Backoff {
   static std::atomic<double> Backoff_;
   static constexpr double kMinBackoff = 0;
   static constexpr double kMaxBackoff = 1000;
-  static constexpr double kIncrBackoff = 0.5;
+  static constexpr double kIncrBackoff = 100;
+  //static constexpr double kIncrBackoff = 0.5;
 
   uint64_t last_committed_txs_ = 0;
   double last_committed_tput_ = 0;

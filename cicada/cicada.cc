@@ -16,6 +16,7 @@
 #define GLOBAL_VALUE_DEFINE
 #include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
+#include "../include/compiler.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/int64byte.hh"

@@ -1,8 +1,8 @@
 #ycsb-xth.sh(cicada)
 tuple=10000000
-maxope=16
+maxope=1
 #rratioary=(50 95 100)
-rratioary=(50)
+rratioary=(95)
 rmw=on
 skew=0.99
 ycsb=on
@@ -35,9 +35,10 @@ do
   if test $rratio = 50 ; then
     result=result_cicada_ycsbA_tuple10m_ope16_rmw_skew099.dat
   elif test $rratio = 95 ; then
-    result=result_cicada_ycsbB_tuple1k-1g.dat
+    result=result_cicada_ycsbB_tuple10m_ope1_rmw_skew099.dat
   elif test $rratio = 100 ; then
-    result=result_cicada_ycsbC_tuple1k-1g.dat
+    result=result_cicada_ycsbC_tuple10m_ope1_skew099.dat
+    maxope=1
   else
     echo "BUG"
     exit 1
@@ -47,7 +48,7 @@ do
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime" >> $result
   
-  for ((thread=28; thread<=224; thread+=28))
+  for ((thread=1; thread<=28; thread+=4))
   do
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime"
     echo "Thread number $thread"

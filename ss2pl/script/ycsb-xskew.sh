@@ -1,13 +1,13 @@
 #ycsb-xrs.sh(ss2pl)
-tuple=1000
+tuple=100000000
 maxope=10
-rratioary=(50 95 100)
+rratioary=(95)
 rmw=off
 skew=0
 ycsb=on
 cpu_mhz=2100
-extime=5
-epoch=5
+extime=3
+epoch=3
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -26,9 +26,9 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
-    result=result_ss2pl_ycsbA_tuple1k_skew0-099.dat
+    result=result_ss2pl_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 95; then
-    result=result_ss2pl_ycsbB_tuple1k_skew0-099.dat
+    result=result_ss2pl-dlr0_ycsbB_tuple100m_skew06-085.dat
   elif test $rratio = 100; then
     result=result_ss2pl_ycsbC_tuple1k_skew0-099.dat
   else
@@ -40,7 +40,7 @@ do
   echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
   
-  for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
+  for ((tmpskew = 60; tmpskew <= 85; tmpskew += 5))
   do
     if test $tmpskew = 100 ; then
       tmpskew=95

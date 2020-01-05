@@ -53,6 +53,7 @@ void chkArg(const int argc, char *argv[]) {
     cout << "EXTIME: execution time." << endl << endl;
     cout << "Tuple " << sizeof(Tuple) << endl;
     cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
+    cout << "Tidword " << sizeof(Tidword) << endl;
     cout << "KEY_SIZE : " << KEY_SIZE << endl;
     cout << "VAL_SIZE : " << VAL_SIZE << endl;
     cout << "MASSTREE_USE : " << MASSTREE_USE << endl;

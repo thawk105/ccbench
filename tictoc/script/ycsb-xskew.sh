@@ -1,13 +1,13 @@
 # ycsb-xskew.sh(tictoc)
-tuple=1000
-maxope=10
-rratioary=(50 95 100)
-rmw=off
+tuple=10000000
+maxope=16
+rratioary=(50 95)
+rmw=on
 skew=0
 ycsb=on
 cpumhz=2100
-extime=5
-epoch=5
+extime=3
+epoch=3
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -19,16 +19,17 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
+thread=28
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=4
+make clean; make -j KEY_SIZE=8 VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
-    result=result_tictoc_ycsbA_tuple1k_skew0-099.dat
+    result=result_tictoc_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 95; then
-    result=result_tictoc_ycsbB_tuple1k_skew0-099.dat
+    result=result_tictoc_ycsbB_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 100; then
     result=result_tictoc_ycsbC_tuple1k_skew0-099.dat
   else

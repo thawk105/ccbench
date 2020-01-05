@@ -9,7 +9,7 @@ TICTOC_ALLSRC = $(TICTOC_SRCS1) $(wildcard include/*.hh)
 KEY_SIZE=8
 VAL_SIZE=4
 ADD_ANALYSIS=1
-BACK_OFF=1
+BACK_OFF=0
 MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=1
 PREEMPTIVE_ABORTS=1
@@ -34,6 +34,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 
 LDFLAGS = -L../third_party/mimalloc/out/release
 LIBS = -lpthread -lmimalloc
+#LIBS = -lpthread
 
 OBJS1 = $(TICTOC_SRCS1:.cc=.o)
 all: $(PROG1)

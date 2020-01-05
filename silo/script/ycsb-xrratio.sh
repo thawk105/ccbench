@@ -24,12 +24,12 @@ cd ../
 make clean; make -j VAL_SIZE=4
 cd script/
 
-result=result_silo_tuple50_rratio00-100.dat
+result=result_silo_tuple50_rratio0-100.dat
 rm $result
 echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
 echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
 
-for ((rratio=10; rratio<=100; rratio+=10))
+for ((rratio=0; rratio<=100; rratio+=10))
 do
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
   
