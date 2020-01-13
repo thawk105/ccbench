@@ -3,15 +3,13 @@
 #include <string.h>
 
 #include <cstdint>
-
-#define LOGLIST_SIZE 31
+#include <memory>
 
 class LogHeader {
  public:
   int chkSum_ = 0;
   unsigned int logRecNum_ = 0;
   const std::size_t len_val_ = VAL_SIZE;
-  // 8 bytes
 
   void init() {
     chkSum_ = 0;
@@ -29,8 +27,7 @@ class LogRecord {
   uint64_t tid_;
   unsigned int key_;
   char val_[VAL_SIZE];
-  // 16 bytes
-  //
+
   LogRecord() : tid_(0), key_(0) {}
 
   LogRecord(uint64_t tid, unsigned int key, char *val) : tid_(tid), key_(key) {
@@ -48,4 +45,10 @@ class LogRecord {
 
     return chkSum;
   }
+};
+
+class LogPackage {
+public:
+  LogHeader header_;
+  std::unique_ptr<LogRecord[]> log_records_;
 };

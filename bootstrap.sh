@@ -32,5 +32,13 @@ make -j
 
 cd ../../
 
+mkdir -p cicada/log
+mkdir -p ermia/log
+mkdir -p mocc/log
+mkdir -p si/log
+mkdir -p silo/log
+mkdir -p ss2pl/log
+mkdir -p tictoc/log
+
 # setting path, so this script should be executed by "source" command.
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/third_party/mimalloc/out/release

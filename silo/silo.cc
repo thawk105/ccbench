@@ -46,16 +46,22 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   Backoff backoff(CLOCKS_PER_US);
 
 #if WAL
-  if (boost::filesystem::exists("/tmp/ccbench")) {
-    NNN;
+  /*
+  const boost::filesystem::path log_dir_path("/tmp/ccbench");
+  if (boost::filesystem::exists(log_dir_path)) {
   } else {
-    NNN;
-    boost::filesystem::create_directory("/tmp/ccbench");
+    boost::system::error_code error;
+    const bool result = boost::filesystem::create_directory(log_dir_path, error);
+    if (!result || error) {
+      ERR;
+    }
   }
   std::string logpath("/tmp/ccbench");
-  genLogFile(logpath, res.thid_);
-  trans.logfile.open(logpath, O_CREATE| O_TRUNC | O_WRONLY, 0644);
-  trans.logfile.ftruncate(10^9);
+  */
+  std::string logpath;
+  genLogFile(logpath, thid);
+  trans.logfile_.open(logpath, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+  trans.logfile_.ftruncate(10^9);
 #endif
 
 #ifdef Linux

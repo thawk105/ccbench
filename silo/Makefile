@@ -35,6 +35,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DPARTITION_TABLE=$(PARTITION_TABLE) \
 				 -DPROCEDURE_SORT=$(PROCEDURE_SORT) \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
+				 -DWAL=$(WAL) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug -L/user/lib
 INCLUDE = -I/usr/include
