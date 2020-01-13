@@ -17,9 +17,9 @@
 #include "../include/fileio.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/tsc.hh"
+#include "../include/util.hh"
 
-extern bool chkSpan(struct timeval &start, struct timeval &stop,
-                    long threshold);
+
 extern void displayDB();
 
 using namespace std;
@@ -223,9 +223,9 @@ void TxnExecutor::abort() {
 void TxnExecutor::wal(uint64_t ctid) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     LogRecord log(ctid, (*itr).key_, write_val_);
-    log_set_.push_back(log);
-    latest_log_header_.chkSum += log.computeChkSum();
-    ++latest_log_header_.logRecNum;
+    log_set_.emplace_back(log);
+    latest_log_header_.chkSum_ += log.computeChkSum();
+    ++latest_log_header_.logRecNum_;
   }
 
   if (log_set_.size() > LOGSET_SIZE / 2) {
@@ -239,7 +239,7 @@ void TxnExecutor::wal(uint64_t ctid) {
     // for (auto itr = log_set_.begin(); itr != log_set_.end(); ++itr)
     //  logfile_.write((void *)&(*itr), sizeof(LogRecord));
     logfile_.write((void *)&(log_set_[0]),
-                   sizeof(LogRecord) * latest_log_header_.logRecNum);
+                   sizeof(LogRecord) * latest_log_header_.logRecNum_);
 
     // logfile_.fdatasync();
 
@@ -276,7 +276,9 @@ void TxnExecutor::writePhase() {
   maxtid.latest = 1;
   mrctid_ = maxtid;
 
-  // wal(maxtid.obj_);
+#if WAL
+  wal(maxtid.obj_);
+#endif
 
   // write(record, commit-tid)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {

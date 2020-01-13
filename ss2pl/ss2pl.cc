@@ -35,7 +35,6 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern void display_procedure_vector(std::vector<Procedure>& pro);
 extern void displayDB();
 extern void displayPRO();
-extern void isReady(const std::vector<char>& readys);
 extern void makeDB();
 extern void sleepMs(size_t ms);
 extern void waitForReady(const std::vector<char>& readys);

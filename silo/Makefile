@@ -16,6 +16,7 @@ MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=1
 PARTITION_TABLE=0
 PROCEDURE_SORT=0
+WAL=1
 
 SLEEP_READ_PHASE=0 # # of tics
 # end of initialization
@@ -35,9 +36,11 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DPROCEDURE_SORT=$(PROCEDURE_SORT) \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
 
-LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug
-#LIBS = -lpthread -lmimalloc
-LIBS = -lpthread
+LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug -L/user/lib
+INCLUDE = -I/usr/include
+
+#LDLIBS = -lpthread -lmimalloc
+LDLIBS = -lpthread -lboost_filesystem -lboost_system
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)
@@ -46,10 +49,10 @@ all: $(PROG1) $(PROG2)
 
 include ../include/MakefileForMasstreeUse
 $(PROG1) : $(OBJS1) $(MASSOBJ)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) $(INCLUDE)
 
 $(PROG2) : $(OBJS2) 
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) $(INCLUDE)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -4,10 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <xmmintrin.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cctype>
 #include <cerrno>
@@ -19,37 +22,18 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
+#include "atomic_wrapper.hh"
+#include "debug.hh"
 #include "procedure.hh"
 #include "random.hh"
 #include "result.hh"
 #include "tsc.hh"
 #include "zipf.hh"
 
-[[maybe_unused]] inline static bool chkClkSpan(const uint64_t start,
-                                               const uint64_t stop,
-                                               const uint64_t threshold) {
-  uint64_t diff = 0;
-  diff = stop - start;
-  if (diff > threshold)
-    return true;
-  else
-    return false;
-}
-
-[[maybe_unused]] inline static bool chkClkSpanSec(
-    const uint64_t start, const uint64_t stop, const unsigned int clocks_per_us,
-    const uint64_t sec) {
-  uint64_t diff = 0;
-  diff = stop - start;
-  diff = diff / clocks_per_us / 1000 / 1000;
-  if (diff > sec)
-    return true;
-  else
-    return false;
-}
-
+// class
 class LibcError : public std::exception {
  private:
   std::string str_;
@@ -74,7 +58,52 @@ class LibcError : public std::exception {
       : str_(generateMessage(errnum, msg)) {}
 };
 
-inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
+// function
+extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
+
+extern size_t decideParallelBuildNumber(size_t tuple_num);
+
+extern void displayProcedureVector(std::vector<Procedure> &pro);
+
+extern void displayRusageRUMaxrss();
+
+extern bool isReady(const std::vector<char> &readys);
+
+extern void readyAndWaitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
+
+extern void sleepMs(size_t ms);
+
+extern void waitForReady(const std::vector<char> &readys);
+
+extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm);
+
+//----------
+// After this line, intending to force inline function.
+
+[[maybe_unused]] inline static bool chkClkSpan(const uint64_t start,
+                                               const uint64_t stop,
+                                               const uint64_t threshold) {
+  uint64_t diff = 0;
+  diff = stop - start;
+  if (diff > threshold)
+    return true;
+  else
+    return false;
+}
+
+[[maybe_unused]] inline static bool chkClkSpanSec(
+    const uint64_t start, const uint64_t stop, const unsigned int clocks_per_us,
+    const uint64_t sec) {
+  uint64_t diff = 0;
+  diff = stop - start;
+  diff = diff / clocks_per_us / 1000 / 1000;
+  if (diff > sec)
+    return true;
+  else
+    return false;
+}
+
+inline static void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                    FastZipf &zipf, size_t tuple_num, size_t max_ope,
                    size_t thread_num, size_t rratio, bool rmw, bool ycsb,
                    bool partition, size_t thread_id, Result& res) {
@@ -128,7 +157,7 @@ inline void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
 #endif
 }
 
-[[maybe_unused]] inline void sleepTics(size_t tics) {
+[[maybe_unused]] inline static void sleepTics(size_t tics) {
   uint64_t start(rdtscp());
   while (rdtscp() - start < tics);
 }

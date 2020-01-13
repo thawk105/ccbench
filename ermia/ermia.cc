@@ -31,7 +31,6 @@ using namespace std;
 extern void chkArg(const int argc, const char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
-extern void isReady(const std::vector<char>& readys);
 extern void leaderWork(GarbageCollection& gcob);
 extern void makeDB();
 extern void naiveGarbageCollection();

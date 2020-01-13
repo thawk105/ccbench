@@ -1,34 +1,10 @@
 
-#include <stdio.h>
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <xmmintrin.h>
-
-#include <atomic>
-#include <thread>
-#include <vector>
-
-#include "../include/atomic_wrapper.hh"
-#include "../include/debug.hh"
-#include "../include/procedure.hh"
-#include "../include/random.hh"
-#include "../include/result.hh"
-#include "../include/zipf.hh"
+#include "./../include/util.hh"
 
 bool chkSpan(struct timeval &start, struct timeval &stop, long threshold) {
   long diff = 0;
   diff += (stop.tv_sec - start.tv_sec) * 1000 * 1000 +
           (stop.tv_usec - start.tv_usec);
-  if (diff > threshold)
-    return true;
-  else
-    return false;
-}
-
-bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                const uint64_t threshold) {
-  uint64_t diff = 0;
-  diff = stop - start;
   if (diff > threshold)
     return true;
   else
@@ -71,7 +47,7 @@ void displayRusageRUMaxrss() {
   printf("maxrss:\t%ld kB\n", r.ru_maxrss);
 }
 
-void ReadyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+void readyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
                                      const size_t thnm) {
   running++;
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
@@ -85,7 +61,7 @@ void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm) {
   return;
 }
 
-bool isReady(const std::vector<char> &readys) {
+bool isReady(const std::vector<char>& readys) {
   for (const char &b : readys) {
     if (!loadAcquire(b)) return false;
   }

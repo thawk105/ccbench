@@ -19,6 +19,7 @@
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
 #include "../include/random.hh"
+#include "../include/util.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/time_stamp.hh"
@@ -26,8 +27,6 @@
 #include "include/tuple.hh"
 
 using std::cout, std::endl;
-
-extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void chkArg(const int argc, char *argv[]) {
   if (argc != 16) {

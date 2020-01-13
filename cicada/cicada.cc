@@ -23,24 +23,13 @@
 #include "../include/procedure.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
+#include "../include/util.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/transaction.hh"
+#include "include/util.hh"
 
 using namespace std;
-
-extern void chkArg(const int argc, char* argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern bool chkSpan(struct timeval& start, struct timeval& stop,
-                    long threshold);
-extern void deleteDB();
-extern void isReady(const std::vector<char>& readys);
-extern void makeDB(uint64_t* initial_wts);
-extern void leaderWork([[maybe_unused]] Backoff& backoff,
-                       [[maybe_unused]] std::vector<Result>& res);
-extern void waitForReady(const std::vector<char>& readys);
-extern void sleepMs(size_t ms);
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
             std::vector<Result>& res) {

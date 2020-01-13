@@ -29,7 +29,6 @@ using namespace std;
 extern void chkArg(const int argc, char* argv[]);
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
-extern void isReady(const std::vector<char>& readys);
 extern void leaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop,
                        Result& res);
 extern void displayDB();

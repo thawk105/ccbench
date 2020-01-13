@@ -3,9 +3,10 @@
 ---
 
 ## Installing a binary distribution package
-On Debian/Ubuntu Linux, 
+On Debian/Ubuntu Linux, execute below statement or bootstrap_apt.sh.
 ```
-sudo apt-get install libgflags-dev cmake cmake-curses-gui
+$ sudo apt update -y
+$ sudo apt-get install -y libgflags-dev cmake cmake-curses-gui libboost-filesystem-dev
 ```
 
 ## Prepare using

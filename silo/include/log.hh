@@ -8,34 +8,33 @@
 
 class LogHeader {
  public:
-  int chkSum = 0;
-  unsigned int logRecNum = 0;
+  int chkSum_ = 0;
+  unsigned int logRecNum_ = 0;
+  const std::size_t len_val_ = VAL_SIZE;
   // 8 bytes
 
   void init() {
-    chkSum = 0;
-    logRecNum = 0;
+    chkSum_ = 0;
+    logRecNum_ = 0;
   }
 
   void convertChkSumIntoComplementOnTwo() {
-    chkSum ^= 0xffffffff;
-    ++chkSum;
+    chkSum_ ^= 0xffffffff;
+    ++chkSum_;
   }
 };
 
 class LogRecord {
  public:
-  uint64_t tid;
-  unsigned int key;
-  char val[VAL_SIZE];
+  uint64_t tid_;
+  unsigned int key_;
+  char val_[VAL_SIZE];
   // 16 bytes
   //
-  LogRecord() : tid(0), key(0) {}
+  LogRecord() : tid_(0), key_(0) {}
 
-  LogRecord(uint64_t tid, unsigned int key, char *val) {
-    this->tid = tid;
-    this->key = key;
-    memcpy(this->val, val, VAL_SIZE);
+  LogRecord(uint64_t tid, unsigned int key, char *val) : tid_(tid), key_(key) {
+    memcpy(this->val_, val, VAL_SIZE);
   }
 
   int computeChkSum() {

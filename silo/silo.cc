@@ -10,10 +10,13 @@
 #include <algorithm>
 #include <cctype>
 
+#include "boost/filesystem.hpp"
+
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hh"
 #include "include/common.hh"
 #include "include/transaction.hh"
+#include "include/util.hh"
 
 #include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
@@ -29,19 +32,8 @@
 
 using namespace std;
 
-extern void chkArg(const int argc, char* argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern bool chkEpochLoaded();
 extern void displayParameter();
-extern void isReady(const std::vector<char>& readys);
-extern void leaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop);
-extern void displayDB();
 extern void displayPRO();
-extern void genLogFile(std::string& logpath, const int thid);
-extern void makeDB();
-extern void waitForReady(const std::vector<char>& readys);
-extern void sleepMs(size_t ms);
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
             std::vector<Result>& res) {
@@ -53,13 +45,17 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   uint64_t epoch_timer_start, epoch_timer_stop;
   Backoff backoff(CLOCKS_PER_US);
 
-  // std::string logpath;
-  // genLogFile(logpath, res.thid_);
-  // trans.logfile.open(logpath, O_TRUNC | O_WRONLY, 0644);
-  // trans.logfile.ftruncate(10^9);
-
-#if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(thid));
+#if WAL
+  if (boost::filesystem::exists("/tmp/ccbench")) {
+    NNN;
+  } else {
+    NNN;
+    boost::filesystem::create_directory("/tmp/ccbench");
+  }
+  std::string logpath("/tmp/ccbench");
+  genLogFile(logpath, res.thid_);
+  trans.logfile.open(logpath, O_CREATE| O_TRUNC | O_WRONLY, 0644);
+  trans.logfile.ftruncate(10^9);
 #endif
 
 #ifdef Linux
@@ -67,6 +63,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   // printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
+#endif
+
+#if MASSTREE_USE
+  MasstreeWrapper<Tuple>::thread_init(int(thid));
 #endif
 
   storeRelease(ready, 1);

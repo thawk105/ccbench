@@ -26,9 +26,8 @@
 #include "../include/procedure.hh"
 #include "../include/random.hh"
 #include "../include/tsc.hh"
+#include "../include/util.hh"
 #include "../include/zipf.hh"
-
-extern size_t decideParallelBuildNumber(size_t tuplenum);
 
 void chkArg(const int argc, char *argv[]) {
   if (argc != 11) {
