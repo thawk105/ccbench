@@ -26,8 +26,6 @@
 
 using namespace std;
 
-extern size_t decideParallelBuildNumber(size_t tuplenum);
-
 void chkArg(const int argc, char *argv[]) {
   if (argc != 10) {
     cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "

@@ -26,15 +26,8 @@
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/transaction.hh"
+#include "include/util.hh"
 
-extern void chkArg(const int argc, char* argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern void displayDB();
-extern void displayPRO();
-extern void makeDB();
-extern void sleepMs(size_t ms);
-extern void waitForReady(const std::vector<char>& readys);
 void worker(size_t thid, char& ready, const bool& start, const bool& quit,
             std::vector<Result>& res) {
   Xoroshiro128Plus rnd;
