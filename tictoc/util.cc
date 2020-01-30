@@ -23,6 +23,7 @@
 #include "include/common.hh"
 #include "include/transaction.hh"
 #include "include/tuple.hh"
+#include "include/util.hh"
 
 using namespace std;
 
@@ -46,17 +47,7 @@ void chkArg(const int argc, char *argv[]) {
     cout << "YCSB : on or off. switch makeProcedure function." << endl;
     cout << "CLOCKS_PER_US: CPU_MHZ" << endl;
     cout << "EXTIME: execution time." << endl << endl;
-
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-    cout << "KEY_SIZE : " << KEY_SIZE << endl;
-    cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "NO_WAIT_LOCKING_IN_VALIDATION: " << NO_WAIT_LOCKING_IN_VALIDATION
-         << endl;
-    cout << "PREEMPTIVE_ABORTS: " << PREEMPTIVE_ABORTS << endl;
-    cout << "TIMESTAMP_HISTORY: " << TIMESTAMP_HISTORY << endl;
-    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
-    cout << "Result " << sizeof(Result) << endl;
+    ShowOptParameters();
     exit(0);
   }
   chkInt(argv[1]);
