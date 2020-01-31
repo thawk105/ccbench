@@ -17,6 +17,7 @@
 #include "include/common.hh"
 #include "include/transaction.hh"
 #include "include/tuple.hh"
+#include "include/util.hh"
 
 #include "../include/cache_line_size.hh"
 #include "../include/check.hh"
@@ -50,12 +51,7 @@ void chkArg(const int argc, char *argv[]) {
     cout << "CLOCKS_PER_US: CPU_MHZ" << endl;
     cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
     cout << "EXTIME: execution time." << endl << endl;
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-    cout << "Tidword " << sizeof(Tidword) << endl;
-    cout << "KEY_SIZE : " << KEY_SIZE << endl;
-    cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
+    ShowOptParameters();
     exit(0);
   }
   chkInt(argv[1]);
@@ -207,4 +203,21 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
     atomicAddGE();
     epoch_timer_start = epoch_timer_stop;
   }
+}
+
+void
+ShowOptParameters()
+{
+  cout << "ShowOptParameters()"
+    << ": ADD_ANALYSIS " << ADD_ANALYSIS
+    << ": BACK_OFF " << BACK_OFF
+    << ": KEY_SIZE " << KEY_SIZE
+    << ": MASSTREE_USE " << MASSTREE_USE
+    << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
+    << ": PARTITION_TABLE " << PARTITION_TABLE
+    << ": PROCEDURE_SORT " << PROCEDURE_SORT
+    << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
+    << ": VAL_SIZE " << VAL_SIZE
+    << ": WAL " << WAL
+    << endl;
 }

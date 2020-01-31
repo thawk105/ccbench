@@ -14,8 +14,7 @@ MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=1
 PREEMPTIVE_ABORTS=1
 TIMESTAMP_HISTORY=1
-
-SLEEP_READ_PHASE=0 # # of tics
+SLEEP_READ_PHASE=20000 # of tics
 #end of initialization
 
 CC = g++
@@ -33,8 +32,8 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE)
 
 LDFLAGS = -L../third_party/mimalloc/out/release
-LIBS = -lpthread -lmimalloc
-#LIBS = -lpthread
+#LIBS = -lpthread -lmimalloc
+LIBS = -lpthread
 
 OBJS1 = $(TICTOC_SRCS1:.cc=.o)
 all: $(PROG1)
