@@ -156,6 +156,7 @@ int main(int argc, char* argv[]) try {
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     res[0].addLocalAllResult(res[i]);
   }
+  ShowOptParameters();
   res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
   deleteDB();
 
