@@ -39,7 +39,6 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug -L/user/lib
 INCLUDE = -I/usr/include
 
-#LDLIBS = -lpthread -lmimalloc
 LDLIBS = -lpthread -lboost_filesystem -lboost_system
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
