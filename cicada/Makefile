@@ -16,6 +16,7 @@ SINGLE_EXEC=0
 KEY_SIZE=8
 VAL_SIZE=4
 WRITE_LATEST_ONLY=0
+WORKER1_INSERT_DELAY_RPHASE=1
 
 CC = g++
 CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
@@ -33,6 +34,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DREUSE_VERSION=$(REUSE_VERSION) \
 				 -DSINGLE_EXEC=$(SINGLE_EXEC) \
 				 -DWRITE_LATEST_ONLY=$(WRITE_LATEST_ONLY) \
+				 -DWORKER1_INSERT_DELAY_RPHASE=$(WORKER1_INSERT_DELAY_RPHASE) \
 
 # WRITE_LATEST_ONLY : for all write. 
 # original model adapt write-latest-only-rule for RMW

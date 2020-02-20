@@ -47,6 +47,10 @@ GLOBAL size_t IO_TIME_NS;               // nano second
 GLOBAL size_t GROUP_COMMIT_TIMEOUT_US;  // micro seconds
 GLOBAL size_t GC_INTER_US;              // garbage collection interval
 GLOBAL size_t PRE_RESERVE_VERSION;
+/**
+ * worker 1 insert delay in the end of read phase[us].
+ */
+GLOBAL size_t WORKER1_INSERT_DELAY_RPHASE_US; 
 GLOBAL size_t EXTIME;
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThreadWtsArray;

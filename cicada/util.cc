@@ -30,7 +30,7 @@
 using std::cout, std::endl;
 
 void chkArg(const int argc, char *argv[]) {
-  if (argc != 16) {
+  if (argc != 17) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
             "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
             "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION EXTIME"
@@ -63,6 +63,7 @@ void chkArg(const int argc, char *argv[]) {
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
          << endl;
+    cout << "WORKER1_INSERT_DELAY_RPHASE_US : worker 1 insert delay in the end of read phase[us]." << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
     ShowOptParameters();
     exit(0);
@@ -93,7 +94,8 @@ void chkArg(const int argc, char *argv[]) {
   GROUP_COMMIT_TIMEOUT_US = atoi(argv[12]);
   GC_INTER_US = atoi(argv[13]);
   PRE_RESERVE_VERSION = atoi(argv[14]);
-  EXTIME = atoi(argv[15]);
+  WORKER1_INSERT_DELAY_RPHASE_US = atoi(argv[15]);
+  EXTIME = atoi(argv[16]);
 
   if (RRATIO > 100) {
     cout << "rratio [%%] must be 0 ~ 100)" << endl;
@@ -437,5 +439,6 @@ ShowOptParameters()
     << ": KEY_SIZE " << KEY_SIZE
     << ": VAL_SIZE " << VAL_SIZE
     << ": WRITE_LATEST_ONLY " << WRITE_LATEST_ONLY
+    << ": WORKER1_INSERT_DELAY_RPHASE " << WORKER1_INSERT_DELAY_RPHASE
     << endl;
 }
