@@ -99,6 +99,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
       if (trans.status_ == TransactionStatus::abort) {
         trans.earlyAbort();
+#if SINGLE_EXEC
+#else
+        trans.mainte();
+#endif
         goto RETRY;
       }
     }
@@ -118,6 +122,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
       // Validation phase
       if (!trans.validation()) {
         trans.abort();
+#if SINGLE_EXEC
+#else
+        trans.mainte();
+#endif
         goto RETRY;
       }
 
