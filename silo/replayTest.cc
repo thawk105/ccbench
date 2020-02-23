@@ -29,9 +29,9 @@ int main() {
   for (unsigned int i = 0; i < loadhd.logRecNum_; ++i) {
     loadfile.read((void *)&logrec, sizeof(LogRecord));
     chkSum_ += logrec.computeChkSum();
-    // cout << "tid : " << logrec.tid << endl;
-    // cout << "key : " << logrec.key << endl;
-    // cout << "val : " << logrec.val << endl << endl;
+    cout << "tid : " << logrec.tid_ << endl;
+    cout << "key : " << logrec.key_ << endl;
+    cout << "val : " << logrec.val_ << endl << endl;
   }
 
   cout << "computed chkSum_ : " << chkSum_ << endl;

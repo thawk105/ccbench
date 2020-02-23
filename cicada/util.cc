@@ -25,11 +25,12 @@
 #include "include/time_stamp.hh"
 #include "include/transaction.hh"
 #include "include/tuple.hh"
+#include "include/util.hh"
 
 using std::cout, std::endl;
 
 void chkArg(const int argc, char *argv[]) {
-  if (argc != 16) {
+  if (argc != 17) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
             "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
             "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION EXTIME"
@@ -62,24 +63,9 @@ void chkArg(const int argc, char *argv[]) {
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
          << endl;
+    cout << "WORKER1_INSERT_DELAY_RPHASE_US : worker 1 insert delay in the end of read phase[us]." << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
-
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "Version " << sizeof(Version) << endl;
-    cout << "TimeStamp " << sizeof(TimeStamp) << endl;
-    cout << "Procedure " << sizeof(Procedure) << endl;
-    cout << "KEY_SIZE : " << KEY_SIZE << endl;
-    cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "CACHE_LINE_SIZE - ((17 + KEY_SIZE + sizeof(Version)) % "
-            "(CACHE_LINE_SIZE)) : "
-         << CACHE_LINE_SIZE -
-                ((17 + KEY_SIZE + sizeof(Version)) % (CACHE_LINE_SIZE))
-         << endl;
-    cout << "CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) : "
-         << CACHE_LINE_SIZE - ((25 + VAL_SIZE) % (CACHE_LINE_SIZE)) << endl;
-    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
-    cout << "Result:\t" << sizeof(Result) << endl;
-    cout << "uint64_t_64byte: " << sizeof(uint64_t_64byte) << endl;
+    ShowOptParameters();
     exit(0);
   }
 
@@ -108,7 +94,8 @@ void chkArg(const int argc, char *argv[]) {
   GROUP_COMMIT_TIMEOUT_US = atoi(argv[12]);
   GC_INTER_US = atoi(argv[13]);
   PRE_RESERVE_VERSION = atoi(argv[14]);
-  EXTIME = atoi(argv[15]);
+  WORKER1_INSERT_DELAY_RPHASE_US = atoi(argv[15]);
+  EXTIME = atoi(argv[16]);
 
   if (RRATIO > 100) {
     cout << "rratio [%%] must be 0 ~ 100)" << endl;
@@ -435,4 +422,23 @@ void leaderWork([[maybe_unused]] Backoff &backoff,
 #if BACK_OFF
   leaderBackoffWork(backoff, res);
 #endif
+}
+
+void
+ShowOptParameters()
+{
+  cout << "ShowOptParameters()"
+    << ": ADD_ANALYSIS " << ADD_ANALYSIS
+    << ": BACK_OFF " << BACK_OFF
+    << ": INLINE_VERSION_OPT " << INLINE_VERSION_OPT
+    << ": INLINE_VERSION_PROMOTION " << INLINE_VERSION_PROMOTION
+    << ": MASSTREE_USE " << MASSTREE_USE
+    << ": PARTITION_TABLE " << PARTITION_TABLE
+    << ": REUSE_VERSION " << REUSE_VERSION
+    << ": SINGLE_EXEC " << SINGLE_EXEC
+    << ": KEY_SIZE " << KEY_SIZE
+    << ": VAL_SIZE " << VAL_SIZE
+    << ": WRITE_LATEST_ONLY " << WRITE_LATEST_ONLY
+    << ": WORKER1_INSERT_DELAY_RPHASE " << WORKER1_INSERT_DELAY_RPHASE
+    << endl;
 }

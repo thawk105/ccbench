@@ -172,6 +172,9 @@ class TxExecutor {
 #if INLINE_VERSION_OPT
     if (tuple->getInlineVersionRight()) {
       tuple->inline_ver_.set(0, this->wts_.ts_);
+#if ADD_ANALYSIS
+      ++cres_->local_version_reuse_;
+#endif
       return &(tuple->inline_ver_);
     }
 #endif  // if INLINE_VERSION_OPT

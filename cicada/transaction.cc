@@ -597,8 +597,9 @@ void TxExecutor::mainte() {
   }
 
   this->gcstop_ = rdtscp();
-  if (chkClkSpan(this->gcstart_, this->gcstop_, GC_INTER_US * CLOCKS_PER_US)) {
-    __atomic_store_n(&(GCFlag[thid_].obj_), 1, __ATOMIC_RELEASE);
+  if (chkClkSpan(this->gcstart_, this->gcstop_, GC_INTER_US * CLOCKS_PER_US)
+      && (loadAcquire(GCFlag[thid_].obj_) == 0)) {
+    storeRelease(GCFlag[thid_].obj_, 1);
     this->gcstart_ = this->gcstop_;
   }
   //-----

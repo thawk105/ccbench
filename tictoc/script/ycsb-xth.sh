@@ -1,9 +1,9 @@
 # ycsb-xth.sh(tictoc)
-tuple=10000000
-maxope=1
+tuple=1000000
+maxope=10
 #rratioary=(50 95 100)
 rratioary=(95)
-rmw=on
+rmw=off
 skew=0.99
 ycsb=on
 cpumhz=2100
@@ -21,7 +21,7 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=100
+make clean; make -j
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -31,7 +31,7 @@ do
   elif test $rratio = 90 ; then
     result=result_tictoc_ycsb_tuple10m_skew08.dat
   elif test $rratio = 95 ; then
-    result=result_tictoc_ycsbB_tuple10m_ope1_rmw_skew099.dat
+    result=result_tictoc_ycsbB_tuple1m_skew099_th14-224.dat
   elif test $rratio = 100 ; then
     result=result_tictoc_ycsbC_tuple10m_ope1_skew099.dat
     maxope=1
@@ -41,10 +41,13 @@ do
   fi
   rm $result
 
-  echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+  echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-er, avg-rlr, avg-vlr" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
+  ../tictoc.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((thread=1; thread<=28; thread+=4))
+  for ((thread=14; thread<=224; thread+=14))
   do
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
     echo "Thread number $thread"
@@ -58,6 +61,9 @@ do
     minTH=0
     minAR=0
     minCA=0
+    sumRLR=0
+    sumVLR=0
+    sumER=0
     for ((i = 1; i <= epoch; ++i))
     do
       if test $host = $dbs11 ; then
@@ -70,9 +76,15 @@ do
       tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
       tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
       tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
+      tmpER=`grep extra_reads ./exp.txt | awk '{print $2}'`
+      tmpRLR=`grep read_latency_rate ./exp.txt | awk '{print $2}'`
+      tmpVLR=`grep vali_latency_rate ./exp.txt | awk '{print $2}'`
       sumTH=`echo "$sumTH + $tmpTH" | bc`
       sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
       sumCA=`echo "$sumCA + $tmpCA" | bc`
+      sumER=`echo "$sumER + $tmpER" | bc`
+      sumRLR=`echo "scale=4; $sumRLR + $tmpRLR" | bc | xargs printf %.4f`
+      sumVLR=`echo "scale=4; $sumVLR + $tmpVLR" | bc | xargs printf %.4f`
       echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
     
       if test $i -eq 1 ; then
@@ -114,11 +126,14 @@ do
     avgTH=`echo "$sumTH / $epoch" | bc`
     avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
     avgCA=`echo "$sumCA / $epoch" | bc`
+    avgER=`echo "$sumER / $epoch" | bc`
+    avgRLR=`echo "scale=4; $sumRLR / $epoch" | bc | xargs printf %.4f`
+    avgVLR=`echo "scale=4; $sumVLR / $epoch" | bc | xargs printf %.4f`
     echo "sumTH: $sumTH, sumAR: $sumAR, sumCA: $sumCA"
-    echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
+    echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA, avgER: $avgER, avgRLR: $avgRLR, avgVLR: $avgVLR"
     echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
     echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
     echo ""
-    echo "$thread $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
+    echo "$thread $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA $avgER $avgRLR $avgVLR" >> $result
   done
 done

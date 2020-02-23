@@ -16,9 +16,8 @@ MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=1
 PARTITION_TABLE=0
 PROCEDURE_SORT=0
-WAL=1
-
-SLEEP_READ_PHASE=0 # # of tics
+WAL=0
+SLEEP_READ_PHASE=0 # of tics
 # end of initialization
 
 CC = g++
@@ -40,7 +39,6 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug -L/user/lib
 INCLUDE = -I/usr/include
 
-#LDLIBS = -lpthread -lmimalloc
 LDLIBS = -lpthread -lboost_filesystem -lboost_system
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)

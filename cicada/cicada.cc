@@ -19,6 +19,7 @@
 #include "../include/compiler.hh"
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
+#include "../include/delay.hh"
 #include "../include/int64byte.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
@@ -98,9 +99,19 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
       if (trans.status_ == TransactionStatus::abort) {
         trans.earlyAbort();
+#if SINGLE_EXEC
+#else
+        trans.mainte();
+#endif
         goto RETRY;
       }
     }
+
+#if WORKER1_INSERT_DELAY_RPHASE
+    if (unlikely(thid == 1) && WORKER1_INSERT_DELAY_RPHASE_US != 0) {
+      clock_delay(WORKER1_INSERT_DELAY_RPHASE_US * CLOCKS_PER_US);
+    }
+#endif
 
     // read only tx doesn't collect read set and doesn't validate.
     // write phase execute logging and commit pending versions, but r-only tx
@@ -111,6 +122,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
       // Validation phase
       if (!trans.validation()) {
         trans.abort();
+#if SINGLE_EXEC
+#else
+        trans.mainte();
+#endif
         goto RETRY;
       }
 
@@ -156,6 +171,7 @@ int main(int argc, char* argv[]) try {
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     res[0].addLocalAllResult(res[i]);
   }
+  ShowOptParameters();
   res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
   deleteDB();
 

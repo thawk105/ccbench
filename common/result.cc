@@ -285,7 +285,6 @@ void Result::displayValidationFailureByWritelockRate() {
 }
 
 void Result::displayVersionMalloc() {
-  if (total_version_malloc_)
     cout << "version_malloc:\t" << total_version_malloc_ << endl;
 }
 

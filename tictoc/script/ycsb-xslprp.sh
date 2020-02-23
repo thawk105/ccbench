@@ -1,12 +1,12 @@
 # ycsb-xslprp.sh(tictoc)
-tuple=100000000
+tuple=1000000
 maxope=10
-rratioary=(50)
+rratioary=(95)
 rmw=off
-skew=0.9
+skew=0.99
 ycsb=on
-extime=5
-epoch=5
+extime=3
+epoch=3
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -30,7 +30,7 @@ do
   if test $rratio = 50; then
     result=result_tictoc_ycsbA_tuple100m_skew09_slprp0-1000.dat
   elif test $rratio = 95; then
-    result=result_tictoc_ycsbB_tuple100m_skew09_val4-1k.dat
+    result=result_tictoc_ycsbB_tuple1m_skew099_slprp0-25000.dat
   elif test $rratio = 100; then
     result=result_tictoc_ycsbC_tuple100m_skew09_val4-1k.dat
   else
@@ -39,13 +39,16 @@ do
   fi
   rm $result
     
-  echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
+  echo "#slpclks, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-er, avg-rlr, avg-vlr" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
+  ../tictoc.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
   for ((slpclks = 0; slpclks <= 25000; slpclks += 500))
   do
     cd ../
-    make clean; make -j SLEEP_READ_PHASE=$slpclks VAL_SIZE=4
+    make clean; make -j SLEEP_READ_PHASE=$slpclks
     cd script
   
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
