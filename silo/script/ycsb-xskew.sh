@@ -1,7 +1,7 @@
 #ycsb-xrs.sh(silo)
-tuple=1000000
+tuple=100000000
 maxope=10
-rratioary=(95)
+rratioary=(50 95)
 rmw=off
 skew=0
 ycsb=on
@@ -27,9 +27,9 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
-    result=result_silo_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
+    result=result_silo_ycsbA_tuple100m_skew06-099.dat
   elif test $rratio = 95; then
-    result=result_silo+nowait_ycsbB_tuple1m_skew07-099.dat
+    result=result_silo_ycsbB_tuple100m_skew06-099.dat
   elif test $rratio = 100; then
     result=result_silo_ycsbC_tuple1k_skew0-099.dat
   else
@@ -39,12 +39,12 @@ do
   rm $result
 
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-er, avg-rlr, avg-vlr" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw skew $ycsb $cpumhz $epochtime $extime" >> $result
   ../silo.exe > exp.txt
   tmpStr=`grep ShowOptParameters ./exp.txt`
   echo "#$tmpStr" >> $result
   
-  for ((tmpskew = 70; tmpskew <= 100; tmpskew += 5))
+  for ((tmpskew = 60; tmpskew <= 100; tmpskew += 5))
   do
     if test $tmpskew -eq 100 ; then
       tmpskew=99

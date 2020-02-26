@@ -1,7 +1,7 @@
 #ycsb-xrs.sh(ss2pl)
 tuple=100000000
 maxope=10
-rratioary=(95)
+rratioary=(50 95)
 rmw=off
 skew=0
 ycsb=on
@@ -26,9 +26,9 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
-    result=result_ss2pl_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
+    result=result_2pl_ycsbA_tuple100m_skew06-099.dat
   elif test $rratio = 95; then
-    result=result_ss2pl-dlr0_ycsbB_tuple100m_skew06-085.dat
+    result=result_2pl_ycsbB_tuple100m_skew06-099.dat
   elif test $rratio = 100; then
     result=result_ss2pl_ycsbC_tuple1k_skew0-099.dat
   else
@@ -38,14 +38,14 @@ do
   rm $result
 
   echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw skew $ycsb $cpu_mhz $extime" >> $result
+  ../ss2pl.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((tmpskew = 60; tmpskew <= 85; tmpskew += 5))
+  for ((tmpskew = 60; tmpskew <= 100; tmpskew += 5))
   do
     if test $tmpskew = 100 ; then
-      tmpskew=95
-    fi
-    if test $tmpskew = 105 ; then
       tmpskew=99
     fi
     skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`

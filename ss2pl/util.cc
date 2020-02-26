@@ -24,6 +24,7 @@
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/tuple.hh"
+#include "include/util.hh"
 
 extern size_t decideParallelBuildNumber(size_t tuplenum);
 
@@ -46,19 +47,7 @@ void chkArg(const int argc, const char *argv[]) {
         << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
         << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
-
-    cout << "Tuple size " << sizeof(Tuple) << endl;
-    cout << "std::mutex size " << sizeof(mutex) << endl;
-    cout << "RWLock size " << sizeof(RWLock) << endl;
-    cout << "KEY_SIZE : " << KEY_SIZE << endl;
-    cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "std::thread::hardware_concurrency()="
-         << std::thread::hardware_concurrency() << endl;
-    cout << "Procedure : is_move_constructible : "
-         << std::is_move_constructible<Procedure>::value << endl;
-    cout << "Procedure : is_move_assignable : "
-         << std::is_move_assignable<Procedure>::value << endl;
-    cout << "Result size " << sizeof(Result) << endl;
+    ShowOptParameters();
     exit(0);
   }
 
@@ -151,4 +140,20 @@ void makeDB() {
                      (i + 1) * (TUPLE_NUM / maxthread) - 1);
   }
   for (auto &th : thv) th.join();
+}
+
+void
+ShowOptParameters()
+{
+  cout << "ShowOptParameters()"
+    << ": ADD_ANALYSIS " << ADD_ANALYSIS
+    << ": BACK_OFF " << BACK_OFF
+    << ": KEY_SORT " << KEY_SORT
+    << ": MASSTREE_USE " << MASSTREE_USE
+#ifdef DLR0
+    << ": DLR0 "
+#elif defined DLR1
+    << ": DLR1 "
+#endif
+    << endl;
 }

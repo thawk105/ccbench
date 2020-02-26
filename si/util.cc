@@ -22,6 +22,7 @@
 #include "../include/tsc.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
+#include "include/util.hh"
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
@@ -52,14 +53,7 @@ void chkArg(const int argc, const char *argv[]) {
     cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
          << endl;
     cout << "EXTIME: execution time [sec]" << endl;
-
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "Version " << sizeof(Version) << endl;
-    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-    cout << "TransactionTable " << sizeof(TransactionTable) << endl;
-    cout << "KEY_SIZE : " << KEY_SIZE << endl;
-    cout << "VAL_SIZE : " << VAL_SIZE << endl;
-
+    ShowOptParameters();
     exit(0);
   }
 
@@ -255,4 +249,14 @@ void leaderWork(GarbageCollection &gcob) {
     gcob.decideGcThreshold();
     gcob.mvSecondRangeToFirstRange();
   }
+}
+
+void
+ShowOptParameters()
+{
+  cout << "ShowOptParameters() "
+    << ": ADD_ANALYSIS " << ADD_ANALYSIS
+    << ": BACK_OFF " << BACK_OFF
+    << ": MASSTREE_USE " << MASSTREE_USE
+    << endl;
 }

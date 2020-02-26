@@ -1,8 +1,8 @@
 #ycsb-xrs.sh(cicada)
-tuple=10000000
-maxope=16
+tuple=100000000
+maxope=10
 rratioary=(50 95)
-rmw=on
+rmw=off
 skew=0
 ycsb=on
 wal=off
@@ -12,6 +12,7 @@ io_time_ns=5
 group_commit_timeout_us=2
 gci=10
 prv=10000
+w1idr=0
 extime=3
 epoch=3
 
@@ -25,17 +26,16 @@ if  test $host = $dbs11 ; then
   thread=224
 fi
 
-thread=28
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j KEY_SIZE=8 VAL_SIZE=4
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_cicada_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
+    result=result_cicada_ycsbA_tuple100m_skew06-099.dat
   elif test $rratio = 95 ; then
-    result=result_cicada_ycsbB_tuple10m_ope16_rmw_skew0-099_th28.dat
+    result=result_cicada_ycsbB_tuple100m_skew06-099.dat
   elif test $rratio = 100 ; then
     result=result_cicada_ycsbC_tuple1k_skew0-099.dat
   else
@@ -45,19 +45,19 @@ do
   rm $result
 
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime" >> $result
+  ../cicada.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
+  for ((tmpskew = 60; tmpskew <= 100; tmpskew += 5))
   do
     if test $tmpskew = 100 ; then
-      tmpskew=95
-    fi
-    if test $tmpskew = 105 ; then
       tmpskew=99
     fi
     skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
   
-    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime"
+    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime"
     echo "Thread number $thread"
     
     sumTH=0
@@ -72,10 +72,10 @@ do
     for ((i = 1; i <= epoch; ++i))
     do
       if test $host = $dbs11 ; then
-        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime > exp.txt
+        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime > exp.txt
       fi
       if test $host = $chris41 ; then
-        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime > exp.txt
+        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime > exp.txt
       fi
     
       tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
