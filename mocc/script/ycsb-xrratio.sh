@@ -22,16 +22,26 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=4
+make clean; make -j
 cd script/
 
 result=result_mocc_tuple50_rratio0-100.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime" >> $result
+echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime" >> $result
+  ../mocc.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
 
 for ((rratio = 0; rratio <= 100; rratio+=10))
 do
+  if test $rratio = 100 ; then
+    cd ../
+    make clean; make -j TEMPERATURE_RESET_OPT=0
+    cd script/
+    epochtime=40000000
+    per_xx_temp=40960
+  fi
   echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime"
   
   sumTH=0

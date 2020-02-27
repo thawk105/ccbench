@@ -13,7 +13,7 @@ VAL_SIZE=4
 ADD_ANALYSIS=1
 BACK_OFF=0
 MASSTREE_USE=1
-NO_WAIT_LOCKING_IN_VALIDATION=1
+NO_WAIT_LOCKING_IN_VALIDATION=0
 PARTITION_TABLE=0
 PROCEDURE_SORT=0
 WAL=0
@@ -36,7 +36,6 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
 				 -DWAL=$(WAL) \
 
-LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug -L/user/lib
 INCLUDE = -I/usr/include
 
 LDLIBS = -lpthread -lboost_filesystem -lboost_system

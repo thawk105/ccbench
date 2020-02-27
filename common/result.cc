@@ -90,7 +90,6 @@ void Result::displayEarlyAbortRate() {
 }
 
 void Result::displayExtraReads() {
-  if (total_extra_reads_)
     cout << "extra_reads:\t" << total_extra_reads_ << endl;
 }
 

@@ -9,7 +9,7 @@ KEY_SIZE=8
 VAL_SIZE=4
 ADD_ANALYSIS=1
 BACK_OFF=0
-KEY_SORT=1
+KEY_SORT=0
 MASSTREE_USE=1
 TEMPERATURE_RESET_OPT=1
 
@@ -27,8 +27,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 				 -DTEMPERATURE_RESET_OPT=$(TEMPERATURE_RESET_OPT) \
 
-LDFLAGS = -L../third_party/mimalloc/out/release
-LIBS = -lpthread -lmimalloc
+LIBS = -lpthread
 
 ifneq ($(shell hostname), chris41.omni.hpcc.jp)
 ifneq ($(shell hostname), dbs11)
@@ -42,7 +41,7 @@ all : $(PROG1)
 
 include ../include/MakefileForMasstreeUse
 $(PROG1) : $(OBJS1) $(MASSOBJ)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CC) -o $@ $^ $(LIBS)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@

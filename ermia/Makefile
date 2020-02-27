@@ -6,7 +6,7 @@ include $(REL)Makefile
 ERMIA_ALLSRC = $(ERMIA_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=10000
+VAL_SIZE=4
 ADD_ANALYSIS=1
 BACK_OFF=0
 KEY_SORT=0

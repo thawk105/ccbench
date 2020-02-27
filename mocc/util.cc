@@ -232,13 +232,13 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
 #if TEMPERATURE_RESET_OPT
 #else
     size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
-    uint64_t nowepo = (loadAcquireGE()).obj;
+    uint64_t nowepo = (loadAcquireGE()).obj_;
     for (uint64_t i = 0; i < epotemp_length; ++i) {
       Epotemp epotemp(0, nowepo);
       storeRelease(EpotempAry[i].obj_, epotemp.obj_);
     }
 #if ADD_ANALYSIS
-    res.local_temperature_resets += epotemp_length;
+    res.local_temperature_resets_ += epotemp_length;
 #endif
 #endif
   }
