@@ -9,9 +9,9 @@ SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 # start of initialization of some parameters.
 KEY_SIZE=8
-VAL_SIZE=4
+VAL_SIZE=100
 ADD_ANALYSIS=1
-BACK_OFF=0
+BACK_OFF=1
 MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=0
 PARTITION_TABLE=0

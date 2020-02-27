@@ -25,7 +25,7 @@ if  test $host = $dbs11 ; then
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -45,9 +45,15 @@ do
 
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $pre $prv $extime" >> $result
+  ../ermia.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((thread=1; thread<=28; thread+=4))
+  for ((thread=1; thread<=25; thread+=5))
   do
+    if test $thread = 6 ; then
+      thread=5
+    fi
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ermia.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $pre $prv $extime"
     echo "Thread number $thread"
     
@@ -70,7 +76,7 @@ do
       fi
     
       tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`
-      tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
+      tmpAR=`grep abort_rate ./exp.txt | grep -v early | awk '{print $2}'`
       tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
       sumTH=`echo "$sumTH + $tmpTH" | bc`
       sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`

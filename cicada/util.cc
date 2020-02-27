@@ -33,10 +33,10 @@ void chkArg(const int argc, char *argv[]) {
   if (argc != 17) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
             "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
-            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION EXTIME"
+            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION WORKER1_INSERT_DELAY_RPHASE_US EXTIME"
          << endl
          << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 10000 3"
+    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 10000 0 3"
          << endl
          << endl;
     cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "

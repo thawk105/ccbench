@@ -1,7 +1,6 @@
 #ycsb-xth.sh(si)
 tuple=10000000
 maxope=1
-thread=224
 #rratioary=(50 95 100)
 rratioary=(95)
 rmw=on
@@ -25,7 +24,7 @@ thread=224
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -44,10 +43,16 @@ do
   rm $result
 
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $gci $pre $prv $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $gci $pre $prv $extime" >> $result
+  ../si.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((thread=1; thread<=28; thread+=4))
+  for ((thread=1; thread<=25; thread+=5))
   do
+    if test $thread = 6 ; then
+      thread=5
+    fi
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $gci $pre $prv $extime"
     
     sumTH=0

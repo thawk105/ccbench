@@ -1,13 +1,13 @@
 #ycsb-xth.sh(silo)
-tuple=50
-maxope=10
+tuple=10000000
+maxope=1
 #rratioary=(50 95 100)
-rratioary=(100)
-rmw=off
-skew=0
+rratioary=(95)
+rmw=on
+skew=0.99
 ycsb=on
 cpumhz=2100
-epochtime=10000000
+epochtime=40
 extime=3
 epoch=3
 
@@ -22,19 +22,19 @@ thread=224
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=4
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_silo_ycsbA_tuple10m_oe16_rmw_skew099.dat
+    result=result_silo_ycsbA_tuple10m_ope16_rmw_skew099.dat
   elif test $rratio = 90 ; then
-    result=result_silo_ycsbA_tuple1k-100m_val1k_skew09.dat
+    result=result_silo_ycsb_tuple10m_skew08.dat
   elif test $rratio = 95 ; then
-    result=result_silo+nowait_ycsbB_tuple1m_skew099_th2-224.dat
+    result=result_silo_ycsbB_tuple10m_ope1_rmw_skew099.dat
   elif test $rratio = 100 ; then
-    result=result_silo_ycsbC_tuple50.dat
+    result=result_silo_ycsbC_tuple10m_ope2.dat
   else
     echo "BUG"
     exit 1
@@ -47,8 +47,14 @@ do
   tmpStr=`grep ShowOptParameters ./exp.txt`
   echo "#$tmpStr" >> $result
   
-  for ((thread=56; thread<=224; thread+=56))
+  for ((thread=1; thread<=25; thread+=5))
   do
+    if test $thread = 6 ; then
+      thread=5
+    fi
+    if test $thread = 11 ; then
+      thread=10
+    fi
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../silo.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $extime"
     
     sumTH=0

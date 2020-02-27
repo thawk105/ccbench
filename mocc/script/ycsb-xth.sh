@@ -1,14 +1,14 @@
 #ycsb-xth.sh(mocc)
-tuple=50
-maxope=10
+tuple=10000000
+maxope=1
 #rratioary=(50 95 100)
-rratioary=(100)
-rmw=off
-skew=0
+rratioary=(95)
+rmw=on
+skew=0.99
 ycsb=on
 cpumhz=2100
-epochtime=10000000
-per_xx_temp=40960
+epochtime=40
+per_xx_temp=4096
 extime=3
 epoch=3
 
@@ -23,7 +23,7 @@ thread=224
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=4
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -46,8 +46,11 @@ do
   tmpStr=`grep ShowOptParameters ./exp.txt`
   echo "#$tmpStr" >> $result
   
-  for ((thread=56; thread<=224; thread+=56))
+  for ((thread=1; thread<=25; thread+=5))
   do
+    if test $thread = 6 ; then
+      thread=5
+    fi
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime"
     
     sumTH=0
