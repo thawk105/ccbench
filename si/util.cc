@@ -258,5 +258,7 @@ ShowOptParameters()
     << ": ADD_ANALYSIS " << ADD_ANALYSIS
     << ": BACK_OFF " << BACK_OFF
     << ": MASSTREE_USE " << MASSTREE_USE
+    << ": KEY_SIZE " << KEY_SIZE
+    << ": VAL_SIZE " << VAL_SIZE
     << endl;
 }

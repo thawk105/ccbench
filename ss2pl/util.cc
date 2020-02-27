@@ -148,12 +148,14 @@ ShowOptParameters()
   cout << "ShowOptParameters()"
     << ": ADD_ANALYSIS " << ADD_ANALYSIS
     << ": BACK_OFF " << BACK_OFF
-    << ": KEY_SORT " << KEY_SORT
-    << ": MASSTREE_USE " << MASSTREE_USE
 #ifdef DLR0
     << ": DLR0 "
 #elif defined DLR1
     << ": DLR1 "
 #endif
+    << ": MASSTREE_USE " << MASSTREE_USE
+    << ": KEY_SIZE " << KEY_SIZE
+    << ": KEY_SORT " << KEY_SORT
+    << ": VAL_SIZE " << VAL_SIZE
     << endl;
 }
