@@ -29,13 +29,8 @@
 #include "../include/util.hh"
 #include "../include/zipf.hh"
 
-void chkArg(const int argc) {
+void chkArg() {
   displayParameter();
-  if (argc == 1) {
-    cout << "usage:./silo.exe -help" << endl;
-    ShowOptParameters();
-    exit(0);
-  }
 
   if (FLAGS_rratio > 100) {
     ERR;

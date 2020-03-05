@@ -131,7 +131,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  chkArg(argc);
+  chkArg();
   // displayParameter();
   makeDB();
 

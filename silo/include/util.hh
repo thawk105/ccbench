@@ -1,6 +1,6 @@
 #pragma once
 
-extern void chkArg(const int argc);
+extern void chkArg();
 
 extern bool chkEpochLoaded();
 
