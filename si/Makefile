@@ -6,9 +6,9 @@ include $(REL)Makefile
 SI_ALLSRC = $(SI_SRCS1) $(wildcard include/*.hh)
 
 KEY_SIZE=8
-VAL_SIZE=10000
+VAL_SIZE=100
 ADD_ANALYSIS=1
-BACK_OFF=0
+BACK_OFF=1
 MASSTREE_USE=1
 
 CC = g++

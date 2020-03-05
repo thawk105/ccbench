@@ -41,9 +41,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   Xoroshiro128Plus rnd;
   rnd.init();
   TxnExecutor trans(thid, (Result*)&myres);
-  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   uint64_t epoch_timer_start, epoch_timer_stop;
-  Backoff backoff(CLOCKS_PER_US);
+  Backoff backoff(FLAGS_clocks_per_us);
 
 #if WAL
   /*
@@ -80,11 +80,11 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
 #if PARTITION_TABLE
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, thid, res);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
+                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true, thid, res);
 #else
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
+                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
 #endif
 
 #if PROCEDURE_SORT
@@ -129,30 +129,32 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 }
 
 int main(int argc, char* argv[]) try {
-  chkArg(argc, argv);
+  gflags::SetUsageMessage("Silo benchmark.");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  chkArg(argc);
   // displayParameter();
   makeDB();
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
-  std::vector<char> readys(THREAD_NUM);
+  alignas(CACHE_LINE_SIZE) std::vector<Result> res(FLAGS_thread_num);
+  std::vector<char> readys(FLAGS_thread_num);
   std::vector<std::thread> thv;
-  for (size_t i = 0; i < THREAD_NUM; ++i)
+  for (size_t i = 0; i < FLAGS_thread_num; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
                      std::ref(quit), std::ref(res));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < EXTIME; ++i) {
+  for (size_t i = 0; i < FLAGS_extime; ++i) {
     sleepMs(1000);
   }
   storeRelease(quit, true);
   for (auto& th : thv) th.join();
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     res[0].addLocalAllResult(res[i]);
   }
-  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  res[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
 
   return 0;
 } catch (bad_alloc) {

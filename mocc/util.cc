@@ -27,6 +27,7 @@
 #include "include/atomic_tool.hh"
 #include "include/common.hh"
 #include "include/tuple.hh"
+#include "include/util.hh"
 
 using namespace std;
 
@@ -54,17 +55,7 @@ void chkArg(const int argc, char *argv[]) {
             "temperature statistics."
          << endl;
     cout << "EXTIME: execution time [sec]" << endl;
-
-    cout << "Tuple " << sizeof(Tuple) << endl;
-    cout << "Epotemp:\t" << sizeof(Epotemp) << endl;
-    cout << "RWLock " << sizeof(RWLock) << endl;
-    cout << "MQLock " << sizeof(MQLock) << endl;
-    cout << "uint64_t_64byte " << sizeof(uint64_t_64byte) << endl;
-    cout << "Xoroshiro128Plus " << sizeof(Xoroshiro128Plus) << endl;
-    cout << "pthread_mutex_t" << sizeof(pthread_mutex_t) << endl;
-    cout << "KEY_SIZE : " << KEY_SIZE << endl;
-    cout << "VAL_SIZE : " << VAL_SIZE << endl;
-    cout << "MASSTREE_USE : " << MASSTREE_USE << endl;
+    ShowOptParameters();
     exit(0);
   }
 
@@ -241,14 +232,28 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
 #if TEMPERATURE_RESET_OPT
 #else
     size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
-    uint64_t nowepo = (loadAcquireGE()).obj;
+    uint64_t nowepo = (loadAcquireGE()).obj_;
     for (uint64_t i = 0; i < epotemp_length; ++i) {
       Epotemp epotemp(0, nowepo);
       storeRelease(EpotempAry[i].obj_, epotemp.obj_);
     }
 #if ADD_ANALYSIS
-    res.local_temperature_resets += epotemp_length;
+    res.local_temperature_resets_ += epotemp_length;
 #endif
 #endif
   }
+}
+
+void
+ShowOptParameters()
+{
+  cout << "ShowOptParameters() "
+    << ": ADD_ANALYSIS " << ADD_ANALYSIS
+    << ": BACK_OFF " << BACK_OFF
+    << ": MASSTREE_USE " << MASSTREE_USE
+    << ": KEY_SIZE " << KEY_SIZE
+    << ": KEY_SORT " << KEY_SORT
+    << ": TEMPERATURE_RESET_OPT " << TEMPERATURE_RESET_OPT
+    << ": VAL_SIZE " << VAL_SIZE
+    << endl;
 }

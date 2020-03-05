@@ -130,15 +130,15 @@ void
 ShowOptParameters()
 {
   cout << "ShowOptParameters()"
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": VAL_SIZE " << VAL_SIZE
     << ": ADD_ANALYSIS " << ADD_ANALYSIS
     << ": BACK_OFF " << BACK_OFF
+    << ": KEY_SIZE " << KEY_SIZE
     << ": MASSTREE_USE " << MASSTREE_USE
     << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
     << ": PREEMPTIVE_ABORTS " << PREEMPTIVE_ABORTS
-    << ": TIMESTAMP_HISTORY " << TIMESTAMP_HISTORY
     << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
+    << ": TIMESTAMP_HISTORY " << TIMESTAMP_HISTORY
+    << ": VAL_SIZE " << VAL_SIZE
     << endl;
 }
 

@@ -9,11 +9,11 @@ SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 # start of initialization of some parameters.
 KEY_SIZE=8
-VAL_SIZE=4
+VAL_SIZE=100
 ADD_ANALYSIS=1
-BACK_OFF=0
+BACK_OFF=1
 MASSTREE_USE=1
-NO_WAIT_LOCKING_IN_VALIDATION=1
+NO_WAIT_LOCKING_IN_VALIDATION=0
 PARTITION_TABLE=0
 PROCEDURE_SORT=0
 WAL=0
@@ -36,10 +36,10 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
 				 -DWAL=$(WAL) \
 
-LDFLAGS = -L../third_party/mimalloc/out/release -L../third_party/mimalloc/out/debug -L/user/lib
-INCLUDE = -I/usr/include
+INCLUDE = -I/usr/include \
+					-I../third_party/ \
 
-LDLIBS = -lpthread -lboost_filesystem -lboost_system
+LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)

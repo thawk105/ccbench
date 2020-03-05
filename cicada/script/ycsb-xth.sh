@@ -13,6 +13,7 @@ io_time_ns=5
 group_commit_timeout_us=2
 gci=10
 prv=10000
+w1idr=0
 extime=3
 epoch=3
 
@@ -27,7 +28,7 @@ if  test $host = $dbs11 ; then
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -46,11 +47,17 @@ do
   rm $result
 
   echo "#tuple num, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime" >> $result
+  ../cicada.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((thread=1; thread<=28; thread+=4))
+  for ((thread=1; thread<=25; thread+=5))
   do
-    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime"
+    if test $thread = 6 ; then
+      thread=5
+    fi
+    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime"
     echo "Thread number $thread"
     
     sumTH=0
@@ -65,10 +72,10 @@ do
     for ((i = 1; i <= epoch; ++i))
     do
       if test $host = $dbs11 ; then
-        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime > exp.txt
+        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime > exp.txt
       fi
       if test $host = $chris41 ; then
-        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $extime > exp.txt
+        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../cicada.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $wal $group_commit $cpu_mhz $io_time_ns $group_commit_timeout_us $gci $prv $w1idr $extime > exp.txt
       fi
     
       tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`

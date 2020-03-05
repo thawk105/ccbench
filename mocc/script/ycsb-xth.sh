@@ -23,7 +23,7 @@ thread=224
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -33,8 +33,7 @@ do
   elif test $rratio = 95 ; then
     result=result_mocc_ycsbB_tuple10m_ope1_rmw_skew099.dat
   elif test $rratio = 100 ; then
-    result=result_mocc_ycsbC_tuple10m_ope1_rmw_skew099.dat
-    maxope=1
+    result=result_mocc_ycsbC_tuple50.dat
   else
     echo "BUG"
     exit 1
@@ -42,10 +41,16 @@ do
   rm $result
 
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime" >> $result
+  ../mocc.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
-  for ((thread=1; thread<=28; thread+=4))
+  for ((thread=1; thread<=25; thread+=5))
   do
+    if test $thread = 6 ; then
+      thread=5
+    fi
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../mocc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $epochtime $per_xx_temp $extime"
     
     sumTH=0

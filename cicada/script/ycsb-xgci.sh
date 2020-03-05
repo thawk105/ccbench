@@ -12,7 +12,7 @@ io_time_ns=5
 group_commit_timeout_us=2
 gci=1
 prv=0
-w1idr=10000 # worker 1 insert delay in the end of read phase[us]
+w1idr=100000 # worker 1 insert delay in the end of read phase[us]
 extime=5
 epoch=5
 
@@ -33,7 +33,7 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_cicada_ycsbA_tuple1m_w1idr10ms_gci1us-1s.dat
+    result=result_cicada_ycsbA_tuple1m_w1idr100ms_gci1us-1s.dat
   elif test $rratio = 95 ; then
     result=result_cicada-part_ycsbB_tuple100m_gci10us_224th.dat
   elif test $rratio = 100 ; then

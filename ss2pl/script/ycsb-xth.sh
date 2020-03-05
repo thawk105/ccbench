@@ -21,15 +21,15 @@ thread=224
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_ss2pl_ycsbA_tuple10m_ope16_rmw_skew099.dat
+    result=result_2pl_ycsbA_tuple10m_ope16_rmw_skew099.dat
   elif test $rratio = 95 ; then
-    result=result_ss2pl_ycsbB_tuple10m_ope1_rmw_skew099.dat
+    result=result_2pl_ycsbB_tuple10m_ope1_rmw_skew099.dat
   elif test $rratio = 100 ; then
     result=result_ss2pl_ycsbC_tuple10m_ope1_skew099.dat
     maxope=1
@@ -42,8 +42,11 @@ do
   echo "#Worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
   echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
   
-  for ((thread=1; thread<=28; thread+=4))
+  for ((thread=1; thread<=25; thread+=5))
   do
+    if test $thread = 6 ; then
+      thread=5
+    fi
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../ss2pl.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" 
     
     sumTH=0

@@ -1,13 +1,11 @@
 #ycsb-xrs.sh(si)
 tuple=10000000
 maxope=16
-thread=28
 rratioary=(50 95)
 rmw=on
-skew=0
 ycsb=on
 cpumhz=2100
-gci=10
+gci=5
 pre=100
 prv=10000
 extime=3
@@ -23,16 +21,17 @@ if  test $host = $dbs11 ; then
 thread=224
 fi
 
-thread=28
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=100
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
+    thread=28
     result=result_si_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 95; then
+    thread=28
     result=result_si_ycsbB_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 100; then
     result=result_si_ycsbC_tuple1k_skew0-099.dat
@@ -43,7 +42,10 @@ do
   rm $result
 
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $gci $pre $prv $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw skew $ycsb $cpumhz $gci $pre $prv $extime" >> $result
+  ../si.exe > exp.txt
+  tmpStr=`grep ShowOptParameters ./exp.txt`
+  echo "#$tmpStr" >> $result
   
   for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
   do

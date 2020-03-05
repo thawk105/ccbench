@@ -1,9 +1,8 @@
 # ycsb-xskew.sh(tictoc)
-tuple=1000000
-maxope=10
-rratioary=(95)
-rmw=off
-skew=0
+tuple=10000000
+maxope=16
+rratioary=(50 95)
+rmw=on
 ycsb=on
 cpumhz=2100
 extime=3
@@ -20,15 +19,17 @@ thread=224
 fi
 
 cd ../
-make clean; make -j 
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
+    thread=28
     result=result_tictoc_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 95; then
-    result=result_tictoc_ycsbB_tuple1m_skew07-099.dat
+    thread=28
+    result=result_tictoc_ycsbB_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 100; then
     result=result_tictoc_ycsbC_tuple1k_skew0-099.dat
   else
@@ -38,21 +39,23 @@ do
   rm $result
 
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-er, avg-rlr, avg-vlr" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw skew $ycsb $cpumhz $extime" >> $result
   ../tictoc.exe > exp.txt
   tmpStr=`grep ShowOptParameters ./exp.txt`
   echo "#$tmpStr" >> $result
   
-  for ((tmpskew = 70; tmpskew <= 100; tmpskew += 5))
+  for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
   do
     if test $tmpskew -eq 100 ; then
+      tmpskew=95
+    fi
+    if test $tmpskew -eq 105 ; then
       tmpskew=99
     fi
 
     skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`
   
     echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
-    echo "Thread number $thread"
     
     sumTH=0
     sumAR=0

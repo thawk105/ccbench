@@ -8,8 +8,8 @@ SS2PL_ALLSRC = $(SS2PL_SRCS1) $(wildcard include/*.hh)
 KEY_SIZE=8
 VAL_SIZE=4
 ADD_ANALYSIS=1
-BACK_OFF=0
-KEY_SORT=1
+BACK_OFF=1
+KEY_SORT=0
 MASSTREE_USE=1
 
 CC = g++
@@ -29,8 +29,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 # DLR0 ... timeout
 # DLR1 ... no-wait
 
-LDFLAGS = -L../third_party/mimalloc/out/release
-LIBS = -lpthread -lmimalloc
+LIBS = -lpthread
 
 OBJS1 = $(SS2PL_SRCS1:.cc=.o)
 all: $(PROG1)

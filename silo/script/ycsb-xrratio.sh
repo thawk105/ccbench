@@ -21,7 +21,7 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=4
+make clean; make -j 
 cd script/
 
 result=result_silo_tuple50_rratio0-100.dat
