@@ -20,7 +20,6 @@
 #include "include/util.hh"
 
 #include "../include/cache_line_size.hh"
-#include "../include/check.hh"
 #include "../include/config.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
@@ -30,86 +29,32 @@
 #include "../include/util.hh"
 #include "../include/zipf.hh"
 
-void chkArg(const int argc, char *argv[]) {
-  if (argc != 11) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "
-            "YCSB CLOCKS_PER_US EPOCH_TIME EXTIME"
-         << endl
-         << endl;
-
-    cout << "example:./main 1000000 10 24 50 off 0 on 2100 40 3" << endl
-         << endl;
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
-            "100)"
-         << endl;
-    cout << "MAX_OPE(int):    total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of thread." << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "RMW : read modify write. on or off." << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "CLOCKS_PER_US: CPU_MHZ" << endl;
-    cout << "EPOCH_TIME(int)(ms): Ex. 40" << endl;
-    cout << "EXTIME: execution time." << endl << endl;
+void chkArg(const int argc) {
+  displayParameter();
+  if (argc == 1) {
+    cout << "usage:./silo.exe -help" << endl;
     ShowOptParameters();
     exit(0);
   }
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[8]);
-  chkInt(argv[9]);
-  chkInt(argv[10]);
 
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  string argrmw = argv[5];
-  ZIPF_SKEW = atof(argv[6]);
-  string argycsb = argv[7];
-  CLOCKS_PER_US = atof(argv[8]);
-  EPOCH_TIME = atoi(argv[9]);
-  EXTIME = atoi(argv[10]);
-
-  if (RRATIO > 100) {
+  if (FLAGS_rratio > 100) {
     ERR;
   }
 
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+  if (FLAGS_zipf_skew >= 1) {
+    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
     ERR;
-  }
-
-  if (argrmw == "on")
-    RMW = true;
-  else if (argrmw == "off")
-    RMW = false;
-  else
-    ERR;
-
-  if (argycsb == "on")
-    YCSB = true;
-  else if (argycsb == "off")
-    YCSB = false;
-  else
-    ERR;
-
-  if (THREAD_NUM < 2) {
-    printf(
-        "One thread is epoch thread, and others are worker threads.\n\
-So you have to set THREAD_NUM >= 2.\n\n");
   }
 
   if (posix_memalign((void **)&ThLocalEpoch, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
-    ERR;  //[0]は使わない
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
+    ERR;
   if (posix_memalign((void **)&CTIDW, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
-    ERR;  //[0]は使わない
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
+    ERR;
+
   // init
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     ThLocalEpoch[i].obj_ = 0;
     CTIDW[i].obj_ = 0;
   }
@@ -118,7 +63,7 @@ So you have to set THREAD_NUM >= 2.\n\n");
 bool chkEpochLoaded() {
   uint64_t nowepo = atomicLoadGE();
   //全てのワーカースレッドが最新エポックを読み込んだか確認する．
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 1; i < FLAGS_thread_num; ++i) {
     if (__atomic_load_n(&(ThLocalEpoch[i].obj_), __ATOMIC_ACQUIRE) != nowepo)
       return false;
   }
@@ -128,7 +73,7 @@ bool chkEpochLoaded() {
 
 void displayDB() {
   Tuple *tuple;
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
     tuple = &Table[i];
     cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
@@ -140,16 +85,16 @@ void displayDB() {
 }
 
 void displayParameter() {
-  cout << "TUPLE_NUM:\t" << TUPLE_NUM << endl;
-  cout << "MAX_OPE:\t" << MAX_OPE << endl;
-  cout << "THREAD_NUM:\t" << THREAD_NUM << endl;
-  cout << "RRATIO:\t" << RRATIO << endl;
-  cout << "RMW:\t" << RMW << endl;
-  cout << "ZIPF_SKEW:\t" << ZIPF_SKEW << endl;
-  cout << "YCSB:\t" << YCSB << endl;
-  cout << "CLOCKS_PER_US:\t" << CLOCKS_PER_US << endl;
-  cout << "EPOCH_TIME:\t" << EPOCH_TIME << endl;
-  cout << "EXTIME:\t" << EXTIME << endl;
+  cout << "FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
+  cout << "FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
+  cout << "FLAGS_extime:\t\t" << FLAGS_extime << endl;
+  cout << "FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
+  cout << "FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
+  cout << "FLAGS_rratio:\t\t" << FLAGS_rratio << endl;
+  cout << "FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
+  cout << "FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
+  cout << "FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
+  cout << "FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
 void genLogFile(std::string &logpath, const int thid) {
@@ -178,27 +123,27 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) !=
+  if (posix_memalign((void **)&Table, PAGE_SIZE, (FLAGS_tuple_num) * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
     ERR;
 #endif
 
-  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(FLAGS_tuple_num);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
-                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, i * (FLAGS_tuple_num / maxthread),
+                     (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   for (auto &th : thv) th.join();
 }
 
 void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
   epoch_timer_stop = rdtscp();
   if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
-                 EPOCH_TIME * CLOCKS_PER_US * 1000) &&
+                 FLAGS_epoch_time * FLAGS_clocks_per_us * 1000) &&
       chkEpochLoaded()) {
     atomicAddGE();
     epoch_timer_start = epoch_timer_stop;

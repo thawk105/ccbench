@@ -36,9 +36,10 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
 				 -DWAL=$(WAL) \
 
-INCLUDE = -I/usr/include
+INCLUDE = -I/usr/include \
+					-I../third_party/ \
 
-LDLIBS = -lpthread -lboost_filesystem -lboost_system
+LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)

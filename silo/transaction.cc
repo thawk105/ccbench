@@ -212,7 +212,7 @@ void TxnExecutor::abort() {
   uint64_t start(rdtscp());
 #endif
 
-  Backoff::backoff(CLOCKS_PER_US);
+  Backoff::backoff(FLAGS_clocks_per_us);
 
 #if ADD_ANALYSIS
   sres_->local_backoff_latency_ += rdtscp() - start;

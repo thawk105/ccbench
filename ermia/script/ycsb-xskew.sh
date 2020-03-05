@@ -1,9 +1,8 @@
 #ycsb-xrs.sh(ermia)
-tuple=100000000
-maxope=10
+tuple=10000000
+maxope=16
 rratioary=(50 95)
-rmw=off
-skew=0
+rmw=on
 ycsb=on
 cpu_mhz=2100
 gci=5
@@ -23,15 +22,17 @@ if  test $host = $dbs11 ; then
 fi
 
 cd ../
-make clean; make -j KEY_SIZE=8 VAL_SIZE=4
+make clean; make -j VAL_SIZE=100
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50; then
-    result=result_ermia_ycsbA_tuple100m_skew06-099.dat
+    thread=28
+    result=result_ermia_ycsbA_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 95; then
-    result=result_ermia_ycsbB_tuple100m_skew06-099.dat
+    thread=28
+    result=result_ermia_ycsbB_tuple10m_ope16_rmw_skew0-099_th28.dat
   elif test $rratio = 100; then
     result=result_ermia_ycsbC_tuple1k_skew0-099.dat
   else
@@ -46,9 +47,12 @@ do
   tmpStr=`grep ShowOptParameters ./exp.txt`
   echo "#$tmpStr" >> $result
   
-  for ((tmpskew = 60; tmpskew <= 100; tmpskew += 5))
+  for ((tmpskew = 0; tmpskew <= 105; tmpskew += 10))
   do
     if test $tmpskew = 100 ; then
+      tmpskew=95
+    fi
+    if test $tmpskew = 105 ; then
       tmpskew=99
     fi
     skew=`echo "scale=3; $tmpskew / 100.0" | bc -l | xargs printf %.2f`

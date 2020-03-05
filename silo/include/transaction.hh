@@ -49,9 +49,9 @@ class TxnExecutor {
   char return_val_[VAL_SIZE];
 
   TxnExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
-    read_set_.reserve(MAX_OPE);
-    write_set_.reserve(MAX_OPE);
-    pro_set_.reserve(MAX_OPE);
+    read_set_.reserve(FLAGS_max_ope);
+    write_set_.reserve(FLAGS_max_ope);
+    pro_set_.reserve(FLAGS_max_ope);
     // log_set_.reserve(LOGSET_SIZE);
 
     // latest_log_header_.init();
