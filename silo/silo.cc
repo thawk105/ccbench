@@ -154,6 +154,7 @@ int main(int argc, char* argv[]) try {
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     res[0].addLocalAllResult(res[i]);
   }
+  ShowOptParameters();
   res[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
 
   return 0;
