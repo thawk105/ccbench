@@ -1,5 +1,19 @@
 # Snapshot Isolation
+## How to use
+- build 
+```
+$ make
+```
+- confirm usage 
+```
+$ ./si.exe
+```
+- execution example 
+```
+$ numactl --interleave=all ./si.exe 1000 10 224 100 off 0 off 2100 10 100 0 3
+```
 
+## Detail of Implementation
  This protocol follow two rules.
  1. Read operation reads the committed version which was latest at beginning of the transaction.
  2. First Updater (Committer) Wins Rule.
@@ -14,3 +28,4 @@ Author (tanabe) gives two selection which are able to be defined at Makefile.
  2. `-DCCTR_ON` means "Centralized counter is touched once in the lifetime of transaction." It is special technique. Counting up of shared counter only happen when a transaction commits. Instead of getting the count from the shared counter at the start of the transaction, get the latest commit timestamps of all the worker threads via the transaction mapping table. The element of the table may be refered by multiple concurrent worker thread. So getting and updating information are done by CAS. This technique reduces contentions for shared counter but increases overhead of memory management.
 
 Author observed that author's technique `-DCCTR_ON` was better than `-DCCTR_TW` in some YCSB-A,C. So normally it is better to set `-DCCTR_ON`.
+
