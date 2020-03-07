@@ -107,20 +107,6 @@ MOCC was proposed at VLDB'2017 by Tianzheng Wang.
 
 ---
 
-## Cicada
-Cicada was proposed at SIGMOD'2017 by Hyeontaek Lim.  
-
-### Implemented
-- all opt
-  - Sort write set by contention
-  - Pre-check version consistency
-  - Eary aborts
-  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
-- modify
-  - modify consistency checks because original protocl breaks consistency.
-
----
-
 ## Instruction Survey
 * fetch\_add
 * xoroshiro128+
