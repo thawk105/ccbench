@@ -1,17 +1,30 @@
 # Snapshot Isolation
 ## How to use
-- build 
+- Build 
 ```
 $ make
 ```
-- confirm usage 
+- Confirm usage 
 ```
 $ ./si.exe
 ```
-- execution example 
+- Execution example 
 ```
 $ numactl --interleave=all ./si.exe 1000 10 224 100 off 0 off 2100 10 100 0 3
 ```
+
+## How to select build options in Makefile
+- `VAL_SIZE` : Value of key-value size. In other words, payload size.
+- `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.
+- `BACK_OFF` : If this is 1, it use Cicada's backoff.
+- `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.
+- CFLAGS
+ - Use either `-DCCTR_ON` or `-DCCTR_TW`. These meanings is described below in section **Details of Implementation**.
+
+## Optimizations
+- Rapid garbage collection from Cicada's paper.
+- Cicada's backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
+- Mitigate contentions for centralized counter. 
 
 ## Detail of Implementation
  This protocol follow two rules.

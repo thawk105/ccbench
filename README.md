@@ -1,4 +1,4 @@
-# Redesign and Implement Many Concurrency Control
+# CCBench : Redesign and Implement Many Concurrency Control
 
 ---
 
@@ -6,7 +6,7 @@
 On Debian/Ubuntu Linux, execute below statement or bootstrap_apt.sh.
 ```
 $ sudo apt update -y
-$ sudo apt-get install -y libgflags-dev cmake cmake-curses-gui libboost-filesystem-dev
+$ sudo apt-get install -y libgflags-dev libgoogle-glog-dev cmake cmake-curses-gui libboost-filesystem-dev
 ```
 
 ## Prepare using
@@ -41,15 +41,6 @@ Prepare glog for command line options.
 ```
 ./autogen.sh && ./configure && make -j && make install
 ```
----
-
-## Snapshot Isolation
-snapshot isolation.  
-### Implemented
-- modify
-  - rapid garbage collection from Cicada's paper.
-  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)
-
 ---
 
 ## SS2PL
