@@ -43,7 +43,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   TxnExecutor trans(thid, (Result*)&myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   uint64_t epoch_timer_start, epoch_timer_stop;
+#if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
+#endif
 
 #if WAL
   /*
@@ -94,7 +96,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
+#if BACK_OFF
       leaderBackoffWork(backoff, res);
+#endif
       // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     }
 
