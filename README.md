@@ -43,20 +43,6 @@ Prepare glog for command line options.
 ```
 ---
 
-## SS2PL
-Strong Strict 2 Phase Lock.  
-### Implemented
-- Lock  
-  - reader/writer lock  
-
-- Deadlock resolution  
-  - nothing ... dlr0
-  - No-Wait ... dlr1
-- modify  
-  - backoff (easy to use from ccbench/include/backoff.hh by a few restriction)  
-
----
-
 ## Silo
 It was proposed at SOSP'2013 by Stephen Tu.
 - modify
