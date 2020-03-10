@@ -8,16 +8,16 @@ include $(REL)Makefile
 SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 # start of initialization of some parameters.
-KEY_SIZE=8
-VAL_SIZE=4
 ADD_ANALYSIS=0
 BACK_OFF=0
+KEY_SIZE=8
 MASSTREE_USE=1
 NO_WAIT_LOCKING_IN_VALIDATION=0
 PARTITION_TABLE=0
 PROCEDURE_SORT=0
-WAL=0
 SLEEP_READ_PHASE=0 # of tics
+VAL_SIZE=4
+WAL=0
 # end of initialization
 
 CC = g++
