@@ -260,7 +260,6 @@ void TxExecutor::commit() {
   write_set_.clear();
 
   TMT[thid_]->lastcstamp_.store(this->cstamp_, std::memory_order_release);
-  ++sres_->local_commit_counts_;
 #if ADD_ANALYSIS
   sres_->local_commit_latency_ += rdtscp() - start;
 #endif

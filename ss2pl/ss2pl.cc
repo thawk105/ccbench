@@ -27,21 +27,12 @@
 #include "../include/util.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
+#include "include/result.hh"
 #include "include/transaction.hh"
+#include "include/util.hh"
 
-extern void chkArg(const int argc, const char* argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern void display_procedure_vector(std::vector<Procedure>& pro);
-extern void displayDB();
-extern void displayPRO();
-extern void makeDB();
-extern void sleepMs(size_t ms);
-extern void waitForReady(const std::vector<char>& readys);
-
-void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            std::vector<Result>& res) {
-  Result& myres = std::ref(res[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(SS2PLResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
   TxExecutor trans(thid, (Result*)&myres);
@@ -66,7 +57,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
                   RRATIO, RMW, YCSB, false, thid, myres);
   RETRY:
     if (loadAcquire(quit)) break;
-    if (thid == 0) leaderBackoffWork(backoff, res);
+    if (thid == 0) leaderBackoffWork(backoff, SS2PLResult);
 
     trans.begin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
@@ -88,6 +79,12 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     }
 
     trans.commit();
+    /**
+     * local_commit_counts is used at ../include/backoff.hh to calcurate about
+     * backoff.
+     */
+    storeRelease(myres.local_commit_counts_,
+                 loadAcquire(myres.local_commit_counts_) + 1);
   }
 
   return;
@@ -99,12 +96,12 @@ int main(const int argc, const char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
+  initResult();
   std::vector<char> readys(THREAD_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res));
+                     std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
@@ -114,9 +111,9 @@ int main(const int argc, const char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    res[0].addLocalAllResult(res[i]);
+    SS2PLResult[0].addLocalAllResult(SS2PLResult[i]);
   }
-  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  SS2PLResult[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {

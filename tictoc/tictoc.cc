@@ -25,15 +25,18 @@
 #include "../include/util.hh"
 #include "../include/zipf.hh"
 #include "include/common.hh"
+#include "include/result.hh"
 #include "include/transaction.hh"
 #include "include/util.hh"
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            std::vector<Result>& res) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, (Result*)&res[thid]);
+
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+
+  Result& myres = std::ref(TicTocResult[thid]);
+  TxExecutor trans(thid, (Result*)&TicTocResult[thid]);
 
 #if BACK_OFF
   Backoff backoff(CLOCKS_PER_US);
@@ -57,10 +60,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, std::ref(res[thid]));
+                  RRATIO, RMW, YCSB, false, thid, myres);
   RETRY:
 #if BACK_OFF
-    if (thid == 0) leaderBackoffWork(std::ref(backoff), std::ref(res));
+    if (thid == 0) leaderBackoffWork(std::ref(backoff), TicTocResult);
 #endif
     if (loadAcquire(quit)) break;
 
@@ -86,6 +89,12 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
     if (trans.validationPhase()) {
       trans.writePhase();
+      /**
+       * local_commit_counts is used at ../include/backoff.hh to calcurate about
+       * backoff.
+       */
+      storeRelease(myres.local_commit_counts_,
+                   loadAcquire(myres.local_commit_counts_) + 1);
     } else {
       trans.abort();
       goto RETRY;
@@ -101,12 +110,12 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
+  initResult();
   std::vector<char> readys(THREAD_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res));
+                     std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
@@ -116,10 +125,10 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    res[0].addLocalAllResult(res[i]);
+    TicTocResult[0].addLocalAllResult(TicTocResult[i]);
   }
   ShowOptParameters();
-  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  TicTocResult[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {

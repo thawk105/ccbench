@@ -25,10 +25,6 @@
 #include "include/tuple.hh"
 #include "include/util.hh"
 
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern size_t decideParallelBuildNumber(size_t tuplenum);
-
 void chkArg(const int argc, const char *argv[]) {
   if (argc != 13) {
     // if (argc != 1) {
@@ -276,16 +272,9 @@ void leaderWork(GarbageCollection &gcob) {
   }
 }
 
-void
-ShowOptParameters()
-{
+void ShowOptParameters() {
   cout << "ShowOptParameters()"
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-    << ": MASSTREE_USE " << MASSTREE_USE 
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": KEY_SORT " << KEY_SORT
-    << ": VAL_SIZE " << VAL_SIZE
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
+       << ": KEY_SORT " << KEY_SORT << ": VAL_SIZE " << VAL_SIZE << endl;
 }
-

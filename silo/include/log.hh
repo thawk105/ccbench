@@ -48,7 +48,7 @@ class LogRecord {
 };
 
 class LogPackage {
-public:
+ public:
   LogHeader header_;
   std::unique_ptr<LogRecord[]> log_records_;
 };

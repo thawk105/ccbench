@@ -24,10 +24,6 @@
 #include "include/common.hh"
 #include "include/util.hh"
 
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern size_t decideParallelBuildNumber(size_t tuplenum);
-
 void chkArg(const int argc, const char *argv[]) {
   if (argc != 13) {
     // if (argc != 1) {
@@ -156,7 +152,8 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     Version *verTmp;
     tmp = TxExecutor::get_tuple(Table, i);
     tmp->latest_.store(new Version(), std::memory_order_release);
-    //if (posix_memalign((void**)&tmp->latest_, CACHE_LINE_SIZE, sizeof(Version)) != 0) ERR;
+    // if (posix_memalign((void**)&tmp->latest_, CACHE_LINE_SIZE,
+    // sizeof(Version)) != 0) ERR;
     tmp->min_cstamp_ = 0;
     verTmp = tmp->latest_.load(std::memory_order_acquire);
     verTmp->cstamp_ = 0;
@@ -251,14 +248,9 @@ void leaderWork(GarbageCollection &gcob) {
   }
 }
 
-void
-ShowOptParameters()
-{
+void ShowOptParameters() {
   cout << "ShowOptParameters() "
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-    << ": MASSTREE_USE " << MASSTREE_USE
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": VAL_SIZE " << VAL_SIZE
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
+       << ": VAL_SIZE " << VAL_SIZE << endl;
 }

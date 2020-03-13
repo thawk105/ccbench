@@ -15,6 +15,7 @@
 #define GLOBAL_VALUE_DEFINE
 #include "include/atomic_tool.hh"
 #include "include/common.hh"
+#include "include/result.hh"
 #include "include/transaction.hh"
 #include "include/util.hh"
 
@@ -32,12 +33,8 @@
 
 using namespace std;
 
-extern void displayParameter();
-extern void displayPRO();
-
-void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            std::vector<Result>& res) {
-  Result& myres = std::ref(res[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(SiloResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
   TxnExecutor trans(thid, (Result*)&myres);
@@ -53,9 +50,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   if (boost::filesystem::exists(log_dir_path)) {
   } else {
     boost::system::error_code error;
-    const bool result = boost::filesystem::create_directory(log_dir_path, error);
-    if (!result || error) {
-      ERR;
+    const bool result = boost::filesystem::create_directory(log_dir_path,
+  error); if (!result || error) { ERR;
     }
   }
   std::string logpath("/tmp/ccbench");
@@ -63,7 +59,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   std::string logpath;
   genLogFile(logpath, thid);
   trans.logfile_.open(logpath, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-  trans.logfile_.ftruncate(10^9);
+  trans.logfile_.ftruncate(10 ^ 9);
 #endif
 
 #ifdef Linux
@@ -82,11 +78,13 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
 #if PARTITION_TABLE
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
-                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true, thid, res);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
+                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true,
+                  thid, myres);
 #else
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
-                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
+                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
+                  thid, myres);
 #endif
 
 #if PROCEDURE_SORT
@@ -97,7 +95,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
 #if BACK_OFF
-      leaderBackoffWork(backoff, res);
+      leaderBackoffWork(backoff, Result);
 #endif
       // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     }
@@ -121,7 +119,12 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
 
     if (trans.validationPhase()) {
       trans.writePhase();
-      ++myres.local_commit_counts_;
+      /**
+       * local_commit_counts is used at ../include/backoff.hh to calcurate about
+       * backoff.
+       */
+      storeRelease(myres.local_commit_counts_,
+                   loadAcquire(myres.local_commit_counts_) + 1);
     } else {
       trans.abort();
       ++myres.local_abort_counts_;
@@ -141,12 +144,12 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  alignas(CACHE_LINE_SIZE) std::vector<Result> res(FLAGS_thread_num);
+  initResult();
   std::vector<char> readys(FLAGS_thread_num);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < FLAGS_thread_num; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res));
+                     std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < FLAGS_extime; ++i) {
@@ -156,10 +159,11 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
-    res[0].addLocalAllResult(res[i]);
+    SiloResult[0].addLocalAllResult(SiloResult[i]);
   }
   ShowOptParameters();
-  res[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
+  SiloResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                 FLAGS_thread_num);
 
   return 0;
 } catch (bad_alloc) {

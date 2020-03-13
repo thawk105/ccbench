@@ -292,7 +292,6 @@ void TxExecutor::writePhase() {
   read_set_.clear();
   write_set_.clear();
   cll_.clear();
-  ++tres_->local_commit_counts_;
 }
 
 void TxExecutor::lockWriteSet() {

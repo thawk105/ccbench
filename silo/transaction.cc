@@ -19,7 +19,6 @@
 #include "../include/tsc.hh"
 #include "../include/util.hh"
 
-
 extern void displayDB();
 
 using namespace std;

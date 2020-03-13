@@ -24,24 +24,17 @@
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/garbage_collection.hh"
+#include "include/result.hh"
 #include "include/transaction.hh"
+#include "include/util.hh"
 
 using namespace std;
 
-extern void chkArg(const int argc, const char* argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern void leaderWork(GarbageCollection& gcob);
-extern void makeDB();
-extern void naiveGarbageCollection();
-extern void waitForReady(const std::vector<char>& readys);
-extern void sleepMs(size_t);
-
-void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            std::vector<Result>& res) {
-  TxExecutor trans(thid, (Result*)&res[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  TxExecutor trans(thid, (Result*)&ErmiaResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
+  Result& myres = std::ref(ErmiaResult[thid]);
   FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
   GarbageCollection gcob;
   Backoff backoff(CLOCKS_PER_US);
@@ -64,11 +57,11 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   trans.gcstart_ = rdtscp();
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, std::ref(res[thid]));
+                  RRATIO, RMW, YCSB, false, thid, myres);
   RETRY:
     if (thid == 0) {
       leaderWork(std::ref(gcob));
-      leaderBackoffWork(backoff, res);
+      leaderBackoffWork(backoff, ErmiaResult);
     }
     if (loadAcquire(quit)) break;
 
@@ -96,8 +89,14 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     }
 
     trans.ssn_parallel_commit();
-
-    if (trans.status_ == TransactionStatus::aborted) {
+    if (trans.status_ == TransactionStatus::committed) {
+      /**
+       * local_commit_counts is used at ../include/backoff.hh to calcurate about
+       * backoff.
+       */
+      storeRelease(myres.local_commit_counts_,
+                   loadAcquire(myres.local_commit_counts_) + 1);
+    } else if (trans.status_ == TransactionStatus::aborted) {
       trans.abort();
       goto RETRY;
     }
@@ -116,12 +115,12 @@ int main(const int argc, const char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
+  initResult();
   std::vector<char> readys(THREAD_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res));
+                     std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
@@ -131,9 +130,9 @@ int main(const int argc, const char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    res[0].addLocalAllResult(res[i]);
+    ErmiaResult[0].addLocalAllResult(ErmiaResult[i]);
   }
-  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  ErmiaResult[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {

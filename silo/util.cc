@@ -118,11 +118,12 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, (FLAGS_tuple_num) * sizeof(Tuple)) !=
-      0)
+  if (posix_memalign((void **)&Table, PAGE_SIZE,
+                     (FLAGS_tuple_num) * sizeof(Tuple)) != 0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple),
+              MADV_HUGEPAGE) != 0)
     ERR;
 #endif
 
@@ -145,19 +146,12 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
   }
 }
 
-void
-ShowOptParameters()
-{
+void ShowOptParameters() {
   cout << "ShowOptParameters()"
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": MASSTREE_USE " << MASSTREE_USE
-    << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
-    << ": PARTITION_TABLE " << PARTITION_TABLE
-    << ": PROCEDURE_SORT " << PROCEDURE_SORT
-    << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
-    << ": VAL_SIZE " << VAL_SIZE
-    << ": WAL " << WAL
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
+       << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
+       << ": PARTITION_TABLE " << PARTITION_TABLE << ": PROCEDURE_SORT "
+       << PROCEDURE_SORT << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
+       << ": VAL_SIZE " << VAL_SIZE << ": WAL " << WAL << endl;
 }

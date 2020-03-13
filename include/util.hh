@@ -106,7 +106,7 @@ extern void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t t
 inline static void makeProcedure(std::vector<Procedure> &pro, Xoroshiro128Plus &rnd,
                    FastZipf &zipf, size_t tuple_num, size_t max_ope,
                    size_t thread_num, size_t rratio, bool rmw, bool ycsb,
-                   bool partition, size_t thread_id, Result& res) {
+                   bool partition, size_t thread_id, [[maybe_unused]]Result& res) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif

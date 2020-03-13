@@ -35,7 +35,8 @@ int main() {
   }
 
   cout << "computed chkSum_ : " << chkSum_ << endl;
-  cout << "before chkSum_ + after chkSum_ = " << loadhd.chkSum_ + chkSum_ << endl;
+  cout << "before chkSum_ + after chkSum_ = " << loadhd.chkSum_ + chkSum_
+       << endl;
 
   return 0;
 }

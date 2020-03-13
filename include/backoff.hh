@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iostream>
 
+#include "atomic_wrapper.hh"
 #include "result.hh"
 #include "tsc.hh"
 #include "util.hh"
@@ -113,7 +114,7 @@ class Backoff {
   if (backoff.check_update_backoff()) {
     uint64_t sum_committed_txs(0);
     for (auto &th : res) {
-      sum_committed_txs += th.local_commit_counts_;
+      sum_committed_txs += loadAcquire(th.local_commit_counts_);
       backoff.update_backoff(sum_committed_txs);
     }
   }

@@ -59,7 +59,6 @@ void TxExecutor::commit() {
   unlockList();
   read_set_.clear();
   write_set_.clear();
-  ++sres_->local_commit_counts_;
 }
 
 void TxExecutor::begin() { this->status_ = TransactionStatus::inFlight; }

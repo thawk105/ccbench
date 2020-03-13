@@ -716,7 +716,6 @@ void TxExecutor::writePhase() {
   RLL_.clear();
   read_set_.clear();
   write_set_.clear();
-  ++mres_->local_commit_counts_;
 }
 
 void TxExecutor::dispCLL() {

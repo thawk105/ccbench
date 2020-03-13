@@ -84,13 +84,14 @@ void Result::displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
 
 void Result::displayEarlyAbortRate() {
   if (total_early_aborts_) {
-    cout << fixed << setprecision(4) << "early_abort_rate:\t" << 
-      (long double)total_early_aborts_ / (long double)total_abort_counts_ << endl;
+    cout << fixed << setprecision(4) << "early_abort_rate:\t"
+         << (long double)total_early_aborts_ / (long double)total_abort_counts_
+         << endl;
   }
 }
 
 void Result::displayExtraReads() {
-    cout << "extra_reads:\t" << total_extra_reads_ << endl;
+  cout << "extra_reads:\t" << total_extra_reads_ << endl;
 }
 
 void Result::displayGCCounts() {
@@ -136,7 +137,7 @@ void Result::displayMakeProcedureLatencyRate(size_t clocks_per_us,
 void Result::displayMemcpys() {
   if (total_memcpys) {
     cout << "memcpys:\t" << total_memcpys << endl;
-   }
+  }
 }
 
 void Result::displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
@@ -284,7 +285,7 @@ void Result::displayValidationFailureByWritelockRate() {
 }
 
 void Result::displayVersionMalloc() {
-    cout << "version_malloc:\t" << total_version_malloc_ << endl;
+  cout << "version_malloc:\t" << total_version_malloc_ << endl;
 }
 
 void Result::displayVersionReuse() {
@@ -357,9 +358,7 @@ void Result::addLocalMakeProcedureLatency(const uint64_t count) {
   total_make_procedure_latency_ += count;
 }
 
-void Result::addLocalMemcpys(const uint64_t count) {
-  total_memcpys += count;
-}
+void Result::addLocalMemcpys(const uint64_t count) { total_memcpys += count; }
 
 void Result::addLocalPreemptiveAbortsCounts(const uint64_t count) {
   total_preemptive_aborts_counts_ += count;
@@ -424,8 +423,9 @@ void Result::addLocalWriteLatency(const uint64_t count) {
 }
 #endif
 
-void Result::displayAllResult(size_t clocks_per_us, size_t extime,
-                              size_t thread_num) {
+void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
+                              size_t extime,
+                              [[maybe_unused]] size_t thread_num) {
 #if ADD_ANALYSIS
   displayAbortByOperationRate();
   displayAbortByValidationRate();

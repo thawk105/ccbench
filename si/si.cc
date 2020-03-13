@@ -23,22 +23,14 @@
 #include "../include/zipf.hh"
 #include "include/common.hh"
 #include "include/garbage_collection.hh"
+#include "include/result.hh"
 #include "include/transaction.hh"
+#include "include/util.hh"
 
 using namespace std;
 
-extern void chkArg(const int argc, const char* argv[]);
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
-                       const uint64_t threshold);
-extern void leaderWork(GarbageCollection& gcob);
-extern void makeDB();
-extern void naiveGarbageCollection();
-extern void waitForReady(const std::vector<char>& readys);
-extern void sleepMs(size_t ms);
-
-void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            std::vector<Result>& res) {
-  Result& myres = std::ref(res[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(SIResult[thid]);
   TxExecutor trans(thid, MAX_OPE, (Result*)&myres);
   Xoroshiro128Plus rnd;
   rnd.init();
@@ -67,7 +59,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   RETRY:
     if (thid == 0) {
       leaderWork(std::ref(gcob));
-      leaderBackoffWork(backoff, res);
+      leaderBackoffWork(backoff, SIResult);
     }
     if (loadAcquire(quit)) break;
 
@@ -92,6 +84,12 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
     }
 
     trans.commit();
+    /**
+     * local_commit_counts is used at ../include/backoff.hh to calcurate about
+     * backoff.
+     */
+    storeRelease(myres.local_commit_counts_,
+                 loadAcquire(myres.local_commit_counts_) + 1);
 
     // maintenance phase
     // garbage collection
@@ -107,12 +105,12 @@ int main(const int argc, const char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  alignas(CACHE_LINE_SIZE) std::vector<Result> res(THREAD_NUM);
+  initResult();
   std::vector<char> readys(THREAD_NUM);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < THREAD_NUM; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit), std::ref(res));
+                     std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
   for (size_t i = 0; i < EXTIME; ++i) {
@@ -122,9 +120,9 @@ int main(const int argc, const char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    res[0].addLocalAllResult(res[i]);
+    SIResult[0].addLocalAllResult(SIResult[i]);
   }
-  res[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  SIResult[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
 
   return 0;
 } catch (bad_alloc) {

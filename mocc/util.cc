@@ -31,8 +31,6 @@
 
 using namespace std;
 
-extern size_t decideParallelBuildNumber(size_t tuplenum);
-
 void chkArg(const int argc, char *argv[]) {
   if (argc != 12) {
     cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
@@ -244,16 +242,10 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
   }
 }
 
-void
-ShowOptParameters()
-{
+void ShowOptParameters() {
   cout << "ShowOptParameters() "
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-    << ": MASSTREE_USE " << MASSTREE_USE
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": KEY_SORT " << KEY_SORT
-    << ": TEMPERATURE_RESET_OPT " << TEMPERATURE_RESET_OPT
-    << ": VAL_SIZE " << VAL_SIZE
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
+       << ": KEY_SORT " << KEY_SORT << ": TEMPERATURE_RESET_OPT "
+       << TEMPERATURE_RESET_OPT << ": VAL_SIZE " << VAL_SIZE << endl;
 }

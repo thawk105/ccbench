@@ -100,7 +100,7 @@ class TxExecutor {
   void displayWriteSet();
   void earlyAbort();
   void mainte();  // maintenance
-  void gcpv();  // group commit pending versions
+  void gcpv();    // group commit pending versions
   void precpv();  // pre-commit pending versions
   void pwal();    // parallel write ahead log.
   void swal();
@@ -148,7 +148,6 @@ class TxExecutor {
     }
   }
 
-
 #if INLINE_VERSION_OPT
 #if INLINE_VERSION_PROMOTION
   void inlineVersionPromotion(const uint64_t key, Tuple* tuple,
@@ -166,7 +165,6 @@ class TxExecutor {
   }
 #endif
 #endif
-
 
   Version* newVersionGeneration([[maybe_unused]] Tuple* tuple) {
 #if INLINE_VERSION_OPT

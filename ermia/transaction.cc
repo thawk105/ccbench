@@ -478,7 +478,6 @@ void TxExecutor::ssn_parallel_commit() {
 
   read_set_.clear();
   write_set_.clear();
-  ++eres_->local_commit_counts_;
   TMT[thid_]->lastcstamp_.store(cstamp_, memory_order_release);
 
 FINISH_PARALLEL_COMMIT:

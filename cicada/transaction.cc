@@ -165,17 +165,17 @@ void TxExecutor::twrite(const uint64_t key) {
   if (re) {
     rmw = true;
     tuple = re->rcdptr_;
-    /* 現時点で，シンプルな改造で re->later_ver_ 
+    /* 現時点で，シンプルな改造で re->later_ver_
      * 情報を受け取って利用することは難しい．
      * 何故なら，read only tx で発生した inline version promotion による
      * write であれば，read-only 専用のタイムスタンプによるサーチにおいて
      * later_ver であるが，write の later_ver には不適格．
      * ここを考慮してゴニョゴニョしても，利益が小さくて性能が上がらなかった．*/
     /* Now, it is difficult to use re->later_ver_ by simple customize.
-     * Because if this write is from inline version promotion which is from read only tx,
-     * the re->later_ver is suitable for read only search by read only timestamp.
-     * Of course, it is unsuitable for search for write.
-     * It is high cost to consider these things.
+     * Because if this write is from inline version promotion which is from read
+     * only tx, the re->later_ver is suitable for read only search by read only
+     * timestamp. Of course, it is unsuitable for search for write. It is high
+     * cost to consider these things.
      * I try many somethings but it can't improve performance. cost > profit.*/
   } else {
 #if MASSTREE_USE
@@ -321,8 +321,10 @@ bool TxExecutor::validation() {
         ;
     }
     /* この部分は，オリジナル手法と異なる．
-     * 現在 view となるバージョンが，read operation 時の view と同一かをチェックしている．
-     * オリジナル手法はこれがないため，この実装より性能は良いが view が壊れている.*/
+     * 現在 view となるバージョンが，read operation 時の view
+     * と同一かをチェックしている．
+     * オリジナル手法はこれがないため，この実装より性能は良いが view
+     * が壊れている.*/
     if ((*itr).ver_ != ver) {
       result = false;
       goto FINISH_VALIDATION;
@@ -442,10 +444,13 @@ inline void TxExecutor::cpv()  // commit pending versions
      * 従って， commit 確定前に書く場合，read phase 区間が伸びることで，
      * updater に割り込まれやすくなって read validation failure 頻度が高くなり，
      * 性能劣化する性質と，逆に read validation failure 頻度が高くなることで
-     * committed updater が減少し，競合が減少して性能向上という複雑な二面性を持つ．
-     * 確定後に書く気持ちは，read phase 区間をなるべく短くして，read validation failure 
+     * committed updater
+     * が減少し，競合が減少して性能向上という複雑な二面性を持つ．
+     * 確定後に書く気持ちは，read phase 区間をなるべく短くして，read validation
+     * failure
      * を起こしにくくして性能向上させる．しかし，この場合は区間がオーバーラップする
-     * tx が増えるため競合増加して性能劣化するかもしれないという複雑な二面性を持つ．
+     * tx
+     * が増えるため競合増加して性能劣化するかもしれないという複雑な二面性を持つ．
      * 両方試してみた結果，特に変わらなかったため，確定後に書く．*/
     memcpy((*itr).new_ver_->val_, write_val_, VAL_SIZE);
 #if SINGLE_EXEC
@@ -597,8 +602,8 @@ void TxExecutor::mainte() {
   }
 
   this->gcstop_ = rdtscp();
-  if (chkClkSpan(this->gcstart_, this->gcstop_, GC_INTER_US * CLOCKS_PER_US)
-      && (loadAcquire(GCFlag[thid_].obj_) == 0)) {
+  if (chkClkSpan(this->gcstart_, this->gcstop_, GC_INTER_US * CLOCKS_PER_US) &&
+      (loadAcquire(GCFlag[thid_].obj_) == 0)) {
     storeRelease(GCFlag[thid_].obj_, 1);
     this->gcstart_ = this->gcstop_;
   }
@@ -626,7 +631,6 @@ void TxExecutor::writePhase() {
   this->wts_.set_clockBoost(0);
   read_set_.clear();
   write_set_.clear();
-  ++cres_->local_commit_counts_;
 #if ADD_ANALYSIS
   cres_->local_commit_latency_ += rdtscp() - start;
 #endif

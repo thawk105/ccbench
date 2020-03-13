@@ -26,8 +26,6 @@
 #include "include/tuple.hh"
 #include "include/util.hh"
 
-extern size_t decideParallelBuildNumber(size_t tuplenum);
-
 void chkArg(const int argc, const char *argv[]) {
   if (argc != 10) {
     cout << "usage: ./ss2pl.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "

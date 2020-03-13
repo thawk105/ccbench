@@ -61,7 +61,7 @@ void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm) {
   return;
 }
 
-bool isReady(const std::vector<char>& readys) {
+bool isReady(const std::vector<char> &readys) {
   for (const char &b : readys) {
     if (!loadAcquire(b)) return false;
   }

@@ -1,5 +1,5 @@
 PROG1 = ermia.exe
-ERMIA_SRCS1 = ermia.cc transaction.cc util.cc garbage_collection.cc
+ERMIA_SRCS1 = ermia.cc transaction.cc util.cc garbage_collection.cc result.cc
 
 REL := ../common/
 include $(REL)Makefile

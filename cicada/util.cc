@@ -33,7 +33,8 @@ void chkArg(const int argc, char *argv[]) {
   if (argc != 17) {
     cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
             "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
-            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION WORKER1_INSERT_DELAY_RPHASE_US EXTIME"
+            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION "
+            "WORKER1_INSERT_DELAY_RPHASE_US EXTIME"
          << endl
          << endl;
     cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 10000 0 3"
@@ -63,7 +64,9 @@ void chkArg(const int argc, char *argv[]) {
     cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
     cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
          << endl;
-    cout << "WORKER1_INSERT_DELAY_RPHASE_US : worker 1 insert delay in the end of read phase[us]." << endl;
+    cout << "WORKER1_INSERT_DELAY_RPHASE_US : worker 1 insert delay in the end "
+            "of read phase[us]."
+         << endl;
     cout << "EXTIME: execution time [sec]" << endl << endl;
     ShowOptParameters();
     exit(0);
@@ -374,8 +377,7 @@ void makeDB(uint64_t *initial_wts) {
   for (auto &th : thv) th.join();
 }
 
-void leaderWork([[maybe_unused]] Backoff &backoff,
-                [[maybe_unused]] std::vector<Result> &res) {
+void leaderWork([[maybe_unused]] Backoff &backoff) {
   bool gc_update = true;
   for (unsigned int i = 0; i < THREAD_NUM; ++i) {
     // check all thread's flag raising
@@ -418,27 +420,17 @@ void leaderWork([[maybe_unused]] Backoff &backoff,
       __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
     }
   }
-
-#if BACK_OFF
-  leaderBackoffWork(backoff, res);
-#endif
 }
 
-void
-ShowOptParameters()
-{
+void ShowOptParameters() {
   cout << "ShowOptParameters()"
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-    << ": INLINE_VERSION_OPT " << INLINE_VERSION_OPT
-    << ": INLINE_VERSION_PROMOTION " << INLINE_VERSION_PROMOTION
-    << ": MASSTREE_USE " << MASSTREE_USE
-    << ": PARTITION_TABLE " << PARTITION_TABLE
-    << ": REUSE_VERSION " << REUSE_VERSION
-    << ": SINGLE_EXEC " << SINGLE_EXEC
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": VAL_SIZE " << VAL_SIZE
-    << ": WRITE_LATEST_ONLY " << WRITE_LATEST_ONLY
-    << ": WORKER1_INSERT_DELAY_RPHASE " << WORKER1_INSERT_DELAY_RPHASE
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": INLINE_VERSION_OPT " << INLINE_VERSION_OPT
+       << ": INLINE_VERSION_PROMOTION " << INLINE_VERSION_PROMOTION
+       << ": MASSTREE_USE " << MASSTREE_USE << ": PARTITION_TABLE "
+       << PARTITION_TABLE << ": REUSE_VERSION " << REUSE_VERSION
+       << ": SINGLE_EXEC " << SINGLE_EXEC << ": KEY_SIZE " << KEY_SIZE
+       << ": VAL_SIZE " << VAL_SIZE << ": WRITE_LATEST_ONLY "
+       << WRITE_LATEST_ONLY << ": WORKER1_INSERT_DELAY_RPHASE "
+       << WORKER1_INSERT_DELAY_RPHASE << endl;
 }

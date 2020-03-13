@@ -1,5 +1,5 @@
 PROG1 = ss2pl.exe
-SS2PL_SRCS1 := ss2pl.cc transaction.cc util.cc
+SS2PL_SRCS1 := ss2pl.cc transaction.cc util.cc result.cc
 
 REL := ../common/
 include $(REL)Makefile
