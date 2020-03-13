@@ -51,7 +51,7 @@ LDFLAGS = -L../third_party/mimalloc/out/release \
 					-L../third_party/mimalloc/out/debug \
 					-L../third_party/ \
 
-LIBS = -lpthread -lmimalloc
+LIBS = -lpthread -lmimalloc -lgflags -lglog
 
 OBJS1 = $(CICADA_SRCS1:.cc=.o)
 

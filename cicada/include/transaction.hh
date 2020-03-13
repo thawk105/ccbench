@@ -67,12 +67,12 @@ class TxExecutor {
         break;
     }
 
-    read_set_.reserve(MAX_OPE);
-    write_set_.reserve(MAX_OPE);
-    pro_set_.reserve(MAX_OPE);
+    read_set_.reserve(FLAGS_max_ope);
+    write_set_.reserve(FLAGS_max_ope);
+    pro_set_.reserve(FLAGS_max_ope);
 
-    if (PRE_RESERVE_VERSION) {
-      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i)
+    if (FLAGS_pre_reserve_version) {
+      for (size_t i = 0; i < FLAGS_pre_reserve_version; ++i)
         reuse_version_from_gc_.emplace_back(new Version());
     }
 
@@ -115,7 +115,7 @@ class TxExecutor {
     uint64_t start = rdtscp();
 #endif
 
-    Backoff::backoff(CLOCKS_PER_US);
+    Backoff::backoff(FLAGS_clocks_per_us);
 
 #if ADD_ANALYSIS
     cres_->local_backoff_latency_ += rdtscp() - start;

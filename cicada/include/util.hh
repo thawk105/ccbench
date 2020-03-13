@@ -4,7 +4,7 @@
 
 #include "../../include/backoff.hh"
 
-extern void chkArg(const int argc, char *argv[]);
+extern void chkArg();
 
 extern void deleteDB();
 
@@ -14,11 +14,13 @@ extern void displayMinRts();
 
 extern void displayMinWts();
 
+extern void displayParameter();
+
+extern void displaySLogSet();
+
 extern void displayThreadWtsArray();
 
 extern void displayThreadRtsArray();
-
-extern void displaySLogSet();
 
 extern void leaderWork([[maybe_unused]] Backoff &backoff);
 

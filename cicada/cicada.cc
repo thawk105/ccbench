@@ -38,8 +38,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   rnd.init();
   TxExecutor trans(thid, (Result*)&CicadaResult[thid]);
   Result& myres = std::ref(CicadaResult[thid]);
-  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
-  Backoff backoff(CLOCKS_PER_US);
+  FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
+  Backoff backoff(FLAGS_clocks_per_us);
 
 #ifdef Linux
   setThreadAffinity(thid);
@@ -66,16 +66,16 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
      * write - read とする．
      * */
 #if SINGLE_EXEC
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
+                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true, thid, myres);
     sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #else
 #if PARTITION_TABLE
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, true, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
+                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true, thid, myres);
 #else
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
+                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
 #endif
 #endif
 
@@ -114,7 +114,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 
 #if WORKER1_INSERT_DELAY_RPHASE
     if (unlikely(thid == 1) && WORKER1_INSERT_DELAY_RPHASE_US != 0) {
-      clock_delay(WORKER1_INSERT_DELAY_RPHASE_US * CLOCKS_PER_US);
+      clock_delay(WORKER1_INSERT_DELAY_RPHASE_US * FLAGS_clocks_per_us);
     }
 #endif
 
@@ -169,7 +169,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 }
 
 int main(int argc, char* argv[]) try {
-  chkArg(argc, argv);
+  gflags::SetUsageMessage("Cicada benchmark.");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  chkArg();
   uint64_t initial_wts;
   makeDB(&initial_wts);
   MinWts.store(initial_wts + 2, memory_order_release);
@@ -177,24 +179,24 @@ int main(int argc, char* argv[]) try {
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
   initResult();
-  std::vector<char> readys(THREAD_NUM);
+  std::vector<char> readys(FLAGS_thread_num);
   std::vector<std::thread> thv;
-  for (size_t i = 0; i < THREAD_NUM; ++i)
+  for (size_t i = 0; i < FLAGS_thread_num; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
                      std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < EXTIME; ++i) {
+  for (size_t i = 0; i < FLAGS_extime; ++i) {
     sleepMs(1000);
   }
   storeRelease(quit, true);
   for (auto& th : thv) th.join();
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     CicadaResult[0].addLocalAllResult(CicadaResult[i]);
   }
   ShowOptParameters();
-  CicadaResult[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  CicadaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
   deleteDB();
 
   return 0;

@@ -49,7 +49,7 @@ void TxExecutor::tbegin() {
    * It is for progress-guarantee or fairness or like these.
    *
   stop = rdtscp();
-  if (chkClkSpan(start, stop, 100 * CLOCKS_PER_US)) {
+  if (chkClkSpan(start, stop, 100 * FLAGS_clocks_per_us)) {
     uint64_t maxwts;
       maxwts = __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
     //record the fastest one, and adjust it.
@@ -357,7 +357,7 @@ FINISH_VALIDATION:
 }
 
 void TxExecutor::swal() {
-  if (!GROUP_COMMIT) {  // non-group commit
+  if (!FLAGS_group_commit) {  // non-group commit
     SwalLock.w_lock();
 
     int i = 0;
@@ -366,7 +366,7 @@ void TxExecutor::swal() {
       ++i;
     }
 
-    double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
+    double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
     uint64_t spinstart = rdtscp();
     while ((rdtscp() - spinstart) < threshold) {
     }  // spin-wait
@@ -385,8 +385,8 @@ void TxExecutor::swal() {
 
     ++GROUP_COMMIT_COUNTER[0].obj_;
 
-    if (GROUP_COMMIT_COUNTER[0].obj_ == GROUP_COMMIT) {
-      double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
+    if (GROUP_COMMIT_COUNTER[0].obj_ == FLAGS_group_commit) {
+      double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
       uint64_t spinstart = rdtscp();
       while ((rdtscp() - spinstart) < threshold) {
       }  // spin-wait
@@ -399,7 +399,7 @@ void TxExecutor::swal() {
 }
 
 void TxExecutor::pwal() {
-  if (!GROUP_COMMIT) {
+  if (!FLAGS_group_commit) {
     int i = 0;
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       PLogSet[thid_][i] = (*itr).new_ver_;
@@ -407,7 +407,7 @@ void TxExecutor::pwal() {
     }
 
     // it gives lat ency instead of flush.
-    double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
+    double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
     uint64_t spinstart = rdtscp();
     while ((rdtscp() - spinstart) < threshold) {
     }  // spin-wait
@@ -424,9 +424,9 @@ void TxExecutor::pwal() {
 
     ++GROUP_COMMIT_COUNTER[this->thid_].obj_;
 
-    if (GROUP_COMMIT_COUNTER[this->thid_].obj_ == GROUP_COMMIT) {
+    if (GROUP_COMMIT_COUNTER[this->thid_].obj_ == FLAGS_group_commit) {
       // it gives latency instead of flush.
-      double threshold = CLOCKS_PER_US * IO_TIME_NS / 1000;
+      double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
       uint64_t spinstart = rdtscp();
       while ((rdtscp() - spinstart) < threshold) {
       }  // spin-wait
@@ -465,13 +465,13 @@ inline void TxExecutor::cpv()  // commit pending versions
 }
 
 void TxExecutor::gcpv() {
-  if (S_WAL) {
+  if (FLAGS_s_wal) {
     for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj_; ++i) {
       SLogSet[i]->status_.store(VersionStatus::committed, memory_order_release);
     }
     GROUP_COMMIT_COUNTER[0].obj_ = 0;
     GROUP_COMMIT_INDEX[0].obj_ = 0;
-  } else if (P_WAL) {
+  } else if (FLAGS_p_wal) {
     for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[thid_].obj_; ++i) {
       PLogSet[thid_][i]->status_.store(VersionStatus::committed,
                                        memory_order_release);
@@ -485,11 +485,11 @@ void TxExecutor::earlyAbort() {
   writeSetClean();
   read_set_.clear();
 
-  if (GROUP_COMMIT) {
+  if (FLAGS_group_commit) {
     chkGcpvTimeout();
   }
 
-  this->wts_.set_clockBoost(CLOCKS_PER_US);
+  this->wts_.set_clockBoost(FLAGS_clocks_per_us);
   this->status_ = TransactionStatus::abort;
   ++cres_->local_abort_counts_;
 
@@ -502,11 +502,11 @@ void TxExecutor::abort() {
   writeSetClean();
   read_set_.clear();
 
-  if (GROUP_COMMIT) {
+  if (FLAGS_group_commit) {
     chkGcpvTimeout();
   }
 
-  this->wts_.set_clockBoost(CLOCKS_PER_US);
+  this->wts_.set_clockBoost(FLAGS_clocks_per_us);
   ++cres_->local_abort_counts_;
 
 #if BACK_OFF
@@ -523,17 +523,17 @@ void TxExecutor::displayWriteSet() {
 }
 
 bool TxExecutor::chkGcpvTimeout() {
-  if (P_WAL) {
+  if (FLAGS_p_wal) {
     grpcmt_stop_ = rdtscp();
     if (chkClkSpan(grpcmt_start_, grpcmt_stop_,
-                   GROUP_COMMIT_TIMEOUT_US * CLOCKS_PER_US)) {
+                   FLAGS_group_commit_timeout_us * FLAGS_clocks_per_us)) {
       gcpv();
       return true;
     }
-  } else if (S_WAL) {
+  } else if (FLAGS_s_wal) {
     grpcmt_stop_ = rdtscp();
     if (chkClkSpan(grpcmt_start_, grpcmt_stop_,
-                   GROUP_COMMIT_TIMEOUT_US * CLOCKS_PER_US)) {
+                   FLAGS_group_commit_timeout_us * FLAGS_clocks_per_us)) {
       SwalLock.w_lock();
       gcpv();
       SwalLock.w_unlock();
@@ -602,7 +602,7 @@ void TxExecutor::mainte() {
   }
 
   this->gcstop_ = rdtscp();
-  if (chkClkSpan(this->gcstart_, this->gcstop_, GC_INTER_US * CLOCKS_PER_US) &&
+  if (chkClkSpan(this->gcstart_, this->gcstop_, FLAGS_gc_inter_us * FLAGS_clocks_per_us) &&
       (loadAcquire(GCFlag[thid_].obj_) == 0)) {
     storeRelease(GCFlag[thid_].obj_, 1);
     this->gcstart_ = this->gcstop_;
@@ -617,7 +617,7 @@ void TxExecutor::writePhase() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
-  if (GROUP_COMMIT) {
+  if (FLAGS_group_commit) {
     // check time out of commit pending versions
     chkGcpvTimeout();
   } else {
@@ -625,8 +625,8 @@ void TxExecutor::writePhase() {
   }
 
   /* log write set & possibly group commit pending version
-  if (P_WAL) pwal();
-  if (S_WAL) swal();*/
+  if (FLAGS_p_wal) pwal();
+  if (FLAGS_s_wal) swal();*/
 
   this->wts_.set_clockBoost(0);
   read_set_.clear();

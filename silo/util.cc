@@ -80,16 +80,16 @@ void displayDB() {
 }
 
 void displayParameter() {
-  cout << "FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
-  cout << "FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
-  cout << "FLAGS_extime:\t\t" << FLAGS_extime << endl;
-  cout << "FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
-  cout << "FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
-  cout << "FLAGS_rratio:\t\t" << FLAGS_rratio << endl;
-  cout << "FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
-  cout << "FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
-  cout << "FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
-  cout << "FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
+  cout << "#FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
+  cout << "#FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
+  cout << "#FLAGS_extime:\t\t" << FLAGS_extime << endl;
+  cout << "#FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
+  cout << "#FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
+  cout << "#FLAGS_rratio:\t\t" << FLAGS_rratio << endl;
+  cout << "#FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
+  cout << "#FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
+  cout << "#FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
+  cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
 void genLogFile(std::string &logpath, const int thid) {
@@ -147,7 +147,7 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
 }
 
 void ShowOptParameters() {
-  cout << "ShowOptParameters()"
+  cout << "#ShowOptParameters()"
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
        << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION

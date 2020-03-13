@@ -14,7 +14,6 @@
 
 #include "../include/backoff.hh"
 #include "../include/cache_line_size.hh"
-#include "../include/check.hh"
 #include "../include/config.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
@@ -29,169 +28,55 @@
 
 using std::cout, std::endl;
 
-void chkArg(const int argc, char *argv[]) {
-  if (argc != 17) {
-    cout << "usage: ./cicada.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
-            "ZIPF_SKEW YCSB WAL GROUP_COMMIT CPU_MHZ IO_TIME_NS "
-            "GROUP_COMMIT_TIMEOUT_US GC_INTER_US PRE_RESERVE_VERSION "
-            "WORKER1_INSERT_DELAY_RPHASE_US EXTIME"
-         << endl
-         << endl;
-    cout << "example:./main 200 10 24 50 off 0 on off off 2100 5 2 10 10000 0 3"
-         << endl
-         << endl;
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
-            "100)"
-         << endl;
-    cout << "MAX_OPE(int):    total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of worker thread." << endl;
-    cout << "RRATIO: read ratio [%%]" << endl;
-    cout << "RMW : read modify write. on or off." << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "WAL: P or S or off." << endl;
-    cout << "GROUP_COMMIT:  unsigned integer or off, i reccomend off or 3"
-         << endl;
-    cout << "CPU_MHZ(float):  your cpuMHz. used by calculate time of yours "
-            "1clock."
-         << endl;
-    cout << "IO_TIME_NS: instead of exporting to disk, delay is inserted. the "
-            "time(nano seconds)."
-         << endl;
-    cout << "GROUP_COMMIT_TIMEOUT_US: Invocation condition of group commit by "
-            "timeout(micro seconds)."
-         << endl;
-    cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
-    cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
-         << endl;
-    cout << "WORKER1_INSERT_DELAY_RPHASE_US : worker 1 insert delay in the end "
-            "of read phase[us]."
-         << endl;
-    cout << "EXTIME: execution time [sec]" << endl << endl;
-    ShowOptParameters();
-    exit(0);
-  }
+void chkArg() {
+  displayParameter();
 
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[10]);
-  chkInt(argv[11]);
-  chkInt(argv[12]);
-  chkInt(argv[13]);
-  chkInt(argv[14]);
-  chkInt(argv[15]);
-
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  string argrmw = argv[5];
-  ZIPF_SKEW = atof(argv[6]);
-  string argycsb = argv[7];
-  string argwal = argv[8];
-  string arggrpc = argv[9];
-  CLOCKS_PER_US = atof(argv[10]);
-  IO_TIME_NS = atof(argv[11]);
-  GROUP_COMMIT_TIMEOUT_US = atoi(argv[12]);
-  GC_INTER_US = atoi(argv[13]);
-  PRE_RESERVE_VERSION = atoi(argv[14]);
-  WORKER1_INSERT_DELAY_RPHASE_US = atoi(argv[15]);
-  EXTIME = atoi(argv[16]);
-
-  if (RRATIO > 100) {
+  if (FLAGS_rratio > 100) {
     cout << "rratio [%%] must be 0 ~ 100)" << endl;
     ERR;
   }
 
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+  if (FLAGS_zipf_skew >= 1) {
+    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
     ERR;
   }
 
-  if (argrmw == "on")
-    RMW = true;
-  else if (argrmw == "off")
-    RMW = false;
-  else
-    ERR;
-
-  if (argycsb == "on") {
-    YCSB = true;
-  } else if (argycsb == "off") {
-    YCSB = false;
-  } else
-    ERR;
-
-  if (argwal == "P") {
-    P_WAL = true;
-    S_WAL = false;
-  } else if (argwal == "S") {
-    P_WAL = false;
-    S_WAL = true;
-  } else if (argwal == "off") {
-    P_WAL = false;
-    S_WAL = false;
-
-    if (arggrpc != "off") {
-      printf(
-          "i don't implement below.\n\
-P_WAL off, S_WAL off, GROUP_COMMIT number.\n\
-usage: P_WAL or S_WAL is selected. \n\
-P_WAL and S_WAL isn't selected, GROUP_COMMIT must be off. this isn't logging. performance is concurrency control only.\n\n");
-      exit(0);
-    }
-  } else {
-    printf("WAL must be P or S or off\n");
-    exit(0);
-  }
-
-  if (arggrpc == "off")
-    GROUP_COMMIT = 0;
-  else if (chkInt(argv[9])) {
-    GROUP_COMMIT = atoi(argv[9]);
-  } else {
-    printf("GROUP_COMMIT(argv[9]) must be unsigned integer or off\n");
-    exit(0);
-  }
-
-  if (CLOCKS_PER_US < 100) {
+  if (FLAGS_clocks_per_us < 100) {
     printf("CPU_MHZ is less than 100. are you really?\n");
     exit(0);
   }
 
   if (posix_memalign((void **)&ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&ThreadWtsArray, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&ThreadRtsArray, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&GCFlag, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&GCExecuteFlag, CACHE_LINE_SIZE,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
-  SLogSet = new Version *[(MAX_OPE) * (GROUP_COMMIT)];
-  PLogSet = new Version **[THREAD_NUM];
+  SLogSet = new Version *[(FLAGS_max_ope) * (FLAGS_group_commit)];
+  PLogSet = new Version **[FLAGS_thread_num];
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-    PLogSet[i] = new Version *[(MAX_OPE) * (GROUP_COMMIT)];
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
+    PLogSet[i] = new Version *[(FLAGS_max_ope) * (FLAGS_group_commit)];
   }
 
   // init
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     GCFlag[i].obj_ = 0;
     GCExecuteFlag[i].obj_ = 0;
     GROUP_COMMIT_INDEX[i].obj_ = 0;
@@ -206,8 +91,8 @@ void displayDB() {
   Tuple *tuple;
   Version *version;
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
-    tuple = &Table[i % TUPLE_NUM];
+  for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
+    tuple = &Table[i % FLAGS_tuple_num];
     cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
 
@@ -253,26 +138,29 @@ void displayMinRts() { cout << "MinRts:  " << MinRts << endl << endl; }
 
 void displayMinWts() { cout << "MinWts:  " << MinWts << endl << endl; }
 
-void displayThreadWtsArray() {
-  cout << "ThreadWtsArray:" << endl;
-  for (unsigned int i = 0; i < THREAD_NUM; i++) {
-    cout << "thid " << i << ": " << ThreadWtsArray[i].obj_ << endl;
-  }
-  cout << endl << endl;
-}
-
-void displayThreadRtsArray() {
-  cout << "ThreadRtsArray:" << endl;
-  for (unsigned int i = 0; i < THREAD_NUM; i++) {
-    cout << "thid " << i << ": " << ThreadRtsArray[i].obj_ << endl;
-  }
-  cout << endl << endl;
-}
+void displayParameter() {
+  cout << "#FLAGS_clocks_per_us:\t\t\t" << FLAGS_clocks_per_us << endl;
+  cout << "#FLAGS_extime:\t\t\t\t" << FLAGS_extime << endl;
+  cout << "#FLAGS_gc_inter_us:\t\t\t" << FLAGS_gc_inter_us << endl;
+  cout << "#FLAGS_group_commit:\t\t\t" << FLAGS_group_commit << endl;
+  cout << "#FLAGS_group_commit_timeout_us:\t\t" << FLAGS_group_commit_timeout_us << endl;
+  cout << "#FLAGS_io_time_ns:\t\t\t" << FLAGS_io_time_ns << endl;
+  cout << "#FLAGS_max_ope:\t\t\t\t" << FLAGS_max_ope << endl;
+  cout << "#FLAGS_pre_reserve_version:\t\t" << FLAGS_pre_reserve_version << endl;
+  cout << "#FLAGS_p_wal:\t\t\t\t" << FLAGS_p_wal << endl;
+  cout << "#FLAGS_rmw:\t\t\t\t" << FLAGS_rmw << endl;
+  cout << "#FLAGS_rratio:\t\t\t\t" << FLAGS_rratio << endl;
+  cout << "#FLAGS_s_wal:\t\t\t\t" << FLAGS_s_wal << endl;
+  cout << "#FLAGS_thread_num:\t\t\t" << FLAGS_thread_num << endl;
+  cout << "#FLAGS_ycsb:\t\t\t\t" << FLAGS_ycsb << endl;
+  cout << "#FLAGS_worker1_insert_delay_rphase_us:\t" << FLAGS_worker1_insert_delay_rphase_us << endl;
+  cout << "#FLAGS_zipf_skew:\t\t\t" << FLAGS_zipf_skew << endl;
+ }
 
 void displaySLogSet() {
-  if (!GROUP_COMMIT) {
+  if (!FLAGS_group_commit) {
   } else {
-    if (S_WAL) {
+    if (FLAGS_s_wal) {
       SwalLock.w_lock();
       for (unsigned int i = 0; i < GROUP_COMMIT_INDEX[0].obj_; ++i) {
         // printf("SLogSet[%d]->key, val = (%d, %d)\n", i, SLogSet[i]->key,
@@ -283,6 +171,22 @@ void displaySLogSet() {
       // if (i == 0) printf("SLogSet is empty\n");
     }
   }
+}
+
+void displayThreadWtsArray() {
+  cout << "ThreadWtsArray:" << endl;
+  for (unsigned int i = 0; i < FLAGS_thread_num; i++) {
+    cout << "thid " << i << ": " << ThreadWtsArray[i].obj_ << endl;
+  }
+  cout << endl << endl;
+}
+
+void displayThreadRtsArray() {
+  cout << "ThreadRtsArray:" << endl;
+  for (unsigned int i = 0; i < FLAGS_thread_num; i++) {
+    cout << "thid " << i << ": " << ThreadRtsArray[i].obj_ << endl;
+  }
+  cout << endl << endl;
 }
 
 void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
@@ -336,11 +240,11 @@ void partTableDelete([[maybe_unused]] size_t thid, uint64_t start,
 }
 
 void deleteDB() {
-  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(FLAGS_tuple_num);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableDelete, i, i * (TUPLE_NUM / maxthread),
-                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableDelete, i, i * (FLAGS_tuple_num / maxthread),
+                     (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   for (auto &th : thv) th.join();
 
   delete Table;
@@ -352,16 +256,16 @@ void deleteDB() {
   delete GCFlag;
   delete GCExecuteFlag;
   delete SLogSet;
-  for (uint i = 0; i < THREAD_NUM; ++i) delete PLogSet[i];
+  for (uint i = 0; i < FLAGS_thread_num; ++i) delete PLogSet[i];
   delete PLogSet;
 }
 
 void makeDB(uint64_t *initial_wts) {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) !=
+  if (posix_memalign((void **)&Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
     ERR;
 #endif
 
@@ -369,17 +273,17 @@ void makeDB(uint64_t *initial_wts) {
   tstmp.generateTimeStampFirst(0);
   *initial_wts = tstmp.ts_;
 
-  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(FLAGS_tuple_num);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, tstmp.ts_, i * (TUPLE_NUM / maxthread),
-                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, tstmp.ts_, i * (FLAGS_tuple_num / maxthread),
+                     (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   for (auto &th : thv) th.join();
 }
 
 void leaderWork([[maybe_unused]] Backoff &backoff) {
   bool gc_update = true;
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     // check all thread's flag raising
     if (__atomic_load_n(&(GCFlag[i].obj_), __ATOMIC_ACQUIRE) == 0) {
       gc_update = false;
@@ -390,18 +294,18 @@ void leaderWork([[maybe_unused]] Backoff &backoff) {
     uint64_t minw =
         __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
     uint64_t minr;
-    if (GROUP_COMMIT == 0) {
+    if (FLAGS_group_commit == 0) {
       minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
     } else {
       minr =
           __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_), __ATOMIC_ACQUIRE);
     }
 
-    for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+    for (unsigned int i = 1; i < FLAGS_thread_num; ++i) {
       uint64_t tmp =
           __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
       if (minw > tmp) minw = tmp;
-      if (GROUP_COMMIT == 0) {
+      if (FLAGS_group_commit == 0) {
         tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);
         if (minr > tmp) minr = tmp;
       } else {
@@ -415,7 +319,7 @@ void leaderWork([[maybe_unused]] Backoff &backoff) {
     MinRts.store(minr, memory_order_release);
 
     // downgrade gc flag
-    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+    for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
       __atomic_store_n(&(GCFlag[i].obj_), 0, __ATOMIC_RELEASE);
       __atomic_store_n(&(GCExecuteFlag[i].obj_), 1, __ATOMIC_RELEASE);
     }
@@ -423,7 +327,7 @@ void leaderWork([[maybe_unused]] Backoff &backoff) {
 }
 
 void ShowOptParameters() {
-  cout << "ShowOptParameters()"
+  cout << "#ShowOptParameters()"
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": INLINE_VERSION_OPT " << INLINE_VERSION_OPT
        << ": INLINE_VERSION_PROMOTION " << INLINE_VERSION_PROMOTION
