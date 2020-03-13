@@ -8,11 +8,11 @@ $ make
 ```
 - Confirm usage 
 ```
-$ ./cicada.exe
+$ ./cicada.exe -help
 ```
 - Execution example 
 ```
-$ numactl --interleave=all ./cicada.exe 1000 10 224 100 off 0 on off off 2100 5 2 10 10000 0 3
+$ numactl --interleave=all ./cicada.exe -tuple_num=1000 -max_ope=10 -thread_num=224 -rratio=100 -rmw=0 -zipf_skew=0 -ycsb=1 -p_wal=0 -s_wal=0 -clocks_per_us=2100 -io_time_ns=5 -group_commit_timeout_us=2 -group_commit=0 -gc_inter_us=10 -pre_reserve_version=10000 -worker1_insert_delay_rphase_us=0 -extime=3
 ```
 
 ## How to select build options in Makefile
