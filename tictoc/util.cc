@@ -126,25 +126,17 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
   }
 }
 
-void
-ShowOptParameters()
-{
+void ShowOptParameters() {
   cout << "ShowOptParameters()"
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": MASSTREE_USE " << MASSTREE_USE
-    << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
-    << ": PREEMPTIVE_ABORTS " << PREEMPTIVE_ABORTS
-    << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
-    << ": TIMESTAMP_HISTORY " << TIMESTAMP_HISTORY
-    << ": VAL_SIZE " << VAL_SIZE
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
+       << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
+       << ": PREEMPTIVE_ABORTS " << PREEMPTIVE_ABORTS << ": SLEEP_READ_PHASE "
+       << SLEEP_READ_PHASE << ": TIMESTAMP_HISTORY " << TIMESTAMP_HISTORY
+       << ": VAL_SIZE " << VAL_SIZE << endl;
 }
 
-void 
-makeDB() 
-{
+void makeDB() {
   if (posix_memalign((void **)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) !=
       0)
     ERR;

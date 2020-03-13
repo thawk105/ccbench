@@ -48,8 +48,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 
 #ifdef Linux
   setThreadAffinity(thid);
-  //size_t cpu_id = thid / 4 + thid % 4 * 28;
-  //setThreadAffinity(cpu_id);
+  // size_t cpu_id = thid / 4 + thid % 4 * 28;
+  // setThreadAffinity(cpu_id);
   // printf("Thread %zu, affi %zu\n", thid, cpu_id);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
