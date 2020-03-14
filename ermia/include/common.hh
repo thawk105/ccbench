@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "lock.hh"
+#include "transaction_table.hh"
 #include "tuple.hh"
 
 #include "../../include/cache_line_size.hh"
@@ -58,7 +59,6 @@ DECLARE_bool(ycsb);
 DECLARE_double(zipf_skew);
 #endif
 
-#include "transaction.hh"
 
 alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 alignas(CACHE_LINE_SIZE) GLOBAL

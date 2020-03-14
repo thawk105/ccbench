@@ -1,5 +1,7 @@
 #pragma once
 
+#include "garbage_collection.hh"
+
 extern void chkArg();
 
 extern void displayDB();
