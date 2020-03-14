@@ -96,7 +96,7 @@ void TxExecutor::read(uint64_t key) {
 #endif  // MQLOCK
 
   size_t epotemp_index;
-  epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  epotemp_index = key * sizeof(Tuple) / FLAGS_per_xx_temp;
   loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
   bool needVerification;
   needVerification = true;
@@ -196,7 +196,7 @@ void TxExecutor::write(uint64_t key) {
   }
 
   size_t epotemp_index;
-  epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  epotemp_index = key * sizeof(Tuple) / FLAGS_per_xx_temp;
   loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
   if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
   if (this->status_ == TransactionStatus::aborted) goto FINISH_WRITE;
@@ -257,7 +257,7 @@ void TxExecutor::read_write(uint64_t key) {
 #endif  // MQLOCK
 
   size_t epotemp_index;
-  epotemp_index = key * sizeof(Tuple) / PER_XX_TEMP;
+  epotemp_index = key * sizeof(Tuple) / FLAGS_per_xx_temp;
   loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
   bool needVerification;
   needVerification = true;
@@ -520,7 +520,7 @@ void TxExecutor::construct_RLL() {
 
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     // maintain temprature p
-    size_t epotemp_index = (*itr).key_ * sizeof(Tuple) / PER_XX_TEMP;
+    size_t epotemp_index = (*itr).key_ * sizeof(Tuple) / FLAGS_per_xx_temp;
     if ((*itr).failed_verification_) {
       Epotemp expected, desired;
       expected.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
@@ -654,7 +654,7 @@ void TxExecutor::abort() {
   uint64_t start(rdtscp());
 #endif
 
-  Backoff::backoff(CLOCKS_PER_US);
+  Backoff::backoff(FLAGS_clocks_per_us);
 
 #if ADD_ANALYSIS
   mres_->local_backoff_latency_ += rdtscp() - start;

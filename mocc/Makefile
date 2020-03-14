@@ -27,13 +27,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 				 -DTEMPERATURE_RESET_OPT=$(TEMPERATURE_RESET_OPT) \
 
-LIBS = -lpthread
-
-ifneq ($(shell hostname), chris41.omni.hpcc.jp)
-ifneq ($(shell hostname), dbs11)
-LIBS = -lpthread
-endif
-endif
+LIBS = -lpthread -lgflags -lglog
 
 OBJS1 = $(MOCC_SRCS1:.cc=.o)
 

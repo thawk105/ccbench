@@ -139,7 +139,6 @@ int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
-  // displayParameter();
   makeDB();
 
   alignas(CACHE_LINE_SIZE) bool start = false;

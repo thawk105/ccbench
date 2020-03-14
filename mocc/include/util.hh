@@ -1,10 +1,12 @@
 #pragma once
 
-extern void chkArg(const int argc, char *argv[]);
+extern void chkArg();
 
 extern bool chkEpochLoaded();
 
 extern void displayDB();
+
+extern void displayParameter();
 
 extern void displayLockedTuple();
 

@@ -8,4 +8,4 @@ using namespace std;
 
 alignas(CACHE_LINE_SIZE) std::vector<Result> MoccResult;
 
-void initResult() { MoccResult.resize(THREAD_NUM); }
+void initResult() { MoccResult.resize(FLAGS_thread_num); }

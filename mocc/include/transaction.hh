@@ -46,11 +46,11 @@ class TxExecutor {
 
   TxExecutor(int thid, Xoroshiro128Plus *rnd, Result *mres)
       : thid_(thid), mres_(mres) {
-    read_set_.reserve(MAX_OPE);
-    write_set_.reserve(MAX_OPE);
-    pro_set_.reserve(MAX_OPE);
-    RLL_.reserve(MAX_OPE);
-    CLL_.reserve(MAX_OPE);
+    read_set_.reserve(FLAGS_max_ope);
+    write_set_.reserve(FLAGS_max_ope);
+    pro_set_.reserve(FLAGS_max_ope);
+    RLL_.reserve(FLAGS_max_ope);
+    CLL_.reserve(FLAGS_max_ope);
 
     this->status_ = TransactionStatus::inFlight;
     this->rnd_ = rnd;

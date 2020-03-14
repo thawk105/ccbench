@@ -8,11 +8,11 @@ $ make
 ```
 - Confirm usage 
 ```
-$ ./mocc.exe
+$ ./mocc.exe -help
 ```
 - Execution example 
 ```
-$ numactl --interleave=all ./cicada.exe 1000 10 224 100 off 0 on off off 2100 5 2 10 10000 0 3
+$ numactl --interleave=all ./mocc.exe -clocks_per_us=2100 -epoch_time=40 -extime=3 -max_ope=10 -rmw=0 -rratio=100 -thread_num=224 -tuple_num=1000000 -ycsb=1 -zipf_skew=0 -per_xx_temp=4096
 ```
 
 ## How to select build options in Makefile

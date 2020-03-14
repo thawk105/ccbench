@@ -15,7 +15,6 @@
 #include <random>
 
 #include "../include/atomic_wrapper.hh"
-#include "../include/check.hh"
 #include "../include/config.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
@@ -31,104 +30,47 @@
 
 using namespace std;
 
-void chkArg(const int argc, char *argv[]) {
-  if (argc != 12) {
-    cout << "usage: ./mocc.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW "
-            "ZIPF_SKEW YCSB CPU_MHZ EPOCH_TIME PER_XX_TEMP EXTIME"
-         << endl;
-    cout << "example: ./mocc.exe 200 10 224 50 off 0 on 2100 40 4096 3" << endl;
+void chkArg() {
+  displayParameter();
 
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
-    cout << "MAX_OPE(int): total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "RMW : read modify write. on or off." << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout
-        << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
-        << endl;
-    cout << "EPOCH_TIME(unsigned int)(ms): Ex. 40" << endl;
-    cout << "PER_XX_TEMP:\tWhat record size (bytes) does it integrate about "
-            "temperature statistics."
-         << endl;
-    cout << "EXTIME: execution time [sec]" << endl;
-    ShowOptParameters();
-    exit(0);
-  }
-
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[8]);
-  chkInt(argv[9]);
-  chkInt(argv[10]);
-
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  string argrmw = argv[5];
-  ZIPF_SKEW = atof(argv[6]);
-  string argycsb = argv[7];
-  CLOCKS_PER_US = atof(argv[8]);
-  EPOCH_TIME = atoi(argv[9]);
-  PER_XX_TEMP = atoi(argv[10]);
-  EXTIME = atoi(argv[11]);
-
-  if (RRATIO > 100) {
+  if (FLAGS_rratio > 100) {
     cout << "rratio (* 10 \%) must be 0 ~ 10)" << endl;
     ERR;
   }
 
-  if (argrmw == "on")
-    RMW = true;
-  else if (argrmw == "off")
-    RMW = false;
-  else
-    ERR;
-
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+  if (FLAGS_zipf_skew >= 1) {
+    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
     ERR;
   }
 
-  if (argycsb == "on")
-    YCSB = true;
-  else if (argycsb == "off")
-    YCSB = false;
-  else
-    ERR;
-
-  if (CLOCKS_PER_US < 100) {
+  if (FLAGS_clocks_per_us < 100) {
     cout << "CPU_MHZ is less than 100. are your really?" << endl;
     ERR;
   }
 
-  if (PER_XX_TEMP < sizeof(Tuple)) {
-    cout << "PER_XX_TEMP's minimum is sizeof(Tuple) " << sizeof(Tuple) << endl;
+  if (FLAGS_per_xx_temp < sizeof(Tuple)) {
+    cout << "FLAGS_per_xx_temp's minimum is sizeof(Tuple) " << sizeof(Tuple) << endl;
     ERR;
   }
 
   if (posix_memalign((void **)&Start, 64,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&Stop, 64,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
   if (posix_memalign((void **)&ThLocalEpoch, 64,
-                     THREAD_NUM * sizeof(uint64_t_64byte)) != 0)
+                     FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
 #ifdef MQLOCK
-  // if (posix_memalign((void**)&MQLNodeList, 64, (THREAD_NUM + 3) *
+  // if (posix_memalign((void**)&MQLNodeList, 64, (FLAGS_thread_num + 3) *
   // sizeof(MQLNode)) != 0) ERR;
-  MQLNodeTable = new MQLNode *[THREAD_NUM + 3];
-  for (unsigned int i = 0; i < THREAD_NUM + 3; ++i)
-    MQLNodeTable[i] = new MQLNode[TUPLE_NUM];
+  MQLNodeTable = new MQLNode *[FLAGS_thread_num + 3];
+  for (unsigned int i = 0; i < FLAGS_thread_num + 3; ++i)
+    MQLNodeTable[i] = new MQLNode[FLAGS_tuple_num];
 #endif  // MQLOCK
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     ThLocalEpoch[i].obj_ = 0;
   }
 }
@@ -136,7 +78,7 @@ void chkArg(const int argc, char *argv[]) {
 void displayDB() {
   Tuple *tuple;
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
     tuple = &Table[i];
     cout << "----------" << endl;  // - is 10
     cout << "key: " << i << endl;
@@ -149,13 +91,27 @@ void displayDB() {
 }
 
 void displayLockedTuple() {
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
 #ifdef RWLOCK
     if (Table[i].rwlock_.counter_.load(memory_order_relaxed) == -1) {
 #endif  // RWLOCK
       cout << "key : " << i << " is locked!." << endl;
     }
   }
+}
+
+void displayParameter() {
+  cout << "#FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
+  cout << "#FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
+  cout << "#FLAGS_extime:\t\t" << FLAGS_extime << endl;
+  cout << "#FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
+  cout << "#FLAGS_per_xx_temp\t" << FLAGS_per_xx_temp << endl;
+  cout << "#FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
+  cout << "#FLAGS_rratio:\t\t" << FLAGS_rratio << endl;
+  cout << "#FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
+  cout << "#FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
+  cout << "#FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
+  cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
 void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
@@ -172,7 +128,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     tmp->val_[1] = '\0';
 
     Epotemp epotemp(0, 1);
-    size_t epotemp_index = i * sizeof(Tuple) / PER_XX_TEMP;
+    size_t epotemp_index = i * sizeof(Tuple) / FLAGS_per_xx_temp;
     // cout << "key:\t" << i << ", ep_index:\t" << ep_index << endl;
     storeRelease(EpotempAry[epotemp_index].obj_, epotemp.obj_);
 #if MASSTREE_USE
@@ -182,32 +138,32 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, TUPLE_NUM * sizeof(Tuple)) !=
+  if (posix_memalign((void **)&Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
     ERR;
 #endif
 
-  size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
+  size_t epotemp_length = FLAGS_tuple_num * sizeof(Tuple) / FLAGS_per_xx_temp + 1;
   // cout << "eptmp_length:\t" << eptmp_length << endl;
   if (posix_memalign((void **)&EpotempAry, PAGE_SIZE,
                      epotemp_length * sizeof(Epotemp)) != 0)
     ERR;
 
-  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(FLAGS_tuple_num);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i) {
-    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
-                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, i * (FLAGS_tuple_num / maxthread),
+                     (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   }
   for (auto &th : thv) th.join();
 }
 
 bool chkEpochLoaded() {
   uint64_t_64byte nowepo = loadAcquireGE();
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 1; i < FLAGS_thread_num; ++i) {
     if (__atomic_load_n(&(ThLocalEpoch[i].obj_), __ATOMIC_ACQUIRE) !=
         nowepo.obj_)
       return false;
@@ -222,14 +178,14 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
   // chkEpochLoaded は最新のグローバルエポックを
   //全てのワーカースレッドが読み込んだか確認する．
   if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
-                 EPOCH_TIME * CLOCKS_PER_US * 1000) &&
+                 FLAGS_epoch_time * FLAGS_clocks_per_us * 1000) &&
       chkEpochLoaded()) {
     atomicAddGE();
     epoch_timer_start = epoch_timer_stop;
 
 #if TEMPERATURE_RESET_OPT
 #else
-    size_t epotemp_length = TUPLE_NUM * sizeof(Tuple) / PER_XX_TEMP + 1;
+    size_t epotemp_length = FLAGS_tuple_num * sizeof(Tuple) / FLAGS_per_xx_temp + 1;
     uint64_t nowepo = (loadAcquireGE()).obj_;
     for (uint64_t i = 0; i < epotemp_length; ++i) {
       Epotemp epotemp(0, nowepo);
@@ -243,7 +199,7 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop,
 }
 
 void ShowOptParameters() {
-  cout << "ShowOptParameters() "
+  cout << "#ShowOptParameters() "
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
        << ": KEY_SORT " << KEY_SORT << ": TEMPERATURE_RESET_OPT "

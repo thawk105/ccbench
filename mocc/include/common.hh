@@ -10,6 +10,9 @@
 #include "../../include/masstree_wrapper.hh"
 #include "../../include/random.hh"
 
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+
 #ifdef GLOBAL_VALUE_DEFINE
 #define GLOBAL
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch(1);
@@ -26,18 +29,35 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;
 
-// run-time args
-GLOBAL size_t TUPLE_NUM;
-GLOBAL size_t MAX_OPE;
-GLOBAL size_t THREAD_NUM;
-GLOBAL size_t RRATIO;
-GLOBAL bool RMW;
-GLOBAL double ZIPF_SKEW;
-GLOBAL bool YCSB;
-GLOBAL size_t CLOCKS_PER_US;
-GLOBAL size_t EPOCH_TIME;
-GLOBAL size_t PER_XX_TEMP;  // original is the per page temperature statistics.
-GLOBAL size_t EXTIME;
+#ifdef GLOBAL_VALUE_DEFINE
+DEFINE_uint64(clocks_per_us, 2100,
+              "CPU_MHz. Use this info for measuring time.");
+DEFINE_uint64(epoch_time, 40, "Epoch interval[msec].");
+DEFINE_uint64(extime, 3, "Execution time[sec].");
+DEFINE_uint64(max_ope, 10,
+              "Total number of operations per single transaction.");
+DEFINE_uint64(per_xx_temp, 4096, "What record size (bytes) does it integrate about temperature statistics.");
+DEFINE_bool(rmw, false,
+            "True means read modify write, false means blind write.");
+DEFINE_uint64(rratio, 50, "read ratio of single transaction.");
+DEFINE_uint64(thread_num, 10, "Total number of worker threads.");
+DEFINE_uint64(tuple_num, 1000000, "Total number of records.");
+DEFINE_bool(ycsb, true,
+            "True uses zipf_skew, false uses faster random generator.");
+DEFINE_double(zipf_skew, 0, "zipf skew. 0 ~ 0.999...");
+#else
+DECLARE_uint64(clocks_per_us);
+DECLARE_uint64(epoch_time);
+DECLARE_uint64(extime);
+DECLARE_uint64(max_ope);
+DECLARE_uint64(per_xx_temp);
+DECLARE_bool(rmw);
+DECLARE_uint64(rratio);
+DECLARE_uint64(thread_num);
+DECLARE_uint64(tuple_num);
+DECLARE_bool(ycsb);
+DECLARE_double(zipf_skew);
+#endif
 
 GLOBAL RWLock CtrLock;
 // temperature, min 0, max 20
