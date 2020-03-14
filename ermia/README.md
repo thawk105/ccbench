@@ -10,11 +10,11 @@ $ make
 ```
 - Confirm usage 
 ```
-$ ./ermia.exe
+$ ./ermia.exe -help
 ```
 - Execution example 
 ```
-$ numactl --interleave=all ./ermia.exe 1000 10 224 100 off 0 on 2100 10 100 10000 3
+$ numactl --interleave=all ./ermia.exe -tuple_num=1000 -max_ope=10 -thread_num=224 -rratio=100 -rmw=0 -zipf_skew=0 -ycsb=1 -clocks_per_us=2100 -gc_inter_us=10 -pre_reserve_version=10000 -pre_reserve_tmt_element=100 -extime=3
 ```
 
 ## How to select build options in Makefile

@@ -1,8 +1,10 @@
 #pragma once
 
-extern void chkArg(const int argc, const char *argv[]);
+extern void chkArg();
 
 extern void displayDB();
+
+extern void displayParameter();
 
 extern void leaderWork(GarbageCollection &gcob);
 

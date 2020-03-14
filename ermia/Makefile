@@ -25,7 +25,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 
 LDFLAGS = -L../third_party/mimalloc/out/release
-LIBS = -lpthread -lmimalloc
+LIBS = -lpthread -lmimalloc -lgflags -lglog
 
 OBJS1 = $(ERMIA_SRCS1:.cc=.o)
 

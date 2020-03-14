@@ -18,7 +18,7 @@ bool GarbageCollection::chkSecondRange() {
 
   smin_ = UINT32_MAX;
   smax_ = 0;
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid_.load(std::memory_order_acquire);
     smin_ = min(smin_, tmptxid);
@@ -38,7 +38,7 @@ void GarbageCollection::decideFirstRange() {
   TransactionTable *tmt;
 
   fmin_ = fmax_ = 0;
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid_.load(std::memory_order_acquire);
     fmin_ = min(fmin_, tmptxid);
