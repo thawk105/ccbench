@@ -48,14 +48,14 @@ class TxExecutor {
     write_set_.reserve(max_ope);
     pro_set_.reserve(max_ope);
 
-    if (PRE_RESERVE_TMT_ELEMENT) {
-      for (size_t i = 0; i < PRE_RESERVE_TMT_ELEMENT; ++i)
+    if (FLAGS_pre_reserve_tmt_element) {
+      for (size_t i = 0; i < FLAGS_pre_reserve_tmt_element; ++i)
         gcobject_.reuse_TMT_element_from_gc_.emplace_back(
             new TransactionTable());
     }
 
-    if (PRE_RESERVE_VERSION) {
-      for (size_t i = 0; i < PRE_RESERVE_VERSION; ++i) {
+    if (FLAGS_pre_reserve_version) {
+      for (size_t i = 0; i < FLAGS_pre_reserve_version; ++i) {
         gcobject_.reuse_version_from_gc_.emplace_back(new Version());
       }
     }

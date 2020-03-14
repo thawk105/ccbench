@@ -8,4 +8,4 @@ using namespace std;
 
 alignas(CACHE_LINE_SIZE) std::vector<Result> SIResult;
 
-void initResult() { SIResult.resize(THREAD_NUM); }
+void initResult() { SIResult.resize(FLAGS_thread_num); }

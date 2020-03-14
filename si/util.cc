@@ -12,7 +12,6 @@
 #include <iostream>
 #include <limits>
 
-#include "../include/check.hh"
 #include "../include/config.hh"
 #include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
@@ -24,86 +23,33 @@
 #include "include/common.hh"
 #include "include/util.hh"
 
-void chkArg(const int argc, const char *argv[]) {
-  if (argc != 13) {
-    // if (argc != 1) {
-    cout << "usage: ./si.exe TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "
-            "YCSB CPU_MHZ GC_INTER_US PRE_RESERVE_TMT_ELEMENT "
-            "PRE_RESERVE_VERSION EXTIME"
-         << endl;
-    cout << "example: ./si.exe 200 10 24 50 off 0 off 2100 10 100 10000 3"
-         << endl;
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value" << endl;
-    cout << "MAX_OPE(int): total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "RMW : read modify write. on or off." << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout
-        << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
-        << endl;
-    cout << "GC_INTER_US: garbage collection interval [usec]" << endl;
-    cout << "PRE_RESERVE_TMT_ELEMENT: pre-prepare memory for TMT elements."
-         << endl;
-    cout << "PRE_RESERVE_VERSION: pre-prepare memory for version generation."
-         << endl;
-    cout << "EXTIME: execution time [sec]" << endl;
-    ShowOptParameters();
-    exit(0);
-  }
+void chkArg() {
+  displayParameter();
 
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[8]);
-  chkInt(argv[9]);
-
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  std::string argrmw = argv[5];
-  ZIPF_SKEW = atof(argv[6]);
-  std::string argst = argv[7];
-  CLOCKS_PER_US = atof(argv[8]);
-  GC_INTER_US = atoi(argv[9]);
-  PRE_RESERVE_TMT_ELEMENT = atoi(argv[10]);
-  PRE_RESERVE_VERSION = atoi(argv[11]);
-  EXTIME = atoi(argv[12]);
-
-  if (THREAD_NUM < 1) {
+  if (FLAGS_thread_num < 1) {
     cout << "1 thread is minimum."
             "so exit."
          << endl;
     ERR;
   }
-  if (RRATIO > 100) {
+  if (FLAGS_rratio > 100) {
     cout << "rratio [%%] must be 0 ~ 100" << endl;
     ERR;
   }
 
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+  if (FLAGS_zipf_skew >= 1) {
+    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
     ERR;
   }
 
-  if (argst == "on")
-    YCSB = true;
-  else if (argst == "off")
-    YCSB = false;
-  else
-    ERR;
-
-  if (CLOCKS_PER_US < 100) {
+  if (FLAGS_clocks_per_us < 100) {
     cout << "CPU_MHZ is less than 100. are your really?" << endl;
     ERR;
   }
 
-  TMT = new TransactionTable *[THREAD_NUM];
+  TMT = new TransactionTable *[FLAGS_thread_num];
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i)
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i)
     TMT[i] = new TransactionTable(0, 0);
 }
 
@@ -111,7 +57,7 @@ void displayDB() {
   Tuple *tuple;
   Version *version;
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
     tuple = TxExecutor::get_tuple(Table, i);
     cout << "------------------------------" << endl;  // - 30
     cout << "key: " << i << endl;
@@ -142,6 +88,22 @@ void displayDB() {
   }
 }
 
+void displayParameter() {
+  cout << "#FLAGS_clocks_per_us:\t\t\t" << FLAGS_clocks_per_us << endl;
+  cout << "#FLAGS_extime:\t\t\t\t" << FLAGS_extime << endl;
+  cout << "#FLAGS_gc_inter_us:\t\t\t" << FLAGS_gc_inter_us << endl;
+  cout << "#FLAGS_max_ope:\t\t\t\t" << FLAGS_max_ope << endl;
+  cout << "#FLAGS_pre_reserve_tmt_element:\t\t" << FLAGS_pre_reserve_tmt_element
+       << endl;
+  cout << "#FLAGS_pre_reserve_version:\t\t" << FLAGS_pre_reserve_version
+       << endl;
+  cout << "#FLAGS_rmw:\t\t\t\t" << FLAGS_rmw << endl;
+  cout << "#FLAGS_rratio:\t\t\t\t" << FLAGS_rratio << endl;
+  cout << "#FLAGS_thread_num:\t\t\t" << FLAGS_thread_num << endl;
+  cout << "#FLAGS_ycsb:\t\t\t\t" << FLAGS_ycsb << endl;
+  cout << "#FLAGS_zipf_skew:\t\t\t" << FLAGS_zipf_skew << endl;
+}
+
 void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
@@ -167,20 +129,21 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) !=
-      0)
+  if (posix_memalign((void **)&Table, PAGE_SIZE,
+                     (FLAGS_tuple_num) * sizeof(Tuple)) != 0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple),
+              MADV_HUGEPAGE) != 0)
     ERR;
 #endif
 
-  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(FLAGS_tuple_num);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
-                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, i * (FLAGS_tuple_num / maxthread),
+                     (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   for (auto &th : thv) th.join();
 }
 
@@ -188,7 +151,7 @@ void naiveGarbageCollection(const bool &quit) {
   TransactionTable *tmt;
 
   uint32_t mintxID = UINT32_MAX;
-  for (unsigned int i = 1; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 1; i < FLAGS_thread_num; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     mintxID = std::min(mintxID, tmt->txid_.load(std::memory_order_acquire));
   }
@@ -198,7 +161,7 @@ void naiveGarbageCollection(const bool &quit) {
   else {
     // mintxIDから到達不能なバージョンを削除する
     Version *verTmp, *delTarget;
-    for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+    for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
       if (quit) return;
 
 #if MASSTREE_USE
@@ -249,7 +212,7 @@ void leaderWork(GarbageCollection &gcob) {
 }
 
 void ShowOptParameters() {
-  cout << "ShowOptParameters() "
+  cout << "#ShowOptParameters() "
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
        << ": VAL_SIZE " << VAL_SIZE << endl;

@@ -134,6 +134,7 @@ int main(int argc, char* argv[]) try {
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     ErmiaResult[0].addLocalAllResult(ErmiaResult[i]);
   }
+  ShowOptParameters();
   ErmiaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
 
   return 0;

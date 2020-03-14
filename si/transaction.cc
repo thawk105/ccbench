@@ -54,7 +54,7 @@ void TxExecutor::tbegin() {
 #endif
   }
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     do {
       tmt = loadAcquire(TMT[i]);
     } while (tmt == nullptr);
@@ -284,7 +284,7 @@ void TxExecutor::abort() {
   uint64_t start(rdtscp());
 #endif
 
-  Backoff::backoff(CLOCKS_PER_US);
+  Backoff::backoff(FLAGS_clocks_per_us);
 
 #if ADD_ANALYSIS
   sres_->local_backoff_latency_ += rdtscp() - start;
@@ -310,7 +310,7 @@ void TxExecutor::dispRS() {
 
 void TxExecutor::mainte() {
   gcstop_ = rdtscp();
-  if (chkClkSpan(gcstart_, gcstop_, GC_INTER_US * CLOCKS_PER_US)) {
+  if (chkClkSpan(gcstart_, gcstop_, FLAGS_gc_inter_us * FLAGS_clocks_per_us)) {
     uint32_t load_threshold = gcobject_.getGcThreshold();
     if (pre_gc_threshold_ != load_threshold) {
 #if ADD_ANALYSIS
