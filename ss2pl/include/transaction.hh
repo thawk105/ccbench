@@ -33,11 +33,11 @@ class TxExecutor {
   char return_val_[VAL_SIZE];
 
   TxExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
-    read_set_.reserve(MAX_OPE);
-    write_set_.reserve(MAX_OPE);
-    pro_set_.reserve(MAX_OPE);
-    r_lock_list_.reserve(MAX_OPE);
-    w_lock_list_.reserve(MAX_OPE);
+    read_set_.reserve(FLAGS_max_ope);
+    write_set_.reserve(FLAGS_max_ope);
+    pro_set_.reserve(FLAGS_max_ope);
+    r_lock_list_.reserve(FLAGS_max_ope);
+    w_lock_list_.reserve(FLAGS_max_ope);
 
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }

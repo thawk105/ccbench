@@ -29,7 +29,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 # DLR0 ... timeout
 # DLR1 ... no-wait
 
-LIBS = -lpthread
+LIBS = -lpthread -lgflags -lglog
 
 OBJS1 = $(SS2PL_SRCS1:.cc=.o)
 all: $(PROG1)

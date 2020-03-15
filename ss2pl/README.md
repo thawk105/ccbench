@@ -7,11 +7,11 @@ $ make
 ```
 - Confirm usage 
 ```
-$ ./ss2pl.exe
+$ ./ss2pl.exe -help
 ```
 - Execution example 
 ```
-$ numactl --interleave=all ./ss2pl.exe 200 10 24 50 off 0 on 2100 3
+$ numactl --interleave=all ./ss2pl.exe -clocks_per_us=2100 -extime=3 -max_ope=10 -rmw=0 -rratio=100 -thread_num=224 -tuple_num=1000000 -ycsb=1 -zipf_skew=0
 ```
 
 ## How to select build options in Makefile
