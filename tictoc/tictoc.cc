@@ -33,13 +33,13 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
 
-  FastZipf zipf(&rnd, ZIPF_SKEW, TUPLE_NUM);
+  FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
 
   Result& myres = std::ref(TicTocResult[thid]);
   TxExecutor trans(thid, (Result*)&TicTocResult[thid]);
 
 #if BACK_OFF
-  Backoff backoff(CLOCKS_PER_US);
+  Backoff backoff(FLAGS_clocks_per_us);
 #endif
 
 #if MASSTREE_USE
@@ -59,8 +59,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    makeProcedure(trans.pro_set_, rnd, zipf, TUPLE_NUM, MAX_OPE, THREAD_NUM,
-                  RRATIO, RMW, YCSB, false, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
+                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
   RETRY:
 #if BACK_OFF
     if (thid == 0) leaderBackoffWork(std::ref(backoff), TicTocResult);
@@ -105,30 +105,32 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 }
 
 int main(int argc, char* argv[]) try {
-  chkArg(argc, argv);
+  gflags::SetUsageMessage("TicToc benchmark.");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  chkArg();
   makeDB();
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
   initResult();
-  std::vector<char> readys(THREAD_NUM);
+  std::vector<char> readys(FLAGS_thread_num);
   std::vector<std::thread> thv;
-  for (size_t i = 0; i < THREAD_NUM; ++i)
+  for (size_t i = 0; i < FLAGS_thread_num; ++i)
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
                      std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < EXTIME; ++i) {
+  for (size_t i = 0; i < FLAGS_extime; ++i) {
     sleepMs(1000);
   }
   storeRelease(quit, true);
   for (auto& th : thv) th.join();
 
-  for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     TicTocResult[0].addLocalAllResult(TicTocResult[i]);
   }
   ShowOptParameters();
-  TicTocResult[0].displayAllResult(CLOCKS_PER_US, EXTIME, THREAD_NUM);
+  TicTocResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
 
   return 0;
 } catch (bad_alloc) {

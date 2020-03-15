@@ -8,4 +8,4 @@ using namespace std;
 
 alignas(CACHE_LINE_SIZE) std::vector<Result> TicTocResult;
 
-void initResult() { TicTocResult.resize(THREAD_NUM); }
+void initResult() { TicTocResult.resize(FLAGS_thread_num); }

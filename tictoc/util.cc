@@ -13,7 +13,6 @@
 #include <thread>
 #include <vector>
 
-#include "../include/check.hh"
 #include "../include/config.hh"
 #include "../include/debug.hh"
 #include "../include/inline.hh"
@@ -27,69 +26,18 @@
 
 using namespace std;
 
-void chkArg(const int argc, char *argv[]) {
-  if (argc != 10) {
-    cout << "usage:./main TUPLE_NUM MAX_OPE THREAD_NUM RRATIO RMW ZIPF_SKEW "
-            "YCSB CLOCKS_PER_US EXTIME"
-         << endl
-         << endl;
+void chkArg() {
+  displayParameter();
 
-    cout << "example:./main 200 10 24 50 off 0 on 2100 3" << endl << endl;
-
-    cout << "TUPLE_NUM(int): total numbers of sets of key-value (1, 100), (2, "
-            "100)"
-         << endl;
-    cout << "MAX_OPE(int):    total numbers of operations" << endl;
-    cout << "THREAD_NUM(int): total numbers of thread." << endl;
-    cout << "RRATIO : read ratio [%%]" << endl;
-    cout << "RMW : read modify write. on or off." << endl;
-    cout << "ZIPF_SKEW : zipf skew. 0 ~ 0.999..." << endl;
-    cout << "YCSB : on or off. switch makeProcedure function." << endl;
-    cout << "CLOCKS_PER_US: CPU_MHZ" << endl;
-    cout << "EXTIME: execution time." << endl << endl;
-    ShowOptParameters();
-    exit(0);
-  }
-  chkInt(argv[1]);
-  chkInt(argv[2]);
-  chkInt(argv[3]);
-  chkInt(argv[4]);
-  chkInt(argv[8]);
-  chkInt(argv[9]);
-
-  TUPLE_NUM = atoi(argv[1]);
-  MAX_OPE = atoi(argv[2]);
-  THREAD_NUM = atoi(argv[3]);
-  RRATIO = atoi(argv[4]);
-  string argrmw = argv[5];
-  ZIPF_SKEW = atof(argv[6]);
-  string argycsb = argv[7];
-  CLOCKS_PER_US = atof(argv[8]);
-  EXTIME = atoi(argv[9]);
-
-  if (RRATIO > 100) {
+  if (FLAGS_rratio > 100) {
     cout << "rratio must be 0 ~ 10" << endl;
     ERR;
   }
 
-  if (argrmw == "on")
-    RMW = true;
-  else if (argrmw == "off")
-    RMW = false;
-  else
-    ERR;
-
-  if (ZIPF_SKEW >= 1) {
-    cout << "ZIPF_SKEW must be 0 ~ 0.999..." << endl;
+  if (FLAGS_zipf_skew >= 1) {
+    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
     ERR;
   }
-
-  if (argycsb == "on")
-    YCSB = true;
-  else if (argycsb == "off")
-    YCSB = false;
-  else
-    ERR;
 
   return;
 }
@@ -97,7 +45,7 @@ void chkArg(const int argc, char *argv[]) {
 void displayDB() {
   Tuple *tuple;
 
-  for (unsigned int i = 0; i < TUPLE_NUM; ++i) {
+  for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
     tuple = &Table[i];
     cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
@@ -106,6 +54,18 @@ void displayDB() {
     cout << "bit: " << static_cast<bitset<64>>(tuple->tsw_.obj_) << endl;
     cout << endl;
   }
+}
+
+void displayParameter() {
+  cout << "#FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
+  cout << "#FLAGS_extime:\t\t" << FLAGS_extime << endl;
+  cout << "#FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
+  cout << "#FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
+  cout << "#FLAGS_rratio:\t\t" << FLAGS_rratio << endl;
+  cout << "#FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
+  cout << "#FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
+  cout << "#FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
+  cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
 void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
@@ -127,7 +87,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void ShowOptParameters() {
-  cout << "ShowOptParameters()"
+  cout << "#ShowOptParameters()"
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
        << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
@@ -137,19 +97,19 @@ void ShowOptParameters() {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, (TUPLE_NUM) * sizeof(Tuple)) !=
+  if (posix_memalign((void **)&Table, PAGE_SIZE, (FLAGS_tuple_num) * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (TUPLE_NUM) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
+  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple), MADV_HUGEPAGE) != 0)
     ERR;
 #endif
 
-  size_t maxthread = decideParallelBuildNumber(TUPLE_NUM);
+  size_t maxthread = decideParallelBuildNumber(FLAGS_tuple_num);
 
   std::vector<std::thread> thv;
   for (size_t i = 0; i < maxthread; ++i)
-    thv.emplace_back(partTableInit, i, i * (TUPLE_NUM / maxthread),
-                     (i + 1) * (TUPLE_NUM / maxthread) - 1);
+    thv.emplace_back(partTableInit, i, i * (FLAGS_tuple_num / maxthread),
+                     (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   for (auto &th : thv) th.join();
 }

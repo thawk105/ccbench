@@ -44,10 +44,10 @@ class TxExecutor {
   char return_val_[VAL_SIZE];
 
   TxExecutor(int thid, Result* tres) : thid_(thid), tres_(tres) {
-    read_set_.reserve(MAX_OPE);
-    write_set_.reserve(MAX_OPE);
-    cll_.reserve(MAX_OPE);
-    pro_set_.reserve(MAX_OPE);
+    read_set_.reserve(FLAGS_max_ope);
+    write_set_.reserve(FLAGS_max_ope);
+    cll_.reserve(FLAGS_max_ope);
+    pro_set_.reserve(FLAGS_max_ope);
 
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }

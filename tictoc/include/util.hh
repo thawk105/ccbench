@@ -2,9 +2,11 @@
 
 #include <cstdint>
 
-extern void chkArg(const int argc, char* argv[]);
+extern void chkArg();
 
 extern void displayDB();
+
+extern void displayParameter();
 
 extern void makeDB();
 

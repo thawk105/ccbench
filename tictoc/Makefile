@@ -31,7 +31,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DTIMESTAMP_HISTORY=$(TIMESTAMP_HISTORY) \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE)
 
-LIBS = -lpthread
+LIBS = -lpthread -lgflags -lglog
 
 OBJS1 = $(TICTOC_SRCS1:.cc=.o)
 all: $(PROG1)
