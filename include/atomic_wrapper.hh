@@ -1,3 +1,9 @@
+/**
+ * This file was created with reference to the following URL.
+ * Special thanks to Mr. Hoshino.
+ * https://github.com/starpos/oltp-cc-bench/blob/master/include/atomic_wrapper.hpp
+ */
+
 #pragma once
 
 template <typename T>
