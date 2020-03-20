@@ -112,15 +112,20 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
       }
     }
 
+    /**
+     * Tanabe Optimization for analysis
+     */
 #if WORKER1_INSERT_DELAY_RPHASE
     if (unlikely(thid == 1) && WORKER1_INSERT_DELAY_RPHASE_US != 0) {
       clock_delay(WORKER1_INSERT_DELAY_RPHASE_US * FLAGS_clocks_per_us);
     }
 #endif
 
-    // read only tx doesn't collect read set and doesn't validate.
-    // write phase execute logging and commit pending versions, but r-only tx
-    // can skip it.
+    /**
+     * Excerpt from original paper 3.1 Multi-Clocks Timestamp Allocation
+     * A read-only transaction uses (thread.rts) instead, 
+     * and does not track or validate the read set; 
+     */
     if ((*trans.pro_set_.begin()).ronly_) {
       /**
        * local_commit_counts is used at ../include/backoff.hh to calcurate about
@@ -136,6 +141,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
         trans.abort();
 #if SINGLE_EXEC
 #else
+        /**
+         * Maintenance phase
+         */
         trans.mainte();
 #endif
         goto RETRY;
@@ -153,10 +161,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
                    loadAcquire(myres.local_commit_counts_) + 1);
 
       /**
-       * Maintenance
-       * Schedule garbage collection
-       * Declare quiescent state
-       * Collect garbage created by prior transactions
+       * Maintenance phase
        */
 #if SINGLE_EXEC
 #else

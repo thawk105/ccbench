@@ -30,6 +30,9 @@ using namespace std;
 #define MSK_TID 0b11111111
 
 void TxExecutor::tbegin() {
+  /**
+   * Allocate timestamp in read phase.
+   */
   this->status_ = TransactionStatus::inflight;
   this->wts_.generateTimeStamp(thid_);
   __atomic_store_n(&(ThreadWtsArray[thid_].obj_), this->wts_.ts_,
@@ -76,10 +79,14 @@ void TxExecutor::tread(const uint64_t key) {
   uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
-  // read-own-writes
-  // if n E write set
+  /**
+   * read-own-writes or re-read from local read set.
+   */
   if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
+  /**
+   * Search versions in read phase.
+   */
 #if MASSTREE_USE
   Tuple *tuple;
   tuple = MT.get_value(key);
@@ -99,6 +106,10 @@ void TxExecutor::tread(const uint64_t key) {
 #if SINGLE_EXEC
   ver = &tuple->inline_ver_;
 #else
+
+  /**
+   * Choose the correct timestamp from write timestamp and read timestamp.
+   */
   uint64_t trts;
   if ((*this->pro_set_.begin()).ronly_) {
     trts = this->rts_;
@@ -106,12 +117,18 @@ void TxExecutor::tread(const uint64_t key) {
     trts = this->wts_.ts_;
   }
 
+  /**
+   * Scan to the area to be viewed
+   */
   ver = tuple->ldAcqLatest();
   while (ver->ldAcqWts() > trts) {
     later_ver = ver;
     ver = ver->ldAcqNext();
   }
   while (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
+    /**
+     * Wait for the result of the pending version in the view.
+     */
     while (ver->status_.load(memory_order_acquire) == VersionStatus::pending) {
     }
     if (ver->status_.load(memory_order_acquire) == VersionStatus::aborted) {
@@ -120,11 +137,14 @@ void TxExecutor::tread(const uint64_t key) {
   }
 #endif
 
-  // for fairness
-  // ultimately, it is wasteful in prototype system.
+  /**
+   * Read payload.
+   */
   memcpy(return_val_, ver->val_, VAL_SIZE);
 
-  // if read-only, not track or validate read_set_
+  /**
+   * If read-only tx, not track or validate read_set_
+   */
   if ((*this->pro_set_.begin()).ronly_ == false) {
     read_set_.emplace_back(key, tuple, later_ver, ver);
   }
@@ -155,6 +175,10 @@ void TxExecutor::twrite(const uint64_t key) {
   uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
+  /**
+   * Update  from local write set.
+   * Special treat due to performance.
+   */
   if (searchWriteSet(key)) goto FINISH_TWRITE;
 
   Tuple *tuple;
@@ -165,12 +189,6 @@ void TxExecutor::twrite(const uint64_t key) {
   if (re) {
     rmw = true;
     tuple = re->rcdptr_;
-    /* 現時点で，シンプルな改造で re->later_ver_
-     * 情報を受け取って利用することは難しい．
-     * 何故なら，read only tx で発生した inline version promotion による
-     * write であれば，read-only 専用のタイムスタンプによるサーチにおいて
-     * later_ver であるが，write の later_ver には不適格．
-     * ここを考慮してゴニョゴニョしても，利益が小さくて性能が上がらなかった．*/
     /* Now, it is difficult to use re->later_ver_ by simple customize.
      * Because if this write is from inline version promotion which is from read
      * only tx, the re->later_ver is suitable for read only search by read only
@@ -198,31 +216,44 @@ void TxExecutor::twrite(const uint64_t key) {
   ver = tuple->ldAcqLatest();
 
   if (rmw || WRITE_LATEST_ONLY) {
-    // Search version (for early abort check)
-    // search latest (committed or pending) version and use for early abort
-    // check pending version may be committed, so use for early abort check.
+    /**
+     * Search version (for early abort check)
+     * search latest (committed or pending) version and use for early abort
+     * check pending version may be committed, so use for early abort check.
+     */
 
-    // early abort check(EAC)
-    // here, version->status is commit or pending.
+    /**
+     * Early abort check(EAC)
+     * here, version->status is commit or pending.
+     */
     if (ver->wts_.load(memory_order_acquire) > this->wts_.ts_) {
-      // if pending, it don't have to be aborted.
-      // But it may be aborted, so early abort.
-      // if committed, it must be aborted in validaiton phase due to order of
-      // newest to oldest.
+      /**
+       * if pending, it don't have to be aborted.
+       * But it may be aborted, so early abort.
+       * if committed, it must be aborted in validaiton phase due to order of
+       * newest to oldest.
+       */
       this->status_ = TransactionStatus::abort;
       goto FINISH_TWRITE;
     }
   } else {
-    // not rmw
+    /**
+     * not rmw
+     */
     while (ver->wts_.load(memory_order_acquire) > this->wts_.ts_) {
       later_ver = ver;
       ver = ver->ldAcqNext();
     }
   }
 
+  /**
+   * Constraint from new to old.
+   */
   if ((ver->ldAcqRts() > this->wts_.ts_) &&
       (ver->ldAcqStatus() == VersionStatus::committed)) {
-    // it must be aborted in validation phase, so early abort.
+    /**
+     * It must be aborted in validation phase, so early abort.
+     */
     this->status_ = TransactionStatus::abort;
     goto FINISH_TWRITE;
   }
@@ -246,13 +277,19 @@ bool TxExecutor::validation() {
   uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
+  /**
+   * Sort write set by contention.
+   * Pre-check version consistency.
+   */
   bool result(true);
   if (!precheckInValidation()) {
     result = false;
     goto FINISH_VALIDATION;
   }
 
-  // Install pending version
+  /**
+   * Install pending version
+   */
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *expected(nullptr), *ver, *pre_ver;
     for (;;) {
@@ -297,12 +334,16 @@ bool TxExecutor::validation() {
     (*itr).finish_version_install_ = true;
   }
 
-  // Read timestamp update
+  /**
+   * Read timestamp update
+   */
   readTimestampUpdateInValidation();
 
-  // version consistency check
-  //(a) every previously visible version v of the records in the read set is the
-  // currently visible version to the transaction.
+  /**
+   * version consistency check
+   *(a) every previously visible version v of the records in the read set is the
+   * currently visible version to the transaction.
+   */
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Version *ver;
     if ((*itr).later_ver_)
@@ -320,19 +361,21 @@ bool TxExecutor::validation() {
       while (ver->ldAcqStatus() == VersionStatus::pending)
         ;
     }
-    /* この部分は，オリジナル手法と異なる．
-     * 現在 view となるバージョンが，read operation 時の view
-     * と同一かをチェックしている．
-     * オリジナル手法はこれがないため，この実装より性能は良いが view
-     * が壊れている.*/
+    /**
+     * This part is different from the original.
+     * Checking that view is not broken.
+     * The original implementation is buggy because it does not have this.
+     */
     if ((*itr).ver_ != ver) {
       result = false;
       goto FINISH_VALIDATION;
     }
   }
 
-  // (b) every currently visible version v of the records in the write set
-  // satisfies (v.rts) <= (tx.ts)
+  /**
+   * (b) every currently visible version v of the records in the write set
+   * satisfies (v.rts) <= (tx.ts)
+   */
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *ver = (*itr).new_ver_->ldAcqNext();
     while (ver->ldAcqStatus() == VersionStatus::pending)
