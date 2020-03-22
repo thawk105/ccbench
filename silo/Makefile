@@ -8,7 +8,7 @@ include $(REL)Makefile
 SILO_ALLSRC = $(SILO_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
 # start of initialization of some parameters.
-ADD_ANALYSIS=0
+ADD_ANALYSIS=1
 BACK_OFF=0
 KEY_SIZE=8
 MASSTREE_USE=1

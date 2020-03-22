@@ -18,6 +18,14 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 
 using namespace std;
 
+/**
+ * @brief Search xxx set
+ * @detail Search element of local set corresponding to given key.
+ * In this prototype system, the value to be updated for each worker thread 
+ * is fixed for high performance, so it is only necessary to check the key match.
+ * @param Key [in] the key of key-value
+ * @return Corresponding element of local set
+ */
 inline SetElement<Tuple> *TxExecutor::searchReadSet(unsigned int key) {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
@@ -26,6 +34,14 @@ inline SetElement<Tuple> *TxExecutor::searchReadSet(unsigned int key) {
   return nullptr;
 }
 
+/**
+ * @brief Search xxx set
+ * @detail Search element of local set corresponding to given key.
+ * In this prototype system, the value to be updated for each worker thread 
+ * is fixed for high performance, so it is only necessary to check the key match.
+ * @param Key [in] the key of key-value
+ * @return Corresponding element of local set
+ */
 inline SetElement<Tuple> *TxExecutor::searchWriteSet(unsigned int key) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
