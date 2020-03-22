@@ -75,6 +75,9 @@ void TxExecutor::tbegin() {
 #endif
   }
 
+  /**
+   * Check the latest commit timestamp
+   */
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     tmt = loadAcquire(TMT[i]);
     this->txid_ = max(this->txid_, tmt->lastcstamp_.load(memory_order_acquire));
@@ -95,10 +98,14 @@ void TxExecutor::ssn_tread(uint64_t key) {
   uint64_t start(rdtscp());
 #endif
 
-  // if it already access the key object once.
-  // w
+  /**
+   * read-own-writes, re-read from previous read in the same tx.
+   */
   if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
@@ -109,7 +116,9 @@ void TxExecutor::ssn_tread(uint64_t key) {
   tuple = get_tuple(Table, key);
 #endif
 
-  // if v not in t.writes:
+  /**
+   * Move to the points of this view.
+   */
   Version *ver;
   ver = tuple->latest_.load(memory_order_acquire);
   while (ver->status_.load(memory_order_acquire) != VersionStatus::committed ||
@@ -131,8 +140,9 @@ void TxExecutor::ssn_tread(uint64_t key) {
     goto FINISH_TREAD;
   }
 
-  // for fairness
-  // ultimately, it is wasteful in prototype system.
+  /**
+   * read payload.
+   */
   memcpy(this->return_val_, ver->val_, VAL_SIZE);
 #if ADD_ANALYSIS
   ++eres_->local_memcpys;
@@ -150,10 +160,14 @@ void TxExecutor::ssn_twrite(uint64_t key) {
   uint64_t start = rdtscp();
 #endif
 
-  // if it already wrote the key object once.
+  /**
+   * update local write set.
+   */
   if (searchWriteSet(key)) goto FINISH_TWRITE;
 
-  //  avoid false positive
+  /**
+   * avoid false positive.
+   */
   Tuple *tuple;
   tuple = nullptr;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
@@ -165,6 +179,9 @@ void TxExecutor::ssn_twrite(uint64_t key) {
     }
   }
 
+  /**
+   * Search tuple from data structure.
+   */
   if (!tuple) {
 #if MASSTREE_USE
     tuple = MT.get_value(key);
@@ -176,12 +193,12 @@ void TxExecutor::ssn_twrite(uint64_t key) {
 #endif
   }
 
-  // if v not in t.writes:
-  //
-  // first-updater-wins rule
-  // Forbid a transaction to update  a record that has a committed head version
-  // later than its begin timestamp.
-
+  /**
+   * If v not in t.writes:
+   * first-updater-wins rule
+   * Forbid a transaction to update  a record that has a committed head version
+   * later than its begin timestamp.
+   */
   Version *expected, *desired;
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();
@@ -244,14 +261,18 @@ void TxExecutor::ssn_twrite(uint64_t key) {
       break;
   }
 
-  // ver->prev_->sstamp_ に TID を入れる
+  /**
+   * Insert my tid for ver->prev_->sstamp_ 
+   */
   uint64_t tmpTID;
   tmpTID = thid_;
   tmpTID = tmpTID << 1;
   tmpTID |= 1;
   desired->prev_->psstamp_.atomicStoreSstamp(tmpTID);
 
-  // update eta with w:r edge
+  /**
+   * Update eta with w:r edge
+   */
   this->pstamp_ =
       max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
   write_set_.emplace_back(key, tuple, desired);
@@ -265,6 +286,9 @@ FINISH_TWRITE:
   return;
 }
 
+/**
+ * Serial validation (SSN)
+ */
 void TxExecutor::ssn_commit() {
   this->status_ = TransactionStatus::committing;
   TransactionTable *tmt = loadAcquire(TMT[thid_]);
@@ -345,6 +369,9 @@ void TxExecutor::ssn_commit() {
   return;
 }
 
+/**
+ * Parallel validation (latch-free SSN)
+ */
 void TxExecutor::ssn_parallel_commit() {
 #if ADD_ANALYSIS
   uint64_t start(rdtscp());
@@ -369,20 +396,27 @@ void TxExecutor::ssn_parallel_commit() {
     if (v_sstamp & TIDFLAG) {
       // identify worker by using TID
       uint8_t worker = (v_sstamp >> TIDFLAG);
-      // もし worker が inFlight (read phase 実行中) だったら
-      // このトランザクションよりも新しい commit timestamp でコミットされる．
-      // 従って pi となりえないので，スキップ．
-      // そうでないなら，チェック
+      /**
+       * If worker is Inflight state, it will be committed with newer timestamp than this.
+       * Then, the worker can't be pi, so skip.
+       * If not, check.
+       */
       tmt = loadAcquire(TMT[worker]);
       if (tmt->status_.load(memory_order_acquire) ==
           TransactionStatus::committing) {
-        // worker は ssn_parallel_commit() に突入している
-        // cstamp が確実に取得されるまで待機 (tmt のcstamp は初期値 0)
+        /**
+         * Worker is in ssn_parallel_commit().
+         * So it wait worker to get cstamp.
+         */
         while (tmt->cstamp_.load(memory_order_acquire) == 0)
           ;
-        // worker->cstamp_ が this->cstamp_ より小さいなら pi になる可能性あり
+        /**
+         * If worker->cstamp_ is less than this->cstamp_, the worker can be pi.
+         */
         if (tmt->cstamp_.load(memory_order_acquire) < this->cstamp_) {
-          // parallel_commit 終了待ち（sstamp確定待ち)
+          /**
+           * It wait worker to end parallel_commit (determine sstamp).
+           */
           while (tmt->status_.load(memory_order_acquire) ==
                  TransactionStatus::committing)
             ;
@@ -398,10 +432,14 @@ void TxExecutor::ssn_parallel_commit() {
     }
   }
 
-  // finalize eta
+  /**
+   * finalize eta.
+   */
   uint64_t one = 1;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    // for r in v.prev.readers
+    /**
+     * for r in v.prev.readers
+     */
     Version *ver = (*itr).ver_;
     while (ver->status_.load(memory_order_acquire) != VersionStatus::committed)
       ver = ver->prev_;
@@ -409,18 +447,22 @@ void TxExecutor::ssn_parallel_commit() {
     for (unsigned int worker = 0; worker < FLAGS_thread_num; ++worker) {
       if ((rdrs & (one << worker)) ? 1 : 0) {
         tmt = loadAcquire(TMT[worker]);
-        // 並行 reader が committing なら無視できない．
-        // inFlight なら無視できる．なぜならそれが commit
-        // する時にはこのトランザクションよりも 大きい cstamp を有し， eta
-        // となりえないから．
+        /**
+         * It can ignore if the reader is committing.
+         * It can ignore if the reader is inFlight because
+         * the reader will get larger cstamp and it can't be eta of this.
+         */
         if (tmt->status_.load(memory_order_acquire) ==
             TransactionStatus::committing) {
           while (tmt->cstamp_.load(memory_order_acquire) == 0)
             ;
-          // worker->cstamp_ が this->cstamp_ より小さいなら eta
-          // になる可能性あり
+          /**
+           * If worker->cstamp_ is less than this->cstamp_, it can be eta.
+           */
           if (tmt->cstamp_.load(memory_order_acquire) < this->cstamp_) {
-            // parallel_commit 終了待ち (sstamp 確定待ち)
+            /**
+             * Wait end of parallel_commit (determing sstamp).
+             */
             while (tmt->status_.load(memory_order_acquire) ==
                    TransactionStatus::committing)
               ;
@@ -433,12 +475,16 @@ void TxExecutor::ssn_parallel_commit() {
         }
       }
     }
-    // re-read pstamp in case we missed any reader
+    /**
+     * Re-read pstamp in case we missed any reader
+     */
     this->pstamp_ = max(this->pstamp_, ver->psstamp_.atomicLoadPstamp());
   }
 
   tmt = TMT[thid_];
-  // ssn_check_exclusion
+  /**
+   * ssn_check_exclusion
+   */
   if (pstamp_ < sstamp_) {
     status_ = TransactionStatus::committed;
     tmt->sstamp_.store(this->sstamp_, memory_order_release);
@@ -454,7 +500,9 @@ void TxExecutor::ssn_parallel_commit() {
   start = rdtscp();
 #endif
 
-  // update eta
+  /**
+   * update eta.
+   */
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Psstamp pstmp;
     pstmp.obj_ = (*itr).ver_->psstamp_.atomicLoad();
@@ -465,8 +513,10 @@ void TxExecutor::ssn_parallel_commit() {
     }
     downReadersBits((*itr).ver_);
   }
-
-  // update pi
+  
+  /**
+   * update pi.
+   */
   uint64_t verSstamp;
   verSstamp = this->sstamp_ << TIDFLAG;
   verSstamp &= ~(TIDFLAG);

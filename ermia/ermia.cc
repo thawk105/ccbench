@@ -37,6 +37,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Result& myres = std::ref(ErmiaResult[thid]);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   GarbageCollection gcob;
+  /**
+   * Cicada's backoff opt.
+   */
   Backoff backoff(FLAGS_clocks_per_us);
 
 #if MASSTREE_USE
@@ -79,6 +82,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
         ERR;
       }
 
+      /**
+       * early abort.
+       */
       if (trans.status_ == TransactionStatus::aborted) {
         trans.abort();
 #if ADD_ANALYSIS
@@ -101,8 +107,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
       goto RETRY;
     }
 
-    // maintenance phase
-    // garbage collection
+    /**
+     * Maintenance phase
+     */
     trans.mainte();
   }
 
