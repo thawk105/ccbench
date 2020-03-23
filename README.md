@@ -58,6 +58,15 @@ https://github.com/thawk105/ccdata
 
 ---
 
+## Runtime arguments
+This system uses third_party/gflags and third_party/glog.
+So you can use without runtime arguments, then it executes with default args.
+You can also use runtime arguments like below.
+Note that args you don't set is used default args.
+```
+$ ./cicada.exe -tuple_num=1000000 -thread_num=224
+```
+
 ## Welcom
 Welcom pull request about 
 - Improvement of performance in any workloads.
