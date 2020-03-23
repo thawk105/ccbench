@@ -77,8 +77,17 @@ void TxExecutor::commit() {
   write_set_.clear();
 }
 
+/**
+ * @brief Initialize function of transaction.
+ * Allocate timestamp.
+ * @return void
+ */
 void TxExecutor::begin() { this->status_ = TransactionStatus::inFlight; }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

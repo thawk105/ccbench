@@ -50,6 +50,11 @@ inline SetElement<Tuple> *TxExecutor::searchWriteSet(unsigned int key) {
   return nullptr;
 }
 
+/**
+ * @brief Initialize function of transaction.
+ * Allocate timestamp.
+ * @return void
+ */
 void TxExecutor::tbegin() {
   TransactionTable *newElement, *tmt;
 
@@ -93,6 +98,10 @@ void TxExecutor::tbegin() {
   status_ = TransactionStatus::inFlight;
 }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::ssn_tread(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start(rdtscp());
@@ -155,6 +164,10 @@ FINISH_TREAD:
   return;
 }
 
+/**
+ * @brief Transaction write function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::ssn_twrite(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

@@ -47,6 +47,11 @@ WriteElement<Tuple> *TxExecutor::searchWriteSet(uint64_t key) {
   return nullptr;
 }
 
+/**
+ * @brief Search element from retrospective lock list.
+ * @param key [in] The key of key-value
+ * @return Corresponding element of retrospective lock list
+ */
 template <typename T>
 T *TxExecutor::searchRLL(uint64_t key) {
   // will do : binary search
@@ -57,6 +62,13 @@ T *TxExecutor::searchRLL(uint64_t key) {
   return nullptr;
 }
 
+/**
+ * @brief Remove element from current lock list
+ * @param [in] key The kye of key-value.
+ * @pre This function is called by handling about MQL lock.
+ * This work is not over now.
+ * @return void
+ */
 void TxExecutor::removeFromCLL(uint64_t key) {
   int ctr = 0;
   for (auto itr = CLL_.begin(); itr != CLL_.end(); ++itr) {
@@ -69,7 +81,14 @@ void TxExecutor::removeFromCLL(uint64_t key) {
   CLL_.erase(CLL_.begin() + ctr);
 }
 
+/**
+ * @brief initialize function of transaction.
+ * @return void
+ */
 void TxExecutor::begin() {
+  /**
+   * Init by TransactionStatus::inFlight status.
+   */
   this->status_ = TransactionStatus::inFlight;
   this->max_rset_.obj_ = 0;
   this->max_wset_.obj_ = 0;
@@ -77,6 +96,10 @@ void TxExecutor::begin() {
   return;
 }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start(rdtscp());
@@ -182,6 +205,10 @@ FINISH_READ:
   return;
 }
 
+/**
+ * @brief Transaction write function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::write(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

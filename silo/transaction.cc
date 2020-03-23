@@ -61,6 +61,10 @@ ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxnExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -128,6 +132,10 @@ FINISH_READ:
   return;
 }
 
+/**
+ * @brief Transaction write function.
+ * @param [in] key The key of key-value
+ */
 void TxnExecutor::write(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

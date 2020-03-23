@@ -91,6 +91,10 @@ void TxExecutor::tbegin() {
   status_ = TransactionStatus::inFlight;
 }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::tread(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -141,6 +145,11 @@ FINISH_TREAD:
   return;
 }
 
+/**
+ * @brief Transaction write function.
+ * Use first-updater-wins rule.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::twrite(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

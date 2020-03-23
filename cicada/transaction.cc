@@ -29,6 +29,11 @@ using namespace std;
 
 #define MSK_TID 0b11111111
 
+/**
+ * @brief Initialize function of transaction.
+ * Allocate timestamp.
+ * @return void
+ */
 void TxExecutor::tbegin() {
   /**
    * Allocate timestamp in read phase.
@@ -74,6 +79,10 @@ void TxExecutor::tbegin() {
   */
 }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::tread(const uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -170,6 +179,10 @@ END_TREAD:
   return;
 }
 
+/**
+ * @brief Transaction write function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::twrite(const uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();

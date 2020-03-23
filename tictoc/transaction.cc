@@ -51,6 +51,10 @@ SetElement<Tuple> *TxExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
+/**
+ * @brief Initialize function of transaction.
+ * @return void
+ */
 void TxExecutor::begin() {
   this->status_ = TransactionStatus::inFlight;
   this->commit_ts_ = 0;
@@ -72,6 +76,10 @@ bool TxExecutor::preemptiveAborts(const TsWord &v1) {
   return false;
 }
 
+/**
+ * @brief Transaction read function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -129,6 +137,10 @@ FINISH_READ:
   return;
 }
 
+/**
+ * @brief Transaction write function.
+ * @param [in] key The key of key-value
+ */
 void TxExecutor::write(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
