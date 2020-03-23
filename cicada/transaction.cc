@@ -94,7 +94,7 @@ void TxExecutor::tread(const uint64_t key) {
   if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
   /**
-   * Search versions in read phase.
+   * Search versions from data structure.
    */
 #if MASSTREE_USE
   Tuple *tuple;
@@ -200,6 +200,9 @@ void TxExecutor::twrite(const uint64_t key) {
   ReadElement<Tuple> *re;
   re = searchReadSet(key);
   if (re) {
+    /**
+     * If it can find record in read set, use this for high performance.
+     */
     rmw = true;
     tuple = re->rcdptr_;
     /* Now, it is difficult to use re->later_ver_ by simple customize.
@@ -209,6 +212,9 @@ void TxExecutor::twrite(const uint64_t key) {
      * cost to consider these things.
      * I try many somethings but it can't improve performance. cost > profit.*/
   } else {
+    /**
+     * Search record from data structure.
+     */
 #if MASSTREE_USE
     tuple = MT.get_value(key);
 

@@ -75,8 +75,14 @@ void TxnExecutor::read(uint64_t key) {
   // So it locate before first goto instruction.
   Tidword expected, check;
 
+  /**
+   * read-own-writes or re-read from local read set.
+   */
   if (searchReadSet(key) || searchWriteSet(key)) goto FINISH_READ;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
@@ -142,6 +148,10 @@ void TxnExecutor::write(uint64_t key) {
 #endif
 
   if (searchWriteSet(key)) goto FINISH_WRITE;
+
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
   ReadElement<Tuple> *re;
   re = searchReadSet(key);

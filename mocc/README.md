@@ -28,3 +28,5 @@ $ numactl --interleave=all ./mocc.exe -clocks_per_us=2100 -epoch_time=40 -extime
 - Early aborts (by setting threshold of whether it executes try lock or wait lock).
 - New temprature protocol reduces contentions and improves throughput much.
 
+## Missing features
+- MQL lock. It uses custom reader-writer lock instead of MQL lock because author's experimental environment has few NUMA architecture.

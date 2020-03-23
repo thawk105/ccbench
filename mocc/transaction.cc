@@ -111,9 +111,15 @@ void TxExecutor::read(uint64_t key) {
   Epotemp loadepot;
   Tidword expected, desired;
 
+  /**
+   * read-own-writes or re-read from local read set.
+   */
   if (searchWriteSet(key)) goto FINISH_READ;
   if (searchReadSet(key)) goto FINISH_READ;
 
+  /**
+   * Search record from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
@@ -134,6 +140,9 @@ void TxExecutor::read(uint64_t key) {
   inRLL = searchRLL<LockElement<MQLock>>(key);
 #endif  // MQLOCK
 
+  /**
+   * Check corresponding temperature.
+   */
   size_t epotemp_index;
   epotemp_index = key * sizeof(Tuple) / FLAGS_per_xx_temp;
   loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
@@ -141,23 +150,45 @@ void TxExecutor::read(uint64_t key) {
   needVerification = true;
 
   if (inRLL != nullptr) {
+    /**
+     * This transaction is after abort.
+     */
     lock(key, tuple, inRLL->mode_);
     if (this->status_ == TransactionStatus::aborted) {
+      /**
+       * Fail to acqiure lock.
+       */
       goto FINISH_READ;
     } else {
       needVerification = false;
+      /**
+       * Because it could acquire lock.
+       */
     }
   } else if (loadepot.temp >= TEMP_THRESHOLD) {
+    /**
+     * This transaction is not after abort, 
+     * however, it accesses high temperature record.
+     */
     // printf("key:\t%lu, temp:\t%lu\n", key, loadepot.temp_);
     lock(key, tuple, false);
     if (this->status_ == TransactionStatus::aborted) {
+      /**
+       * Fail to acqiure lock.
+       */
       goto FINISH_READ;
     } else {
       needVerification = false;
+      /**
+       * Because it could acquire lock.
+       */
     }
   }
 
   if (needVerification) {
+    /**
+     * This transaction accesses low temperature record, so takes occ approach.
+     */
     expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
     for (;;) {
 #ifdef RWLOCK
@@ -192,6 +223,7 @@ void TxExecutor::read(uint64_t key) {
     }
   } else {
     // it already got read-lock.
+    // So it can load payload atomically by one loading tidword.
     expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
     memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
   }
@@ -226,8 +258,14 @@ void TxExecutor::write(uint64_t key) {
   ReadElement<Tuple> *re;
   re = searchReadSet(key);
   if (re) {
+    /**
+     * If it can find record in read set, use this for high performance.
+     */
     tuple = re->rcdptr_;
   } else {
+    /**
+     * Search record from data structure.
+     */
 #if MASSTREE_USE
     tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -238,10 +276,20 @@ void TxExecutor::write(uint64_t key) {
 #endif
   }
 
+  /**
+   * Check corresponding temperature.
+   */
   size_t epotemp_index;
   epotemp_index = key * sizeof(Tuple) / FLAGS_per_xx_temp;
   loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
+
+  /**
+   * If this record has high temperature, use lock.
+   */
   if (loadepot.temp >= TEMP_THRESHOLD) lock(key, tuple, true);
+  /**
+   * If it failed locking, it aborts.
+   */
   if (this->status_ == TransactionStatus::aborted) goto FINISH_WRITE;
 
 #ifdef RWLOCK
@@ -565,6 +613,10 @@ void TxExecutor::construct_RLL() {
     // maintain temprature p
     size_t epotemp_index = (*itr).key_ * sizeof(Tuple) / FLAGS_per_xx_temp;
     if ((*itr).failed_verification_) {
+      /**
+       * This transaction aborted by this operation.
+       * So our custom optimization does temperature management targeting this record.
+       */
       Epotemp expected, desired;
       expected.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
 

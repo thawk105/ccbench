@@ -93,9 +93,14 @@ void TxExecutor::read(uint64_t key) {
   uint64_t start = rdtscp();
 #endif  // ADD_ANALYSIS
 
-  // if it already access the key object once.
+  /**
+   * read-own-writes or re-read from local read set.
+   */
   if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_READ;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
@@ -163,6 +168,9 @@ void TxExecutor::write(uint64_t key) {
     }
   }
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);

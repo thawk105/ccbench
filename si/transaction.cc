@@ -100,9 +100,14 @@ void TxExecutor::tread(uint64_t key) {
   uint64_t start = rdtscp();
 #endif
 
-  // if it already access the key object once.
+  /**
+   * read-own-writes or re-read from local read set.
+   */
   if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
@@ -158,6 +163,9 @@ void TxExecutor::twrite(uint64_t key) {
   // if it already wrote the key object once.
   if (searchWriteSet(key)) goto FINISH_WRITE;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
   SetElement<Tuple> *re;
   re = searchReadSet(key);

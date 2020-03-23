@@ -94,8 +94,14 @@ void TxExecutor::read(uint64_t key) {
   // So it locate before first goto instruction.
   TsWord v1, v2;
 
+  /**
+   * read-own-writes or re-read from local read set.
+   */
   if (searchReadSet(key) || searchWriteSet(key)) goto FINISH_READ;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
@@ -153,6 +159,9 @@ void TxExecutor::write(uint64_t key) {
 
   if (searchWriteSet(key)) goto FINISH_WRITE;
 
+  /**
+   * Search tuple from data structure.
+   */
   Tuple *tuple;
   SetElement<Tuple> *re;
   re = searchReadSet(key);

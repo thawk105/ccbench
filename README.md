@@ -57,4 +57,14 @@ tanabe's wrapper is include/masstree\_wrapper.hpp
 https://github.com/thawk105/ccdata 
 
 ---
+
+## Welcom
+Welcom pull request about 
+- Improvement of performance in any workloads.
+- Bug fix.
+- Improvement about comments.
+- Improvement of versatile.
+
+---
+
 This activity was supported by Cybozu Labs Youth 8th term. (2018/4/10 - 2019/4/10)

@@ -113,7 +113,7 @@ void TxExecutor::ssn_tread(uint64_t key) {
   if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
 
   /**
-   * Search tuple from data structure.
+   * Search versions from data structure.
    */
   Tuple *tuple;
 #if MASSTREE_USE
@@ -186,6 +186,9 @@ void TxExecutor::ssn_twrite(uint64_t key) {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) {
       downReadersBits((*itr).ver_);
+      /**
+       * If it can find record in read set, use this for high performance.
+       */
       tuple = (*itr).rcdptr_;
       read_set_.erase(itr);
       break;
