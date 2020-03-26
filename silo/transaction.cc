@@ -234,6 +234,12 @@ bool TxnExecutor::validationPhase() {
   return true;
 }
 
+/**
+ * @brief function about abort.
+ * Clean-up local read/write set.
+ * Release locks.
+ * @return void
+ */
 void TxnExecutor::abort() {
   unlockWriteSet();
 

@@ -327,6 +327,9 @@ void TxExecutor::read_write(uint64_t key) {
     tuple = re->rcdptr_;
     goto FINISH_READ;
   } else {
+  	/**
+  	 * Search record from data structure.
+  	 */
 #if MASSTREE_USE
     tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -347,6 +350,9 @@ void TxExecutor::read_write(uint64_t key) {
   inRLL = searchRLL<LockElement<MQLock>>(key);
 #endif  // MQLOCK
 
+  /**
+   * Check corresponding temperature.
+   */
   size_t epotemp_index;
   epotemp_index = key * sizeof(Tuple) / FLAGS_per_xx_temp;
   loadepot.obj_ = loadAcquire(EpotempAry[epotemp_index].obj_);
@@ -733,6 +739,12 @@ bool TxExecutor::commit() {
   return true;
 }
 
+/**
+ * @brief function about abort.
+ * Clean-up local read/write set.
+ * Release lock.
+ * @return void
+ */
 void TxExecutor::abort() {
   // unlock CLL_
   unlockCLL();

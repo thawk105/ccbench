@@ -69,11 +69,22 @@ $ ./cicada.exe -tuple_num=1000000 -thread_num=224
 
 ---
 
+## Details for improving performance
+- It uses xoroshiro128plus which is high performance random generator.
+- It is friendly to Linux vertual memory system.
+- It uses high performance memory allocator mimalloc/tbd appropriately.
+- It reduces memory management cost by our original technique.
+- It refrain from creating temporary objects to improve performance as much as possible.
+- It fixed bug of original cicada.
+- It modifies almost protocols appropriately to improve performance.
+
+---
+
 ## Welcom
 Welcom pull request about 
 - Improvement of performance in any workloads.
 - Bug fix.
-- Improvement about comments.
+- Improvement about comments (doxygen style is recommended).
 - Improvement of versatile.
 
 ---

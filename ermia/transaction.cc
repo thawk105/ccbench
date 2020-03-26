@@ -60,18 +60,33 @@ void TxExecutor::tbegin() {
 
   tmt = loadAcquire(TMT[thid_]);
   uint32_t lastcstamp;
-  if (this->status_ == TransactionStatus::aborted)
+  if (this->status_ == TransactionStatus::aborted) {
+		/**
+		 * If this transaction is retry by abort,
+		 * its lastcstamp is last one.
+		 */
     lastcstamp = this->txid_ = tmt->lastcstamp_.load(memory_order_acquire);
-  else
+	} else {
+		/**
+		 * If this transaction is after committed transaction,
+		 * its lastcstamp is that's one.
+		 */
     lastcstamp = this->txid_ = cstamp_;
+	}
 
   if (gcobject_.reuse_TMT_element_from_gc_.empty()) {
+		/**
+		 * If no cache,
+		 */
     newElement = new TransactionTable(0, 0, UINT32_MAX, lastcstamp,
                                       TransactionStatus::inFlight);
 #if ADD_ANALYSIS
     ++eres_->local_TMT_element_malloc_;
 #endif
   } else {
+		/**
+		 * If it has cache, this transaction use it.
+		 */
     newElement = gcobject_.reuse_TMT_element_from_gc_.back();
     gcobject_.reuse_TMT_element_from_gc_.pop_back();
     newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inFlight);
@@ -90,7 +105,13 @@ void TxExecutor::tbegin() {
   this->txid_ += 1;
   newElement->txid_ = this->txid_;
 
+	/**
+	 * Old object becomes cache object.
+	 */
   gcobject_.gcq_for_TMT_.emplace_back(loadAcquire(TMT[thid_]));
+	/**
+	 * New object is registerd to transaction mapping table.
+	 */
   storeRelease(TMT[thid_], newElement);
 
   pstamp_ = 0;
@@ -569,17 +590,29 @@ FINISH_PARALLEL_COMMIT:
   return;
 }
 
+/**
+ * @brief function about abort.
+ * clean-up local read/write set.
+ * release conceptual lock.
+ * @return void
+ */
 void TxExecutor::abort() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *next_committed = (*itr).ver_->prev_;
     while (next_committed->status_.load(memory_order_acquire) !=
            VersionStatus::committed)
       next_committed = next_committed->prev_;
+		/**
+		 * cancel successor mark(sstamp).
+		 */
     next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
   }
   write_set_.clear();
 
+	/**
+	 * notify that this transaction finishes reading the version now.
+	 */
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
     downReadersBits((*itr).ver_);
 

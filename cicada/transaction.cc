@@ -560,6 +560,11 @@ void TxExecutor::earlyAbort() {
 #endif
 }
 
+/**
+ * @brief function about abort.
+ * clean-up local read/write set.
+ * @return void
+ */
 void TxExecutor::abort() {
   writeSetClean();
   read_set_.clear();

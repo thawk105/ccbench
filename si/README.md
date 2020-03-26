@@ -1,4 +1,7 @@
 # Snapshot Isolation
+This implementation is used for analyzing base line of ERMIA(/SSN/latch-free SSN).<br>
+So some parts is like ERMIA in implementation, configuration, and design to analyze concurrency controls deeply.<br>
+
 ## How to use
 - Build 
 ```
@@ -37,8 +40,8 @@ Normally this protocol gets a unique value from the shared counter at the start 
 However, touching the shared counter twice in lifetime of transaction causes very high contention for the counter and degrading performance.
 
 Author (tanabe) gives two selection which are able to be defined at Makefile.
- 1. `-DCCTR_TW` means "Centralized counter is touched twice in the lifetime of transaction." It is normally technique.
+ 1. `-DCCTR_TW` means "Centralized counter is touched twice in the lifetime(begin/end) of transaction." It is normally technique.
  2. `-DCCTR_ON` means "Centralized counter is touched once in the lifetime of transaction." It is special technique. Counting up of shared counter only happen when a transaction commits. Instead of getting the count from the shared counter at the start of the transaction, get the latest commit timestamps of all the worker threads via the transaction mapping table. The element of the table may be refered by multiple concurrent worker thread. So getting and updating information are done by CAS. This technique reduces contentions for shared counter but increases overhead of memory management.
 
-Author observed that author's technique `-DCCTR_ON` was better than `-DCCTR_TW` in some YCSB-A,C. So normally it is better to set `-DCCTR_ON`.
+Author observed that author's technique `-DCCTR_ON` was better than `-DCCTR_TW` in some YCSB-A,C. Because the major bottleneck of performance generally is not memory management, but centralized counter. the author's technique is reducing cost about centralized counter and increasing memory management cost. Generally it contributes to improve performance. So normally it is better to set `-DCCTR_ON`.
 
