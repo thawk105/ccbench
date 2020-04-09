@@ -95,7 +95,7 @@ Welcom pull request about
 - Jenkins
 - google test
 - improve software architecture
-
+- improve coding about rvalue reference
 ---
 
 ## Acknowledgments
