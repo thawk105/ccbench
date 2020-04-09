@@ -89,6 +89,15 @@ Welcom pull request about
 
 ---
 
+## TODO
+- cmake and ninja build
+- doxygen
+- Jenkins
+- google test
+- improve software architecture
+
+---
+
 ## Acknowledgments
 Takayuki.T dedicates special thanks to ...<br>
 - Cybozu Labs Youth 8th term supported this activity. (2018/4/10 - 2019/4/10)<br>
