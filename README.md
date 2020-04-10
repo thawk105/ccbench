@@ -96,6 +96,8 @@ Welcom pull request about
 - google test
 - improve software architecture
 - improve coding about rvalue reference
+- Constrain the function declaration to allow calls from lvalues or calls from rvalues.
+
 ---
 
 ## Acknowledgments
