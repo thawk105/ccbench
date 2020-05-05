@@ -34,7 +34,6 @@ class TxnExecutor {
 
   TransactionStatus status_;
   unsigned int thid_;
-  unsigned int lock_num_;
   /* lock_num_ ...
    * the number of locks in local write set.
    */
@@ -48,20 +47,7 @@ class TxnExecutor {
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxnExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
-    read_set_.reserve(FLAGS_max_ope);
-    write_set_.reserve(FLAGS_max_ope);
-    pro_set_.reserve(FLAGS_max_ope);
-    // log_set_.reserve(LOGSET_SIZE);
-
-    // latest_log_header_.init();
-
-    lock_num_ = 0;
-    max_rset_.obj_ = 0;
-    max_wset_.obj_ = 0;
-
-    genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
-  }
+  TxnExecutor(int thid, Result* sres);
 
   void displayWriteSet();
   void begin();
@@ -73,6 +59,7 @@ class TxnExecutor {
   void wal(uint64_t ctid);
   void lockWriteSet();
   void unlockWriteSet();
+  void unlockWriteSet(std::vector<WriteElement<Tuple>>::iterator end);
   ReadElement<Tuple>* searchReadSet(uint64_t key);
   WriteElement<Tuple>* searchWriteSet(uint64_t key);
 

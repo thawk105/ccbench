@@ -23,6 +23,20 @@ extern void displayDB();
 
 using namespace std;
 
+TxnExecutor::TxnExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
+  read_set_.reserve(FLAGS_max_ope);
+  write_set_.reserve(FLAGS_max_ope);
+  pro_set_.reserve(FLAGS_max_ope);
+  // log_set_.reserve(LOGSET_SIZE);
+
+  // latest_log_header_.init();
+
+  max_rset_.obj_ = 0;
+  max_wset_.obj_ = 0;
+
+  genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
+}
+
 void TxnExecutor::begin() {
   status_ = TransactionStatus::kInFlight;
   max_wset_.obj_ = 0;
@@ -210,6 +224,7 @@ bool TxnExecutor::validationPhase() {
       sres_->local_vali_latency_ += rdtscp() - start;
 #endif
       this->status_ = TransactionStatus::kAborted;
+      unlockWriteSet();
       return false;
     }
     // 2
@@ -221,6 +236,7 @@ bool TxnExecutor::validationPhase() {
       sres_->local_vali_latency_ += rdtscp() - start;
 #endif
       this->status_ = TransactionStatus::kAborted;
+      unlockWriteSet();
       return false;
     }
     max_rset_ = max(max_rset_, check);
@@ -241,8 +257,6 @@ bool TxnExecutor::validationPhase() {
  * @return void
  */
 void TxnExecutor::abort() {
-  unlockWriteSet();
-
   read_set_.clear();
   write_set_.clear();
 
@@ -333,15 +347,21 @@ void TxnExecutor::writePhase() {
 void TxnExecutor::lockWriteSet() {
   Tidword expected, desired;
 
-  this->lock_num_ = 0;
+[[maybe_unused]] retry:
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     for (;;) {
       if (expected.lock) {
 #if NO_WAIT_LOCKING_IN_VALIDATION
         this->status_ = TransactionStatus::kAborted;
+        if (itr != write_set_.begin())
+          unlockWriteSet(itr);
         return;
-#endif
+#elif NO_WAIT_OF_TICTOC
+        if (itr != write_set_.begin())
+          unlockWriteSet(itr);
+        goto retry;
+#endif     
         expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
       } else {
         desired = expected;
@@ -351,7 +371,6 @@ void TxnExecutor::lockWriteSet() {
           break;
       }
     }
-    ++this->lock_num_;
 
     max_wset_ = max(max_wset_, expected);
   }
@@ -361,14 +380,21 @@ void TxnExecutor::unlockWriteSet() {
   Tidword expected, desired;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-#if NO_WAIT_LOCKING_IN_VALIDATION
-    if (this->lock_num_ == 0) return;
-#endif
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     desired = expected;
     desired.lock = 0;
     storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
-    --this->lock_num_;
+  }
+}
+
+void TxnExecutor::unlockWriteSet(std::vector<WriteElement<Tuple>>::iterator end) {
+  Tidword expected, desired;
+
+  for (auto itr = write_set_.begin(); itr != end; ++itr) {
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    desired = expected;
+    desired.lock = 0;
+    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
   }
 }
 
