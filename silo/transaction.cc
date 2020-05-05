@@ -23,7 +23,7 @@ extern void displayDB();
 
 using namespace std;
 
-TxnExecutor::TxnExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
+TxnExecutor::TxnExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
   read_set_.reserve(FLAGS_max_ope);
   write_set_.reserve(FLAGS_max_ope);
   pro_set_.reserve(FLAGS_max_ope);
@@ -43,14 +43,6 @@ void TxnExecutor::begin() {
   max_rset_.obj_ = 0;
 }
 
-/**
- * @brief Search xxx set
- * @detail Search element of local set corresponding to given key.
- * In this prototype system, the value to be updated for each worker thread 
- * is fixed for high performance, so it is only necessary to check the key match.
- * @param Key [in] the key of key-value
- * @return Corresponding element of local set
- */
 WriteElement<Tuple> *TxnExecutor::searchWriteSet(uint64_t key) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
@@ -59,14 +51,6 @@ WriteElement<Tuple> *TxnExecutor::searchWriteSet(uint64_t key) {
   return nullptr;
 }
 
-/**
- * @brief Search xxx set
- * @detail Search element of local set corresponding to given key.
- * In this prototype system, the value to be updated for each worker thread 
- * is fixed for high performance, so it is only necessary to check the key match.
- * @param Key [in] the key of key-value
- * @return Corresponding element of local set
- */
 ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
@@ -75,10 +59,6 @@ ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
-/**
- * @brief Transaction read function.
- * @param [in] key The key of key-value
- */
 void TxnExecutor::read(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -152,10 +132,6 @@ FINISH_READ:
   return;
 }
 
-/**
- * @brief Transaction write function.
- * @param [in] key The key of key-value
- */
 void TxnExecutor::write(uint64_t key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
@@ -250,12 +226,6 @@ bool TxnExecutor::validationPhase() {
   return true;
 }
 
-/**
- * @brief function about abort.
- * Clean-up local read/write set.
- * Release locks.
- * @return void
- */
 void TxnExecutor::abort() {
   read_set_.clear();
   write_set_.clear();
@@ -347,21 +317,19 @@ void TxnExecutor::writePhase() {
 void TxnExecutor::lockWriteSet() {
   Tidword expected, desired;
 
-[[maybe_unused]] retry:
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+  [[maybe_unused]] retry
+      : for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     for (;;) {
       if (expected.lock) {
 #if NO_WAIT_LOCKING_IN_VALIDATION
         this->status_ = TransactionStatus::kAborted;
-        if (itr != write_set_.begin())
-          unlockWriteSet(itr);
+        if (itr != write_set_.begin()) unlockWriteSet(itr);
         return;
 #elif NO_WAIT_OF_TICTOC
-        if (itr != write_set_.begin())
-          unlockWriteSet(itr);
+        if (itr != write_set_.begin()) unlockWriteSet(itr);
         goto retry;
-#endif     
+#endif
         expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
       } else {
         desired = expected;
@@ -387,7 +355,8 @@ void TxnExecutor::unlockWriteSet() {
   }
 }
 
-void TxnExecutor::unlockWriteSet(std::vector<WriteElement<Tuple>>::iterator end) {
+void TxnExecutor::unlockWriteSet(
+    std::vector<WriteElement<Tuple>>::iterator end) {
   Tidword expected, desired;
 
   for (auto itr = write_set_.begin(); itr != end; ++itr) {

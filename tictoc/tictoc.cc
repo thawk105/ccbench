@@ -59,8 +59,9 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
-                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
+                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
+                  thid, myres);
   RETRY:
 #if BACK_OFF
     if (thid == 0) leaderBackoffWork(std::ref(backoff), TicTocResult);
@@ -130,7 +131,8 @@ int main(int argc, char* argv[]) try {
     TicTocResult[0].addLocalAllResult(TicTocResult[i]);
   }
   ShowOptParameters();
-  TicTocResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
+  TicTocResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                   FLAGS_thread_num);
 
   return 0;
 } catch (bad_alloc) {

@@ -6,7 +6,7 @@
 using std::cout;
 using std::endl;
 
-static void genStringRepeatedNumber(char *string, size_t val_size,
+[[maybe_unused]] static void genStringRepeatedNumber(char *string, size_t val_size,
                                     size_t thid) {
   size_t digit(1), thidnum(thid);
   for (;;) {

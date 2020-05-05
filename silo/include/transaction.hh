@@ -49,19 +49,63 @@ class TxnExecutor {
 
   TxnExecutor(int thid, Result* sres);
 
-  void displayWriteSet();
-  void begin();
-  void read(uint64_t key);
-  void write(uint64_t key);
-  bool validationPhase();
+  /**
+   * @brief function about abort.
+   * Clean-up local read/write set.
+   * Release locks.
+   * @return void
+   */
   void abort();
-  void writePhase();
-  void wal(uint64_t ctid);
-  void lockWriteSet();
-  void unlockWriteSet();
-  void unlockWriteSet(std::vector<WriteElement<Tuple>>::iterator end);
-  ReadElement<Tuple>* searchReadSet(uint64_t key);
-  WriteElement<Tuple>* searchWriteSet(uint64_t key);
+
+  void begin();
+
+  void displayWriteSet();
 
   Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
+
+  void lockWriteSet();
+
+  /**
+   * @brief Transaction read function.
+   * @param [in] key The key of key-value
+   */
+  void read(uint64_t key);
+
+  /**
+   * @brief Search xxx set
+   * @detail Search element of local set corresponding to given key.
+   * In this prototype system, the value to be updated for each worker thread
+   * is fixed for high performance, so it is only necessary to check the key
+   * match.
+   * @param Key [in] the key of key-value
+   * @return Corresponding element of local set
+   */
+  ReadElement<Tuple>* searchReadSet(uint64_t key);
+
+  /**
+   * @brief Search xxx set
+   * @detail Search element of local set corresponding to given key.
+   * In this prototype system, the value to be updated for each worker thread
+   * is fixed for high performance, so it is only necessary to check the key
+   * match.
+   * @param Key [in] the key of key-value
+   * @return Corresponding element of local set
+   */
+  WriteElement<Tuple>* searchWriteSet(uint64_t key);
+
+  void unlockWriteSet();
+
+  void unlockWriteSet(std::vector<WriteElement<Tuple>>::iterator end);
+
+  bool validationPhase();
+
+  void wal(uint64_t ctid);
+
+  /**
+   * @brief Transaction write function.
+   * @param [in] key The key of key-value
+   */
+  void write(uint64_t key);
+
+  void writePhase();
 };

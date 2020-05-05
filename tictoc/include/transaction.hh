@@ -37,33 +37,103 @@ class TxExecutor {
   TransactionStatus status_;
   vector<SetElement<Tuple>> read_set_;
   vector<SetElement<Tuple>> write_set_;
-  vector<OpElement<Tuple>> cll_;  // current lock list;
-  // use for lockWriteSet() to record locks;
 
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxExecutor(int thid, Result* tres) : thid_(thid), tres_(tres) {
-    read_set_.reserve(FLAGS_max_ope);
-    write_set_.reserve(FLAGS_max_ope);
-    cll_.reserve(FLAGS_max_ope);
-    pro_set_.reserve(FLAGS_max_ope);
+  TxExecutor(int thid, Result* tres);
 
-    genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
-  }
-
-  void begin();
-  void read(uint64_t key);
-  void write(uint64_t key);
-  bool validationPhase();
-  bool preemptiveAborts(const TsWord& v1);
+  /**
+   * @brief function about abort.
+   * Clean-up local read/write set.
+   * Release locks.
+   * @return void
+   */
   void abort();
-  void writePhase();
-  void lockWriteSet();
-  void unlockCLL();
-  SetElement<Tuple>* searchWriteSet(uint64_t key);
-  SetElement<Tuple>* searchReadSet(uint64_t key);
+
+  /**
+   * @brief Initialize function of transaction.
+   * @return void
+   */
+  void begin();
+
+  /**
+   * @brief display write set contents.
+   * @return void
+   */
   void dispWS();
 
   Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
+
+  /**
+   * @brief lock records in local write set.
+   * @return void
+   */
+  void lockWriteSet();
+
+  /**
+   * @brief Early abort.
+   * It is decided that the record is locked.
+   * Check whether it can read old state.
+   * If it can, it succeeds read old state and
+   * is going to be serialized between old state and new state.
+   * @param [in] v1 timestamp of record.
+   * @return true early abort
+   * @return false not abort
+   */
+  bool preemptiveAborts(const TsWord& v1);
+
+  /**
+   * @brief Search xxx set
+   * @detail Search element of local set corresponding to given key.
+   * In this prototype system, the value to be updated for each worker thread
+   * is fixed for high performance, so it is only necessary to check the key
+   * match.
+   * @param Key [in] the key of key-value
+   * @return Corresponding element of local set
+   */
+  SetElement<Tuple>* searchWriteSet(uint64_t key);
+
+  /**
+   * @brief Search xxx set
+   * @detail Search element of local set corresponding to given key.
+   * In this prototype system, the value to be updated for each worker thread
+   * is fixed for high performance, so it is only necessary to check the key
+   * match.
+   * @param Key [in] the key of key-value
+   * @return Corresponding element of local set
+   */
+  SetElement<Tuple>* searchReadSet(uint64_t key);
+
+  /**
+   * @brief Transaction read function.
+   * @param [in] key The key of key-value
+   */
+  void read(uint64_t key);
+
+  /**
+   * @brief unlock all elements of write set.
+   * @return void
+   */
+  void unlockWriteSet();
+
+  /**
+   * @brief unlock partial elements of write set.
+   * @return void
+   */
+  void unlockWriteSet(std::vector<SetElement<Tuple>>::iterator end);
+
+  bool validationPhase();
+
+  /**
+   * @brief Transaction write function.
+   * @param [in] key The key of key-value
+   */
+  void write(uint64_t key);
+
+  /**
+   * @brief write phase
+   * @return void
+   */
+  void writePhase();
 };
