@@ -1,11 +1,11 @@
 # ycsb-xth.sh(tictoc)
 tuple=10000000
-maxope=1
+maxope=2
 #rratioary=(50 95 100)
-rratioary=(95)
-rmw=on
-skew=0.99
-ycsb=on
+rratioary=(100)
+rmw=false
+skew=0
+ycsb=true
 cpumhz=2100
 extime=3
 epoch=3
@@ -21,7 +21,7 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=100
+make clean; make -j VAL_SIZE=1000
 cd script/
 
 for rratio in "${rratioary[@]}"
@@ -34,7 +34,6 @@ do
     result=result_tictoc_ycsbB_tuple10m_ope1_rmw_skew099.dat
   elif test $rratio = 100 ; then
     result=result_tictoc_ycsbC_tuple10m_ope2.dat
-    maxope=2
   else
     echo "BUG"
     exit 1
@@ -42,20 +41,17 @@ do
   rm $result
 
   echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss, avg-er, avg-rlr, avg-vlr" >> $result
-  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpumhz $extime" >> $result
+  echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe -tuple_num $tuple -max_ope $maxope thread -rratio $rratio -rmw $rmw -zipf_skew $skew -ycsb $ycsb -clocks_per_us $cpumhz -extime $extime" >> $result
   ../tictoc.exe > exp.txt
   tmpStr=`grep ShowOptParameters ./exp.txt`
   echo "#$tmpStr" >> $result
   
-  for ((thread=1; thread<=25; thread+=5))
+  for ((thread=1; thread<=80; thread+=10))
   do
-    if test $thread = 6 ; then
-      thread=5
-    fi
     if test $thread = 11 ; then
       thread=10
     fi
-    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime"
+    echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe -tuple_num $tuple -max_ope $maxope  -thread_num $thread -rratio $rratio -rmw $rmw -zipf_skew $skew -ycsb $ycsb -clocks_per_us $cpumhz -extime $extime"
     echo "Thread number $thread"
     
     sumTH=0
@@ -73,10 +69,10 @@ do
     for ((i = 1; i <= epoch; ++i))
     do
       if test $host = $dbs11 ; then
-        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime > exp.txt
+        sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe -tuple_num $tuple -max_ope $maxope  -thread_num $thread -rratio $rratio -rmw $rmw -zipf_skew $skew -ycsb $ycsb -clocks_per_us $cpumhz -extime $extime > exp.txt
       fi
       if test $host = $chris41 ; then
-        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpumhz $extime > exp.txt
+        perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../tictoc.exe -tuple_num $tuple -max_ope $maxope  -thread_num $thread -rratio $rratio -rmw $rmw -zipf_skew $skew -ycsb $ycsb -clocks_per_us $cpumhz -extime $extime > exp.txt
       fi
     
       tmpTH=`grep throughput ./exp.txt | awk '{print $2}'`

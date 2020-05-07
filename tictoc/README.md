@@ -20,6 +20,7 @@ $ numactl --interleave=all ./tictoc.exe -clocks_per_us=2100 -extime=3 -max_ope=1
 - `BACK_OFF` : If this is 1, it use Cicada's backoff.
 - `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.
 - `NO_WAIT_LOCKING_IN_VALIDATION` : If this is 1, it aborts immediately at detecting w-w conflicts in validation phase.
+- `NO_WAIT_OF_TICTOC` : It starts re-acquiring w-lock from scratch when it detects w-w conflicts in validation phase.
 - `PREEMPTIVE_ABORTS` : It is early aborts.
 - `SLEEP_READ_PHASE` : If this is set, it inserts delay for set value [clocks] in read phase.
 - `TIMESTAMP_HISTORY` : It is multi-version of write timestamp.
