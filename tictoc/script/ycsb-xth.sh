@@ -1,10 +1,10 @@
 # ycsb-xth.sh(tictoc)
 tuple=10000000
-maxope=2
+maxope=16
 #rratioary=(50 95 100)
-rratioary=(100)
+rratioary=(90)
 rmw=false
-skew=0
+skew=0.8
 ycsb=true
 cpumhz=2100
 extime=3

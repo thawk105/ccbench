@@ -386,6 +386,7 @@ void TxExecutor::lockWriteSet() {
         }
 #elif NO_WAIT_OF_TICTOC
         if (itr != write_set_.begin()) unlockWriteSet(itr);
+        sleepTics(FLAGS_clocks_per_us); // sleep 1us.
         goto retry;
 #endif
         expected.obj_ = loadAcquire((*itr).rcdptr_->tsw_.obj_);
