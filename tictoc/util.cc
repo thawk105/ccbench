@@ -90,6 +90,7 @@ void ShowOptParameters() {
   cout << "#ShowOptParameters()"
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
+       << ": NO_WAIT_OF_TICTOC " << NO_WAIT_OF_TICTOC
        << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
        << ": PREEMPTIVE_ABORTS " << PREEMPTIVE_ABORTS << ": SLEEP_READ_PHASE "
        << SLEEP_READ_PHASE << ": TIMESTAMP_HISTORY " << TIMESTAMP_HISTORY
