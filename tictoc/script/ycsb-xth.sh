@@ -2,9 +2,9 @@
 tuple=10000000
 maxope=16
 #rratioary=(50 95 100)
-rratioary=(90)
+rratioary=(50)
 rmw=false
-skew=0.8
+skew=0.9
 ycsb=true
 cpumhz=2100
 extime=3
@@ -21,13 +21,13 @@ thread=224
 fi
 
 cd ../
-make clean; make -j VAL_SIZE=1000
+make clean; make -j 
 cd script/
 
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_tictoc_ycsbA_tuple10m_ope16_rmw_skew099.dat
+    result=result_tictoc_ycsb_tuple10m_skew09.dat
   elif test $rratio = 90 ; then
     result=result_tictoc_ycsb_tuple10m_skew08.dat
   elif test $rratio = 95 ; then

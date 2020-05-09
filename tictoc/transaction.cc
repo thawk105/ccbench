@@ -370,11 +370,11 @@ void TxExecutor::lockWriteSet() {
         __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
     for (;;) {
       if (expected.lock) {
-#if NO_WAIT_LOCKING_IN_VALIDATION
-        /**
-         * no-wait locking in validation
-         */
         if (this->wonly_ == false) {
+#if NO_WAIT_LOCKING_IN_VALIDATION
+          /**
+           * no-wait locking in validation
+           */
           this->status_ = TransactionStatus::aborted;
           /**
            * unlock locked record.
@@ -383,12 +383,57 @@ void TxExecutor::lockWriteSet() {
             unlockWriteSet(itr);
           }
           return;
-        }
 #elif NO_WAIT_OF_TICTOC
-        if (itr != write_set_.begin()) unlockWriteSet(itr);
-        sleepTics(FLAGS_clocks_per_us); // sleep 1us.
-        goto retry;
+          if (itr != write_set_.begin()) unlockWriteSet(itr);
+          /**
+           * pre-verify
+           */
+          for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+            TsWord v1, v2;
+
+            v1.obj_ =
+                __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+            if ((*itr).tsw_.rts() < commit_ts_) {
+              if ((*itr).tsw_.wts != v1.wts) {
+                // start timestamp history processing
+#if TIMESTAMP_HISTORY
+                TsWord pre_v1;
+                pre_v1.obj_ = __atomic_load_n(&((*itr).rcdptr_->pre_tsw_.obj_),
+                                              __ATOMIC_ACQUIRE);
+                if (pre_v1.wts <= commit_ts_ && commit_ts_ < v1.wts) {
+                  /**
+                   * Success
+                   */
+#if ADD_ANALYSIS
+                  ++tres_->local_timestamp_history_success_counts_;
 #endif
+                  continue;
+                }
+                /**
+                 * Fail
+                 */
+#if ADD_ANALYSIS
+                ++tres_->local_timestamp_history_fail_counts_;
+#endif
+#endif
+                // end timestamp history processing
+                this->status_ = TransactionStatus::aborted;
+                return;
+              }
+
+              if ((v1.rts()) < commit_ts_ && v1.lock) {
+                this->status_ = TransactionStatus::aborted;
+                return;
+              }
+            }
+          }
+          /**
+           * end pre-verify
+           */
+          sleepTics(FLAGS_clocks_per_us);  // sleep 1us.
+          goto retry;
+#endif
+        }
         expected.obj_ = loadAcquire((*itr).rcdptr_->tsw_.obj_);
       } else {
         desired = expected;
