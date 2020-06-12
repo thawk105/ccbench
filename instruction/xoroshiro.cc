@@ -23,7 +23,7 @@ int main() {
   stop = rdtscp();
 
   cout << "xoroshiro128PlusBench[clocks] :\t"
-       << (double)(stop - start) / (double)UINT32_MAX << endl;
+       << (double) (stop - start) / (double) UINT32_MAX << endl;
 
   return 0;
 }

@@ -4,6 +4,6 @@
 
 #include "../../include/result.hh"
 
-extern std::vector<Result> CicadaResult;
+extern std::vector <Result> CicadaResult;
 
 extern void initResult();

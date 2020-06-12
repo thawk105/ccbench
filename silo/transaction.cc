@@ -181,9 +181,9 @@ bool TxnExecutor::validationPhase() {
   if (this->status_ == TransactionStatus::kAborted) return false;
 #endif
 
-  asm volatile("" ::: "memory");
+  asm volatile("":: : "memory");
   atomicStoreThLocalEpoch(thid_, atomicLoadGE());
-  asm volatile("" ::: "memory");
+  asm volatile("":: : "memory");
 
   /* Phase 2 abort if any condition of below is satisfied.
    * 1. tid of read_set_ changed from it that was got in Read Phase.
@@ -256,12 +256,12 @@ void TxnExecutor::wal(uint64_t ctid) {
     latest_log_header_.convertChkSumIntoComplementOnTwo();
 
     // write header
-    logfile_.write((void *)&latest_log_header_, sizeof(LogHeader));
+    logfile_.write((void *) &latest_log_header_, sizeof(LogHeader));
 
     // write log record
     // for (auto itr = log_set_.begin(); itr != log_set_.end(); ++itr)
     //  logfile_.write((void *)&(*itr), sizeof(LogRecord));
-    logfile_.write((void *)&(log_set_[0]),
+    logfile_.write((void *) &(log_set_[0]),
                    sizeof(LogRecord) * latest_log_header_.logRecNum_);
 
     // logfile_.fdatasync();
@@ -317,8 +317,9 @@ void TxnExecutor::writePhase() {
 void TxnExecutor::lockWriteSet() {
   Tidword expected, desired;
 
-  [[maybe_unused]] retry
-      : for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+[[maybe_unused]] retry
+  :
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     for (;;) {
       if (expected.lock) {
@@ -356,7 +357,7 @@ void TxnExecutor::unlockWriteSet() {
 }
 
 void TxnExecutor::unlockWriteSet(
-    std::vector<WriteElement<Tuple>>::iterator end) {
+        std::vector<WriteElement<Tuple>>::iterator end) {
   Tidword expected, desired;
 
   for (auto itr = write_set_.begin(); itr != end; ++itr) {

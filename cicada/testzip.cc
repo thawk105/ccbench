@@ -11,8 +11,7 @@
 using std::cout, std::endl;
 
 int
-main()
-{
+main() {
   pid_t pid = syscall(SYS_gettid);
   cpu_set_t cpu_set;
 

@@ -98,7 +98,7 @@ void ShowOptParameters() {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE,
+  if (posix_memalign((void **) &Table, PAGE_SIZE,
                      (FLAGS_tuple_num) * sizeof(Tuple)) != 0)
     ERR;
 #if dbs11

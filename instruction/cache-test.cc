@@ -15,6 +15,7 @@
 #include "../include/tsc.hh"
 
 #define GLOBAL_VALUE_DEFINE
+
 #include "include/common.hh"
 
 using namespace std;
@@ -38,8 +39,8 @@ static void chkArg(const int argc, const char *argv[]) {
     cout << "example: ./a.out 24 2400 3" << endl;
     cout << "THREAD_NUM(int): total numbers of worker thread" << endl;
     cout
-        << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
-        << endl;
+            << "CPU_MHZ(float): your cpuMHz. used by calculate time of yorus 1clock"
+            << endl;
     cout << "EXTIME: execution time [sec]" << endl;
 
     exit(0);
@@ -80,7 +81,7 @@ static void chkArg(const int argc, const char *argv[]) {
 //}
 
 static void *manager_worker(void *arg) {
-  int *myid = (int *)arg;
+  int *myid = (int *) arg;
   pid_t pid = syscall(SYS_gettid);
   cpu_set_t cpu_set;
 
@@ -100,8 +101,7 @@ static void *manager_worker(void *arg) {
   }
 
   // spin-wait
-  while (Running.load(std::memory_order_acquire) != THREAD_NUM)
-    ;
+  while (Running.load(std::memory_order_acquire) != THREAD_NUM);
   uint64_t bgn, end;
   //-----
   // Bgn = rdtscp();
@@ -121,7 +121,7 @@ static void *manager_worker(void *arg) {
 }
 
 static void *worker(void *arg) {
-  int myid = *(int *)arg;
+  int myid = *(int *) arg;
   uint64_t ctr(0);
   uint val_size = 64 * 1000;
   int *obVal;
@@ -180,9 +180,9 @@ static pthread_t threadCreate(int id) {
   *myid = id;
 
   if (id == 0) {
-    if (pthread_create(&t, nullptr, manager_worker, (void *)myid)) ERR;
+    if (pthread_create(&t, nullptr, manager_worker, (void *) myid)) ERR;
   } else {
-    if (pthread_create(&t, nullptr, worker, (void *)myid)) ERR;
+    if (pthread_create(&t, nullptr, worker, (void *) myid)) ERR;
   }
 
   return t;

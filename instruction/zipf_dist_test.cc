@@ -9,7 +9,7 @@ size_t LENGTH;
 double SKEW;
 size_t TRIAL;
 
-int main(const int argc, const char* argv[]) try {
+int main(const int argc, const char *argv[]) try {
   if (argc == 1) {
     cout << "./a.out LENGTH SKEW TRIAL" << endl;
     exit(0);
@@ -32,7 +32,7 @@ int main(const int argc, const char* argv[]) try {
 
   cout << "#number : count" << endl;
   for (size_t i = 0; i < LENGTH; ++i) {
-    cout << i << " " << (double)Ctr[i] / (double)TRIAL << endl;
+    cout << i << " " << (double) Ctr[i] / (double) TRIAL << endl;
   }
 
   return 0;

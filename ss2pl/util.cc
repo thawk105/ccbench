@@ -78,7 +78,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
+  if (posix_memalign((void **) &Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
@@ -101,19 +101,18 @@ void makeDB() {
 }
 
 void
-ShowOptParameters()
-{
+ShowOptParameters() {
   cout << "#ShowOptParameters()"
-    << ": ADD_ANALYSIS " << ADD_ANALYSIS
-    << ": BACK_OFF " << BACK_OFF
-#ifdef DLR0
-    << ": DLR0 "
-#elif defined DLR1
-    << ": DLR1 "
-#endif
-    << ": MASSTREE_USE " << MASSTREE_USE
-    << ": KEY_SIZE " << KEY_SIZE
-    << ": KEY_SORT " << KEY_SORT
-    << ": VAL_SIZE " << VAL_SIZE
-    << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS
+       << ": BACK_OFF " << BACK_OFF
+       #ifdef DLR0
+       << ": DLR0 "
+       #elif defined DLR1
+       << ": DLR1 "
+       #endif
+       << ": MASSTREE_USE " << MASSTREE_USE
+       << ": KEY_SIZE " << KEY_SIZE
+       << ": KEY_SORT " << KEY_SORT
+       << ": VAL_SIZE " << VAL_SIZE
+       << endl;
 }

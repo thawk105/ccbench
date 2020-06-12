@@ -54,14 +54,14 @@ inline SetElement<Tuple> *TxExecutor::searchWriteSet(uint64_t key) {
  * @return void
  */
 void TxExecutor::abort() {
-	/**
-	 * Release locks
-	 */
+  /**
+   * Release locks
+   */
   unlockList();
 
-	/**
-	 * Clean-up local read/write set.
-	 */
+  /**
+   * Clean-up local read/write set.
+   */
   read_set_.clear();
   write_set_.clear();
 
@@ -87,20 +87,20 @@ void TxExecutor::abort() {
  */
 void TxExecutor::commit() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-		/**
-		 * update payload.
-		 */
+    /**
+     * update payload.
+     */
     memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
   }
 
-	/**
-	 * Release locks.
-	 */
+  /**
+   * Release locks.
+   */
   unlockList();
 
-	/**
-	 * Clean-up local read/write set.
-	 */
+  /**
+   * Clean-up local read/write set.
+   */
   read_set_.clear();
   write_set_.clear();
 }
@@ -140,9 +140,9 @@ void TxExecutor::read(uint64_t key) {
 #endif
 
 #ifdef DLR0
-	/**
-	 * Acquire lock with wait.
-	 */
+  /**
+   * Acquire lock with wait.
+   */
   tuple->lock_.r_lock();
   r_lock_list_.emplace_back(&tuple->lock_);
   read_set_.emplace_back(key, tuple, tuple->val_);
@@ -151,9 +151,9 @@ void TxExecutor::read(uint64_t key) {
     r_lock_list_.emplace_back(&tuple->lock_);
     read_set_.emplace_back(key, tuple, tuple->val_);
   } else {
-		/**
-		 * No-wait and abort.
-		 */
+    /**
+     * No-wait and abort.
+     */
     this->status_ = TransactionStatus::aborted;
     goto FINISH_READ;
   }
@@ -192,7 +192,7 @@ void TxExecutor::write(uint64_t key) {
 #endif
 
       // upgrade success
-			// remove old element of read lock list.
+      // remove old element of read lock list.
       for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
            ++lItr) {
         if (*lItr == &((*rItr).rcdptr_->lock_)) {
@@ -222,23 +222,23 @@ void TxExecutor::write(uint64_t key) {
 #endif
 
 #if DLR0
-	/**
-	 * Lock with wait.
-	 */
+  /**
+   * Lock with wait.
+   */
   tuple->lock_.w_lock();
 #elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
-		/**
-		 * No-wait and abort.
-		 */
+    /**
+     * No-wait and abort.
+     */
     this->status_ = TransactionStatus::aborted;
     goto FINISH_WRITE;
   }
 #endif
 
-	/**
-	 * Register the contents to write lock list and write set.
-	 */
+  /**
+   * Register the contents to write lock list and write set.
+   */
   w_lock_list_.emplace_back(&tuple->lock_);
   write_set_.emplace_back(key, tuple);
 
@@ -262,16 +262,16 @@ void TxExecutor::readWrite(uint64_t key) {
       (*rItr).rcdptr_->lock_.upgrade();
 #elif defined(DLR1)
       if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
-				/**
-				 * No-wait and abort.
-				 */
+        /**
+         * No-wait and abort.
+         */
         this->status_ = TransactionStatus::aborted;
         goto FINISH_WRITE;
       }
 #endif
 
       // upgrade success
-			// remove old element of read set.
+      // remove old element of read set.
       for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
            ++lItr) {
         if (*lItr == &((*rItr).rcdptr_->lock_)) {
@@ -301,15 +301,15 @@ void TxExecutor::readWrite(uint64_t key) {
 #endif
 
 #if DLR0
-	/**
-	 * Lock with wait.
-	 */
+  /**
+   * Lock with wait.
+   */
   tuple->lock_.w_lock();
 #elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
-		/**
-		 * Nowait and abort.
-		 */
+    /**
+     * Nowait and abort.
+     */
     this->status_ = TransactionStatus::aborted;
     goto FINISH_WRITE;
   }
@@ -319,9 +319,9 @@ void TxExecutor::readWrite(uint64_t key) {
   memcpy(this->return_val_, tuple->val_, VAL_SIZE);
   // finish read.
 
-	/**
-	 * Register the contents to write lock list and write set.
-	 */
+  /**
+   * Register the contents to write lock list and write set.
+   */
   w_lock_list_.emplace_back(&tuple->lock_);
   write_set_.emplace_back(key, tuple);
 
@@ -340,9 +340,9 @@ void TxExecutor::unlockList() {
   for (auto itr = w_lock_list_.begin(); itr != w_lock_list_.end(); ++itr)
     (*itr)->w_unlock();
 
-	/**
-	 * Clean-up local lock set.
-	 */
+  /**
+   * Clean-up local lock set.
+   */
   r_lock_list_.clear();
   w_lock_list_.clear();
 }

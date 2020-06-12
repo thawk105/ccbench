@@ -20,7 +20,7 @@ INLINE void atomicAddGE() {
 
 INLINE uint64_t atomicLoadGE() {
   uint64_t_64byte result =
-      __atomic_load_n(&(GlobalEpoch.obj_), __ATOMIC_ACQUIRE);
+          __atomic_load_n(&(GlobalEpoch.obj_), __ATOMIC_ACQUIRE);
   return result.obj_;
 }
 

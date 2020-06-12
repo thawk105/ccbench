@@ -10,6 +10,7 @@
 #include <string>  //string
 
 #define GLOBAL_VALUE_DEFINE
+
 #include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
 #include "../include/cpu.hh"
@@ -30,11 +31,11 @@
 
 using namespace std;
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  TxExecutor trans(thid, (Result*)&ErmiaResult[thid]);
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+  TxExecutor trans(thid, (Result *) &ErmiaResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  Result& myres = std::ref(ErmiaResult[thid]);
+  Result &myres = std::ref(ErmiaResult[thid]);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   GarbageCollection gcob;
   /**
@@ -61,7 +62,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
                   FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
-  RETRY:
+RETRY:
     if (thid == 0) {
       leaderWork(std::ref(gcob));
       leaderBackoffWork(backoff, ErmiaResult);
@@ -116,7 +117,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("ERMIA benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -136,7 +137,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     ErmiaResult[0].addLocalAllResult(ErmiaResult[i]);

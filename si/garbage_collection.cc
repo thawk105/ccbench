@@ -96,8 +96,8 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *sres_) {
     gcq_for_versions_.front().ver_->committed_prev_->prev_ = nullptr;
     // updates record.min_wts
     tuple->min_cstamp_.store(
-        gcq_for_versions_.front().ver_->committed_prev_->cstamp_,
-        std::memory_order_release);
+            gcq_for_versions_.front().ver_->committed_prev_->cstamp_,
+            std::memory_order_release);
 
     while (delTarget != nullptr) {
       // next pointer escape

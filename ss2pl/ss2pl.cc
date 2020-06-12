@@ -31,11 +31,11 @@
 #include "include/transaction.hh"
 #include "include/util.hh"
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(SS2PLResult[thid]);
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+  Result &myres = std::ref(SS2PLResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, (Result*)&myres);
+  TxExecutor trans(thid, (Result *) &myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   Backoff backoff(FLAGS_clocks_per_us);
 
@@ -55,7 +55,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
                   FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
-  RETRY:
+RETRY:
     if (loadAcquire(quit)) break;
     if (thid == 0) leaderBackoffWork(backoff, SS2PLResult);
 
@@ -90,7 +90,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("2PL benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     SS2PLResult[0].addLocalAllResult(SS2PLResult[i]);

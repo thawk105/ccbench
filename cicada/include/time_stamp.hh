@@ -4,14 +4,16 @@
 #include "../../include/tsc.hh"
 
 class TimeStamp {
- public:
+public:
   alignas(CACHE_LINE_SIZE) uint64_t ts_ = 0;
   uint64_t localClock_ = 0;
   uint64_t clockBoost_ = 0;
   uint8_t thid_;
 
   TimeStamp() {}
+
   inline uint64_t get_ts() { return ts_; }
+
   inline void set_ts(uint64_t &ts) { this->ts_ = ts; }
 
   inline void set_clockBoost(unsigned int CLOCK_PER_US) {

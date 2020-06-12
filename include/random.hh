@@ -12,7 +12,7 @@
 #pragma once
 
 class Xoroshiro128Plus {
- public:
+public:
   uint64_t s[2];
 
   inline void init() {

@@ -59,6 +59,7 @@ struct Psstamp {
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
     return expected.sstamp_;
   }
+
   void atomicStorePstamp(uint32_t newpstamp) {
     Psstamp expected, desired;
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
@@ -87,13 +88,13 @@ struct Psstamp {
 };
 
 class Version {
- public:
+public:
   alignas(CACHE_LINE_SIZE) Psstamp
-      psstamp_;  // Version access stamp, eta(V), Version successor stamp, pi(V)
+          psstamp_;  // Version access stamp, eta(V), Version successor stamp, pi(V)
   Version *prev_;                  // Pointer to overwritten version
-  std::atomic<uint64_t> readers_;  // summarize all of V's readers.
-  std::atomic<uint32_t> cstamp_;   // Version creation stamp, c(V)
-  std::atomic<VersionStatus> status_;
+  std::atomic <uint64_t> readers_;  // summarize all of V's readers.
+  std::atomic <uint32_t> cstamp_;   // Version creation stamp, c(V)
+  std::atomic <VersionStatus> status_;
 
   char val_[VAL_SIZE];
 

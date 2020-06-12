@@ -57,7 +57,7 @@ void chkArg() {
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     TMT[i] =
-        new TransactionTable(0, 0, UINT32_MAX, 0, TransactionStatus::inFlight);
+            new TransactionTable(0, 0, UINT32_MAX, 0, TransactionStatus::inFlight);
   }
 }
 
@@ -110,7 +110,7 @@ void displayParameter() {
   cout << "#FLAGS_thread_num:\t\t\t" << FLAGS_thread_num << endl;
   cout << "#FLAGS_ycsb:\t\t\t\t" << FLAGS_ycsb << endl;
   cout << "#FLAGS_zipf_skew:\t\t\t" << FLAGS_zipf_skew << endl;
- }
+}
 
 void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 #if MASSTREE_USE
@@ -121,7 +121,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     Tuple *tmp;
     tmp = &Table[i];
     tmp->min_cstamp_ = 0;
-    if (posix_memalign((void **)&tmp->latest_, CACHE_LINE_SIZE,
+    if (posix_memalign((void **) &tmp->latest_, CACHE_LINE_SIZE,
                        sizeof(Version)) != 0)
       ERR;
     Version *verTmp = tmp->latest_.load(std::memory_order_acquire);
@@ -142,7 +142,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, (FLAGS_tuple_num) * sizeof(Tuple)) !=
+  if (posix_memalign((void **) &Table, PAGE_SIZE, (FLAGS_tuple_num) * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
@@ -185,7 +185,7 @@ void naiveGarbageCollection(const bool &quit) {
       uint64_t verCstamp = verTmp->cstamp_.load(memory_order_acquire);
       while (mintxID < (verCstamp >> 1) ||
              verTmp->status_.load(memory_order_acquire) !=
-                 VersionStatus::committed) {
+             VersionStatus::committed) {
         verTmp = verTmp->prev_;
         if (verTmp == nullptr) break;
         verCstamp = verTmp->cstamp_.load(memory_order_acquire);

@@ -52,7 +52,7 @@ WriteElement<Tuple> *TxExecutor::searchWriteSet(uint64_t key) {
  * @param key [in] The key of key-value
  * @return Corresponding element of retrospective lock list
  */
-template <typename T>
+template<typename T>
 T *TxExecutor::searchRLL(uint64_t key) {
   // will do : binary search
   for (auto itr = RLL_.begin(); itr != RLL_.end(); ++itr) {
@@ -194,47 +194,53 @@ void TxExecutor::read(uint64_t key) {
 #ifdef RWLOCK
       while (tuple->rwlock_.ldAcqCounter() == W_LOCKED) {
 #endif  // RWLOCK
-        /* if you wait due to being write-locked, it may occur dead lock.
-        // it need to guarantee that this parts definitely progress.
-        // So it sholud wait expected.lock because it will be released
-        definitely.
-        //
-        // if expected.lock raise, opponent worker entered pre-commit phase.
-        expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_),
-        __ATOMIC_ACQUIRE);*/
+      /* if you wait due to being write-locked, it may occur dead lock.
+      // it need to guarantee that this parts definitely progress.
+      // So it sholud wait expected.lock because it will be released
+      definitely.
+      //
+      // if expected.lock raise, opponent worker entered pre-commit phase.
+      expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_),
+      __ATOMIC_ACQUIRE);*/
 
-        if (key < CLL_.back().key_) {
-          status_ = TransactionStatus::aborted;
-          read_set_.emplace_back(key, tuple);
-          goto FINISH_READ;
-        } else {
-          expected.obj_ =
-              __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
-        }
+      if (key < CLL_.back().key_) {
+        status_ = TransactionStatus::aborted;
+        read_set_.emplace_back(key, tuple);
+        goto FINISH_READ;
+      } else {
+        expected.obj_ =
+                __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
       }
-
-      memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
-
-      desired.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
-      if (expected == desired)
-        break;
-      else
-        expected.obj_ = desired.obj_;
     }
-  } else {
-    // it already got read-lock.
-    // So it can load payload atomically by one loading tidword.
-    expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
-    memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
-  }
 
-  read_set_.emplace_back(expected, key, tuple, return_val_);
+    memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
+
+    desired.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+    if (expected == desired)
+      break;
+    else
+      expected.obj_ = desired.obj_;
+  }
+}
+
+else {
+// it already got read-lock.
+// So it can load payload atomically by one loading tidword.
+expected.
+obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+memcpy(return_val_, tuple
+->val_, VAL_SIZE);  // read
+}
+
+read_set_.
+emplace_back(expected, key, tuple, return_val_
+);
 
 FINISH_READ:
 #if ADD_ANALYSIS
-  mres_->local_read_latency_ += rdtscp() - start;
+mres_->local_read_latency_ += rdtscp() - start;
 #endif
-  return;
+return;
 }
 
 /**
@@ -327,9 +333,9 @@ void TxExecutor::read_write(uint64_t key) {
     tuple = re->rcdptr_;
     goto FINISH_READ;
   } else {
-  	/**
-  	 * Search record from data structure.
-  	 */
+    /**
+     * Search record from data structure.
+     */
 #if MASSTREE_USE
     tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -383,48 +389,56 @@ void TxExecutor::read_write(uint64_t key) {
 #ifdef RWLOCK
       while (tuple->rwlock_.ldAcqCounter() == W_LOCKED) {
 #endif  // RWLOCK
-        /* if you wait due to being write-locked, it may occur dead lock.
-        // it need to guarantee that this parts definitely progress.
-        // So it sholud wait expected.lock because it will be released
-        definitely.
-        //
-        // if expected.lock raise, opponent worker entered pre-commit phase.
-        expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_),
-        __ATOMIC_ACQUIRE);*/
+      /* if you wait due to being write-locked, it may occur dead lock.
+      // it need to guarantee that this parts definitely progress.
+      // So it sholud wait expected.lock because it will be released
+      definitely.
+      //
+      // if expected.lock raise, opponent worker entered pre-commit phase.
+      expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_),
+      __ATOMIC_ACQUIRE);*/
 
-        if (key < CLL_.back().key_) {
-          status_ = TransactionStatus::aborted;
-          read_set_.emplace_back(key, tuple);
-          goto FINISH_READ;
-        } else {
-          expected.obj_ =
-              __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
-        }
+      if (key < CLL_.back().key_) {
+        status_ = TransactionStatus::aborted;
+        read_set_.emplace_back(key, tuple);
+        goto FINISH_READ;
+      } else {
+        expected.obj_ =
+                __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
       }
-
-      memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
-
-      desired.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
-      if (expected == desired)
-        break;
-      else
-        expected.obj_ = desired.obj_;
     }
-  } else {
-    // it already got read-lock.
-    expected.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
-    memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
-  }
 
-  read_set_.emplace_back(expected, key, tuple, return_val_);
+    memcpy(return_val_, tuple->val_, VAL_SIZE);  // read
+
+    desired.obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+    if (expected == desired)
+      break;
+    else
+      expected.obj_ = desired.obj_;
+  }
+}
+
+else {
+// it already got read-lock.
+expected.
+obj_ = __atomic_load_n(&(tuple->tidword_.obj_), __ATOMIC_ACQUIRE);
+memcpy(return_val_, tuple
+->val_, VAL_SIZE);  // read
+}
+
+read_set_.
+emplace_back(expected, key, tuple, return_val_
+);
 
 FINISH_READ:
 
-  write_set_.emplace_back(key, tuple);
+write_set_.
+emplace_back(key, tuple
+);
 
 FINISH_ALL:
 
-  return;
+return;
 }
 
 void TxExecutor::lock(uint64_t key, Tuple *tuple, bool mode) {
@@ -700,15 +714,15 @@ bool TxExecutor::commit() {
     this->max_wset_ = max(this->max_wset_, (*itr).rcdptr_->tidword_);
   }
 
-  asm volatile("" ::: "memory");
+  asm volatile("":: : "memory");
   __atomic_store_n(&(ThLocalEpoch[thid_].obj_), (loadAcquireGE()).obj_,
                    __ATOMIC_RELEASE);
-  asm volatile("" ::: "memory");
+  asm volatile("":: : "memory");
 
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     Tidword check;
     check.obj_ =
-        __atomic_load_n(&((*itr).rcdptr_->tidword_.obj_), __ATOMIC_ACQUIRE);
+            __atomic_load_n(&((*itr).rcdptr_->tidword_.obj_), __ATOMIC_ACQUIRE);
     if ((*itr).tidword_.epoch != check.epoch ||
         (*itr).tidword_.tid != check.tid) {
       (*itr).failed_verification_ = true;
@@ -724,19 +738,19 @@ bool TxExecutor::commit() {
     if ((*itr).rcdptr_->rwlock_.ldAcqCounter() == W_LOCKED &&
         searchWriteSet((*itr).key_) == nullptr) {
 #endif  // RWLOCK
-      // if the rwlock is already acquired and the owner isn't me, abort.
-      (*itr).failed_verification_ = true;
-      this->status_ = TransactionStatus::aborted;
+    // if the rwlock is already acquired and the owner isn't me, abort.
+    (*itr).failed_verification_ = true;
+    this->status_ = TransactionStatus::aborted;
 #if ADD_ANALYSIS
-      ++mres_->local_validation_failure_by_writelock_;
+    ++mres_->local_validation_failure_by_writelock_;
 #endif
-      return false;
-    }
-
-    this->max_rset_ = max(this->max_rset_, (*itr).rcdptr_->tidword_);
+    return false;
   }
 
-  return true;
+  this->max_rset_ = max(this->max_rset_, (*itr).rcdptr_->tidword_);
+}
+
+return true;
 }
 
 /**

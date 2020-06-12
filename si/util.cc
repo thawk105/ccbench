@@ -129,7 +129,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE,
+  if (posix_memalign((void **) &Table, PAGE_SIZE,
                      (FLAGS_tuple_num) * sizeof(Tuple)) != 0)
     ERR;
 #if dbs11

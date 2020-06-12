@@ -22,11 +22,11 @@ enum class TransactionStatus : uint8_t {
 };
 
 class TxExecutor {
- public:
+public:
   uint8_t thid_;         // thread ID
   uint32_t cstamp_ = 0;  // Transaction end time, c(T)
   uint32_t
-      txid_;  // TID and begin timestamp - the current log sequence number (LSN)
+          txid_;  // TID and begin timestamp - the current log sequence number (LSN)
   uint32_t pre_gc_threshold_ = 0;
   uint64_t gcstart_, gcstop_;
   char return_val_[VAL_SIZE] = {};
@@ -39,10 +39,10 @@ class TxExecutor {
   GarbageCollection gcobject_;
   Result *sres_;
   TransactionStatus status_ =
-      TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
+          TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
 
   TxExecutor(uint8_t thid, unsigned int max_ope, Result *sres)
-      : thid_(thid), sres_(sres) {
+          : thid_(thid), sres_(sres) {
     gcobject_.thid_ = thid;
     read_set_.reserve(max_ope);
     write_set_.reserve(max_ope);
@@ -51,7 +51,7 @@ class TxExecutor {
     if (FLAGS_pre_reserve_tmt_element) {
       for (size_t i = 0; i < FLAGS_pre_reserve_tmt_element; ++i)
         gcobject_.reuse_TMT_element_from_gc_.emplace_back(
-            new TransactionTable());
+                new TransactionTable());
     }
 
     if (FLAGS_pre_reserve_version) {
@@ -64,14 +64,23 @@ class TxExecutor {
   }
 
   SetElement<Tuple> *searchReadSet(uint64_t key);
+
   SetElement<Tuple> *searchWriteSet(uint64_t key);
+
   void tbegin();
+
   void tread(uint64_t key);
+
   void twrite(uint64_t key);
+
   void commit();
+
   void abort();
+
   void mainte();
+
   void dispWS();
+
   void dispRS();
 
   static Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }

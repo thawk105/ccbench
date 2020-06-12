@@ -2,9 +2,8 @@
 
 #include <stdint.h>
 
-[[maybe_unused]] static uint64_t 
-rdtsc() 
-{
+[[maybe_unused]] static uint64_t
+rdtsc() {
   uint64_t rax;
   uint64_t rdx;
 
@@ -16,21 +15,19 @@ rdtsc()
   return (rdx << 32) | rax;
 }
 
-[[maybe_unused]] static uint64_t 
-rdtsc_serial() 
-{
+[[maybe_unused]] static uint64_t
+rdtsc_serial() {
   uint64_t rax;
   uint64_t rdx;
 
-  asm volatile("cpuid" ::: "rax", "rbx", "rcx", "rdx");
+  asm volatile("cpuid":: : "rax", "rbx", "rcx", "rdx");
   asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
 
   return (rdx << 32) | rax;
 }
 
-[[maybe_unused]] static uint64_t 
-rdtscp() 
-{
+[[maybe_unused]] static uint64_t
+rdtscp() {
   uint64_t rax;
   uint64_t rdx;
   uint32_t aux;

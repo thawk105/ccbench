@@ -61,32 +61,32 @@ void TxExecutor::tbegin() {
   tmt = loadAcquire(TMT[thid_]);
   uint32_t lastcstamp;
   if (this->status_ == TransactionStatus::aborted) {
-		/**
-		 * If this transaction is retry by abort,
-		 * its lastcstamp is last one.
-		 */
+    /**
+     * If this transaction is retry by abort,
+     * its lastcstamp is last one.
+     */
     lastcstamp = this->txid_ = tmt->lastcstamp_.load(memory_order_acquire);
-	} else {
-		/**
-		 * If this transaction is after committed transaction,
-		 * its lastcstamp is that's one.
-		 */
+  } else {
+    /**
+     * If this transaction is after committed transaction,
+     * its lastcstamp is that's one.
+     */
     lastcstamp = this->txid_ = cstamp_;
-	}
+  }
 
   if (gcobject_.reuse_TMT_element_from_gc_.empty()) {
-		/**
-		 * If no cache,
-		 */
+    /**
+     * If no cache,
+     */
     newElement = new TransactionTable(0, 0, UINT32_MAX, lastcstamp,
                                       TransactionStatus::inFlight);
 #if ADD_ANALYSIS
     ++eres_->local_TMT_element_malloc_;
 #endif
   } else {
-		/**
-		 * If it has cache, this transaction use it.
-		 */
+    /**
+     * If it has cache, this transaction use it.
+     */
     newElement = gcobject_.reuse_TMT_element_from_gc_.back();
     gcobject_.reuse_TMT_element_from_gc_.pop_back();
     newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inFlight);
@@ -105,13 +105,13 @@ void TxExecutor::tbegin() {
   this->txid_ += 1;
   newElement->txid_ = this->txid_;
 
-	/**
-	 * Old object becomes cache object.
-	 */
+  /**
+   * Old object becomes cache object.
+   */
   gcobject_.gcq_for_TMT_.emplace_back(loadAcquire(TMT[thid_]));
-	/**
-	 * New object is registerd to transaction mapping table.
-	 */
+  /**
+   * New object is registerd to transaction mapping table.
+   */
   storeRelease(TMT[thid_], newElement);
 
   pstamp_ = 0;
@@ -161,7 +161,7 @@ void TxExecutor::ssn_tread(uint64_t key) {
   } else {
     // update pi with r:w edge
     this->sstamp_ =
-        min(this->sstamp_, (ver->psstamp_.atomicLoadSstamp() >> TIDFLAG));
+            min(this->sstamp_, (ver->psstamp_.atomicLoadSstamp() >> TIDFLAG));
   }
   upReadersBits(ver);
 
@@ -251,8 +251,8 @@ void TxExecutor::ssn_twrite(uint64_t key) {
 #endif
   }
   desired->cstamp_.store(
-      this->txid_,
-      memory_order_relaxed);  // read operation, write operation,
+          this->txid_,
+          memory_order_relaxed);  // read operation, write operation,
   // it is also accessed by garbage collection.
 
   Version *vertmp;
@@ -311,7 +311,7 @@ void TxExecutor::ssn_twrite(uint64_t key) {
    * Update eta with w:r edge
    */
   this->pstamp_ =
-      max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
+          max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
   write_set_.emplace_back(key, tuple, desired);
 
   verify_exclusion_or_abort();
@@ -366,7 +366,7 @@ void TxExecutor::ssn_commit() {
   // update eta
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     (*itr).ver_->psstamp_.atomicStorePstamp(
-        max((*itr).ver_->psstamp_.atomicLoadPstamp(), cstamp_));
+            max((*itr).ver_->psstamp_.atomicLoadPstamp(), cstamp_));
     // down readers bit
     downReadersBits((*itr).ver_);
   }
@@ -445,8 +445,7 @@ void TxExecutor::ssn_parallel_commit() {
          * Worker is in ssn_parallel_commit().
          * So it wait worker to get cstamp.
          */
-        while (tmt->cstamp_.load(memory_order_acquire) == 0)
-          ;
+        while (tmt->cstamp_.load(memory_order_acquire) == 0);
         /**
          * If worker->cstamp_ is less than this->cstamp_, the worker can be pi.
          */
@@ -455,12 +454,11 @@ void TxExecutor::ssn_parallel_commit() {
            * It wait worker to end parallel_commit (determine sstamp).
            */
           while (tmt->status_.load(memory_order_acquire) ==
-                 TransactionStatus::committing)
-            ;
+                 TransactionStatus::committing);
           if (tmt->status_.load(memory_order_acquire) ==
               TransactionStatus::committed) {
             this->sstamp_ =
-                min(this->sstamp_, tmt->sstamp_.load(memory_order_acquire));
+                    min(this->sstamp_, tmt->sstamp_.load(memory_order_acquire));
           }
         }
       }
@@ -491,8 +489,7 @@ void TxExecutor::ssn_parallel_commit() {
          */
         if (tmt->status_.load(memory_order_acquire) ==
             TransactionStatus::committing) {
-          while (tmt->cstamp_.load(memory_order_acquire) == 0)
-            ;
+          while (tmt->cstamp_.load(memory_order_acquire) == 0);
           /**
            * If worker->cstamp_ is less than this->cstamp_, it can be eta.
            */
@@ -501,12 +498,11 @@ void TxExecutor::ssn_parallel_commit() {
              * Wait end of parallel_commit (determing sstamp).
              */
             while (tmt->status_.load(memory_order_acquire) ==
-                   TransactionStatus::committing)
-              ;
+                   TransactionStatus::committing);
             if (tmt->status_.load(memory_order_acquire) ==
                 TransactionStatus::committed) {
               this->pstamp_ =
-                  max(this->pstamp_, tmt->cstamp_.load(memory_order_acquire));
+                      max(this->pstamp_, tmt->cstamp_.load(memory_order_acquire));
             }
           }
         }
@@ -550,7 +546,7 @@ void TxExecutor::ssn_parallel_commit() {
     }
     downReadersBits((*itr).ver_);
   }
-  
+
   /**
    * update pi.
    */
@@ -573,7 +569,7 @@ void TxExecutor::ssn_parallel_commit() {
 #endif
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
     gcobject_.gcq_for_version_.emplace_back(
-        GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
+            GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
   }
 
   // logging
@@ -602,17 +598,17 @@ void TxExecutor::abort() {
     while (next_committed->status_.load(memory_order_acquire) !=
            VersionStatus::committed)
       next_committed = next_committed->prev_;
-		/**
-		 * cancel successor mark(sstamp).
-		 */
+    /**
+     * cancel successor mark(sstamp).
+     */
     next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
   }
   write_set_.clear();
 
-	/**
-	 * notify that this transaction finishes reading the version now.
-	 */
+  /**
+   * notify that this transaction finishes reading the version now.
+   */
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
     downReadersBits((*itr).ver_);
 

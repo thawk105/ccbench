@@ -21,13 +21,13 @@ int main() {
   LogHeader loadhd;
   LogRecord logrec;
 
-  loadfile.read((void *)&loadhd, sizeof(LogHeader));
+  loadfile.read((void *) &loadhd, sizeof(LogHeader));
   cout << "chkSum_ : " << loadhd.chkSum_ << endl;
   cout << "logRecNum_ : " << loadhd.logRecNum_ << endl;
 
   int chkSum_ = 0;
   for (unsigned int i = 0; i < loadhd.logRecNum_; ++i) {
-    loadfile.read((void *)&logrec, sizeof(LogRecord));
+    loadfile.read((void *) &logrec, sizeof(LogRecord));
     chkSum_ += logrec.computeChkSum();
     cout << "tid : " << logrec.tid_ << endl;
     cout << "key : " << logrec.key_ << endl;

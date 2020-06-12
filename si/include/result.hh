@@ -4,6 +4,6 @@
 
 #include "../../include/result.hh"
 
-extern std::vector<Result> SIResult;
+extern std::vector <Result> SIResult;
 
 extern void initResult();

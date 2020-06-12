@@ -24,12 +24,12 @@ enum class TransactionStatus : uint8_t {
 };
 
 class TxnExecutor {
- public:
-  vector<ReadElement<Tuple>> read_set_;
-  vector<WriteElement<Tuple>> write_set_;
-  vector<Procedure> pro_set_;
+public:
+  vector <ReadElement<Tuple>> read_set_;
+  vector <WriteElement<Tuple>> write_set_;
+  vector <Procedure> pro_set_;
 
-  vector<LogRecord> log_set_;
+  vector <LogRecord> log_set_;
   LogHeader latest_log_header_;
 
   TransactionStatus status_;
@@ -37,7 +37,7 @@ class TxnExecutor {
   /* lock_num_ ...
    * the number of locks in local write set.
    */
-  Result* sres_;
+  Result *sres_;
 
   File logfile_;
 
@@ -47,7 +47,7 @@ class TxnExecutor {
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxnExecutor(int thid, Result* sres);
+  TxnExecutor(int thid, Result *sres);
 
   /**
    * @brief function about abort.
@@ -61,7 +61,7 @@ class TxnExecutor {
 
   void displayWriteSet();
 
-  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
+  Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 
   void lockWriteSet();
 
@@ -80,7 +80,7 @@ class TxnExecutor {
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  ReadElement<Tuple>* searchReadSet(uint64_t key);
+  ReadElement<Tuple> *searchReadSet(uint64_t key);
 
   /**
    * @brief Search xxx set
@@ -91,7 +91,7 @@ class TxnExecutor {
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  WriteElement<Tuple>* searchWriteSet(uint64_t key);
+  WriteElement<Tuple> *searchWriteSet(uint64_t key);
 
   void unlockWriteSet();
 

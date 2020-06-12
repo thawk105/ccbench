@@ -1,4 +1,5 @@
 #pragma once
+
 #include <atomic>
 #include <cstdint>
 
@@ -9,15 +10,15 @@
 using namespace std;
 
 class Tuple {
- public:
+public:
   alignas(CACHE_LINE_SIZE)
 #if INLINE_VERSION_OPT
-      Version inline_ver_;
+  Version inline_ver_;
 #endif
   atomic<Version *> latest_;
-  atomic<uint64_t> min_wts_;
-  atomic<uint64_t> continuing_commit_;
-  atomic<uint8_t> gc_lock_;
+  atomic <uint64_t> min_wts_;
+  atomic <uint64_t> continuing_commit_;
+  atomic <uint8_t> gc_lock_;
 
   Tuple() : latest_(nullptr), gc_lock_(0) {}
 

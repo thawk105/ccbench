@@ -20,7 +20,7 @@
 using namespace std;
 
 class TxExecutor {
- public:
+public:
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
   uint8_t thid_;                  // thread ID
@@ -29,16 +29,16 @@ class TxExecutor {
   uint32_t sstamp_ = UINT32_MAX;  // Successor low-water mark, pi (T)
   uint32_t pre_gc_threshold_ = 0;
   uint32_t
-      txid_;  // TID and begin timestamp - the current log sequence number (LSN)
+          txid_;  // TID and begin timestamp - the current log sequence number (LSN)
   uint64_t gcstart_, gcstop_;  // counter for garbage collection
 
-  vector<SetElement<Tuple>> read_set_;
-  vector<SetElement<Tuple>> write_set_;
-  vector<Procedure> pro_set_;
+  vector <SetElement<Tuple>> read_set_;
+  vector <SetElement<Tuple>> write_set_;
+  vector <Procedure> pro_set_;
 
   Result *eres_;
   TransactionStatus status_ =
-      TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
+          TransactionStatus::inFlight;  // Status: inFlight, committed, or aborted
   GarbageCollection gcobject_;
 
   TxExecutor(uint8_t thid, Result *eres) : thid_(thid), eres_(eres) {
@@ -50,7 +50,7 @@ class TxExecutor {
     if (FLAGS_pre_reserve_tmt_element) {
       for (size_t i = 0; i < FLAGS_pre_reserve_tmt_element; ++i)
         gcobject_.reuse_TMT_element_from_gc_.emplace_back(
-            new TransactionTable());
+                new TransactionTable());
     }
 
     if (FLAGS_pre_reserve_version) {
@@ -62,16 +62,27 @@ class TxExecutor {
   }
 
   SetElement<Tuple> *searchReadSet(unsigned int key);
+
   SetElement<Tuple> *searchWriteSet(unsigned int key);
+
   void tbegin();
+
   void ssn_tread(uint64_t key);
+
   void ssn_twrite(uint64_t key);
+
   void ssn_commit();
+
   void ssn_parallel_commit();
+
   void abort();
+
   void mainte();
+
   void verify_exclusion_or_abort();
+
   void dispWS();
+
   void dispRS();
 
   void upReadersBits(Version *ver) {

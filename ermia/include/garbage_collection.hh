@@ -14,21 +14,23 @@
 class TransactionTable;
 
 class GarbageCollection {
- private:
+private:
   uint32_t fmin_, fmax_;  // first range of txid in TMT.
   uint32_t smin_, smax_;  // second range of txid in TMT.
-  static std::atomic<uint32_t>
-      GC_threshold_;  // share for all object (meaning all thread).
+  static std::atomic <uint32_t>
+          GC_threshold_;  // share for all object (meaning all thread).
 
- public:
-  std::deque<TransactionTable*> gcq_for_TMT_;
-  std::deque<TransactionTable*> reuse_TMT_element_from_gc_;
-  std::deque<GCElement<Tuple>> gcq_for_version_;
-  std::deque<Version*> reuse_version_from_gc_;
+public:
+  std::deque<TransactionTable *> gcq_for_TMT_;
+  std::deque<TransactionTable *> reuse_TMT_element_from_gc_;
+  std::deque <GCElement<Tuple>> gcq_for_version_;
+  std::deque<Version *> reuse_version_from_gc_;
   uint8_t thid_;
 
   GarbageCollection() {}
+
   GarbageCollection(uint8_t thid) : thid_(thid) {}
+
   void set_thid_(uint8_t thid) { thid_ = thid; }
 
   // for all thread
@@ -39,6 +41,7 @@ class GarbageCollection {
 
   // for leader thread
   bool chkSecondRange();
+
   void decideFirstRange();
 
   INLINE void decideGcThreshold() {
@@ -52,8 +55,9 @@ class GarbageCollection {
   // -----
 
   // for worker thread
-  void gcVersion(Result* eres_);
-  void gcTMTelement(Result* eres_);
+  void gcVersion(Result *eres_);
+
+  void gcTMTelement(Result *eres_);
   // -----
 };
 

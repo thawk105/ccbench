@@ -6,7 +6,7 @@
 #include <memory>
 
 class LogHeader {
- public:
+public:
   int chkSum_ = 0;
   unsigned int logRecNum_ = 0;
   const std::size_t len_val_ = VAL_SIZE;
@@ -23,7 +23,7 @@ class LogHeader {
 };
 
 class LogRecord {
- public:
+public:
   uint64_t tid_;
   unsigned int key_;
   char val_[VAL_SIZE];
@@ -37,7 +37,7 @@ class LogRecord {
   int computeChkSum() {
     // compute checksum
     int chkSum = 0;
-    int *itr = (int *)this;
+    int *itr = (int *) this;
     for (unsigned int i = 0; i < sizeof(LogRecord) / sizeof(int); ++i) {
       chkSum += (*itr);
       ++itr;
@@ -48,7 +48,7 @@ class LogRecord {
 };
 
 class LogPackage {
- public:
+public:
   LogHeader header_;
   std::unique_ptr<LogRecord[]> log_records_;
 };

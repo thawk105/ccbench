@@ -7,7 +7,7 @@
 #include "./cache_line_size.hh"
 
 class Result {
- public:
+public:
   alignas(CACHE_LINE_SIZE) uint64_t local_abort_counts_ = 0;
   uint64_t local_commit_counts_ = 0;
 #if ADD_ANALYSIS
@@ -77,10 +77,15 @@ class Result {
 #endif
 
   void displayAbortCounts();
+
   void displayAbortRate();
+
   void displayCommitCounts();
+
   void displayTps(size_t extime);
+
   void displayAllResult(size_t clocks_per_us, size_t extime, size_t thread_num);
+
 #if ADD_ANALYSIS
   void displayAbortByOperationRate();   // abort by operation rate;
   void displayAbortByValidationRate();  // abort by validation rate;
@@ -123,8 +128,11 @@ class Result {
 #endif
 
   void addLocalAllResult(const Result &other);
+
   void addLocalAbortCounts(const uint64_t count);
+
   void addLocalCommitCounts(const uint64_t count);
+
 #if ADD_ANALYSIS
   void addLocalAbortByOperation(const uint64_t count);
   void addLocalAbortByValidation(const uint64_t count);

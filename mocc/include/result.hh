@@ -4,6 +4,6 @@
 
 #include "../../include/result.hh"
 
-extern std::vector<Result> MoccResult;
+extern std::vector <Result> MoccResult;
 
 extern void initResult();

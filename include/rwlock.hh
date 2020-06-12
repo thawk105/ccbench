@@ -6,7 +6,7 @@
 using namespace std;
 
 class RWLock {
- public:
+public:
   std::atomic<int> counter;
   // counter == -1, write locked;
   // counter == 0, not locked;

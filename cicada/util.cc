@@ -46,25 +46,25 @@ void chkArg() {
     exit(0);
   }
 
-  if (posix_memalign((void **)&ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&ThreadWtsArray, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &ThreadWtsArray, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&ThreadRtsArray, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &ThreadRtsArray, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&GCFlag, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &GCFlag, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&GCExecuteFlag, CACHE_LINE_SIZE,
+  if (posix_memalign((void **) &GCExecuteFlag, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
@@ -155,7 +155,7 @@ void displayParameter() {
   cout << "#FLAGS_ycsb:\t\t\t\t" << FLAGS_ycsb << endl;
   cout << "#FLAGS_worker1_insert_delay_rphase_us:\t" << FLAGS_worker1_insert_delay_rphase_us << endl;
   cout << "#FLAGS_zipf_skew:\t\t\t" << FLAGS_zipf_skew << endl;
- }
+}
 
 void displaySLogSet() {
   if (!FLAGS_group_commit) {
@@ -209,7 +209,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t initts,
 #else
     tuple->latest_.store(new Version(), std::memory_order_release);
     (tuple->latest_.load(std::memory_order_acquire))
-        ->set(0, initts, nullptr, VersionStatus::committed);
+            ->set(0, initts, nullptr, VersionStatus::committed);
     (tuple->latest_.load(std::memory_order_acquire))->val_[0] = '\0';
 #endif
 
@@ -261,7 +261,7 @@ void deleteDB() {
 }
 
 void makeDB(uint64_t *initial_wts) {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
+  if (posix_memalign((void **) &Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
@@ -292,18 +292,18 @@ void leaderWork([[maybe_unused]] Backoff &backoff) {
   }
   if (gc_update) {
     uint64_t minw =
-        __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
+            __atomic_load_n(&(ThreadWtsArray[1].obj_), __ATOMIC_ACQUIRE);
     uint64_t minr;
     if (FLAGS_group_commit == 0) {
       minr = __atomic_load_n(&(ThreadRtsArray[1].obj_), __ATOMIC_ACQUIRE);
     } else {
       minr =
-          __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_), __ATOMIC_ACQUIRE);
+              __atomic_load_n(&(ThreadRtsArrayForGroup[1].obj_), __ATOMIC_ACQUIRE);
     }
 
     for (unsigned int i = 1; i < FLAGS_thread_num; ++i) {
       uint64_t tmp =
-          __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
+              __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
       if (minw > tmp) minw = tmp;
       if (FLAGS_group_commit == 0) {
         tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);

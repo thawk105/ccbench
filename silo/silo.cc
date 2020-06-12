@@ -13,6 +13,7 @@
 #include "boost/filesystem.hpp"
 
 #define GLOBAL_VALUE_DEFINE
+
 #include "include/atomic_tool.hh"
 #include "include/common.hh"
 #include "include/result.hh"
@@ -33,11 +34,11 @@
 
 using namespace std;
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(SiloResult[thid]);
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+  Result &myres = std::ref(SiloResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxnExecutor trans(thid, (Result*)&myres);
+  TxnExecutor trans(thid, (Result *) &myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   uint64_t epoch_timer_start, epoch_timer_stop;
 #if BACK_OFF
@@ -91,7 +92,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
     sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
 
-  RETRY:
+RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
 #if BACK_OFF
@@ -135,7 +136,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -155,7 +156,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     SiloResult[0].addLocalAllResult(SiloResult[i]);

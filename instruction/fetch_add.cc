@@ -23,15 +23,17 @@
 
 using namespace std;
 
-extern bool isReady(const std::vector<char>& readys);
-extern void waitForReady(const std::vector<char>& readys);
+extern bool isReady(const std::vector<char> &readys);
+
+extern void waitForReady(const std::vector<char> &readys);
+
 extern void sleepMs(size_t ms);
 
 alignas(CACHE_LINE_SIZE) size_t THREAD_NUM;
-alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> Cent_ctr(0);
+alignas(CACHE_LINE_SIZE) std::atomic <uint64_t> Cent_ctr(0);
 #define EXTIME 3
 
-static bool chkInt(const char* arg) {
+static bool chkInt(const char *arg) {
   for (unsigned int i = 0; i < strlen(arg); ++i) {
     if (!isdigit(arg[i])) {
       cout << std::string(arg) << " is not a number." << endl;
@@ -41,7 +43,7 @@ static bool chkInt(const char* arg) {
   return true;
 }
 
-static void chkArg(const int argc, const char* argv[]) {
+static void chkArg(const int argc, const char *argv[]) {
   if (argc != 2) {
     cout << "usage: ./a.out THREAD_NUM" << endl;
     cout << "example: ./a.out 24" << endl;
@@ -60,8 +62,8 @@ static void chkArg(const int argc, const char* argv[]) {
   }
 }
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit,
-            uint64_t& count) {
+void worker(size_t thid, char &ready, const bool &start, const bool &quit,
+            uint64_t &count) {
   pid_t pid;
   cpu_set_t cpu_set;
 
@@ -85,13 +87,13 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit,
   return;
 }
 
-int main(const int argc, const char* argv[]) {
+int main(const int argc, const char *argv[]) {
   chkArg(argc, argv);
 
   bool start(false), quit(false);
-  std::vector<std::thread> ths;
+  std::vector <std::thread> ths;
   std::vector<char> readys(THREAD_NUM);
-  std::vector<uint64_t> counts(THREAD_NUM);
+  std::vector <uint64_t> counts(THREAD_NUM);
 
   for (size_t i = 0; i < THREAD_NUM; ++i)
     ths.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
@@ -102,7 +104,7 @@ int main(const int argc, const char* argv[]) {
   for (size_t i = 0; i < EXTIME; ++i) sleepMs(1000);
   storeRelease(quit, true);
 
-  for (auto& t : ths) t.join();
+  for (auto &t : ths) t.join();
 
   uint64_t sum(0);
   for (size_t i = 0; i < THREAD_NUM; ++i) {

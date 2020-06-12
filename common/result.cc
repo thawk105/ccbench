@@ -19,8 +19,8 @@ void Result::displayAbortCounts() {
 }
 
 void Result::displayAbortRate() {
-  long double ave_rate = (double)total_abort_counts_ /
-                         (double)(total_commit_counts_ + total_abort_counts_);
+  long double ave_rate = (double) total_abort_counts_ /
+                         (double) (total_commit_counts_ + total_abort_counts_);
   cout << fixed << setprecision(4) << "abort_rate:\t" << ave_rate << endl;
 }
 
@@ -305,6 +305,7 @@ void Result::displayWriteLatencyRate(size_t clocks_per_us, size_t extime,
   }
 }
 #endif
+
 void Result::addLocalAbortCounts(const uint64_t count) {
   total_abort_counts_ += count;
 }

@@ -26,16 +26,16 @@ size_t decideParallelBuildNumber(size_t tuple_num) {
   return 0;
 }
 
-void displayProcedureVector(std::vector<Procedure> &pro) {
+void displayProcedureVector(std::vector <Procedure> &pro) {
   printf("--------------------\n");
   size_t index = 0;
   for (auto itr = pro.begin(); itr != pro.end(); ++itr) {
     printf(
-        "-----\n"
-        "op_num\t: %zu\n"
-        "key\t: %zu\n"
-        "r/w\t: %d\n",
-        index, (*itr).key_, (int)((*itr).ope_));
+            "-----\n"
+            "op_num\t: %zu\n"
+            "key\t: %zu\n"
+            "r/w\t: %d\n",
+            index, (*itr).key_, (int) ((*itr).ope_));
     ++index;
   }
   printf("--------------------\n");
@@ -47,7 +47,7 @@ void displayRusageRUMaxrss() {
   printf("maxrss:\t%ld kB\n", r.ru_maxrss);
 }
 
-void readyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+void readyAndWaitForReadyOfAllThread(std::atomic <size_t> &running,
                                      const size_t thnm) {
   running++;
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
@@ -55,7 +55,7 @@ void readyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
   return;
 }
 
-void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm) {
+void waitForReadyOfAllThread(std::atomic <size_t> &running, const size_t thnm) {
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
 
   return;

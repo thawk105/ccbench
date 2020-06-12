@@ -28,14 +28,14 @@
 
 using namespace std;
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, &rnd, (Result*)&MoccResult[thid]);
+  TxExecutor trans(thid, &rnd, (Result *) &MoccResult[thid]);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   uint64_t epoch_timer_start, epoch_timer_stop;
   Backoff backoff(FLAGS_clocks_per_us);
-  Result& myres = std::ref(MoccResult[thid]);
+  Result &myres = std::ref(MoccResult[thid]);
 
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(thid));
@@ -51,7 +51,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   while (!loadAcquire(quit)) {
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
                   FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
-  RETRY:
+RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop, myres);
       leaderBackoffWork(backoff, MoccResult);
@@ -102,7 +102,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("MOCC benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     MoccResult[0].addLocalAllResult(MoccResult[i]);

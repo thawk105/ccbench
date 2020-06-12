@@ -4,6 +4,6 @@
 
 #include "../../include/result.hh"
 
-extern std::vector<Result> ErmiaResult;
+extern std::vector <Result> ErmiaResult;
 
 extern void initResult();

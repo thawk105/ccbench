@@ -57,31 +57,31 @@ void TxExecutor::tbegin() {
   tmt = loadAcquire(TMT[thid_]);
   uint32_t lastcstamp;
   if (this->status_ == TransactionStatus::aborted) {
-		/**
-		 * If this transaction is retry by abort,
-		 * its lastcstamp is last one.
-		 */
+    /**
+     * If this transaction is retry by abort,
+     * its lastcstamp is last one.
+     */
     lastcstamp = this->txid_ = tmt->lastcstamp_.load(std::memory_order_acquire);
-	} else {
-		/**
-		 * If this transaction is after committed transaction,
-		 * its lastcstamp is that's one.
-		 */
+  } else {
+    /**
+     * If this transaction is after committed transaction,
+     * its lastcstamp is that's one.
+     */
     lastcstamp = this->txid_ = cstamp_;
-	}
+  }
 
   if (gcobject_.reuse_TMT_element_from_gc_.empty()) {
-		/**
-		 * If no cache,
-		 */
+    /**
+     * If no cache,
+     */
     newElement = new TransactionTable(0, lastcstamp);
 #if ADD_ANALYSIS
     ++sres_->local_TMT_element_malloc_;
 #endif
   } else {
-		/**
-		 * If it has cache, this transaction use it.
-		 */
+    /**
+     * If it has cache, this transaction use it.
+     */
     newElement = gcobject_.reuse_TMT_element_from_gc_.back();
     gcobject_.reuse_TMT_element_from_gc_.pop_back();
     newElement->set(0, lastcstamp);
@@ -90,9 +90,9 @@ void TxExecutor::tbegin() {
 #endif
   }
 
-	/**
-	 * Check the latest commit timestamp.
-	 */
+  /**
+   * Check the latest commit timestamp.
+   */
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     do {
       tmt = loadAcquire(TMT[i]);
@@ -102,20 +102,20 @@ void TxExecutor::tbegin() {
   this->txid_ += 1;
   newElement->txid_ = this->txid_;
 
-	/**
-	 * Old object becomes cache object.
-	 */
+  /**
+   * Old object becomes cache object.
+   */
   gcobject_.gcq_for_TMT_.emplace_back(loadAcquire(TMT[thid_]));
-	/**
-	 * New object is registerd to transaction mapping table.
-	 */
+  /**
+   * New object is registerd to transaction mapping table.
+   */
   storeRelease(TMT[thid_], newElement);
 #endif  // CCTR_ON
 
 #ifdef CCTR_TW
-	/**
-	 * An orthodoxy approach to take timestamp from shared counter at begin/end of transaction.
-	 */
+  /**
+   * An orthodoxy approach to take timestamp from shared counter at begin/end of transaction.
+   */
   this->txid_ = ++CCtr;
   TMT[thid_]->txid_.store(this->txid_, std::memory_order_release);
 #endif  // CCTR_TW
@@ -150,9 +150,9 @@ void TxExecutor::tread(uint64_t key) {
   tuple = get_tuple(Table, key);
 #endif
 
-	/**
-	 * Move to the points of this view.
-	 */
+  /**
+   * Move to the points of this view.
+   */
   Version *ver;
   ver = tuple->latest_.load(std::memory_order_acquire);
   if (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
@@ -170,9 +170,9 @@ void TxExecutor::tread(uint64_t key) {
 
   read_set_.emplace_back(key, tuple, ver);
 
-	/**
-	 * read payload.
-	 */
+  /**
+   * read payload.
+   */
   memcpy(return_val_, ver->val_, VAL_SIZE);
 #if ADD_ANALYSIS
   ++sres_->local_memcpys;
@@ -195,9 +195,9 @@ void TxExecutor::twrite(uint64_t key) {
   uint64_t start = rdtscp();
 #endif
 
-	/**
-	 * update local write set.
-	 */
+  /**
+   * update local write set.
+   */
   if (searchWriteSet(key)) goto FINISH_WRITE;
 
   /**
@@ -207,14 +207,14 @@ void TxExecutor::twrite(uint64_t key) {
   SetElement<Tuple> *re;
   re = searchReadSet(key);
   if (re) {
-		/**
-		 * If it can find record in read set, use this for high performance.
-		 */
+    /**
+     * If it can find record in read set, use this for high performance.
+     */
     tuple = re->rcdptr_;
   } else {
-		/**
-		 * Search tuple from data structure.
-		 */
+    /**
+     * Search tuple from data structure.
+     */
 #if MASSTREE_USE
     tuple = MT.get_value(key);
 #if ADD_ANALYSIS
@@ -246,10 +246,10 @@ void TxExecutor::twrite(uint64_t key) {
   }
 
   desired->cstamp_.store(
-      this->txid_,
-      memory_order_relaxed);  // storing before CAS because it will be accessed
-                              // from read operation, write operation and
-                              // garbage collection.
+          this->txid_,
+          memory_order_relaxed);  // storing before CAS because it will be accessed
+  // from read operation, write operation and
+  // garbage collection.
   desired->status_.store(VersionStatus::inFlight, memory_order_relaxed);
 
   Version *vertmp;
@@ -318,41 +318,41 @@ void TxExecutor::commit() {
 #if ADD_ANALYSIS
   uint64_t start(rdtscp());
 #endif
-	/**
-	 * Take timestamp from shared counter at end of transaction.
-	 */
+  /**
+   * Take timestamp from shared counter at end of transaction.
+   */
   this->cstamp_ = ++CCtr;
   status_ = TransactionStatus::committed;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-		/**
-		 * update timestamp.
-		 */
+    /**
+     * update timestamp.
+     */
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
-		/**
-		 * update payload.
-		 */
+    /**
+     * update payload.
+     */
     std::memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
 #if ADD_ANALYSIS
     ++sres_->local_memcpys;
 #endif
-		/**
-		 * release conceptual lock.
-		 */
+    /**
+     * release conceptual lock.
+     */
     (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
-		/**
-		 * register version for gc.
-		 */
+    /**
+     * register version for gc.
+     */
     gcobject_.gcq_for_versions_.emplace_back(
-        GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, cstamp_));
+            GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, cstamp_));
   }
 
   read_set_.clear();
   write_set_.clear();
 
-	/**
-	 * update lastcstamp.
-	 */
+  /**
+   * update lastcstamp.
+   */
   TMT[thid_]->lastcstamp_.store(this->cstamp_, std::memory_order_release);
 #if ADD_ANALYSIS
   sres_->local_commit_latency_ += rdtscp() - start;
@@ -370,15 +370,15 @@ void TxExecutor::abort() {
   status_ = TransactionStatus::aborted;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-		/**
-		 * mark as aborted and release conseptual lock.
-		 */
+    /**
+     * mark as aborted and release conseptual lock.
+     */
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
-		/**
-		 * register version for gc.
-		 */
+    /**
+     * register version for gc.
+     */
     gcobject_.gcq_for_versions_.emplace_back(
-        GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_));
+            GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->txid_));
   }
 
   read_set_.clear();

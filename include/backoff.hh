@@ -14,7 +14,7 @@
 using namespace std;
 
 class Backoff {
- public:
+public:
   static std::atomic<double> Backoff_;
   static constexpr double kMinBackoff = 0;
   static constexpr double kMaxBackoff = 1000;
@@ -110,7 +110,8 @@ class Backoff {
   }
 };
 
-[[maybe_unused]] inline void leaderBackoffWork([[maybe_unused]] Backoff& backoff, [[maybe_unused]] std::vector<Result>& res) {
+[[maybe_unused]] inline void
+leaderBackoffWork([[maybe_unused]] Backoff &backoff, [[maybe_unused]] std::vector <Result> &res) {
   if (backoff.check_update_backoff()) {
     uint64_t sum_committed_txs(0);
     for (auto &th : res) {

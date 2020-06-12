@@ -16,18 +16,18 @@ struct Tidword {
   union {
     uint64_t obj_;
     struct {
-      uint64_t tid : 32;
-      uint64_t epoch : 32;
+      uint64_t tid: 32;
+      uint64_t epoch: 32;
     };
   };
 
   Tidword() { obj_ = 0; }
 
-  bool operator==(const Tidword& right) const { return obj_ == right.obj_; }
+  bool operator==(const Tidword &right) const { return obj_ == right.obj_; }
 
-  bool operator!=(const Tidword& right) const { return !operator==(right); }
+  bool operator!=(const Tidword &right) const { return !operator==(right); }
 
-  bool operator<(const Tidword& right) const { return this->obj_ < right.obj_; }
+  bool operator<(const Tidword &right) const { return this->obj_ < right.obj_; }
 };
 
 // 32bit temprature, 32bit epoch
@@ -35,17 +35,18 @@ struct Epotemp {
   union {
     alignas(CACHE_LINE_SIZE) uint64_t obj_;
     struct {
-      uint64_t temp : 32;
-      uint64_t epoch : 32;
+      uint64_t temp: 32;
+      uint64_t epoch: 32;
     };
   };
 
   Epotemp() : obj_(0) {}
+
   Epotemp(uint64_t temp2, uint64_t epoch2) : temp(temp2), epoch(epoch2) {}
 
-  bool operator==(const Epotemp& right) const { return obj_ == right.obj_; }
+  bool operator==(const Epotemp &right) const { return obj_ == right.obj_; }
 
-  bool operator!=(const Epotemp& right) const { return !operator==(right); }
+  bool operator!=(const Epotemp &right) const { return !operator==(right); }
 
   bool eqEpoch(uint64_t epo) {
     if (epoch == epo)
@@ -56,7 +57,7 @@ struct Epotemp {
 };
 
 class Tuple {
- public:
+public:
   alignas(CACHE_LINE_SIZE) Tidword tidword_;
 #ifdef RWLOCK
   RWLock rwlock_;  // 4byte

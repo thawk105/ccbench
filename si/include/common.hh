@@ -65,4 +65,4 @@ DECLARE_double(zipf_skew);
 
 alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 alignas(CACHE_LINE_SIZE) GLOBAL
-    TransactionTable **TMT;  // Transaction Mapping Table
+TransactionTable **TMT;  // Transaction Mapping Table

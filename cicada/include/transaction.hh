@@ -30,15 +30,15 @@ enum class TransactionStatus : uint8_t {
 };
 
 class TxExecutor {
- public:
+public:
   TransactionStatus status_ = TransactionStatus::invalid;
   TimeStamp wts_;
   std::vector<ReadElement<Tuple>> read_set_;
   std::vector<WriteElement<Tuple>> write_set_;
   std::deque<GCElement<Tuple>> gcq_;
-  std::deque<Version*> reuse_version_from_gc_;
+  std::deque<Version *> reuse_version_from_gc_;
   std::vector<Procedure> pro_set_;
-  Result* cres_ = nullptr;
+  Result *cres_ = nullptr;
 
   bool ronly_;
   uint8_t thid_ = 0;
@@ -50,10 +50,9 @@ class TxExecutor {
   char return_val_[VAL_SIZE] = {};
   char write_val_[VAL_SIZE] = {};
 
-  TxExecutor(uint8_t thid, Result* cres) : cres_(cres), thid_(thid) {
+  TxExecutor(uint8_t thid, Result *cres) : cres_(cres), thid_(thid) {
     // wait to initialize MinWts
-    while (MinWts.load(memory_order_acquire) == 0)
-      ;
+    while (MinWts.load(memory_order_acquire) == 0);
     rts_ = MinWts.load(memory_order_acquire) - 1;
     wts_.generateTimeStampFirst(thid_);
 
@@ -95,19 +94,28 @@ class TxExecutor {
   }
 
   void abort();
+
   bool chkGcpvTimeout();
+
   void cpv();  // commit pending versions
   void displayWriteSet();
+
   void earlyAbort();
+
   void mainte();  // maintenance
   void gcpv();    // group commit pending versions
   void precpv();  // pre-commit pending versions
   void pwal();    // parallel write ahead log.
   void swal();
+
   void tbegin();
+
   void tread(const uint64_t key);
+
   void twrite(const uint64_t key);
+
   bool validation();
+
   void writePhase();
 
   void backoff() {
@@ -122,10 +130,10 @@ class TxExecutor {
 #endif
   }
 
-  void gcAfterThisVersion([[maybe_unused]] Tuple* tuple, Version* delTarget) {
+  void gcAfterThisVersion([[maybe_unused]] Tuple *tuple, Version *delTarget) {
     while (delTarget != nullptr) {
       // escape next pointer
-      Version* tmp = delTarget->next_.load(std::memory_order_acquire);
+      Version *tmp = delTarget->next_.load(std::memory_order_acquire);
 
 #if INLINE_VERSION_OPT
       if (delTarget == &(tuple->inline_ver_)) {
@@ -140,9 +148,9 @@ class TxExecutor {
       delete delTarget;
 #endif  // if REUSE_VERSION
 
-      [[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
+[[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
 #if ADD_ANALYSIS
-          ++cres_->local_gc_version_counts_;
+      ++cres_->local_gc_version_counts_;
 #endif
       delTarget = tmp;
     }
@@ -166,7 +174,7 @@ class TxExecutor {
 #endif
 #endif
 
-  Version* newVersionGeneration([[maybe_unused]] Tuple* tuple) {
+  Version *newVersionGeneration([[maybe_unused]] Tuple *tuple) {
 #if INLINE_VERSION_OPT
     if (tuple->getInlineVersionRight()) {
       tuple->inline_ver_.set(0, this->wts_.ts_);
@@ -215,7 +223,7 @@ class TxExecutor {
          itr != write_set_.begin() + (write_set_.size() / 2); ++itr) {
       if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) <
           CONTINUING_COMMIT_THRESHOLD) {
-        Version* ver;
+        Version *ver;
         if ((*itr).rmw_) {
           ver = (*itr).rcdptr_->ldAcqLatest();
           if (ver->ldAcqWts() > this->wts_.ts_ ||
@@ -263,7 +271,7 @@ class TxExecutor {
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  ReadElement<Tuple>* searchReadSet(const uint64_t key) {
+  ReadElement<Tuple> *searchReadSet(const uint64_t key) {
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
       if ((*itr).key_ == key) return &(*itr);
     }
@@ -279,7 +287,7 @@ class TxExecutor {
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  WriteElement<Tuple>* searchWriteSet(const uint64_t key) {
+  WriteElement<Tuple> *searchWriteSet(const uint64_t key) {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       if ((*itr).key_ == key) return &(*itr);
     }
@@ -314,7 +322,7 @@ class TxExecutor {
     write_set_.clear();
   }
 
-  static INLINE Tuple* get_tuple(Tuple* table, uint64_t key) {
+  static INLINE Tuple *get_tuple(Tuple *table, uint64_t key) {
     return &table[key];
   }
 };

@@ -29,9 +29,9 @@
 
 using namespace std;
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(SIResult[thid]);
-  TxExecutor trans(thid, FLAGS_max_ope, (Result*)&myres);
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+  Result &myres = std::ref(SIResult[thid]);
+  TxExecutor trans(thid, FLAGS_max_ope, (Result *) &myres);
   Xoroshiro128Plus rnd;
   rnd.init();
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
@@ -57,7 +57,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
                   FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
                   thid, myres);
-  RETRY:
+RETRY:
     if (thid == 0) {
       leaderWork(std::ref(gcob));
       leaderBackoffWork(backoff, SIResult);
@@ -100,7 +100,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("SI benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     SIResult[0].addLocalAllResult(SIResult[i]);

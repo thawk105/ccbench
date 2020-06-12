@@ -4,6 +4,6 @@
 
 #include "../../include/result.hh"
 
-extern std::vector<Result> TicTocResult;
+extern std::vector <Result> TicTocResult;
 
 extern void initResult();

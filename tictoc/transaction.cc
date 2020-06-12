@@ -204,7 +204,7 @@ bool TxExecutor::validationPhase() {
    * it.
    */
 
-  asm volatile("" ::: "memory");
+  asm volatile("":: : "memory");
 
   // step2, compute the commit timestamp
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
@@ -364,10 +364,11 @@ void TxExecutor::lockWriteSet() {
    */
   sort(write_set_.begin(), write_set_.end());
 
-  [[maybe_unused]] retry
-      : for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+[[maybe_unused]] retry
+  :
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     expected.obj_ =
-        __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+            __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
     for (;;) {
       if (expected.lock) {
         if (this->wonly_ == false) {

@@ -23,25 +23,25 @@ enum class TransactionStatus : uint8_t {
 
 using namespace std;
 
-extern void write_val_Generator(char* write_val_, size_t val_size, size_t thid);
+extern void write_val_Generator(char *write_val_, size_t val_size, size_t thid);
 
 class TxExecutor {
- public:
+public:
   int thid_;
   uint64_t commit_ts_;
   uint64_t appro_commit_ts_;
-  Result* tres_;
+  Result *tres_;
   bool wonly_ = false;
-  vector<Procedure> pro_set_;
+  vector <Procedure> pro_set_;
 
   TransactionStatus status_;
-  vector<SetElement<Tuple>> read_set_;
-  vector<SetElement<Tuple>> write_set_;
+  vector <SetElement<Tuple>> read_set_;
+  vector <SetElement<Tuple>> write_set_;
 
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxExecutor(int thid, Result* tres);
+  TxExecutor(int thid, Result *tres);
 
   /**
    * @brief function about abort.
@@ -63,7 +63,7 @@ class TxExecutor {
    */
   void dispWS();
 
-  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
+  Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 
   /**
    * @brief lock records in local write set.
@@ -81,7 +81,7 @@ class TxExecutor {
    * @return true early abort
    * @return false not abort
    */
-  bool preemptiveAborts(const TsWord& v1);
+  bool preemptiveAborts(const TsWord &v1);
 
   /**
    * @brief Search xxx set
@@ -92,7 +92,7 @@ class TxExecutor {
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  SetElement<Tuple>* searchWriteSet(uint64_t key);
+  SetElement<Tuple> *searchWriteSet(uint64_t key);
 
   /**
    * @brief Search xxx set
@@ -103,7 +103,7 @@ class TxExecutor {
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  SetElement<Tuple>* searchReadSet(uint64_t key);
+  SetElement<Tuple> *searchReadSet(uint64_t key);
 
   /**
    * @brief Transaction read function.

@@ -53,13 +53,13 @@ void chkArg() {
     ERR;
   }
 
-  if (posix_memalign((void **)&Start, 64,
+  if (posix_memalign((void **) &Start, 64,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&Stop, 64,
+  if (posix_memalign((void **) &Stop, 64,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&ThLocalEpoch, 64,
+  if (posix_memalign((void **) &ThLocalEpoch, 64,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
 #ifdef MQLOCK
@@ -95,9 +95,10 @@ void displayLockedTuple() {
 #ifdef RWLOCK
     if (Table[i].rwlock_.counter_.load(memory_order_relaxed) == -1) {
 #endif  // RWLOCK
-      cout << "key : " << i << " is locked!." << endl;
-    }
+    cout << "key : " << i << " is locked!." << endl;
   }
+}
+
 }
 
 void displayParameter() {
@@ -138,7 +139,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
+  if (posix_memalign((void **) &Table, PAGE_SIZE, FLAGS_tuple_num * sizeof(Tuple)) !=
       0)
     ERR;
 #if dbs11
@@ -148,7 +149,7 @@ void makeDB() {
 
   size_t epotemp_length = FLAGS_tuple_num * sizeof(Tuple) / FLAGS_per_xx_temp + 1;
   // cout << "eptmp_length:\t" << eptmp_length << endl;
-  if (posix_memalign((void **)&EpotempAry, PAGE_SIZE,
+  if (posix_memalign((void **) &EpotempAry, PAGE_SIZE,
                      epotemp_length * sizeof(Epotemp)) != 0)
     ERR;
 

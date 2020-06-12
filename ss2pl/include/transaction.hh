@@ -16,23 +16,23 @@ enum class TransactionStatus : uint8_t {
   aborted,
 };
 
-extern void writeValGenerator(char* writeVal, size_t val_size, size_t thid);
+extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 
 class TxExecutor {
- public:
+public:
   alignas(CACHE_LINE_SIZE) int thid_;
-  std::vector<RWLock*> r_lock_list_;
-  std::vector<RWLock*> w_lock_list_;
+  std::vector<RWLock *> r_lock_list_;
+  std::vector<RWLock *> w_lock_list_;
   TransactionStatus status_ = TransactionStatus::inFlight;
-  Result* sres_;
-  vector<SetElement<Tuple>> read_set_;
-  vector<SetElement<Tuple>> write_set_;
-  vector<Procedure> pro_set_;
+  Result *sres_;
+  vector <SetElement<Tuple>> read_set_;
+  vector <SetElement<Tuple>> write_set_;
+  vector <Procedure> pro_set_;
 
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
-  TxExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
+  TxExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
     read_set_.reserve(FLAGS_max_ope);
     write_set_.reserve(FLAGS_max_ope);
     pro_set_.reserve(FLAGS_max_ope);
@@ -42,16 +42,24 @@ class TxExecutor {
     genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
   }
 
-  SetElement<Tuple>* searchReadSet(uint64_t key);
-  SetElement<Tuple>* searchWriteSet(uint64_t key);
+  SetElement<Tuple> *searchReadSet(uint64_t key);
+
+  SetElement<Tuple> *searchWriteSet(uint64_t key);
+
   void begin();
+
   void read(uint64_t key);
+
   void write(uint64_t key);
+
   void readWrite(uint64_t key);
+
   void commit();
+
   void abort();
+
   void unlockList();
 
   // inline
-  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
+  Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };

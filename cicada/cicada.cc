@@ -14,6 +14,7 @@
 #include <thread>
 
 #define GLOBAL_VALUE_DEFINE
+
 #include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
 #include "../include/compiler.hh"
@@ -33,11 +34,11 @@
 
 using namespace std;
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, (Result*)&CicadaResult[thid]);
-  Result& myres = std::ref(CicadaResult[thid]);
+  TxExecutor trans(thid, (Result *) &CicadaResult[thid]);
+  Result &myres = std::ref(CicadaResult[thid]);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   Backoff backoff(FLAGS_clocks_per_us);
 
@@ -79,7 +80,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 #endif
 #endif
 
-  RETRY:
+RETRY:
     if (thid == 0) {
       leaderWork(std::ref(backoff));
 #if BACK_OFF
@@ -173,7 +174,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("Cicada benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -195,7 +196,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     CicadaResult[0].addLocalAllResult(CicadaResult[i]);

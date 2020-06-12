@@ -29,7 +29,7 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinRts;
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinWts;
 alignas(
-    CACHE_LINE_SIZE) GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
+CACHE_LINE_SIZE) GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
@@ -79,14 +79,14 @@ DECLARE_double(zipf_skew);
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThreadWtsArray;
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThreadRtsArray;
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte
-    *ThreadRtsArrayForGroup;  // グループコミットをする時，これが必要である．
+        *ThreadRtsArrayForGroup;  // グループコミットをする時，これが必要である．
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *GROUP_COMMIT_INDEX;
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte
-    *GROUP_COMMIT_COUNTER;  // s-walの時は[0]のみ使用。全スレッドで共有。
+        *GROUP_COMMIT_COUNTER;  // s-walの時は[0]のみ使用。全スレッドで共有。
 
 alignas(
-    CACHE_LINE_SIZE) GLOBAL Version ***PLogSet;  // [thID][index] pointer array
+CACHE_LINE_SIZE) GLOBAL Version ***PLogSet;  // [thID][index] pointer array
 alignas(CACHE_LINE_SIZE) GLOBAL Version **SLogSet;  // [index] pointer array
 GLOBAL RWLock SwalLock;
 GLOBAL RWLock CtrLock;

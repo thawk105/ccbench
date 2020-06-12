@@ -29,14 +29,14 @@
 #include "include/transaction.hh"
 #include "include/util.hh"
 
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
 
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
 
-  Result& myres = std::ref(TicTocResult[thid]);
-  TxExecutor trans(thid, (Result*)&TicTocResult[thid]);
+  Result &myres = std::ref(TicTocResult[thid]);
+  TxExecutor trans(thid, (Result *) &TicTocResult[thid]);
 
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
@@ -62,7 +62,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
                   FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
                   thid, myres);
-  RETRY:
+RETRY:
 #if BACK_OFF
     if (thid == 0) leaderBackoffWork(std::ref(backoff), TicTocResult);
 #endif
@@ -105,7 +105,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   return;
 }
 
-int main(int argc, char* argv[]) try {
+int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("TicToc benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) try {
     sleepMs(1000);
   }
   storeRelease(quit, true);
-  for (auto& th : thv) th.join();
+  for (auto &th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     TicTocResult[0].addLocalAllResult(TicTocResult[i]);

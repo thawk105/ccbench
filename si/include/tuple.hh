@@ -8,10 +8,10 @@
 #include "version.hh"
 
 class Tuple {
- public:
+public:
   alignas(CACHE_LINE_SIZE) std::atomic<Version *> latest_;
-  std::atomic<uint32_t> min_cstamp_;
-  std::atomic<uint8_t> g_clock_;
+  std::atomic <uint32_t> min_cstamp_;
+  std::atomic <uint8_t> g_clock_;
 
   Tuple() {
     latest_.store(nullptr);

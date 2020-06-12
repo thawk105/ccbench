@@ -6,12 +6,12 @@
 #include "transaction_status.hh"
 
 class TransactionTable {
- public:
-  alignas(CACHE_LINE_SIZE) std::atomic<uint32_t> txid_;
-  std::atomic<uint32_t> cstamp_;
-  std::atomic<uint32_t> sstamp_;
-  std::atomic<uint32_t> lastcstamp_;
-  std::atomic<TransactionStatus> status_;
+public:
+  alignas(CACHE_LINE_SIZE) std::atomic <uint32_t> txid_;
+  std::atomic <uint32_t> cstamp_;
+  std::atomic <uint32_t> sstamp_;
+  std::atomic <uint32_t> lastcstamp_;
+  std::atomic <TransactionStatus> status_;
 
   TransactionTable() {}
 

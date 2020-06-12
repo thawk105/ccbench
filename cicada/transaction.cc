@@ -22,7 +22,9 @@
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
+
 extern void displaySLogSet();
+
 extern void displayDB();
 
 using namespace std;
@@ -174,7 +176,7 @@ FINISH_TREAD:
   cres_->local_read_latency_ += rdtscp() - start;
 #endif
 
-END_TREAD:
+  END_TREAD:
 
   return;
 }
@@ -373,12 +375,10 @@ bool TxExecutor::validation() {
     while (ver->ldAcqWts() >= this->wts_.ts_) ver = ver->ldAcqNext();
     // if write after read occured, it may happen "==".
 
-    while (ver->ldAcqStatus() == VersionStatus::pending)
-      ;
+    while (ver->ldAcqStatus() == VersionStatus::pending);
     while (ver->ldAcqStatus() != VersionStatus::committed) {
       ver = ver->ldAcqNext();
-      while (ver->ldAcqStatus() == VersionStatus::pending)
-        ;
+      while (ver->ldAcqStatus() == VersionStatus::pending);
     }
     /**
      * This part is different from the original.
@@ -397,12 +397,10 @@ bool TxExecutor::validation() {
    */
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     Version *ver = (*itr).new_ver_->ldAcqNext();
-    while (ver->ldAcqStatus() == VersionStatus::pending)
-      ;
+    while (ver->ldAcqStatus() == VersionStatus::pending);
     while (ver->ldAcqStatus() != VersionStatus::committed) {
       ver = ver->ldAcqNext();
-      while (ver->ldAcqStatus() == VersionStatus::pending)
-        ;
+      while (ver->ldAcqStatus() == VersionStatus::pending);
     }
 
     if (ver->ldAcqRts() > this->wts_.ts_) {
@@ -653,7 +651,7 @@ void TxExecutor::mainte() {
       // this pointer may be dangling.
 
       Version *delTarget =
-          gcq_.front().ver_->next_.load(std::memory_order_acquire);
+              gcq_.front().ver_->next_.load(std::memory_order_acquire);
 
       // the thread detaches the rest of the version list from v
       gcq_.front().ver_->next_.store(nullptr, std::memory_order_release);
