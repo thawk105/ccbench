@@ -174,7 +174,9 @@ FINISH_TREAD:
   cres_->local_read_latency_ += rdtscp() - start;
 #endif
 
+#if INLINE_VERSION_PROMOTION
 END_TREAD:
+#endif
 
   return;
 }
