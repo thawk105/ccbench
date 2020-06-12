@@ -22,6 +22,8 @@
 
 #define CONTINUING_COMMIT_THRESHOLD 5
 
+#define RTS_NOT_EXTENDABLE (1ULL<<63)
+
 enum class TransactionStatus : uint8_t {
   invalid,
   inflight,
@@ -159,7 +161,7 @@ class TxExecutor {
       twrite(key);
       if ((*pro_set_.begin()).ronly_) {
         (*pro_set_.begin()).ronly_ = false;
-        read_set_.emplace_back(key, tuple, later_ver, ver);
+        read_set_.emplace_back(key, tuple, later_ver, ver, false);
       }
     }
   }
@@ -253,6 +255,34 @@ class TxExecutor {
           break;
       }
     }
+  }
+
+  bool readTimestampUpdateWithValidation() {
+    uint64_t expected, new_rts;
+    for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+      expected = (*itr).ver_->ldAcqRts();
+      if ((*itr).rmw_) {
+        for (;;) {
+          if (expected & RTS_NOT_EXTENDABLE ||
+             (expected & ~RTS_NOT_EXTENDABLE) > this->wts_.ts_) return false;
+          new_rts = this->wts_.ts_ | RTS_NOT_EXTENDABLE;
+          if ((*itr).ver_->rts_.compare_exchange_strong(expected, new_rts,
+                                                        memory_order_acq_rel,
+                                                        memory_order_acquire))
+            break;
+        }
+      } else {
+        for (;;) {
+          if ((expected & ~RTS_NOT_EXTENDABLE) > this->wts_.ts_) break;
+          if (expected & RTS_NOT_EXTENDABLE) return false;
+          if ((*itr).ver_->rts_.compare_exchange_strong(expected, this->wts_.ts_,
+                                                        memory_order_acq_rel,
+                                                        memory_order_acquire))
+            break;
+        }
+      }
+    }
+    return true;
   }
 
   /**

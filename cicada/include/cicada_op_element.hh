@@ -8,11 +8,13 @@ class ReadElement : public OpElement<T> {
   using OpElement<T>::OpElement;
 
   Version *later_ver_, *ver_;
+  bool rmw_;
 
-  ReadElement(uint64_t key, T *rcdptr, Version *later_ver, Version *ver)
+  ReadElement(uint64_t key, T *rcdptr, Version *later_ver, Version *ver, bool rmw)
       : OpElement<T>::OpElement(key, rcdptr) {
     later_ver_ = later_ver;
     ver_ = ver;
+    rmw_ = rmw;
   }
 
   bool operator<(const ReadElement &right) const {

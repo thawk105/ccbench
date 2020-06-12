@@ -21,7 +21,11 @@ class TimeStamp {
 
   inline void generateTimeStampFirst(uint8_t tid) {
     localClock_ = rdtscp();
+#if NO_SPINWAIT
+    ts_ = ((localClock_ << (sizeof(tid) * 8)) & ~(1ULL<<63))| tid;
+#else
     ts_ = (localClock_ << (sizeof(tid) * 8)) | tid;
+#endif
     thid_ = tid;
   }
 
@@ -34,6 +38,10 @@ class TimeStamp {
     localClock_ += elapsedTime;
     localClock_ += clockBoost_;
 
+#if NO_SPINWAIT
+    ts_ = ((localClock_ << (sizeof(tid) * 8)) & ~(1ULL<<63))| tid;
+#else
     ts_ = (localClock_ << (sizeof(tid) * 8)) | tid;
+#endif
   }
 };

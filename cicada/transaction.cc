@@ -134,6 +134,25 @@ void TxExecutor::tread(const uint64_t key) {
     later_ver = ver;
     ver = ver->ldAcqNext();
   }
+#if NO_SPINWAIT
+  Version *next_ver;
+  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
+    next_ver = ver->ldAcqNext();
+    /*
+     * TODO: Is this kind of effort effective?
+    if (next_ver->status_.load(memory_order_acquire) == VersionStatus::committed &&
+        next_ver->ldAcqRts() & RTS_NOT_EXTENDABLE) {
+      while (ver->status_.load(memory_order_acquire) == VersionStatus::pending) {
+      }
+      if (ver->status_.load(memory_order_acquire) == VersionStatus::aborted) {
+        ver = next_ver;
+        break;
+      }
+    }
+    */
+    ver = next_ver;
+  }
+#else
   while (ver->status_.load(memory_order_acquire) != VersionStatus::committed) {
     /**
      * Wait for the result of the pending version in the view.
@@ -145,6 +164,7 @@ void TxExecutor::tread(const uint64_t key) {
     }
   }
 #endif
+#endif
 
   /**
    * Read payload.
@@ -155,7 +175,7 @@ void TxExecutor::tread(const uint64_t key) {
    * If read-only tx, not track or validate read_set_
    */
   if ((*this->pro_set_.begin()).ronly_ == false) {
-    read_set_.emplace_back(key, tuple, later_ver, ver);
+    read_set_.emplace_back(key, tuple, later_ver, ver, false);
   }
 
 #if INLINE_VERSION_OPT
@@ -269,6 +289,7 @@ void TxExecutor::twrite(const uint64_t key) {
 
   /**
    * Constraint from new to old.
+   * TODO: Is this only necessary for RMW case, isn't it?
    */
   if ((ver->ldAcqRts() > this->wts_.ts_) &&
       (ver->ldAcqStatus() == VersionStatus::committed)) {
@@ -279,6 +300,16 @@ void TxExecutor::twrite(const uint64_t key) {
     goto FINISH_TWRITE;
   }
 
+#if NO_SPINWAIT
+  if (re) {
+    re->rmw_ = true;
+  } else {
+    /*
+     * TODO: Psedo RMW can be relaxed more.
+     */
+    read_set_.emplace_back(key, tuple, later_ver, ver, true);
+  }
+#endif
   Version *new_ver;
   new_ver = newVersionGeneration(tuple);
   write_set_.emplace_back(key, tuple, later_ver, new_ver, rmw);
@@ -355,6 +386,14 @@ bool TxExecutor::validation() {
     (*itr).finish_version_install_ = true;
   }
 
+#if NO_SPINWAIT
+  /**
+   * Read timestamp update with validation
+   */
+  result = readTimestampUpdateWithValidation();
+  if (!result)
+    goto FINISH_VALIDATION;
+#else
   /**
    * Read timestamp update
    */
@@ -412,6 +451,7 @@ bool TxExecutor::validation() {
       goto FINISH_VALIDATION;
     }
   }
+#endif
 
 FINISH_VALIDATION:
 #if ADD_ANALYSIS
@@ -568,6 +608,22 @@ void TxExecutor::earlyAbort() {
  * @return void
  */
 void TxExecutor::abort() {
+#if NO_SPINWAIT
+  // Roll back RTS_NOT_EXTENDABLE flags
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+    if ((*itr).rmw_) {
+      uint64_t expected, new_rts;
+      expected = (*itr).ver_->ldAcqRts();
+      for (;;) {
+        new_rts = expected & ~RTS_NOT_EXTENDABLE;
+        if ((*itr).ver_->rts_.compare_exchange_strong(expected, new_rts,
+                                                      memory_order_acq_rel,
+                                                      memory_order_acquire))
+          break;
+      }
+    }
+  }
+#endif
   writeSetClean();
   read_set_.clear();
 
