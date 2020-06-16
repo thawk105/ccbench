@@ -1,5 +1,5 @@
-PROG1 = sv_format.exe
-SV_FORMAT_SRCS1 := sv_format.cc transaction.cc util.cc result.cc
+PROG1 = occ.exe
+SV_FORMAT_SRCS1 := occ.cc transaction.cc util.cc result.cc
 
 REL := ../common/
 include $(REL)Makefile

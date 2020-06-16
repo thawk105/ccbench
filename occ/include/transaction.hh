@@ -10,7 +10,7 @@
 #include "../../include/string.hh"
 #include "common.hh"
 #include "log.hh"
-#include "silo_op_element.hh"
+#include "occ_op_element.hh"
 #include "tuple.hh"
 
 #define LOGSET_SIZE 1000

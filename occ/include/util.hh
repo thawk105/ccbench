@@ -10,7 +10,7 @@ extern void displayParameter();
 
 extern void genLogFile(std::string &logpath, const int thid);
 
-extern void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop);
+extern void leaderWork();
 
 extern void makeDB();
 

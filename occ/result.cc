@@ -9,6 +9,6 @@ using namespace std;
 /**
  * Please declare it with an appropriate name.
  */
-alignas(CACHE_LINE_SIZE) std::vector<Result> SiloResult;
+alignas(CACHE_LINE_SIZE) std::vector<Result> OccResult;
 
-void initResult() { SiloResult.resize(FLAGS_thread_num); }
+void initResult() { OccResult.resize(FLAGS_thread_num); }

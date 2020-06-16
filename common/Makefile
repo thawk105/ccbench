@@ -23,6 +23,10 @@ SS2PL_SRCS1+=\
 $(REL)result.cc\
 $(REL)util.cc\
 
+SV_FORMAT_SRCS1+=\
+$(REL)result.cc\
+$(REL)util.cc\
+
 TICTOC_SRCS1+=\
 $(REL)result.cc\
 $(REL)util.cc\

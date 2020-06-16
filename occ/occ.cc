@@ -34,12 +34,11 @@
 using namespace std;
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(SiloResult[thid]);
+  Result& myres = std::ref(OccResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
   TxnExecutor trans(thid, (Result*)&myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
-  uint64_t epoch_timer_start, epoch_timer_stop;
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
 #endif
@@ -76,7 +75,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
-  if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
 #if PARTITION_TABLE
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
@@ -94,7 +92,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 
   RETRY:
     if (thid == 0) {
-      leaderWork(epoch_timer_start, epoch_timer_stop);
+      leaderWork();
 #if BACK_OFF
       leaderBackoffWork(backoff, Result);
 #endif
@@ -137,7 +135,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 }
 
 int main(int argc, char* argv[]) try {
-  gflags::SetUsageMessage("Silo benchmark.");
+  gflags::SetUsageMessage("K&R OCC benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   makeDB();
@@ -159,10 +157,10 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
-    SiloResult[0].addLocalAllResult(SiloResult[i]);
+    OccResult[0].addLocalAllResult(OccResult[i]);
   }
   ShowOptParameters();
-  SiloResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+  OccResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
                                  FLAGS_thread_num);
 
   return 0;

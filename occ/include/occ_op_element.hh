@@ -7,12 +7,10 @@ class ReadElement : public OpElement<T> {
  public:
   using OpElement<T>::OpElement;
 
-  Tidword tidword_;
   char val_[VAL_SIZE];
 
-  ReadElement(uint64_t key, T* rcdptr, char* val, Tidword tidword)
+  ReadElement(uint64_t key, T* rcdptr, char* val)
       : OpElement<T>::OpElement(key, rcdptr) {
-    tidword_.obj_ = tidword.obj_;
     memcpy(this->val_, val, VAL_SIZE);
   }
 

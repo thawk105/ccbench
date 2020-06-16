@@ -57,6 +57,7 @@ void TxnExecutor::write(uint64_t key) {
 }
 
 bool TxnExecutor::validationPhase() {
+  return true;
 }
 
 void TxnExecutor::abort() {

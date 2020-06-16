@@ -73,15 +73,12 @@ void displayDB() {
     cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
     cout << "val: " << tuple->val_ << endl;
-    cout << "TIDword: " << tuple->tidword_.obj_ << endl;
-    cout << "bit: " << tuple->tidword_.obj_ << endl;
     cout << endl;
   }
 }
 
 void displayParameter() {
   cout << "#FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
-  cout << "#FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
   cout << "#FLAGS_extime:\t\t" << FLAGS_extime << endl;
   cout << "#FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
   cout << "#FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
@@ -105,9 +102,6 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
   for (auto i = start; i <= end; ++i) {
     Tuple *tmp;
     tmp = &Table[i];
-    tmp->tidword_.epoch = 1;
-    tmp->tidword_.latest = 1;
-    tmp->tidword_.lock = 0;
     tmp->val_[0] = 'a';
     tmp->val_[1] = '\0';
 
@@ -136,14 +130,8 @@ void makeDB() {
   for (auto &th : thv) th.join();
 }
 
-void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
-  epoch_timer_stop = rdtscp();
-  if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
-                 FLAGS_epoch_time * FLAGS_clocks_per_us * 1000) &&
-      chkEpochLoaded()) {
-    atomicAddGE();
-    epoch_timer_start = epoch_timer_stop;
-  }
+void leaderWork() {
+  // Do nothing for OCC
 }
 
 void ShowOptParameters() {
