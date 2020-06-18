@@ -138,8 +138,7 @@ void ShowOptParameters() {
   cout << "#ShowOptParameters()"
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
-       << ": NO_WAIT_LOCKING_IN_VALIDATION " << NO_WAIT_LOCKING_IN_VALIDATION
        << ": PARTITION_TABLE " << PARTITION_TABLE << ": PROCEDURE_SORT "
-       << PROCEDURE_SORT << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
+       << PROCEDURE_SORT << ": OCC_GC_THRESHOLD " << OCC_GC_THRESHOLD
        << ": VAL_SIZE " << VAL_SIZE << ": WAL " << WAL << endl;
 }

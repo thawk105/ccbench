@@ -1,39 +1,34 @@
-# Single version concurrency control format
-- This is the format for adding single-version concurrency control.
+# OCC
+The original proposal is as follows.
 
-## Where to edit
-### Source files
-- result.cc
-  - L12-14 : Declare the variables with appropriate names.
-- sv_format.cc<br>
-Set an appropriate file name.
-  - L48-66 : Edit it appropriately when you enable log persistence.
-  - L106-133 : Define a single transaction workflow.
-- util.cc<br>
-  - L105-117 : Set initial value of record member appropriately.
-  - leaderWork function : Define the job of a leader thread.
-- Makefile<br>
-  - Edit the file name "sv_format / SV_FORMAT" appropriately.
-  - L9-37 : Define your preprocessor definition properly to determine the configuration.
-  - Please remove the libraries and options that cannot be used in the experimental environment.
-- transaction.cc<br>
-  - Define the tbegin/validationPhase/abort/writePhase/read/write function properly.
-   Delete unnecessary functions and add necessary functions to the transaction workflow.
-### Header files
-- include/common.hh<br>
-  - Define the global variables and workload configuration variables that are necessary for Concurrency Control.
-- include/log.hh<br>
-  - Define the members of LogRecord class as appropriate. Please modify accordingly.
-- include/result.hh<br>
-  - Change the name of the variable appropriately.
-- include/silo_op_element.hh<br>
-  - Change the file name appropriately.
-  - Change the members of ReadElement/WriteElement appropriately. And make corrections accordingly.
-- include/transaction.hh<br>
-  - Modify the members of TransactionStatus class appropriately as necessary.
-  - TxnExecutor class is information that should be held by the worker thread. Please add any information necessary for concurrency control to the class members.
-- include/tuple.hh<br>
-  - Declare the metadata to be stored in the record header in the Tuple class.
-  - attention : To improve the performance, no keys are stored. When a one-dimensional array is used as a DB table, the index position is the key. If you use masstree, the key-value is stored in the leaf node of masstree and the value is a pointer to the record, so there is no need to store the key.
-- include/util.hh<br>
-  - Edit it appropriately in conjunction with util.cc.
+```
+H. T. Kung and John T. Robinson. 1981. 
+On optimistic methods for concurrency control. 
+ACM Trans. Database Syst. 6, 2 (June 1981), 213-226. 
+DOI=http://dx.doi.org/10.1145/319566.319567
+```
+
+## How to use
+- Build 
+```
+$ make
+```
+- Confirm usage 
+```
+$ ./occ.exe -help
+```
+- Execution example 
+```
+$ numactl --interleave=all ./occ.exe -tuple_num=1000 -max_ope=10 -thread_num=224 -rratio=100 -rmw=0 -zipf_skew=0 -ycsb=1 -clocks_per_us=2100 -extime=3
+```
+
+## How to select build options in Makefile
+- `OCC_GC_THRESHOLD` : Number of committed write sets to be kept before performing garbage collection.
+- `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0 (currently no analysis point for OCC).
+- `BACK_OFF` : If this is 1, it use backoff.
+- `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.
+- `PARTITION_TABLE` : If this is 1, it devide the table into the number of worker threads not to occur read/write conflicts.
+- `VAL_SIZE` : Value of key-value size. In other words, payload size.
+
+## Optimizations
+- Backoff.

@@ -27,7 +27,6 @@ uint64_t txId = 0;
 vector<WriteSet> ws_list;
 
 /* GC */
-#define OCC_GC_THRESHOLD 10000
 uint64_t deletedTxId = -1;
 vector<int> progress;
 
@@ -63,7 +62,11 @@ void TxnExecutor::read(uint64_t key) {
   if (searchReadSet(key) || searchWriteSet(key)) goto FINISH_READ;
 
   Tuple *tuple;
+#if MASSTREE_USE
+  tuple = MT.get_value(key);
+#else
   tuple = get_tuple(Table, key);
+#endif
   read_set_.emplace_back(key, tuple, tuple->val_);
 
 FINISH_READ:
@@ -74,7 +77,17 @@ void TxnExecutor::write(uint64_t key) {
   if (searchWriteSet(key)) goto FINISH_WRITE;
 
   Tuple *tuple;
-  tuple = get_tuple(Table, key);
+  ReadElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+  } else {
+#if MASSTREE_USE
+    tuple = MT.get_value(key);
+#else
+    tuple = get_tuple(Table, key);
+#endif
+  }
   write_set_.emplace_back(key, tuple);
 
 FINISH_WRITE:
