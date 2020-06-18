@@ -86,7 +86,9 @@ Welcom pull request about
 - Bug fix.
 - Improvement about comments (doxygen style is recommended).
 - Improvement of versatile.
-
+- Extending CCBench
+  - Reference materials : https://github.com/thawk105/ccbench/pull/7
+  
 ---
 
 ## TODO
