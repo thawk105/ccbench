@@ -27,11 +27,15 @@
 #include "../include/masstree_wrapper.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
+#include "../include/rwlock.hh"
 #include "../include/tsc.hh"
 #include "../include/util.hh"
 #include "../include/zipf.hh"
 
 using namespace std;
+
+RWLock global_lock;
+extern vector<int> progress;
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Result& myres = std::ref(OccResult[thid]);
@@ -116,8 +120,10 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
       }
     }
 
+    global_lock.w_lock();
     if (trans.validationPhase()) {
       trans.writePhase();
+      global_lock.w_unlock();
       /**
        * local_commit_counts is used at ../include/backoff.hh to calcurate about
        * backoff.
@@ -127,6 +133,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
     } else {
       trans.abort();
       ++myres.local_abort_counts_;
+      global_lock.w_unlock();
       goto RETRY;
     }
   }
@@ -139,6 +146,7 @@ int main(int argc, char* argv[]) try {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   makeDB();
+  progress.resize(FLAGS_thread_num);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;

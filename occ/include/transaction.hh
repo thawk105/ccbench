@@ -16,6 +16,9 @@
 #define LOGSET_SIZE 1000
 
 using namespace std;
+using ReadSet = vector<ReadElement<Tuple>>;
+using WriteSet = vector<WriteElement<Tuple>>;
+using ProcedureSet = vector<Procedure>;
 
 enum class TransactionStatus : uint8_t {
   kInFlight,
@@ -25,9 +28,11 @@ enum class TransactionStatus : uint8_t {
 
 class TxnExecutor {
  public:
-  vector<ReadElement<Tuple>> read_set_;
-  vector<WriteElement<Tuple>> write_set_;
-  vector<Procedure> pro_set_;
+  ReadSet read_set_;
+  WriteSet write_set_;
+  ProcedureSet pro_set_;
+
+  int startTxId;
 
   vector<LogRecord> log_set_;
   LogHeader latest_log_header_;
@@ -99,4 +104,6 @@ class TxnExecutor {
   void write(uint64_t key);
 
   void writePhase();
+
+  void gc();
 };
