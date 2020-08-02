@@ -21,8 +21,6 @@
 
 extern void displayDB();
 
-using namespace std;
-
 TxnExecutor::TxnExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
   read_set_.reserve(FLAGS_max_ope);
   write_set_.reserve(FLAGS_max_ope);
