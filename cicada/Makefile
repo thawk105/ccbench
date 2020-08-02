@@ -50,15 +50,15 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 LDFLAGS = -L../third_party/mimalloc/out/release \
 					-L../third_party/mimalloc/out/debug \
 					-L../third_party/ \
+					-L../third_party/masstree/
 
-LIBS = -lpthread -lmimalloc -lgflags -lglog
+LIBS = -lpthread -lmimalloc -lgflags -lglog ../third_party/masstree/libkohler_masstree_json.a
 
 OBJS1 = $(CICADA_SRCS1:.cc=.o)
 
 all: $(PROG1)
 
-include ../include/MakefileForMasstreeUse
-$(PROG1) : $(OBJS1) $(MASSOBJ)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .cc.o:

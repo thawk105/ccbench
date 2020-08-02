@@ -29,13 +29,12 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 # DLR0 ... timeout
 # DLR1 ... no-wait
 
-LIBS = -lpthread -lgflags -lglog
+LIBS = -lpthread -lgflags -lglog ../third_party/masstree/libkohler_masstree_json.a
 
 OBJS1 = $(SS2PL_SRCS1:.cc=.o)
 all: $(PROG1)
 
-include ../include/MakefileForMasstreeUse
-$(PROG1) : $(OBJS1) $(MASSOBJ)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .cc.o:

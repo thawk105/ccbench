@@ -4,6 +4,12 @@ SSN is serialization certifier which has to be executed serial.
 Latch-free SSN was proposed at VLDB'2017 by Tianzheng Wang.
 
 ## How to use
+- Build masstree
+```
+$ cd ../
+$ ./bootstrap.sh
+```
+This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
 - Build 
 ```
 $ make

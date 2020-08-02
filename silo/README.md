@@ -3,7 +3,7 @@ It was proposed at SOSP'2013 by Stephen Tu.
 
 ## How to use
 - Build masstree
-```js
+```
 $ cd ../
 $ ./bootstrap.sh
 ```

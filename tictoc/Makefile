@@ -33,12 +33,11 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DSLEEP_READ_PHASE=$(SLEEP_READ_PHASE) \
 				 -DTIMESTAMP_HISTORY=$(TIMESTAMP_HISTORY)
 
-LIBS = -lpthread -lgflags -lglog
+LIBS = -lpthread -lgflags -lglog ../third_party/masstree/libkohler_masstree_json.a
 
 OBJS1 = $(TICTOC_SRCS1:.cc=.o)
 all: $(PROG1)
 
-include ../include/MakefileForMasstreeUse
 $(PROG1) : $(OBJS1) $(MASSOBJ)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 

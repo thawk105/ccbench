@@ -3,6 +3,12 @@ This implementation is used for analyzing base line of ERMIA(/SSN/latch-free SSN
 So some parts is like ERMIA in implementation, configuration, and design to analyze concurrency controls deeply.<br>
 
 ## How to use
+- Build masstree
+```
+$ cd ../
+$ ./bootstrap.sh
+```
+This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
 - Build 
 ```
 $ make

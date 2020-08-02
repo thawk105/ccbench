@@ -27,14 +27,14 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DMASSTREE_USE=$(MASSTREE_USE) \
 				 -DTEMPERATURE_RESET_OPT=$(TEMPERATURE_RESET_OPT) \
 
-LIBS = -lpthread -lgflags -lglog
+LD_PATH = -L../third_party/masstree/
+LIBS = -lpthread -lgflags -lglog ../third_party/masstree/libkohler_masstree_json.a
 
 OBJS1 = $(MOCC_SRCS1:.cc=.o)
 
 all : $(PROG1)
 
-include ../include/MakefileForMasstreeUse
-$(PROG1) : $(OBJS1) $(MASSOBJ)
+$(PROG1) : $(OBJS1)
 	$(CC) -o $@ $^ $(LIBS)
 
 .cc.o:
