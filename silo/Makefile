@@ -17,7 +17,7 @@ NO_WAIT_OF_TICTOC=1
 PARTITION_TABLE=0
 PROCEDURE_SORT=0
 SLEEP_READ_PHASE=0 # of tics
-VAL_SIZE=4
+VAL_SIZE=1000
 WAL=0
 # end of initialization
 
@@ -43,7 +43,7 @@ INCLUDE = -I/usr/include \
 
 LD_PATH = -L../third_party/masstree/
 
-LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog libkohler_masstree_json.a
+LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog ../third_party/masstree/libkohler_masstree_json.a
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)

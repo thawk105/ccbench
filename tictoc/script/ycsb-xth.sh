@@ -27,7 +27,7 @@ cd script/
 for rratio in "${rratioary[@]}"
 do
   if test $rratio = 50 ; then
-    result=result_tictoc_ycsb_tuple10m_skew09.dat
+    result=result_tictoc-original-no-wait_ycsb_tuple10m_skew09.dat
   elif test $rratio = 90 ; then
     result=result_tictoc_ycsb_tuple10m_skew08.dat
   elif test $rratio = 95 ; then
