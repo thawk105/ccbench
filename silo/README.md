@@ -2,6 +2,12 @@
 It was proposed at SOSP'2013 by Stephen Tu.
 
 ## How to use
+- Build masstree
+```js
+$ cd ../
+$ ./bootstrap.sh
+```
+This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
 - Build 
 ```
 $ make

@@ -41,19 +41,21 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 INCLUDE = -I/usr/include \
 					-I../third_party/ \
 
-LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog
+LD_PATH = -L../third_party/masstree/
+
+LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog libkohler_masstree_json.a
 
 OBJS1 = $(SILO_SRCS1:.cc=.o)
 OBJS2 = $(SRCS2:.cc=.o)
 
 all: $(PROG1) $(PROG2)
 
-include ../include/MakefileForMasstreeUse
-$(PROG1) : $(OBJS1) $(MASSOBJ)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) $(INCLUDE)
+$(PROG1) : $(OBJS1)
+	$(CC) -o $@ $^ $(LD_PATH) $(LDLIBS) $(INCLUDE)
 
-$(PROG2) : $(OBJS2) 
-	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) $(INCLUDE)
+$(PROG2) : $(OBJS2)
+
+	$(CC) -o $@ $^ $(LD_PATH) $(LDLIBS) $(INCLUDE)
 
 .cc.o:
 	$(CC) $(CFLAGS) -c $< -o $@
