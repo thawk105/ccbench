@@ -37,31 +37,75 @@ TxnExecutor::TxnExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
   genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
 }
 
+void TxnExecutor::abort() {
+  read_set_.clear();
+  write_set_.clear();
+
+#if BACK_OFF
+  #if ADD_ANALYSIS
+  std::uint64_t start(rdtscp());
+#endif
+
+  Backoff::backoff(FLAGS_clocks_per_us);
+
+#if ADD_ANALYSIS
+  sres_->local_backoff_latency_ += rdtscp() - start;
+#endif
+#endif
+}
+
 void TxnExecutor::begin() {
   status_ = TransactionStatus::kInFlight;
   max_wset_.obj_ = 0;
   max_rset_.obj_ = 0;
 }
 
-WriteElement<Tuple> *TxnExecutor::searchWriteSet(uint64_t key) {
+void TxnExecutor::displayWriteSet() {
+  printf("display_write_set()\n");
+  printf("--------------------\n");
+  for (auto &ws : write_set_) {
+    printf("key\t:\t%lu\n", ws.key_);
+  }
+}
+
+void insert(std::uint64_t key) {
+
+}
+
+void TxnExecutor::lockWriteSet() {
+  Tidword expected, desired;
+
+[[maybe_unused]] retry
+  :
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).key_ == key) return &(*itr);
-  }
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    for (;;) {
+      if (expected.lock) {
+#if NO_WAIT_LOCKING_IN_VALIDATION
+        this->status_ = TransactionStatus::kAborted;
+        if (itr != write_set_.begin()) unlockWriteSet(itr);
+        return;
+#elif NO_WAIT_OF_TICTOC
+        if (itr != write_set_.begin()) unlockWriteSet(itr);
+        goto retry;
+#endif
+        expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+      } else {
+        desired = expected;
+        desired.lock = 1;
+        if (compareExchange((*itr).rcdptr_->tidword_.obj_, expected.obj_,
+                            desired.obj_))
+          break;
+      }
+    }
 
-  return nullptr;
+    max_wset_ = max(max_wset_, expected);
+  }
 }
 
-ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
-  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    if ((*itr).key_ == key) return &(*itr);
-  }
-
-  return nullptr;
-}
-
-void TxnExecutor::read(uint64_t key) {
+void TxnExecutor::read(std::uint64_t key) {
 #if ADD_ANALYSIS
-  uint64_t start = rdtscp();
+  std::uint64_t start = rdtscp();
 #endif
 
   // these variable cause error (-fpermissive)
@@ -132,45 +176,52 @@ FINISH_READ:
   return;
 }
 
-void TxnExecutor::write(uint64_t key) {
-#if ADD_ANALYSIS
-  uint64_t start = rdtscp();
-#endif
+void tx_delete(std::uint64_t key) {
 
-  if (searchWriteSet(key)) goto FINISH_WRITE;
+}
 
-  /**
-   * Search tuple from data structure.
-   */
-  Tuple *tuple;
-  ReadElement<Tuple> *re;
-  re = searchReadSet(key);
-  if (re) {
-    tuple = re->rcdptr_;
-  } else {
-#if MASSTREE_USE
-    tuple = MT.get_value(key);
-#if ADD_ANALYSIS
-    ++sres_->local_tree_traversal_;
-#endif
-#else
-    tuple = get_tuple(Table, key);
-#endif
+ReadElement<Tuple> *TxnExecutor::searchReadSet(std::uint64_t key) {
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+    if ((*itr).key_ == key) return &(*itr);
   }
 
-  write_set_.emplace_back(key, tuple);  // push の方が性能が良い
+  return nullptr;
+}
 
-FINISH_WRITE:
+WriteElement<Tuple> *TxnExecutor::searchWriteSet(std::uint64_t key) {
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    if ((*itr).key_ == key) return &(*itr);
+  }
 
-#if ADD_ANALYSIS
-  sres_->local_write_latency_ += rdtscp() - start;
-#endif
-  return;
+  return nullptr;
+}
+
+void TxnExecutor::unlockWriteSet() {
+  Tidword expected, desired;
+
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    desired = expected;
+    desired.lock = 0;
+    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
+  }
+}
+
+void TxnExecutor::unlockWriteSet(
+        std::vector<WriteElement<Tuple>>::iterator end) {
+  Tidword expected, desired;
+
+  for (auto itr = write_set_.begin(); itr != end; ++itr) {
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    desired = expected;
+    desired.lock = 0;
+    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
+  }
 }
 
 bool TxnExecutor::validationPhase() {
 #if ADD_ANALYSIS
-  uint64_t start = rdtscp();
+  std::uint64_t start = rdtscp();
 #endif
 
   /* Phase 1
@@ -226,24 +277,7 @@ bool TxnExecutor::validationPhase() {
   return true;
 }
 
-void TxnExecutor::abort() {
-  read_set_.clear();
-  write_set_.clear();
-
-#if BACK_OFF
-#if ADD_ANALYSIS
-  uint64_t start(rdtscp());
-#endif
-
-  Backoff::backoff(FLAGS_clocks_per_us);
-
-#if ADD_ANALYSIS
-  sres_->local_backoff_latency_ += rdtscp() - start;
-#endif
-#endif
-}
-
-void TxnExecutor::wal(uint64_t ctid) {
+void TxnExecutor::wal(std::uint64_t ctid) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     LogRecord log(ctid, (*itr).key_, write_val_);
     log_set_.emplace_back(log);
@@ -270,6 +304,42 @@ void TxnExecutor::wal(uint64_t ctid) {
     latest_log_header_.init();
     log_set_.clear();
   }
+}
+
+void TxnExecutor::write(std::uint64_t key) {
+#if ADD_ANALYSIS
+  std::uint64_t start = rdtscp();
+#endif
+
+  if (searchWriteSet(key)) goto FINISH_WRITE;
+
+  /**
+   * Search tuple from data structure.
+   */
+  Tuple *tuple;
+  ReadElement<Tuple> *re;
+  re = searchReadSet(key);
+  if (re) {
+    tuple = re->rcdptr_;
+  } else {
+#if MASSTREE_USE
+    tuple = MT.get_value(key);
+#if ADD_ANALYSIS
+    ++sres_->local_tree_traversal_;
+#endif
+#else
+    tuple = get_tuple(Table, key);
+#endif
+  }
+
+  write_set_.emplace_back(key, tuple);  // push の方が性能が良い
+
+FINISH_WRITE:
+
+#if ADD_ANALYSIS
+  sres_->local_write_latency_ += rdtscp() - start;
+#endif
+  return;
 }
 
 void TxnExecutor::writePhase() {
@@ -314,64 +384,3 @@ void TxnExecutor::writePhase() {
   write_set_.clear();
 }
 
-void TxnExecutor::lockWriteSet() {
-  Tidword expected, desired;
-
-[[maybe_unused]] retry
-  :
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-    for (;;) {
-      if (expected.lock) {
-#if NO_WAIT_LOCKING_IN_VALIDATION
-        this->status_ = TransactionStatus::kAborted;
-        if (itr != write_set_.begin()) unlockWriteSet(itr);
-        return;
-#elif NO_WAIT_OF_TICTOC
-        if (itr != write_set_.begin()) unlockWriteSet(itr);
-        goto retry;
-#endif
-        expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-      } else {
-        desired = expected;
-        desired.lock = 1;
-        if (compareExchange((*itr).rcdptr_->tidword_.obj_, expected.obj_,
-                            desired.obj_))
-          break;
-      }
-    }
-
-    max_wset_ = max(max_wset_, expected);
-  }
-}
-
-void TxnExecutor::unlockWriteSet() {
-  Tidword expected, desired;
-
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-    desired = expected;
-    desired.lock = 0;
-    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
-  }
-}
-
-void TxnExecutor::unlockWriteSet(
-        std::vector<WriteElement<Tuple>>::iterator end) {
-  Tidword expected, desired;
-
-  for (auto itr = write_set_.begin(); itr != end; ++itr) {
-    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-    desired = expected;
-    desired.lock = 0;
-    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
-  }
-}
-
-void TxnExecutor::displayWriteSet() {
-  printf("display_write_set()\n");
-  printf("--------------------\n");
-  for (auto &ws : write_set_) {
-    printf("key\t:\t%lu\n", ws.key_);
-  }
-}
