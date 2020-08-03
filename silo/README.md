@@ -7,7 +7,7 @@ It was proposed at SOSP'2013 by Stephen Tu.
 $ cd ../
 $ ./bootstrap.sh
 ```
-This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
+This makes ../third_party/masstree/libkohler_masstree_json.a used by building silo.
 - Build 
 ```
 $ mkdir build
