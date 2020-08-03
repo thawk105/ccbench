@@ -40,7 +40,7 @@ void TxnExecutor::abort() {
   write_set_.clear();
 
 #if BACK_OFF
-  #if ADD_ANALYSIS
+#if ADD_ANALYSIS
   std::uint64_t start(rdtscp());
 #endif
 
@@ -66,7 +66,7 @@ void TxnExecutor::displayWriteSet() {
   }
 }
 
-void insert(std::uint64_t key) {
+void TxnExecutor::insert([[maybe_unused]] std::uint64_t key, [[maybe_unused]] std::string_view val) { // NOLINT
 
 }
 
@@ -243,8 +243,8 @@ bool TxnExecutor::validationPhase() {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     // 1
     check.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-    if ((*itr).tidword_.epoch != check.epoch ||
-        (*itr).tidword_.tid != check.tid) {
+    if ((*itr).get_tidword().epoch != check.epoch ||
+        (*itr).get_tidword().tid != check.tid) {
 #if ADD_ANALYSIS
       sres_->local_vali_latency_ += rdtscp() - start;
 #endif
@@ -304,7 +304,7 @@ void TxnExecutor::wal(std::uint64_t ctid) {
   }
 }
 
-void TxnExecutor::write(std::uint64_t key) {
+void TxnExecutor::write(std::uint64_t key, std::string_view val) {
 #if ADD_ANALYSIS
   std::uint64_t start = rdtscp();
 #endif
@@ -330,7 +330,7 @@ void TxnExecutor::write(std::uint64_t key) {
 #endif
   }
 
-  write_set_.emplace_back(key, tuple);  // push の方が性能が良い
+  write_set_.emplace_back(key, tuple, val);
 
 FINISH_WRITE:
 
@@ -374,7 +374,12 @@ void TxnExecutor::writePhase() {
   // write(record, commit-tid)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     // update and unlock
-    memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
+    if ((*itr).get_val_length() == 0) {
+      // fast approach for benchmark
+      memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
+    } else {
+      memcpy((*itr).rcdptr_->val_, (*itr).get_val_ptr(), (*itr).get_val_length());
+    }
     storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
   }
 

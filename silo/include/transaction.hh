@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <set>
+#include <string_view>
 #include <vector>
 
 #include "../../include/fileio.hh"
@@ -23,11 +24,11 @@ enum class TransactionStatus : uint8_t {
 
 class TxnExecutor {
 public:
-  std::vector <ReadElement<Tuple>> read_set_;
-  std::vector <WriteElement<Tuple>> write_set_;
-  std::vector <Procedure> pro_set_;
+  std::vector<ReadElement<Tuple>> read_set_;
+  std::vector<WriteElement<Tuple>> write_set_;
+  std::vector<Procedure> pro_set_;
 
-  std::vector <LogRecord> log_set_;
+  std::vector<LogRecord> log_set_;
   LogHeader latest_log_header_;
 
   TransactionStatus status_;
@@ -43,6 +44,7 @@ public:
   Tidword max_rset_, max_wset_;
 
   char write_val_[VAL_SIZE];
+  // used by fast approach for benchmark
   char return_val_[VAL_SIZE];
 
   TxnExecutor(int thid, Result *sres);
@@ -63,7 +65,7 @@ public:
 
   Tuple *get_tuple(Tuple *table, std::uint64_t key) { return &table[key]; }
 
-  void insert(std::uint64_t key);
+  void insert([[maybe_unused]]std::uint64_t key, [[maybe_unused]]std::string_view val = ""); // NOLINT
 
   void lockWriteSet();
 
@@ -107,7 +109,7 @@ public:
    * @brief Transaction write function.
    * @param [in] key The key of key-value
    */
-  void write(std::uint64_t key);
+  void write(std::uint64_t key, std::string_view val = "");
 
   void writePhase();
 };
