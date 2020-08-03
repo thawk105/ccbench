@@ -29,10 +29,14 @@ $ numactl --interleave=all ./silo.exe -clocks_per_us=2100 -epoch_time=40 -extime
 default : `0`
 - `BACK_OFF` : If this is 1, it use Cicada's backoff.<br>
 default : `0`
+- `KEY_SIZE` : The key size of key-value.<br>
+default : `8`
 - `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.<br>
 default : `1`
 - `NO_WAIT_LOCKING_IN_VALIDATION` : If this is 1, it aborts immediately at detecting w-w conflicts in validation phase. It derives this idea from TicToc.<br>
 default : `1`
+- `NO_WAIT_OF_TICTOC` : No-wait optimization of TicToc's optimizations.<br>
+default : `0`
 - `PARTITION_TABLE` : If this is 1, it devide the table into the number of worker threads not to occur read/write conflicts.<br>
 default : `0`
 - `PROCEDURE_SORT` : If this is 1, its transaction accesses records in ascending key order.<br>
