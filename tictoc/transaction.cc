@@ -176,7 +176,7 @@ void TxExecutor::write(uint64_t key) {
   this->appro_commit_ts_ = max(this->appro_commit_ts_, tsword.rts() + 1);
   write_set_.emplace_back(key, tuple, tsword);
 
-FINISH_WRITE:
+FINISH_WRITE:;
 
 #if ADD_ANALYSIS
   tres_->local_write_latency_ += rdtscp() - start;

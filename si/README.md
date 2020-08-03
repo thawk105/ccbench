@@ -45,6 +45,16 @@ default : `4`
 - CFLAGS
  - Use either `-DCCTR_ON` or `-DCCTR_TW`. These meanings is described below in section **Details of Implementation**.
 
+## Custom build examples
+```
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DKEY_SIZE=1000 -DVAL_SIZE=1000 ..
+```
+- Note: If you re-run cmake, don't forget to remove cmake cache.
+```
+$ rm CMakeCache.txt
+```
+The cmake cache definition data is used in preference to the command line definition data.
+
 ## Optimizations
 - Rapid garbage collection from Cicada's paper.
 - Cicada's backoff (easy to use from ccbench/include/backoff.hh by a few restriction)

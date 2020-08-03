@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(ccbench_mocc
+project(ccbench_tictoc
         VERSION 0.0.1
-        DESCRIPTION "mocc of ccbench"
+        DESCRIPTION "tictoc of ccbench"
         LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
@@ -22,19 +22,18 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-file(GLOB MOCC_SOURCES
+file(GLOB TICTOC_SOURCES
         "../common/result.cc"
         "../common/util.cc"
-        "lock.cc"
-        "mocc.cc"
         "result.cc"
+        "tictoc.cc"
         "transaction.cc"
         "util.cc"
         )
 
-add_executable(mocc.exe ${MOCC_SOURCES})
+add_executable(tictoc.exe ${TICTOC_SOURCES})
 
-target_link_libraries(mocc.exe
+target_link_libraries(tictoc.exe
         Boost::filesystem
         gflags::gflags
         ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
@@ -60,24 +59,46 @@ else ()
     add_definitions(-DKEY_SIZE=8)
 endif ()
 
-if (DEFINED KEY_SORT)
-    add_definitions(-DKEY_SORT=${KEY_SORT})
-else ()
-    add_definitions(-DKEY_SORT=0)
-endif ()
-
 if (DEFINED MASSTREE_USE)
     add_definitions(-DMASSTREE_USE=${MASSTREE_USE})
 else ()
     add_definitions(-DMASSTREE_USE=1)
 endif ()
 
-add_definitions(-DRWLOCK)
-
-if (DEFINED TEMPERATURE_RESET_OPT)
-    add_definitions(-DTEMPERATURE_RESET_OPT=${TEMPERATURE_RESET_OPT})
+if (DEFINED NO_WAIT_LOCKING_IN_VALIDATION)
+    add_definitions(-DNO_WAIT_LOCKING_IN_VALIDATION=${NO_WAIT_LOCKING_IN_VALIDATION})
 else ()
-    add_definitions(-DTEMPERATURE_RESET_OPT=1)
+    add_definitions(-DNO_WAIT_LOCKING_IN_VALIDATION=1)
+endif ()
+
+if (DEFINED NO_WAIT_OF_TICTOC)
+    add_definitions(-DNO_WAIT_OF_TICTOC=${NO_WAIT_OF_TICTOC})
+else ()
+    add_definitions(-DNO_WAIT_OF_TICTOC=0)
+endif ()
+
+if (DEFINED PARTITION_TABLE)
+    add_definitions(-DPARTITION_TABLE=${PARTITION_TABLE})
+else ()
+    add_definitions(-DPARTITION_TABLE=0)
+endif ()
+
+if (DEFINED PREEMPTIVE_ABORTS)
+    add_definitions(-DPREEMPTIVE_ABORTS=${PREEMPTIVE_ABORTS})
+else ()
+    add_definitions(-DPREEMPTIVE_ABORTS=1)
+endif ()
+
+if (DEFINED SLEEP_READ_PHASE)
+    add_definitions(-DSLEEP_READ_PHASE=${SLEEP_READ_PHASE})
+else ()
+    add_definitions(-DSLEEP_READ_PHASE=0)
+endif ()
+
+if (DEFINED TIMESTAMP_HISTORY)
+    add_definitions(-DTIMESTAMP_HISTORY=${TIMESTAMP_HISTORY})
+else ()
+    add_definitions(-DTIMESTAMP_HISTORY=1)
 endif ()
 
 if (DEFINED VAL_SIZE)

@@ -7,10 +7,19 @@ It was proposed at SIGMOD'2016 by Xiangyao Yu.
 $ cd ../
 $ ./bootstrap.sh
 ```
-This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
+This makes ../third_party/masstree/libkohler_masstree_json.a used by building tictoc.
+- Build mimalloc
+```
+$ cd ../
+$ ./bootstrap_mimalloc.sh
+```
+This makes ../third_party/mimalloc/out/release/libmimalloc.a used by building tictoc.
 - Build 
 ```
-$ make
+$ mkdir build
+$ cd build
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+$ ninja
 ```
 - Confirm usage 
 ```
@@ -21,16 +30,43 @@ $ ./tictoc.exe -help
 $ numactl --interleave=all ./tictoc.exe -clocks_per_us=2100 -extime=3 -max_ope=10 -rmw=0 -rratio=100 -thread_num=224 -tuple_num=1000000 -ycsb=1 -zipf_skew=0
 ```
 
-## How to select build options in Makefile
-- `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.
-- `BACK_OFF` : If this is 1, it use Cicada's backoff.
-- `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.
-- `NO_WAIT_LOCKING_IN_VALIDATION` : If this is 1, it aborts immediately at detecting w-w conflicts in validation phase.
-- `NO_WAIT_OF_TICTOC` : It starts re-acquiring w-lock from scratch when it detects w-w conflicts in validation phase.
-- `PREEMPTIVE_ABORTS` : It is early aborts.
-- `SLEEP_READ_PHASE` : If this is set, it inserts delay for set value [clocks] in read phase.
-- `TIMESTAMP_HISTORY` : It is multi-version of write timestamp.
-- `VAL_SIZE` : Value of key-value size. In other words, payload size.
+## How to customize options in CMakeLists.txt
+- `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.<br>
+default : `0`
+- `BACK_OFF` : If this is 1, it use Cicada's backoff.<br>
+default : `0`
+- `KEY_SIZE` : The key size of key-value.<br>
+default : `8`
+- `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.<br>
+default : `1`
+- `NO_WAIT_LOCKING_IN_VALIDATION` : If this is 1, it aborts immediately at detecting w-w conflicts in validation phase. It derives this idea from TicToc.<br>
+default : `1`
+- `NO_WAIT_OF_TICTOC` : No-wait optimization of TicToc's optimizations.<br>
+default : `0`
+- `PARTITION_TABLE` : If this is 1, it devide the table into the number of worker threads not to occur read/write conflicts.<br>
+default : `0`
+- `PROCEDURE_SORT` : If this is 1, its transaction accesses records in ascending key order.<br>
+default : `0`
+- `PREEMPTIVE_ABORTS` : It is early aborts.<br>
+default : `1`
+- `SLEEP_READ_PHASE` : If this is set, it inserts delay for set value [clocks] in read phase.<br>
+default : `0`
+- `TIMESTAMP_HISTORY` : It is multi-version of write timestamp.<br>
+default : `1`
+- `VAL_SIZE` : Value of key-value size. In other words, payload size.<br>
+default : `4`
+- `WAL` : If this is 1, it uses Write-Ahead Logging.<br>
+default : `0`
+
+## Custom build examples
+```
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DKEY_SIZE=1000 -DVAL_SIZE=1000 ..
+```
+- Note: If you re-run cmake, don't forget to remove cmake cache.
+```
+$ rm CMakeCache.txt
+```
+The cmake cache definition data is used in preference to the command line definition data.
 
 ## Optimizations
 - Backoff.
