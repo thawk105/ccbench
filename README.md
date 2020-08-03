@@ -93,7 +93,6 @@ Welcom pull request about
 ---
 
 ## TODO
-- cmake and ninja build (silo/cicada done, other protocols yet)
 - doxygen
 - Jenkins
 - google test
