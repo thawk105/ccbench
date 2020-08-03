@@ -13,18 +13,19 @@ $ sudo apt-get install -y libgflags-dev libgoogle-glog-dev cmake cmake-curses-gu
 ```
 $ git clone this_repository
 $ cd ccbench
-$ source bootstrap.sh
+$ git submodule init
+$ git submodule update
+$ "run some (bootstrap*.sh) files"
 ```
-Processing of bootstrap.sh :  
-git submodule init, update. <br>
-Build third_party/masstree, third_party/mimalloc.<br>
-Export LD_LIBRARY_PATH to ./third_party/mimalloc/out/release for using mimalloc library.<br>
-<br>
-So it's script should be executed by "source" command.<br>
-I recommend you that you also add LD_LIBRARY_PATH to your ~/.bashrc by yourself.
-<br>
-Each protocols has own Makefile, so you should build each.
-<br>
+- Processing of bootstrap.sh :<br>
+Build third_party/masstree.
+- Processing of bootstrap_mimalloc.sh :<br>
+Build third_party/mimalloc.<br>
+- Processing of bootstrap_tbb.sh :<br>
+Build third_party/tbb<br>
+
+Export LD_LIBRARY_PATH to appropriate paths.<br>
+Each protocols has own Makefile(or CMakeLists.txt), so you should build each.<br>
 Prepare gflags for command line options.
 ```
 $ cd third_party/gflags
@@ -92,13 +93,11 @@ Welcom pull request about
 ---
 
 ## TODO
-- cmake and ninja build
+- cmake and ninja build (silo done, other protocols yet)
 - doxygen
 - Jenkins
 - google test
 - improve software architecture
-- improve coding about rvalue reference
-- Constrain the function declaration to allow calls from lvalues or calls from rvalues.
 
 ---
 
