@@ -41,6 +41,7 @@ add_executable(replay_test.exe ${REPLAY_SOURCES})
 target_link_libraries(silo.exe
         Boost::filesystem
         gflags::gflags
+        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
         ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
         Threads::Threads
         )

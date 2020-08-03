@@ -9,13 +9,13 @@ Latch-free SSN was proposed at VLDB'2017 by Tianzheng Wang.
 $ cd ../
 $ ./bootstrap.sh
 ```
-This makes ../third_party/masstree/libkohler_masstree_json.a used by building cicada.
+This makes ../third_party/masstree/libkohler_masstree_json.a used by building ermia.
 - Build mimalloc
 ```
 $ cd ../
 $ ./bootstrap_mimalloc.sh
 ```
-This makes ../third_party/mimalloc/out/release/libmimalloc.a used by building cicada.
+This makes ../third_party/mimalloc/out/release/libmimalloc.a used by building ermia.
 - Build 
 ```
 $ mkdir build

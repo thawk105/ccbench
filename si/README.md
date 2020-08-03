@@ -8,13 +8,13 @@ So some parts is like ERMIA in implementation, configuration, and design to anal
 $ cd ../
 $ ./bootstrap.sh
 ```
-This makes ../third_party/masstree/libkohler_masstree_json.a used by building cicada.
+This makes ../third_party/masstree/libkohler_masstree_json.a used by building si.
 - Build mimalloc
 ```
 $ cd ../
 $ ./bootstrap_mimalloc.sh
 ```
-This makes ../third_party/mimalloc/out/release/libmimalloc.a used by building cicada.
+This makes ../third_party/mimalloc/out/release/libmimalloc.a used by building si.
 - Build 
 ```
 $ mkdir build
