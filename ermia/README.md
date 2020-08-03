@@ -32,7 +32,7 @@ $ ./ermia.exe -help
 $ numactl --interleave=all ./ermia.exe -tuple_num=1000 -max_ope=10 -thread_num=224 -rratio=100 -rmw=0 -zipf_skew=0 -ycsb=1 -clocks_per_us=2100 -gc_inter_us=10 -pre_reserve_version=10000 -pre_reserve_tmt_element=100 -extime=3
 ```
 
-## How to select build options in Makefile
+## How to customize options in CMakeLists.txt
 - `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.<br>
 default : `0`
 - `BACK_OFF` : If this is 1, it use Cicada's backoff.<br>
