@@ -8,10 +8,19 @@ So some parts is like ERMIA in implementation, configuration, and design to anal
 $ cd ../
 $ ./bootstrap.sh
 ```
-This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
+This makes ../third_party/masstree/libkohler_masstree_json.a used by building cicada.
+- Build mimalloc
+```
+$ cd ../
+$ ./bootstrap_mimalloc.sh
+```
+This makes ../third_party/mimalloc/out/release/libmimalloc.a used by building cicada.
 - Build 
 ```
-$ make
+$ mkdir build
+$ cd build
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+$ ninja
 ```
 - Confirm usage 
 ```
@@ -22,11 +31,17 @@ $ ./si.exe
 $ numactl --interleave=all ./si.exe 1000 10 224 100 off 0 off 2100 10 100 0 3
 ```
 
-## How to select build options in Makefile
-- `VAL_SIZE` : Value of key-value size. In other words, payload size.
-- `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.
-- `BACK_OFF` : If this is 1, it use Cicada's backoff.
+## How to customize options in CMakeLists.txt
+- `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.<br>
+default : `0`
+- `BACK_OFF` : If this is 1, it use Cicada's backoff.<br>
+default : `0`
+- `KEY_SORT` : If this is 1, its transaction accesses records in ascending key order.<br>
+default : `0`
 - `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.
+default : `1`
+- `VAL_SIZE` : Value of key-value size. In other words, payload size.<br>
+default : `4`
 - CFLAGS
  - Use either `-DCCTR_ON` or `-DCCTR_TW`. These meanings is described below in section **Details of Implementation**.
 

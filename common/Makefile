@@ -1,12 +1,4 @@
 
-MOCC_SRCS1+=\
-$(REL)result.cc\
-$(REL)util.cc\
-
-SI_SRCS1+=\
-$(REL)result.cc\
-$(REL)util.cc\
-
 SS2PL_SRCS1+=\
 $(REL)result.cc\
 $(REL)util.cc\
