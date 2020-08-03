@@ -10,7 +10,10 @@ $ ./bootstrap.sh
 This makes ../third_party/masstree/libkohler_masstree_json.a used below building.
 - Build 
 ```
-$ make
+$ mkdir build
+$ cd build
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+$ ninja
 ```
 - Confirm usage 
 ```
@@ -21,7 +24,7 @@ $ ./silo.exe -help
 $ numactl --interleave=all ./silo.exe -clocks_per_us=2100 -epoch_time=40 -extime=3 -max_ope=10 -rmw=0 -rratio=50 -thread_num=224 -tuple_num=1000000 -ycsb=1 -zipf_skew=0
 ```
 
-## How to select build options in Makefile
+## How to select options in CMakeLists.txt
 - `ADD_ANALYSIS` : If this is 1, it is deeper analysis than setting 0.
 - `BACK_OFF` : If this is 1, it use Cicada's backoff.
 - `MASSTREE_USE` : If this is 1, it use masstree as data structure. If not, it use simple array αs data structure.
