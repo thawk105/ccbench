@@ -96,7 +96,7 @@ RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
 #if BACK_OFF
-      leaderBackoffWork(backoff, Result);
+      leaderBackoffWork(backoff, SiloResult);
 #endif
       // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     }

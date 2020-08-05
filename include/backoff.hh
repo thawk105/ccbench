@@ -116,8 +116,8 @@ leaderBackoffWork([[maybe_unused]] Backoff &backoff, [[maybe_unused]] std::vecto
     uint64_t sum_committed_txs(0);
     for (auto &th : res) {
       sum_committed_txs += loadAcquire(th.local_commit_counts_);
-      backoff.update_backoff(sum_committed_txs);
     }
+    backoff.update_backoff(sum_committed_txs);
   }
 }
 
