@@ -36,7 +36,7 @@ class key_unparse_unsigned {
 public:
   static int unparse_key(Masstree::key<uint64_t> key, char *buf, int buflen) {
     return snprintf(buf, buflen, "%"
-    PRIu64, key.ikey());
+                                 PRIu64, key.ikey());
   }
 };
 
@@ -93,32 +93,43 @@ public:
                     .c_str());
   }
 
-  void insert_value(uint64_t keyid, T *value) {
-    Str key;
-    uint64_t key_buf;
-
-    key = make_key(keyid, key_buf);
-    cursor_type lp(table_, key);
+  void insert_value(std::string_view key, T *value) {
+    cursor_type lp(table_, key.data(), key.size());
     bool found = lp.find_insert(*ti);
-    // if (!found) ERR;
-    always_assert(!found, "keys should all be unique");
+    // always_assert(!found, "keys should all be unique");
+    if (found) {
+      // release lock of existing nodes meaning the first arg equals 0
+      lp.finish(0, *ti);
+      // return
+      return;
+    }
     lp.value() = value;
     fence();
     lp.finish(1, *ti);
+    return;
   }
 
-  T *get_value(uint64_t keyid) {
-    Str key;
-    uint64_t key_buf;
-    key = make_key(keyid, key_buf);
-    unlocked_cursor_type lp(table_, key);
+  void insert_value(uint64_t key, T *value) {
+    std::uint64_t key_buf{__builtin_bswap64(key)};
+    insert_value({reinterpret_cast<char *>(&key_buf), sizeof(key_buf)}, value); // NOLINT
+  }
+
+  T *get_value(std::string_view key) {
+    unlocked_cursor_type lp(table_, key.data(), key.size());
     bool found = lp.find_unlocked(*ti);
-    if (!found) ERR;
-    return lp.value();
+    if (found) {
+      return lp.value();
+    }
+    return nullptr;
   }
 
-  static bool stopping;
-  static uint32_t printing;
+  T *get_value(std::uint64_t key) {
+    std::uint64_t key_buf{__builtin_bswap64(key)};
+    return get_value({reinterpret_cast<char *>(&key_buf), sizeof(key_buf)});
+  }
+
+  static inline std::atomic<bool> stopping{};
+  static inline std::atomic<std::uint32_t> printing{};
 
 private:
   table_type table_;
@@ -133,10 +144,6 @@ private:
 template<typename T>
 __thread typename MasstreeWrapper<T>::table_params::threadinfo_type *
         MasstreeWrapper<T>::ti = nullptr;
-template<typename T>
-bool MasstreeWrapper<T>::stopping = false;
-template<typename T>
-uint32_t MasstreeWrapper<T>::printing = 0;
 #ifdef GLOBAL_VALUE_DEFINE
 volatile mrcu_epoch_type active_epoch = 1;
 volatile uint64_t globalepoch = 1;
