@@ -1,23 +1,10 @@
 #include <stdio.h>
-#include <sys/time.h>
-#include <xmmintrin.h>
 #include <algorithm>
-#include <bitset>
-#include <fstream>
-#include <sstream>
 #include <string>
 
 #include "include/atomic_tool.hh"
-#include "include/common.hh"
 #include "include/log.hh"
 #include "include/transaction.hh"
-
-#include "../include/backoff.hh"
-#include "../include/debug.hh"
-#include "../include/fileio.hh"
-#include "../include/masstree_wrapper.hh"
-#include "../include/tsc.hh"
-#include "../include/util.hh"
 
 extern void displayDB();
 
@@ -87,7 +74,6 @@ void TxnExecutor::lockWriteSet() {
         if (itr != write_set_.begin()) unlockWriteSet(itr);
         goto retry;
 #endif
-        expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
       } else {
         desired = expected;
         desired.lock = 1;
@@ -97,7 +83,7 @@ void TxnExecutor::lockWriteSet() {
       }
     }
 
-    max_wset_ = max(max_wset_, expected);
+    max_wset_ = std::max(max_wset_, expected);
   }
 }
 
@@ -174,7 +160,7 @@ FINISH_READ:
   return;
 }
 
-void tx_delete(std::uint64_t key) {
+void tx_delete([[maybe_unused]]std::uint64_t key) {
 
 }
 
@@ -264,7 +250,7 @@ bool TxnExecutor::validationPhase() {
       unlockWriteSet();
       return false;
     }
-    max_rset_ = max(max_rset_, check);
+    max_rset_ = std::max(max_rset_, check);
   }
 
   // goto Phase 3
@@ -350,7 +336,7 @@ void TxnExecutor::writePhase() {
 
   // calculates (a)
   // about read_set_
-  tid_a = max(max_wset_, max_rset_);
+  tid_a = std::max(max_wset_, max_rset_);
   tid_a.tid++;
 
   // calculates (b)
@@ -362,7 +348,7 @@ void TxnExecutor::writePhase() {
   tid_c.epoch = ThLocalEpoch[thid_].obj_;
 
   // compare a, b, c
-  Tidword maxtid = max({tid_a, tid_b, tid_c});
+  Tidword maxtid = std::max({tid_a, tid_b, tid_c});
   maxtid.lock = 0;
   maxtid.latest = 1;
   mrctid_ = maxtid;
