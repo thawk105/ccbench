@@ -1,4 +1,0 @@
-/usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /mnt/c/wsl_ubuntu/github/ccbench/silo
--- Configuring done
--- Generating done
--- Build files have been written to: /mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug
