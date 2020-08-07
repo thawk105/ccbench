@@ -1,0 +1,4 @@
+/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/edit_cache.dir
+/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/replay_test.exe.dir
+/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/silo.exe.dir

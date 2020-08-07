@@ -1,0 +1,60 @@
+Performing C++ SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_b829f/fast && /usr/bin/make  -f CMakeFiles/cmTC_b829f.dir/build.make CMakeFiles/cmTC_b829f.dir/build
+make[1]: Entering directory '/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_b829f.dir/src.cxx.o
+/usr/bin/c++    -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_b829f.dir/src.cxx.o -c /mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_b829f
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b829f.dir/link.txt --verbose=1
+/usr/bin/c++   -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_b829f.dir/src.cxx.o  -o cmTC_b829f 
+/usr/bin/ld: CMakeFiles/cmTC_b829f.dir/src.cxx.o: in function `main':
+src.cxx:(.text+0x46): undefined reference to `pthread_create'
+/usr/bin/ld: src.cxx:(.text+0x52): undefined reference to `pthread_detach'
+/usr/bin/ld: src.cxx:(.text+0x5e): undefined reference to `pthread_cancel'
+/usr/bin/ld: src.cxx:(.text+0x6f): undefined reference to `pthread_join'
+collect2: error: ld returned 1 exit status
+make[1]: *** [CMakeFiles/cmTC_b829f.dir/build.make:107: cmTC_b829f] Error 1
+make[1]: Leaving directory '/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp'
+make: *** [Makefile:141: cmTC_b829f/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_cancel(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_7fd4a/fast && /usr/bin/make  -f CMakeFiles/cmTC_7fd4a.dir/build.make CMakeFiles/cmTC_7fd4a.dir/build
+make[1]: Entering directory '/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_7fd4a.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_7fd4a.dir/CheckFunctionExists.cxx.o -c /mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_7fd4a
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7fd4a.dir/link.txt --verbose=1
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_7fd4a.dir/CheckFunctionExists.cxx.o  -o cmTC_7fd4a  -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+make[1]: *** [CMakeFiles/cmTC_7fd4a.dir/build.make:107: cmTC_7fd4a] Error 1
+make[1]: Leaving directory '/mnt/c/wsl_ubuntu/github/ccbench/silo/cmake-build-debug/CMakeFiles/CMakeTmp'
+make: *** [Makefile:141: cmTC_7fd4a/fast] Error 2
+
+
+
