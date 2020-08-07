@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(ccbench_silo
+project(ccbench_silo_ext
         VERSION 0.0.1
-        DESCRIPTION "silo of ccbench"
+        DESCRIPTION "silo_ext of ccbench"
         LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
@@ -26,20 +26,24 @@ file(GLOB SILO_SOURCES
         "../common/result.cc"
         "../common/util.cc"
         "result.cc"
-        "silo.cc"
+        "silo_ext.cc"
         "transaction.cc"
         "util.cc"
         )
 
-add_executable(silo.exe ${SILO_SOURCES})
+add_executable(silo_ext.exe ${SILO_SOURCES})
 
-target_link_libraries(silo.exe
+target_link_libraries(silo_ext.exe
         Boost::filesystem
         gflags::gflags
         ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
         ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    add_definitions(-DCCBENCH_LINUX)
+endif ()
 
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
@@ -51,18 +55,6 @@ if (DEFINED BACK_OFF)
     add_definitions(-DBACK_OFF=${BACK_OFF})
 else ()
     add_definitions(-DBACK_OFF=0)
-endif ()
-
-if (DEFINED KEY_SIZE)
-    add_definitions(-DKEY_SIZE=${KEY_SIZE})
-else ()
-    add_definitions(-DKEY_SIZE=8)
-endif ()
-
-if (DEFINED MASSTREE_USE)
-    add_definitions(-DMASSTREE_USE=${MASSTREE_USE})
-else ()
-    add_definitions(-DMASSTREE_USE=1)
 endif ()
 
 if (DEFINED NO_WAIT_LOCKING_IN_VALIDATION)
@@ -77,28 +69,10 @@ else ()
     add_definitions(-DNO_WAIT_OF_TICTOC=0)
 endif ()
 
-if (DEFINED PARTITION_TABLE)
-    add_definitions(-DPARTITION_TABLE=${PARTITION_TABLE})
-else ()
-    add_definitions(-DPARTITION_TABLE=0)
-endif ()
-
-if (DEFINED PROCEDURE_SORT)
-    add_definitions(-DPROCEDURE_SORT=${PROCEDURE_SORT})
-else ()
-    add_definitions(-DPROCEDURE_SORT=0)
-endif ()
-
 if (DEFINED SLEEP_READ_PHASE)
     add_definitions(-DSLEEP_READ_PHASE=${SLEEP_READ_PHASE})
 else ()
     add_definitions(-DSLEEP_READ_PHASE=0)
-endif ()
-
-if (DEFINED VAL_SIZE)
-    add_definitions(-DVAL_SIZE=${VAL_SIZE})
-else ()
-    add_definitions(-DVAL_SIZE=4)
 endif ()
 
 if (DEFINED WAL)

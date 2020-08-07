@@ -1,10 +1,11 @@
 #pragma once
 
 #include <pthread.h>
-#include <string.h>
 
 #include <atomic>
 #include <cstdint>
+#include <cstring>
+#include <memory>
 
 #include "../../include/cache_line_size.hh"
 
@@ -31,7 +32,8 @@ struct Tidword {
 
 class Tuple {
 public:
-  alignas(CACHE_LINE_SIZE) Tidword tidword_;
-
-  char val_[VAL_SIZE];
+private:
+  alignas(CACHE_LINE_SIZE) Tidword tid_word_;
+  std::unique_ptr<char[]> key_;
+  std::unique_ptr<char[]> val_;
 };

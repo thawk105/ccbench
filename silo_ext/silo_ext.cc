@@ -63,16 +63,14 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   trans.logfile_.ftruncate(10 ^ 9);
 #endif
 
-#ifdef Linux
+#ifdef CCBENCH_LINUX
   setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
 #endif
 
-#if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(thid));
-#endif
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();

@@ -43,10 +43,6 @@ public:
   Tidword mrctid_;
   Tidword max_rset_, max_wset_;
 
-  char write_val_[VAL_SIZE];
-  // used by fast approach for benchmark
-  char return_val_[VAL_SIZE];
-
   TxnExecutor(int thid, Result *sres);
 
   /**
@@ -59,13 +55,11 @@ public:
 
   void begin();
 
-  void tx_delete(std::uint64_t key);
+  void tx_delete(std::string_view key);
 
   void displayWriteSet();
 
-  Tuple *get_tuple(Tuple *table, std::uint64_t key) { return &table[key]; }
-
-  void insert([[maybe_unused]]std::uint64_t key, [[maybe_unused]]std::string_view val = ""); // NOLINT
+  void insert(std::string_view key, std::string_view val); // NOLINT
 
   void lockWriteSet();
 

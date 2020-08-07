@@ -73,8 +73,8 @@ void displayDB() {
     cout << "------------------------------" << endl;  //-は30個
     cout << "key: " << i << endl;
     cout << "val: " << tuple->val_ << endl;
-    cout << "TIDword: " << tuple->tidword_.obj_ << endl;
-    cout << "bit: " << tuple->tidword_.obj_ << endl;
+    cout << "TIDword: " << tuple->tid_word_.obj_ << endl;
+    cout << "bit: " << tuple->tid_word_.obj_ << endl;
     cout << endl;
   }
 }
@@ -98,22 +98,18 @@ void genLogFile(std::string &logpath, const int thid) {
 }
 
 void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
-#if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
-#endif
 
   for (auto i = start; i <= end; ++i) {
     Tuple *tmp;
     tmp = &Table[i];
-    tmp->tidword_.epoch = 1;
-    tmp->tidword_.latest = 1;
-    tmp->tidword_.lock = 0;
+    tmp->tid_word_.epoch = 1;
+    tmp->tid_word_.latest = 1;
+    tmp->tid_word_.lock = 0;
     tmp->val_[0] = 'a';
     tmp->val_[1] = '\0';
 
-#if MASSTREE_USE
     MT.insert_value(i, tmp);
-#endif
   }
 }
 

@@ -63,7 +63,7 @@ void TxnExecutor::lockWriteSet() {
 [[maybe_unused]] retry
   :
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tid_word_.obj_);
     for (;;) {
       if (expected.lock) {
 #if NO_WAIT_LOCKING_IN_VALIDATION
@@ -77,7 +77,7 @@ void TxnExecutor::lockWriteSet() {
       } else {
         desired = expected;
         desired.lock = 1;
-        if (compareExchange((*itr).rcdptr_->tidword_.obj_, expected.obj_,
+        if (compareExchange((*itr).rcdptr_->tid_word_.obj_, expected.obj_,
                             desired.obj_))
           break;
       }
@@ -106,24 +106,20 @@ void TxnExecutor::read(std::uint64_t key) {
    * Search tuple from data structure.
    */
   Tuple *tuple;
-#if MASSTREE_USE
   tuple = MT.get_value(key);
 #if ADD_ANALYSIS
   ++sres_->local_tree_traversal_;
 #endif
-#else
-  tuple = get_tuple(Table, key);
-#endif
 
   //(a) reads the TID word, spinning until the lock is clear
 
-  expected.obj_ = loadAcquire(tuple->tidword_.obj_);
+  expected.obj_ = loadAcquire(tuple->tid_word_.obj_);
   // check if it is locked.
   // spinning until the lock is clear
 
   for (;;) {
     while (expected.lock) {
-      expected.obj_ = loadAcquire(tuple->tidword_.obj_);
+      expected.obj_ = loadAcquire(tuple->tid_word_.obj_);
     }
 
     //(b) checks whether the record is the latest version
@@ -137,7 +133,7 @@ void TxnExecutor::read(std::uint64_t key) {
     // order of load don't exchange.
 
     //(e) checks the TID word again
-    check.obj_ = loadAcquire(tuple->tidword_.obj_);
+    check.obj_ = loadAcquire(tuple->tid_word_.obj_);
     if (expected == check) break;
     expected = check;
 #if ADD_ANALYSIS
@@ -184,10 +180,10 @@ void TxnExecutor::unlockWriteSet() {
   Tidword expected, desired;
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tid_word_.obj_);
     desired = expected;
     desired.lock = 0;
-    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
+    storeRelease((*itr).rcdptr_->tid_word_.obj_, desired.obj_);
   }
 }
 
@@ -196,10 +192,10 @@ void TxnExecutor::unlockWriteSet(
   Tidword expected, desired;
 
   for (auto itr = write_set_.begin(); itr != end; ++itr) {
-    expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    expected.obj_ = loadAcquire((*itr).rcdptr_->tid_word_.obj_);
     desired = expected;
     desired.lock = 0;
-    storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
+    storeRelease((*itr).rcdptr_->tid_word_.obj_, desired.obj_);
   }
 }
 
@@ -228,7 +224,7 @@ bool TxnExecutor::validationPhase() {
   Tidword check;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     // 1
-    check.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
+    check.obj_ = loadAcquire((*itr).rcdptr_->tid_word_.obj_);
     if ((*itr).get_tidword().epoch != check.epoch ||
         (*itr).get_tidword().tid != check.tid) {
 #if ADD_ANALYSIS
@@ -306,13 +302,9 @@ void TxnExecutor::write(std::uint64_t key, std::string_view val) {
   if (re) {
     tuple = re->rcdptr_;
   } else {
-#if MASSTREE_USE
     tuple = MT.get_value(key);
 #if ADD_ANALYSIS
     ++sres_->local_tree_traversal_;
-#endif
-#else
-    tuple = get_tuple(Table, key);
 #endif
   }
 
@@ -366,7 +358,7 @@ void TxnExecutor::writePhase() {
     } else {
       memcpy((*itr).rcdptr_->val_, (*itr).get_val_ptr(), (*itr).get_val_length());
     }
-    storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
+    storeRelease((*itr).rcdptr_->tid_word_.obj_, maxtid.obj_);
   }
 
   read_set_.clear();
