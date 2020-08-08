@@ -12,7 +12,7 @@
 #include "local_set_element.hh"
 #include "tuple.hh"
 
-#define LOGSET_SIZE 1000
+namespace silo_ext {
 
 enum class TransactionStatus : uint8_t {
   kInFlight,
@@ -59,7 +59,7 @@ public:
    * @brief Transaction read function.
    * @param [in] key The key of key-value
    */
-  void read(std::uint64_t key);
+  void read(std::string_view key);
 
   /**
    * @brief Search xxx set
@@ -70,7 +70,7 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  ReadElement<Tuple> *searchReadSet(std::uint64_t key);
+  ReadElement<Tuple> *searchReadSet(std::string_view key);
 
   /**
    * @brief Search xxx set
@@ -81,7 +81,7 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  WriteElement<Tuple> *searchWriteSet(std::uint64_t key);
+  WriteElement<Tuple> *searchWriteSet(std::string_view key);
 
   void unlockWriteSet();
 
@@ -89,13 +89,13 @@ public:
 
   bool validationPhase();
 
-  void wal(std::uint64_t ctid);
-
   /**
    * @brief Transaction write function.
    * @param [in] key The key of key-value
    */
-  void write(std::uint64_t key, std::string_view val = "");
+  void write(std::string_view, std::string_view val);
 
   void writePhase();
 };
+
+} // namespace silo

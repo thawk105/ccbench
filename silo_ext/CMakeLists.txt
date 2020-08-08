@@ -25,6 +25,7 @@ include(CompileOptions)
 file(GLOB SILO_SOURCES
         "../common/result.cc"
         "../common/util.cc"
+        "epoch.cpp"
         "result.cc"
         "silo_ext.cc"
         "transaction.cc"
@@ -49,34 +50,4 @@ if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()
     add_definitions(-DADD_ANALYSIS=0)
-endif ()
-
-if (DEFINED BACK_OFF)
-    add_definitions(-DBACK_OFF=${BACK_OFF})
-else ()
-    add_definitions(-DBACK_OFF=0)
-endif ()
-
-if (DEFINED NO_WAIT_LOCKING_IN_VALIDATION)
-    add_definitions(-DNO_WAIT_LOCKING_IN_VALIDATION=${NO_WAIT_LOCKING_IN_VALIDATION})
-else ()
-    add_definitions(-DNO_WAIT_LOCKING_IN_VALIDATION=1)
-endif ()
-
-if (DEFINED NO_WAIT_OF_TICTOC)
-    add_definitions(-DNO_WAIT_OF_TICTOC=${NO_WAIT_OF_TICTOC})
-else ()
-    add_definitions(-DNO_WAIT_OF_TICTOC=0)
-endif ()
-
-if (DEFINED SLEEP_READ_PHASE)
-    add_definitions(-DSLEEP_READ_PHASE=${SLEEP_READ_PHASE})
-else ()
-    add_definitions(-DSLEEP_READ_PHASE=0)
-endif ()
-
-if (DEFINED WAL)
-    add_definitions(-DWAL=${WAL})
-else ()
-    add_definitions(-DWAL=0)
 endif ()

@@ -3,15 +3,17 @@
  * @brief implement about epoch
  */
 
-#include "cc/silo_variant/include/epoch.h"
+#include "epoch.h"
+
+#include <cstdint>
 
 #include <xmmintrin.h>  // NOLINT
 
-#include "cc/silo_variant/include/session_info_table.h"
+#include "session_info_table.h"
 #include "clock.h"
-#include "include/tuple_local.h"  // sizeof(Tuple)
+#include "tuple.h"  // sizeof(Tuple)
 
-namespace shirakami::cc_silo_variant::epoch {
+namespace silo_ext::epoch {
 
 void atomic_add_global_epoch() {
   std::uint32_t expected = load_acquire_global_epoch();
