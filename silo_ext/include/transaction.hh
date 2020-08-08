@@ -9,9 +9,7 @@
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
 #include "../../include/string.hh"
-#include "common.hh"
-#include "log.hh"
-#include "silo_op_element.hh"
+#include "local_set_element.hh"
 #include "tuple.hh"
 
 #define LOGSET_SIZE 1000
@@ -26,19 +24,13 @@ class TxnExecutor {
 public:
   std::vector<ReadElement<Tuple>> read_set_;
   std::vector<WriteElement<Tuple>> write_set_;
-  std::vector<Procedure> pro_set_;
-
-  std::vector<LogRecord> log_set_;
-  LogHeader latest_log_header_;
 
   TransactionStatus status_;
-  unsigned int thid_;
+  std::size_t thid_;
   /* lock_num_ ...
    * the number of locks in local write set.
    */
   Result *sres_;
-
-  File logfile_;
 
   Tidword mrctid_;
   Tidword max_rset_, max_wset_;

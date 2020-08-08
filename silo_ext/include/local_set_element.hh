@@ -2,16 +2,10 @@
 
 #include <memory>
 
-#include "../../include/op_element.hh"
-
 template<typename T>
-class ReadElement : public OpElement<T> {
+class ReadElement {
 public:
-  using OpElement<T>::OpElement;
-
-
-  ReadElement(uint64_t key, T *rcdptr, char *val, Tidword tidword)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  ReadElement(uint64_t key, T *rcdptr, char *val, Tidword tidword) {
     tidword_.obj_ = tidword.obj_;
     memcpy(this->val_, val, VAL_SIZE);
   }
@@ -30,12 +24,9 @@ private:
 };
 
 template<typename T>
-class WriteElement : public OpElement<T> {
+class WriteElement {
 public:
-  using OpElement<T>::OpElement;
-
-  WriteElement(uint64_t key, T *rcdptr, std::string_view val)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  WriteElement(uint64_t key, T *rcdptr, std::string_view val) {
     static_assert(std::string_view("").size() == 0, "Expected behavior was broken.");
     if (val.size() != 0) {
       val_ptr_ = std::make_unique<char[]>(val.size());
