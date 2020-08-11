@@ -23,16 +23,17 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB SILO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
-        "epoch.cpp"
-        "result.cc"
-        "silo_ext.cc"
-        "transaction.cc"
-        "util.cc"
+        "*.cpp"
+        "index/masstree_beta/masstree_beta_wrapper.cpp"
         )
 
 add_executable(silo_ext.exe ${SILO_SOURCES})
+
+target_include_directories(silo_ext.exe
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
+        PRIVATE ${PROJECT_SOURCE_DIR}/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        )
 
 target_link_libraries(silo_ext.exe
         Boost::filesystem
@@ -46,8 +47,11 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     add_definitions(-DCCBENCH_LINUX)
 endif ()
 
-if (DEFINED ADD_ANALYSIS)
-    add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
-else ()
-    add_definitions(-DADD_ANALYSIS=0)
-endif ()
+cmake_host_system_information(RESULT cores QUERY NUMBER_OF_LOGICAL_CORES)
+add_definitions(-DKVS_EPOCH_TIME=40)
+add_definitions(-DKVS_NUMBER_OF_LOGICAL_CORES=${cores})
+add_definitions(-DKVS_MAX_PARALLEL_THREADS=500)
+add_definitions(-DKVS_MAX_KEY_LENGTH=1000)
+add_definitions(-DKVS_LOG_GC_THRESHOLD=1)
+add_definitions(-DPROJECT_ROOT=${PROJECT_SOURCE_DIR})
+
