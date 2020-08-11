@@ -9,7 +9,6 @@
 
 #include "index/masstree_beta/include/masstree_beta_wrapper.h"
 #include "boost/filesystem.hpp"
-#include "include/tuple_local.h"
 
 namespace ccbench {
 

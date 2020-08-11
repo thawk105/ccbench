@@ -13,11 +13,9 @@ namespace ccbench {
 
 class Record {  // NOLINT
 public:
-  Record() {}  // NOLINT
+  Record() {}
 
-  Record(const char *key_ptr, const std::size_t key_length,
-         const char *value_ptr, const std::size_t value_length)
-          : tuple_(key_ptr, key_length, value_ptr, value_length) {
+  Record(std::string_view key, std::string_view val) : tuple_(key, val) {
     // init tidw
     tidw_.set_absent(true);
     tidw_.set_lock(true);

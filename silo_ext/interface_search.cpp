@@ -1,18 +1,17 @@
 #include "interface_helper.h"
 #include "session_info_table.h"
 #include "index/masstree_beta/include/masstree_beta_wrapper.h"
-#include "tuple_local.h"
 #include "interface.h"  // NOLINT
 
 namespace ccbench {
 
-Status search_key(Token token, [[maybe_unused]] Storage storage,  // NOLINT
-                  std::string_view key, Tuple** tuple) {
-  auto* ti = static_cast<session_info*>(token);
+Status search_key(Token token, Storage storage,  // NOLINT
+                  std::string_view key, Tuple **tuple) {
+  auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
 
   masstree_wrapper<Record>::thread_init(sched_getcpu());
-  write_set_obj* inws{ti->search_write_set(key)};
+  write_set_obj *inws{ti->search_write_set(key)};
   if (inws != nullptr) {
     if (inws->get_op() == OP_TYPE::DELETE) {
       return Status::WARN_ALREADY_DELETE;
@@ -21,13 +20,13 @@ Status search_key(Token token, [[maybe_unused]] Storage storage,  // NOLINT
     return Status::WARN_READ_FROM_OWN_OPERATION;
   }
 
-  read_set_obj* inrs{ti->search_read_set(key)};
+  read_set_obj *inrs{ti->search_read_set(key)};
   if (inrs != nullptr) {
     *tuple = &inrs->get_rec_read().get_tuple();
     return Status::WARN_READ_FROM_OWN_OPERATION;
   }
 
-  Record* rec_ptr{kohler_masstree::get_mtdb().get_value(key.data(), key.size())};
+  Record *rec_ptr{kohler_masstree::get_mtdb(storage).get_value(key.data(), key.size())};
   if (rec_ptr == nullptr) {
     *tuple = nullptr;
     return Status::WARN_NOT_FOUND;

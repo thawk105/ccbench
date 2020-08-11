@@ -5,8 +5,6 @@
 
 #include "log.h"
 
-#include "tuple_local.h"  // sizeof(Tuple)
-
 namespace ccbench {
 
 void Log::LogHeader::init() {

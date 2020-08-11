@@ -272,13 +272,14 @@ __thread typename masstree_wrapper<T>::table_params::threadinfo_type *
 
 class kohler_masstree {
 public:
+  static constexpr std::size_t db_length = 10;
   /**
    * @brief find record from masstree by using args informations.
    * @return the found record pointer.
    */
   static void *find_record(Storage st, std::string_view key);
 
-  static masstree_wrapper<void> &get_mtdb(Storage st) {
+  static masstree_wrapper<Record> &get_mtdb(Storage st) {
     return MTDB.at(static_cast<std::uint32_t>(st));
   }
 
@@ -292,14 +293,12 @@ public:
    * exists in masstree, so this function returned immediately.
    * @return Status::OK It inserted record.
    */
-  static Status insert_record(Storage st, std::string_view key, void *record); // NOLINT
+  static Status insert_record(Storage st, std::string_view key, Record *record); // NOLINT
 
 private:
   // [wip] first draft
-  static inline std::array<masstree_wrapper<void>, 10> MTDB;  // NOLINT
+  static inline std::array<masstree_wrapper<Record>, db_length> MTDB;  // NOLINT
   // [wip] second draft
-  static inline masstree_wrapper<TPCC::Custormer> MTDB_CUSTOMER;
-  static inline masstree_wrapper<TPCC::Warehouse> MTDB_WAREHOUSE;
 };
 
 }  // namespace ccbench

@@ -5,7 +5,6 @@
 
 #include "garbage_collection.h"
 #include "session_info.h"
-#include "tuple_local.h"
 
 namespace ccbench {
 
@@ -40,8 +39,7 @@ bool write_set_obj::operator<(const write_set_obj &right) const {  // NOLINT
 void write_set_obj::reset_tuple_value(std::string_view val) {
   (this->get_op() == OP_TYPE::UPDATE ? this->get_tuple_to_local()
                                      : this->get_tuple_to_db())
-          .get_pimpl()
-          ->set_value(val.data(), val.size());
+          .set_value(val.data(), val.size());
 }
 
 }  // namespace ccbench

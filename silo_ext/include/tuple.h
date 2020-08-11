@@ -13,26 +13,21 @@ namespace ccbench {
 
 class Tuple {  // NOLINT
 public:
-  class Impl;
+  Tuple() {}
 
-  Tuple();
+  Tuple(std::string_view key, std::string_view val) : key_(key), val_(val) {}
 
-  Tuple(const char *key_ptr, std::size_t key_length, const char *val_ptr,
-        std::size_t val_length);
+  [[nodiscard]] std::string_view get_key() const { return key_; }
 
-  Tuple(const Tuple &right);
+  [[nodiscard]] std::string_view get_value() const { return val_; }
 
-  Tuple(Tuple &&right);
-
-  Tuple &operator=(const Tuple &right);  // NOLINT
-  Tuple &operator=(Tuple &&right);       // NOLINT
-
-  [[nodiscard]] std::string_view get_key() const;    // NOLINT
-  [[nodiscard]] std::string_view get_value() const;  // NOLINT
-  Impl *get_pimpl();                                 // NOLINT
+  void set_value(std::string_view val) {
+    val_ = val;
+  }
 
 private:
-  std::unique_ptr<Impl> pimpl_;
+  std::string key_;
+  std::string val_;
 };
 
 }  // namespace ccbench

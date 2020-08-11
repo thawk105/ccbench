@@ -3,7 +3,6 @@
 #include "atomic_wrapper.h"
 #include "garbage_collection.h"
 #include "interface_helper.h"
-#include "tuple_local.h"  // sizeof(Tuple)
 #include "interface.h"        // NOLINT
 
 namespace ccbench {

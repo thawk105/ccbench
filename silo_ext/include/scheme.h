@@ -43,12 +43,10 @@ public:
   write_set_obj(OP_TYPE op, Storage st, Record *rec_ptr) : op_(op), st_(st), rec_ptr_(rec_ptr) {}
 
   // for update/
-  write_set_obj(const char *const key_ptr, const std::size_t key_length,
-                const char *const val_ptr, const std::size_t val_length,
-                const OP_TYPE op, Storage st, Record *const rec_ptr)
+  write_set_obj(std::string_view key, std::string_view val, const OP_TYPE op, Storage st, Record *const rec_ptr)
           : op_(op), st_(st),
             rec_ptr_(rec_ptr),
-            tuple_(key_ptr, key_length, val_ptr, val_length) {}
+            tuple_(key, val) {}
 
   write_set_obj(const write_set_obj &right) = delete;
 

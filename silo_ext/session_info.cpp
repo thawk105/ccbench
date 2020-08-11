@@ -7,7 +7,6 @@
 
 #include "garbage_collection.h"
 #include "index/masstree_beta/include/masstree_beta_wrapper.h"
-#include "tuple_local.h"  // sizeof(Tuple)
 
 namespace ccbench {
 

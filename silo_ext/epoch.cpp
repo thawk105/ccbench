@@ -9,7 +9,6 @@
 
 #include "session_info_table.h"
 #include "clock.h"
-#include "tuple_local.h"  // sizeof(Tuple)
 
 namespace ccbench::epoch {
 
