@@ -4,6 +4,7 @@
 #include <xmmintrin.h>
 
 #include <atomic>
+#include <array>
 #include <cstdlib>
 #include <random>
 #include <thread>
@@ -12,6 +13,7 @@
 
 #include "record.h"
 #include "scheme_global.h"
+#include "tpcc_tables.hpp"
 
 /* if you use formatter, following 2 lines may be exchange.
  * but there is a dependency relation, so teh order is restricted config ->
@@ -37,34 +39,34 @@ namespace ccbench {
 class key_unparse_unsigned {  // NOLINT
 public:
   [[maybe_unused]] static int unparse_key(  // NOLINT
-      Masstree::key<uint64_t> key, char* buf, int buflen) {
+          Masstree::key<uint64_t> key, char *buf, int buflen) {
     return snprintf(buf, buflen, "%" PRIu64, key.ikey());  // NOLINT
   }
 };
 
-template <typename T>
+template<typename T>
 class SearchRangeScanner {
 public:
   using Str = Masstree::Str;
 
-  SearchRangeScanner(const char* const rkey, const std::size_t len_rkey,
-                     const bool r_exclusive, std::vector<const T*>* scan_buffer,
+  SearchRangeScanner(const char *const rkey, const std::size_t len_rkey,
+                     const bool r_exclusive, std::vector<const T *> *scan_buffer,
                      bool limited_scan)
-      : rkey_(rkey),
-        len_rkey_(len_rkey),
-        r_exclusive_(r_exclusive),
-        scan_buffer_(scan_buffer),
-        limited_scan_(limited_scan) {
+          : rkey_(rkey),
+            len_rkey_(len_rkey),
+            r_exclusive_(r_exclusive),
+            scan_buffer_(scan_buffer),
+            limited_scan_(limited_scan) {
     if (limited_scan) {
       scan_buffer->reserve(kLimit_);
     }
   }
 
-  template <typename SS, typename K>
-  [[maybe_unused]] void visit_leaf(const SS&, const K&, threadinfo&) {}
+  template<typename SS, typename K>
+  [[maybe_unused]] void visit_leaf(const SS &, const K &, threadinfo &) {}
 
-  [[maybe_unused]] bool visit_value(const Str key, T* val,  // NOLINT
-                                    threadinfo&) {
+  [[maybe_unused]] bool visit_value(const Str key, T *val,  // NOLINT
+                                    threadinfo &) {
     if (limited_scan_) {
       if (scan_buffer_->size() >= kLimit_) {
         return false;
@@ -77,7 +79,7 @@ public:
     }
 
     const int res_memcmp = memcmp(
-        rkey_, key.s, std::min(len_rkey_, static_cast<std::size_t>(key.len)));
+            rkey_, key.s, std::min(len_rkey_, static_cast<std::size_t>(key.len)));
     if (res_memcmp > 0 ||
         (res_memcmp == 0 &&
          ((!r_exclusive_ && len_rkey_ == static_cast<std::size_t>(key.len)) ||
@@ -89,10 +91,10 @@ public:
   }
 
 private:
-  const char* const rkey_{};
+  const char *const rkey_{};
   const std::size_t len_rkey_{};
   const bool r_exclusive_{};
-  std::vector<const T*>* scan_buffer_{};
+  std::vector<const T *> *scan_buffer_{};
   const bool limited_scan_{false};
   static constexpr std::size_t kLimit_ = 1000;
 };
@@ -101,14 +103,14 @@ private:
  * type of object is T.
  * inserting a pointer of T as value.
  */
-template <typename T>
+template<typename T>
 class masstree_wrapper {  // NOLINT
 public:
   [[maybe_unused]] static constexpr uint64_t insert_bound =
-      UINT64_MAX;  // 0xffffff;
+          UINT64_MAX;  // 0xffffff;
   // static constexpr uint64_t insert_bound = 0xffffff; //0xffffff;
   struct table_params : public Masstree::nodeparams<15, 15> {  // NOLINT
-    using value_type = T*;
+    using value_type = T *;
     using value_print_type = Masstree::value_print<value_type>;
     using threadinfo_type = threadinfo;
     using key_unparse_type = key_unparse_unsigned;
@@ -124,13 +126,14 @@ public:
 
   using node_type = typename table_type::node_type;
   using nodeversion_value_type =
-      typename unlocked_cursor_type::nodeversion_value_type;
+  typename unlocked_cursor_type::nodeversion_value_type;
 
   // tanabe :: todo. it should be wrapped by atomic type if not only one thread
   // use this.
-  static __thread typename table_params::threadinfo_type* ti;
+  static __thread typename table_params::threadinfo_type *ti;
 
   masstree_wrapper() { this->table_init(); }
+
   ~masstree_wrapper() = default;
 
   void table_init() {
@@ -157,9 +160,9 @@ public:
    * key exists in masstree, so this function returned immediately.
    * @return Status::OK success.
    */
-  Status insert_value(const char* key,      // NOLINT
-                                 std::size_t len_key,  // NOLINT
-                                 T* value) {
+  Status insert_value(const char *key,      // NOLINT
+                      std::size_t len_key,  // NOLINT
+                      T *value) {
     cursor_type lp(table_, key, len_key);
     bool found = lp.find_insert(*ti);
     // always_assert(!found, "keys should all be unique");
@@ -175,9 +178,13 @@ public:
     return Status::OK;
   }
 
+  Status insert_value(std::string_view key, T *value) {
+    return insert_value(key.data(), key.size(), value);
+  }
+
   // for bench.
-  Status put_value(const char* key, std::size_t len_key,  // NOLINT
-                              T* value, T** record) {
+  Status put_value(const char *key, std::size_t len_key,  // NOLINT
+                   T *value, T **record) {
     cursor_type lp(table_, key, len_key);
     bool found = lp.find_locked(*ti);
     if (found) {
@@ -199,8 +206,8 @@ public:
     return Status::WARN_NOT_FOUND;
   }
 
-  Status remove_value(const char* key,        // NOLINT
-                                 std::size_t len_key) {  // NOLINT
+  Status remove_value(const char *key,        // NOLINT
+                      std::size_t len_key) {  // NOLINT
     cursor_type lp(table_, key, len_key);
     bool found = lp.find_locked(*ti);
     if (found) {
@@ -213,7 +220,7 @@ public:
     return Status::WARN_NOT_FOUND;
   }
 
-  T* get_value(const char* key, std::size_t len_key) {  // NOLINT
+  T *get_value(const char *key, std::size_t len_key) {  // NOLINT
     unlocked_cursor_type lp(table_, key, len_key);
     bool found = lp.find_unlocked(*ti);
     if (found) {
@@ -222,10 +229,14 @@ public:
     return nullptr;
   }
 
-  void scan(const char* const lkey, const std::size_t len_lkey,
-            const bool l_exclusive, const char* const rkey,
+  T *get_value(std::string_view key) {
+    return get_value(key.data(), key.size());
+  }
+
+  void scan(const char *const lkey, const std::size_t len_lkey,
+            const bool l_exclusive, const char *const rkey,
             const std::size_t len_rkey, const bool r_exclusive,
-            std::vector<const T*>* res, bool limited_scan) {
+            std::vector<const T *> *res, bool limited_scan) {
     Str mtkey;
     if (lkey == nullptr) {
       mtkey = Str();
@@ -248,14 +259,14 @@ public:
 private:
   table_type table_;
 
-  [[maybe_unused]] static inline Str make_key(std::string& buf) {  // NOLINT
+  [[maybe_unused]] static inline Str make_key(std::string &buf) {  // NOLINT
     return Str(buf);
   }
 };
 
-template <typename T>
-__thread typename masstree_wrapper<T>::table_params::threadinfo_type*
-    masstree_wrapper<T>::ti = nullptr;
+template<typename T>
+__thread typename masstree_wrapper<T>::table_params::threadinfo_type *
+        masstree_wrapper<T>::ti = nullptr;
 
 [[maybe_unused]] extern volatile bool recovering;
 
@@ -265,30 +276,30 @@ public:
    * @brief find record from masstree by using args informations.
    * @return the found record pointer.
    */
-  static Record* find_record(char const* key,  // NOLINT
-                                           std::size_t len_key);
+  static void *find_record(Storage st, std::string_view key);
 
-  static masstree_wrapper<Record>& get_mtdb() {
-    return MTDB;
-  }  // NOLINT
+  static masstree_wrapper<void> &get_mtdb(Storage st) {
+    return MTDB.at(static_cast<std::uint32_t>(st));
+  }
 
   /**
    * @brief insert record to masstree by using args informations.
    * @pre the record which has the same key as the key of args have never been
    * inserted.
    * @param key
-   * @param len_key
    * @param record It inserts this pointer to masstree database.
    * @return WARN_ALREADY_EXISTS The records whose key is the same as @a key
    * exists in masstree, so this function returned immediately.
    * @return Status::OK It inserted record.
    */
-  static Status insert_record(char const* key,  // NOLINT
-                              std::size_t len_key,
-                              Record* record);
+  static Status insert_record(Storage st, std::string_view key, void *record); // NOLINT
 
 private:
-  static inline masstree_wrapper<Record> MTDB;  // NOLINT
+  // [wip] first draft
+  static inline std::array<masstree_wrapper<void>, 10> MTDB;  // NOLINT
+  // [wip] second draft
+  static inline masstree_wrapper<TPCC::Custormer> MTDB_CUSTOMER;
+  static inline masstree_wrapper<TPCC::Warehouse> MTDB_WAREHOUSE;
 };
 
 }  // namespace ccbench

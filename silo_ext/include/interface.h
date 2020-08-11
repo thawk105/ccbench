@@ -5,6 +5,7 @@
 
 #pragma once
 #include "scheme.h"
+#include "scheme_global.h"
 #include "tuple.h"
 
 #define STRING(macro) #macro          // NOLINT

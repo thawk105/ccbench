@@ -33,20 +33,11 @@ Status insert(Token token, [[maybe_unused]] Storage storage,  // NOLINT
   Status insert_result(
           kohler_masstree::insert_record(key.data(), key.size(), rec_ptr));
   if (insert_result == Status::OK) {
-    ti->
-
-                    get_write_set()
-
-            .
-                    emplace_back(OP_TYPE::INSERT, rec_ptr
-            );
-    return
-            Status::OK;
+    ti->get_write_set().emplace_back(OP_TYPE::INSERT, rec_ptr);
+    return Status::OK;
   }
-  delete
-          rec_ptr;  // NOLINT
-  return
-          Status::WARN_ALREADY_EXISTS;
+  delete rec_ptr;  // NOLINT
+  return Status::WARN_ALREADY_EXISTS;
 }
 
 Status update(Token token, [[maybe_unused]] Storage sotrage,  // NOLINT

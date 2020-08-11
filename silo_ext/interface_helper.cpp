@@ -188,7 +188,7 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
         tid_word delete_tid = max_tid;
         delete_tid.set_absent(true);
         std::string_view key_view = rec_ptr->get_tuple().get_key();
-        kohler_masstree::get_mtdb().remove_value(key_view.data(),
+        kohler_masstree::get_mtdb(iws->get_st()).remove_value(key_view.data(),
                                                  key_view.size());
         storeRelease(rec_ptr->get_tidw().get_obj(), delete_tid.get_obj());
 

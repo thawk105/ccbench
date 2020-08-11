@@ -83,7 +83,7 @@ public:
       return rkey_;
     }
 
-    std::map<ScanHandle, std::vector<const Record*>>& get_scan_cache() {
+    std::map<ScanHandle, std::vector<const void *>> &get_scan_cache() {
       return scan_cache_;
     }
 
@@ -96,7 +96,7 @@ public:
     std::map<ScanHandle, std::size_t> len_rkey_{};
     std::map<ScanHandle, bool> r_exclusive_{};
     std::map<ScanHandle, std::unique_ptr<char[]>> rkey_{};  // NOLINT
-    std::map<ScanHandle, std::vector<const Record*>> scan_cache_{};
+    std::map<ScanHandle, std::vector<const void *>> scan_cache_{};
     std::map<ScanHandle, std::size_t> scan_cache_itr_{};
   };
 
@@ -203,7 +203,7 @@ public:
     return read_set;
   }
 
-  std::map<ScanHandle, std::vector<const Record*>>&
+  std::map<ScanHandle, std::vector<const void *>> &
   get_scan_cache() {  // NOLINT
     return scan_handle_.get_scan_cache();
   }

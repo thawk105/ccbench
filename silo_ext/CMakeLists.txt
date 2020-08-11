@@ -30,6 +30,7 @@ file(GLOB SILO_SOURCES
 add_executable(silo_ext.exe ${SILO_SOURCES})
 
 target_include_directories(silo_ext.exe
+        PRIVATE ${PROJECT_SOURCE_DIR}
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include

@@ -23,17 +23,25 @@ namespace ccbench {
 /**
  * @brief Session token
  */
-using Token = void*;
-
-/**
- * @brief Storage Handle
- */
-using Storage = std::uint64_t;
+using Token = void *;
 
 /**
  * @brief Scan Handle
  */
 using ScanHandle = std::size_t;
+
+enum class Storage : std::uint32_t {
+  CUSTOMER = 0,
+  DISTRICT,
+  HISTORY,
+  ITEM,
+  NEWORDER,
+  ORDER,
+  ORDERLINE,
+  STOCK,
+  WAREHOUSE,
+  SECONDARY,
+};
 
 /**
  * @brief the status which is after some function.
@@ -163,7 +171,7 @@ enum class Status : std::int32_t {
 };
 
 inline constexpr std::string_view to_string_view(  // NOLINT
-    Status value) noexcept {
+        Status value) noexcept {
   using namespace std::string_view_literals;
   switch (value) {
     case Status::WARN_ALREADY_DELETE:
@@ -202,7 +210,7 @@ inline constexpr std::string_view to_string_view(  // NOLINT
   std::abort();
 }
 
-inline std::ostream& operator<<(std::ostream& out, Status value) {  // NOLINT
+inline std::ostream &operator<<(std::ostream &out, Status value) {  // NOLINT
   return out << to_string_view(value);
 }
 
@@ -218,7 +226,7 @@ enum class OP_TYPE : std::int32_t {
 };
 
 inline constexpr std::string_view to_string_view(  // NOLINT
-    OP_TYPE op) noexcept {
+        OP_TYPE op) noexcept {
   using namespace std::string_view_literals;
   switch (op) {
     case OP_TYPE::ABORT:
@@ -241,7 +249,7 @@ inline constexpr std::string_view to_string_view(  // NOLINT
   std::abort();
 }
 
-inline std::ostream& operator<<(std::ostream& out, OP_TYPE op) {  // NOLINT
+inline std::ostream &operator<<(std::ostream &out, OP_TYPE op) {  // NOLINT
   return out << to_string_view(op);
 }
 

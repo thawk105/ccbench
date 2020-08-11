@@ -31,7 +31,7 @@ Status delete_record(Token token, [[maybe_unused]] Storage storage,  // NOLINT
 
   masstree_wrapper<Record>::thread_init(sched_getcpu());
   Record *rec_ptr{
-          kohler_masstree::get_mtdb().get_value(key.data(), key.size())};
+          static_cast<Record *>(kohler_masstree::get_mtdb(storage).get_value(key))};
   if (rec_ptr == nullptr) {
     return Status::WARN_NOT_FOUND;
   }
