@@ -147,11 +147,11 @@ namespace TPCC {
 
     void Query::generate(Xoroshiro128Plus &rnd,
                          [[maybe_unused]]Result &res) {
-        double x = (double)(rnd.next() % 100) / 100.0;
+        double x = rnd.next() / (((double)~(uint64_t)0)+1.0);
         if (x < g_perc_payment) {
-            type = Q_NEW_ORDER;
-        } else {
             type = Q_PAYMENT;
+        } else {
+            type = Q_NEW_ORDER;
         }
         switch (type) {
         case Q_NEW_ORDER:
