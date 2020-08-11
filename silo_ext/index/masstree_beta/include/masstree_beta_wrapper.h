@@ -296,9 +296,7 @@ public:
   static Status insert_record(Storage st, std::string_view key, Record *record); // NOLINT
 
 private:
-  // [wip] first draft
   static inline std::array<masstree_wrapper<Record>, db_length> MTDB;  // NOLINT
-  // [wip] second draft
 };
 
 }  // namespace ccbench
