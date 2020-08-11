@@ -22,15 +22,14 @@ namespace ccbench {
   return Status::OK;
 }
 
-Status delete_record(Token token, [[maybe_unused]] Storage storage,  // NOLINT
-                     std::string_view key) {
+Status delete_record(Token token, Storage st, std::string_view key) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
   Status check = ti->check_delete_after_write(key);
 
   masstree_wrapper<Record>::thread_init(sched_getcpu());
   Record *rec_ptr{
-          static_cast<Record *>(kohler_masstree::get_mtdb(storage).get_value(key))};
+          static_cast<Record *>(kohler_masstree::get_mtdb(st).get_value(key))};
   if (rec_ptr == nullptr) {
     return Status::WARN_NOT_FOUND;
   }
@@ -42,7 +41,7 @@ Status delete_record(Token token, [[maybe_unused]] Storage storage,  // NOLINT
     return Status::WARN_NOT_FOUND;
   }
 
-  ti->get_write_set().emplace_back(OP_TYPE::DELETE, rec_ptr);
+  ti->get_write_set().emplace_back(OP_TYPE::DELETE, st, rec_ptr);
   return check;
 }
 

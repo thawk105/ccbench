@@ -4,7 +4,6 @@
  */
 
 #include <map>
-#include <utility>
 
 #include "interface_helper.h"
 #include "index/masstree_beta/include/masstree_beta_wrapper.h"
@@ -43,8 +42,8 @@ Status open_scan(Token token, Storage storage,  // NOLINT
   std::vector<const Record *> scan_buf;
   masstree_wrapper<Record>::thread_init(sched_getcpu());
   kohler_masstree::get_mtdb(storage).scan(
-          left_key.size() == 0 ? nullptr : left_key.data(), left_key.size(),
-          l_exclusive, right_key.size() == 0 ? nullptr : right_key.data(),
+          left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+          l_exclusive, right_key.empty() ? nullptr : right_key.data(),
           right_key.size(), r_exclusive, &scan_buf, true);
 
   if (!scan_buf.empty()) {
@@ -105,7 +104,7 @@ Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **t
     std::vector<const Record *> new_scan_buf;
     masstree_wrapper<Record>::thread_init(sched_getcpu());
     kohler_masstree::get_mtdb(storage).scan(
-            tupleptr->get_key().size() == 0 ? nullptr : tupleptr->get_key().data(),
+            tupleptr->get_key().empty() ? nullptr : tupleptr->get_key().data(),
             tupleptr->get_key().size(), true,
             ti->get_len_rkey()[handle] == 0 ? nullptr
                                             : ti->get_rkey()[handle].get(),
@@ -176,8 +175,8 @@ Status scan_key(Token token, Storage storage,  // NOLINT
   std::vector<const Record *> scan_res;
   masstree_wrapper<Record>::thread_init(sched_getcpu());
   kohler_masstree::get_mtdb(storage).scan(
-          left_key.size() == 0 ? nullptr : left_key.data(), left_key.size(),
-          l_exclusive, right_key.size() == 0 ? nullptr : right_key.data(),
+          left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+          l_exclusive, right_key.empty() ? nullptr : right_key.data(),
           right_key.size(), r_exclusive, &scan_res, false);
 
   for (auto &&itr : scan_res) {

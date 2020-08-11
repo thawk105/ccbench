@@ -12,7 +12,7 @@
 
 namespace ccbench {
 
-Status insert(Token token, [[maybe_unused]] Storage storage,  // NOLINT
+Status insert(Token token, Storage st,  // NOLINT
               std::string_view key, std::string_view val) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
@@ -23,24 +23,22 @@ Status insert(Token token, [[maybe_unused]] Storage storage,  // NOLINT
   }
 
   masstree_wrapper<Record>::thread_init(sched_getcpu());
-  if (kohler_masstree::find_record(key.data(), key.size()) != nullptr) {
+  if (kohler_masstree::find_record(st, key) != nullptr) {
     return Status::WARN_ALREADY_EXISTS;
   }
 
-  Record *rec_ptr =  // NOLINT
-          new Record(key.data(), key.size(), val.data(), val.size());
+  Record *rec_ptr = new Record(key, val);
   Status insert_result(
-          kohler_masstree::insert_record(key.data(), key.size(), rec_ptr));
+          kohler_masstree::insert_record(st, key, rec_ptr));
   if (insert_result == Status::OK) {
-    ti->get_write_set().emplace_back(OP_TYPE::INSERT, rec_ptr);
+    ti->get_write_set().emplace_back(OP_TYPE::INSERT, st, rec_ptr);
     return Status::OK;
   }
   delete rec_ptr;  // NOLINT
   return Status::WARN_ALREADY_EXISTS;
 }
 
-Status update(Token token, [[maybe_unused]] Storage sotrage,  // NOLINT
-              std::string_view key, std::string_view val) {
+Status update(Token token, Storage st, std::string_view key, std::string_view val) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
 
@@ -52,7 +50,7 @@ Status update(Token token, [[maybe_unused]] Storage sotrage,  // NOLINT
 
   masstree_wrapper<Record>::thread_init(sched_getcpu());
   Record *rec_ptr{
-          kohler_masstree::get_mtdb().get_value(key.data(), key.size())};
+          kohler_masstree::get_mtdb(st).get_value(key)};
   if (rec_ptr == nullptr) {
     return Status::WARN_NOT_FOUND;
   }
@@ -64,14 +62,12 @@ Status update(Token token, [[maybe_unused]] Storage sotrage,  // NOLINT
     return Status::WARN_NOT_FOUND;
   }
 
-  ti->get_write_set().emplace_back(key.data(), key.size(), val.data(),
-                                   val.size(), OP_TYPE::UPDATE, rec_ptr);
+  ti->get_write_set().emplace_back(key, val, OP_TYPE::UPDATE, st, rec_ptr);
 
   return Status::OK;
 }
 
-Status upsert(Token token, [[maybe_unused]] Storage storage,  // NOLINT
-              std::string_view key, std::string_view val) {
+Status upsert(Token token, Storage st, std::string_view key, std::string_view val) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
   write_set_obj *in_ws{ti->search_write_set(key)};
@@ -82,14 +78,13 @@ Status upsert(Token token, [[maybe_unused]] Storage storage,  // NOLINT
 
   masstree_wrapper<Record>::thread_init(sched_getcpu());
   Record *rec_ptr{
-          kohler_masstree::kohler_masstree::find_record(key.data(), key.size())};
+          static_cast<Record *>(kohler_masstree::kohler_masstree::find_record(st, key))};
   if (rec_ptr == nullptr) {
-    rec_ptr =  // NOLINT
-            new Record(key.data(), key.size(), val.data(), val.size());
+    rec_ptr = new Record(key, val);
     Status insert_result(
-            kohler_masstree::insert_record(key.data(), key.size(), rec_ptr));
+            kohler_masstree::insert_record(st, key, rec_ptr));
     if (insert_result == Status::OK) {
-      ti->get_write_set().emplace_back(OP_TYPE::INSERT, rec_ptr);
+      ti->get_write_set().emplace_back(OP_TYPE::INSERT, st, rec_ptr);
       return Status::OK;
     }
     // else insert_result == Status::WARN_ALREADY_EXISTS
@@ -97,7 +92,7 @@ Status upsert(Token token, [[maybe_unused]] Storage storage,  // NOLINT
     delete rec_ptr;  // NOLINT
   }
 
-  ti->get_write_set().emplace_back(key.data(), key.size(), val.data(), val.size(), OP_TYPE::UPDATE, rec_ptr);  // NOLINT
+  ti->get_write_set().emplace_back(key, val, OP_TYPE::UPDATE, st, rec_ptr);  // NOLINT
 
   return Status::OK;
 }

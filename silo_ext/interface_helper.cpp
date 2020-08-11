@@ -164,9 +164,8 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
       case OP_TYPE::UPDATE: {
         std::string *old_value{};
         std::string_view new_value_view =
-                iws->get_tuple(iws->get_op()).get_value();
-        rec_ptr->get_tuple().get_pimpl()->set_value(
-                new_value_view.data(), new_value_view.size(), &old_value);
+                iws->get_tuple(iws->get_op()).get_val();
+        rec_ptr->get_tuple().set_value(new_value_view, &old_value);
         storeRelease(rec_ptr->get_tidw().get_obj(), max_tid.get_obj());
         if (old_value != nullptr) {
           std::mutex &mutex_for_gc_list =
@@ -188,7 +187,7 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
         delete_tid.set_absent(true);
         std::string_view key_view = rec_ptr->get_tuple().get_key();
         kohler_masstree::get_mtdb(iws->get_st()).remove_value(key_view.data(),
-                                                 key_view.size());
+                                                              key_view.size());
         storeRelease(rec_ptr->get_tidw().get_obj(), delete_tid.get_obj());
 
         /**

@@ -63,7 +63,7 @@ unsigned int Log::LogRecord::compute_checksum() {  // NOLINT
   }
 
   // value_length
-  std::string_view value_view = tuple_->get_value();
+  std::string_view value_view = tuple_->get_val();
   std::size_t value_length = value_view.size();
   charitr = reinterpret_cast<char *>(&(value_length));  // NOLINT
   for (std::size_t i = 0; i < sizeof(std::size_t); ++i) {
@@ -169,7 +169,7 @@ unsigned int Log::LogRecord::compute_checksum() {  // NOLINT
   for (auto &&itr : log_set) {
     if (itr.get_tid().get_epoch() > recovery_epoch) break;
     if (itr.get_op() == OP_TYPE::UPDATE || itr.get_op() == OP_TYPE::INSERT) {
-      upsert(s, st, itr.get_tuple()->get_key(), itr.get_tuple()->get_value());
+      upsert(s, st, itr.get_tuple()->get_key(), itr.get_tuple()->get_val());
     } else if (itr.get_op() == OP_TYPE::DELETE) {
       delete_record(s, st, itr.get_tuple()->get_key());
     }

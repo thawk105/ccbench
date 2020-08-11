@@ -36,7 +36,7 @@ void session_info::clean_up_scan_caches() {
     std::string_view key_view;
     std::string_view value_view;
     key_view = tuple.get_key();
-    value_view = tuple.get_value();
+    value_view = tuple.get_val();
     std::cout << "key : " << key_view << std::endl;
     std::cout << "key_size : " << key_view.size() << std::endl;
     std::cout << "value : " << value_view << std::endl;
@@ -58,7 +58,7 @@ void session_info::clean_up_scan_caches() {
     std::string_view key_view;
     std::string_view value_view;
     key_view = itr.get_tuple().get_key();
-    value_view = itr.get_tuple().get_value();
+    value_view = itr.get_tuple().get_val();
     std::cout << "key : " << key_view << std::endl;
     std::cout << "key_size : " << key_view.size() << std::endl;
     std::cout << "value : " << value_view << std::endl;
@@ -279,7 +279,7 @@ void session_info::wal(uint64_t commit_id) {
               static_cast<const void *>(key_view.data()),
               key_size);  // NOLINT
 
-      std::string_view value_view = tupleptr->get_value();
+      std::string_view value_view = tupleptr->get_val();
       // write value_length
       // value_view.size() returns constexpr.
       std::size_t value_size = value_view.size();

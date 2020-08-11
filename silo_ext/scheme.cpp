@@ -39,7 +39,7 @@ bool write_set_obj::operator<(const write_set_obj &right) const {  // NOLINT
 void write_set_obj::reset_tuple_value(std::string_view val) {
   (this->get_op() == OP_TYPE::UPDATE ? this->get_tuple_to_local()
                                      : this->get_tuple_to_db())
-          .set_value(val.data(), val.size());
+          .set_value(val);
 }
 
 }  // namespace ccbench

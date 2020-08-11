@@ -4,6 +4,7 @@
  */
 
 #pragma once
+
 #include "scheme.h"
 #include "scheme_global.h"
 #include "tuple.h"
@@ -85,8 +86,7 @@ extern Status commit(Token token);  // NOLINT
  * @return Status::WARN_CANCEL_PREVIOUS_OPERATION it canceled an update/insert
  * operation before this fucntion and did delete operation.
  */
-extern Status delete_record(Token token, Storage storage,  // NOLINT
-                            std::string_view key);
+extern Status delete_record(Token token, Storage st, std::string_view key);
 
 /**
  * @brief delete existing storage and records under the storage.
@@ -107,7 +107,7 @@ extern Status delete_record(Token token, Storage storage,  // NOLINT
  * @return Status::OK
  * @return Status::ERR_SESSION_LIMIT There are no capacity of session.
  */
-extern Status enter(Token& token);  // NOLINT
+extern Status enter(Token &token);  // NOLINT
 
 /**
  * @brief do delete operations for all records, join core threads and delete the
@@ -131,7 +131,7 @@ extern void fin();
  * name
  */
 [[maybe_unused]] extern Status get_storage(std::string_view name,  // NOLINT
-                                           Storage& storage);
+                                           Storage &storage);
 
 /**
  * @brief initialize shirakami environment
@@ -143,7 +143,7 @@ extern void fin();
  * @return Status::OK
  */
 extern Status init(                                                // NOLINT
-    std::string_view log_directory_path = MAC2STR(PROJECT_ROOT));  // NOLINT
+        std::string_view log_directory_path = MAC2STR(PROJECT_ROOT));  // NOLINT
 
 /**
  * @brief insert the record with given key/value
@@ -158,8 +158,7 @@ extern Status init(                                                // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE it already executed
  * update/insert/upsert, so it update the local write set object.
  */
-extern Status insert(Token token, Storage storage,  // NOLINT
-                     std::string_view key, std::string_view val);
+extern Status insert(Token token, Storage st, std::string_view key, std::string_view val);
 
 /**
  * @brief leave session
@@ -190,7 +189,7 @@ extern Status leave(Token token);  // NOLINT
 extern Status open_scan(Token token, Storage storage,  // NOLINT
                         std::string_view left_key, bool l_exclusive,
                         std::string_view right_key, bool r_exclusive,
-                        ScanHandle& handle);
+                        ScanHandle &handle);
 
 /**
  * @brief This function reads the one records from the scan_cache
@@ -212,7 +211,7 @@ extern Status open_scan(Token token, Storage storage,  // NOLINT
  * @return Status::OK It succeeded.
  */
 extern Status read_from_scan(Token token, Storage storage,  // NOLINT
-                             ScanHandle handle, Tuple** result);
+                             ScanHandle handle, Tuple **result);
 
 /**
  * @brief register new storage, which is used to separate the KVS's key space,
@@ -223,9 +222,9 @@ extern Status read_from_scan(Token token, Storage storage,  // NOLINT
  * that is used for the subsequent calls related with the storage.
  * @return Status::OK if successful
  */
-[[maybe_unused]] extern Status register_storage(char const* name,  // NOLINT
+[[maybe_unused]] extern Status register_storage(char const *name,  // NOLINT
                                                 std::size_t len_name,
-                                                Storage& storage);
+                                                Storage &storage);
 
 /**
  * @brief search with the given key range and return the found tuples
@@ -251,7 +250,7 @@ extern Status read_from_scan(Token token, Storage storage,  // NOLINT
 extern Status scan_key(Token token, Storage storage,  // NOLINT
                        std::string_view left_key, bool l_exclusive,
                        std::string_view right_key, bool r_exclusive,
-                       std::vector<const Tuple*>& result);
+                       std::vector<const Tuple *> &result);
 
 /**
  * @brief This function checks the size resulted at open_scan with the @a
@@ -266,8 +265,8 @@ extern Status scan_key(Token token, Storage storage,  // NOLINT
  * @return Status::OK success.
  */
 [[maybe_unused]] extern Status scannable_total_index_size(  // NOLINT
-    Token token,                                            // NOLINT
-    Storage storage, ScanHandle& handle, std::size_t& size);
+        Token token,                                            // NOLINT
+        Storage storage, ScanHandle &handle, std::size_t &size);
 
 /**
  * @brief search with the given key and return the found tuple
@@ -288,7 +287,7 @@ extern Status scan_key(Token token, Storage storage,  // NOLINT
  * operation of concurrent transaction.
  */
 extern Status search_key(Token token, Storage storage,  // NOLINT
-                         std::string_view key, Tuple** tuple);
+                         std::string_view key, Tuple **tuple);
 
 /**
  * @brief Recovery by single thread.
@@ -311,8 +310,7 @@ extern Status search_key(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE It already executed update/insert,
  * so it update the value which is going to be updated.
  */
-extern Status update(Token token, Storage storage,  // NOLINT
-                     std::string_view key, std::string_view val);
+extern Status update(Token token, Storage st, std::string_view key, std::string_view val);
 
 /**
  * @brief update the record for the given key, or insert the key/value if the
@@ -326,7 +324,6 @@ extern Status update(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE It already did
  * insert/update/upsert, so it overwrite its local write set.
  */
-extern Status upsert(Token token, Storage storage,  // NOLINT
-                     std::string_view key, std::string_view val);
+extern Status upsert(Token token, Storage st, std::string_view key, std::string_view val);
 
 }  // namespace ccbench
