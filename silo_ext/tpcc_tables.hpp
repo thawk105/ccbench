@@ -1,11 +1,8 @@
-
 /*
-TPC-C
-http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
-
-1.3 Table Layouts
-
-*/
+ * TPC-C
+ * http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
+ * 1.3 Table Layouts
+ */
 
 #include <cstdint>
 #include <string>
@@ -14,9 +11,8 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 
 namespace TPCC {
 
-struct Warehouse {
+	struct Warehouse {
     constexpr const static char* kPrefix = "warehouse";
-
     std::uint16_t W_ID; //2*W unique IDs
     char W_NAME[11];
     char W_STREET_1[21];
@@ -26,16 +22,15 @@ struct Warehouse {
     char W_ZIP[10];
     double W_TAX;
     double W_YTD;
-
+		
     //Primary Key: W_ID
-    static std::string CreateKey(size_t w_id){
-        return std::string(kPrefix + std::to_string(w_id));
+		static std::string CreateKey(size_t w_id){
+			//return std::string(kPrefix + std::to_string(w_id));
+			return std::string(std::to_string(w_id));
     }
-
-    std::string createKey(){return CreateKey(W_ID);}
-};
-
-
+		
+		std::string createKey(){return CreateKey(W_ID);}
+	};
 
 struct District{
     constexpr const static char* kPrefix = "district";
