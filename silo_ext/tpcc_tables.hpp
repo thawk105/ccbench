@@ -61,7 +61,7 @@ struct District{
 
 };
 
-struct Custormer{
+struct Customer{
     constexpr const static char* kPrefix = "customer";
 
     //(C_W_ID, C_D_ID) Foreign Key, references (D_W_ID, D_ID)
