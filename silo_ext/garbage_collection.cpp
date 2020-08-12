@@ -11,7 +11,7 @@
 namespace ccbench::garbage_collection {
 
 [[maybe_unused]] void release_all_heap_objects() {
-  //remove_all_leaf_from_mt_db_and_release();
+  remove_all_leaf_from_mt_db_and_release();
   delete_all_garbage_records();
   delete_all_garbage_values();
 }
