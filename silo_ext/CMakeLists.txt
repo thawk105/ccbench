@@ -40,11 +40,37 @@ file(GLOB SILO_SOURCES
         )
 
 add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp)
+add_executable(river.exe ${SILO_SOURCES} river.cpp river_tpcc_initializer.hpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
+add_executable(dev_test.exe test/dev_test.cpp)
+add_executable(river_test.exe test/river_test.cpp)
 
 target_include_directories(silo_ext.exe
         PRIVATE ${PROJECT_SOURCE_DIR}
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
+        PRIVATE ${PROJECT_SOURCE_DIR}/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        )
+
+target_include_directories(river.exe
+        PRIVATE ${PROJECT_SOURCE_DIR}
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
+        PRIVATE ${PROJECT_SOURCE_DIR}/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        )
+
+target_include_directories(dev_test.exe
+        PRIVATE ${PROJECT_SOURCE_DIR}
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        )
+
+target_include_directories(river_test.exe
+        PRIVATE ${PROJECT_SOURCE_DIR}
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
         )
@@ -62,6 +88,34 @@ target_link_libraries(silo_ext.exe
         gflags::gflags
         ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
         ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(river.exe
+        Boost::filesystem
+        gflags::gflags
+        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
+        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+      
+target_link_libraries(dev_test.exe
+        Boost::filesystem
+        gflags::gflags
+        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
+        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${PROJECT_SOURCE_DIR}/../third_party/googletest/build/lib/libgtest.a
+        ${PROJECT_SOURCE_DIR}/../third_party/googletest/build/lib/libgtest_main.a
+        Threads::Threads
+        )
+
+target_link_libraries(river_test.exe
+        Boost::filesystem
+        gflags::gflags
+        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
+        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${PROJECT_SOURCE_DIR}/../third_party/googletest/build/lib/libgtest.a
+        ${PROJECT_SOURCE_DIR}/../third_party/googletest/build/lib/libgtest_main.a
         Threads::Threads
         )
 
