@@ -14,10 +14,10 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-#include "include/atomic_tool.hh"
+//#include "include/atomic_tool.hh"
 #include "include/common.hh"
 #include "include/result.hh"
-#include "include/transaction.hh"
+//#include "include/transaction.hh"
 #include "include/util.hh"
 
 #include "../include/atomic_wrapper.hh"
@@ -25,12 +25,14 @@
 #include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/fileio.hh"
-#include "../include/masstree_wrapper.hh"
+//#include "../include/masstree_wrapper.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
 #include "../include/tsc.hh"
 #include "../include/util.hh"
 #include "../include/zipf.hh"
+
+#include "tpcc_query.hpp"
 
 using namespace std;
 
@@ -38,8 +40,10 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Result &myres = std::ref(SiloResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
+  /*
   TxnExecutor trans(thid, (Result *) &myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
+  */
   uint64_t epoch_timer_start, epoch_timer_stop;
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
@@ -70,14 +74,17 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   // sysconf(_SC_NPROCESSORS_CONF));
 #endif
 
+  /*
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(int(thid));
 #endif
+  */
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
+    /*
 #if PARTITION_TABLE
     makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
                   FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true,
@@ -87,10 +94,17 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
                   FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
                   thid, myres);
 #endif
+    */
+    TPCC::Query query;
+    TPCC::query::Option query_opt;
+    query_opt.perc_payment = 100;
+    query.generate(rnd, query_opt, myres);
 
+    /*
 #if PROCEDURE_SORT
     sort(trans.pro_set_.begin(), trans.pro_set_.end());
 #endif
+    */
 
 RETRY:
     if (thid == 0) {
@@ -103,7 +117,29 @@ RETRY:
 
     if (loadAcquire(quit)) break;
 
-    trans.begin();
+    //trans.begin();
+
+    query.generate(rnd, query_opt, myres);
+    switch (query.type) {
+    case TPCC::Q_NEW_ORDER :
+      //TPCC::run_new_order(query.new_order);
+      break;
+    case TPCC::Q_PAYMENT :
+      //TPCC::run_payment(query.payment);
+      break;
+    case TPCC::Q_ORDER_STATUS:
+      //TPCC::run_order_status(query.order_status);
+      //break;
+    case TPCC::Q_DELIVERY:
+      //TPCC::run_delivery(query.delivery);
+      //break;
+    case TPCC::Q_STOCK_LEVEL:
+      //TPCC::run_stock_level(query.stock_level);
+      //break;
+    defalut:
+      abort();
+    }
+    /*
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
       if ((*itr).ope_ == Ope::READ) {
@@ -117,13 +153,17 @@ RETRY:
         ERR;
       }
     }
+  */
 
+    /*
     if (trans.validationPhase()) {
       trans.writePhase();
+    */
       /**
        * local_commit_counts is used at ../include/backoff.hh to calcurate about
        * backoff.
        */
+    /*
       storeRelease(myres.local_commit_counts_,
                    loadAcquire(myres.local_commit_counts_) + 1);
     } else {
@@ -131,6 +171,7 @@ RETRY:
       ++myres.local_abort_counts_;
       goto RETRY;
     }
+    */
   }
 
   return;

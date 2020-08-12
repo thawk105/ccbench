@@ -5,11 +5,11 @@
 #include <iostream>
 #include <queue>
 
-#include "tuple.hh"
+//#include "tuple.hh"
 
 #include "../../include/cache_line_size.hh"
 #include "../../include/int64byte.hh"
-#include "../../include/masstree_wrapper.hh"
+//#include "../../include/masstree_wrapper.hh"
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -59,4 +59,4 @@ DECLARE_double(zipf_skew);
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *CTIDW;
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+//alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;

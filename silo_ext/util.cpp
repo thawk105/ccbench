@@ -15,14 +15,14 @@
 
 #include "include/atomic_tool.hh"
 #include "include/common.hh"
-#include "include/transaction.hh"
-#include "include/tuple.hh"
+//#include "include/transaction.hh"
+//#include "include/tuple.hh"
 #include "include/util.hh"
 
 #include "../include/cache_line_size.hh"
 #include "../include/config.hh"
 #include "../include/debug.hh"
-#include "../include/masstree_wrapper.hh"
+//#include "../include/masstree_wrapper.hh"
 #include "../include/procedure.hh"
 #include "../include/random.hh"
 #include "../include/tsc.hh"
@@ -67,6 +67,7 @@ bool chkEpochLoaded() {
 }
 
 void displayDB() {
+  /*
   Tuple *tuple;
   for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
     tuple = &Table[i];
@@ -77,6 +78,7 @@ void displayDB() {
     cout << "bit: " << tuple->tidword_.obj_ << endl;
     cout << endl;
   }
+  */
 }
 
 void displayParameter() {
@@ -93,11 +95,14 @@ void displayParameter() {
 }
 
 void genLogFile(std::string &logpath, const int thid) {
+  /*
   genLogFileName(logpath, thid);
   createEmptyFile(logpath);
+  */
 }
 
 void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
+  /*
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
 #endif
@@ -115,9 +120,11 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
     MT.insert_value(i, tmp);
 #endif
   }
+  */
 }
 
 void makeDB() {
+  /*
   if (posix_memalign((void **) &Table, PAGE_SIZE,
                      (FLAGS_tuple_num) * sizeof(Tuple)) != 0)
     ERR;
@@ -134,6 +141,7 @@ void makeDB() {
     thv.emplace_back(partTableInit, i, i * (FLAGS_tuple_num / maxthread),
                      (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
   for (auto &th : thv) th.join();
+  */
 }
 
 void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
@@ -147,6 +155,7 @@ void leaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
 }
 
 void ShowOptParameters() {
+  /*
   cout << "#ShowOptParameters()"
        << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
        << ": KEY_SIZE " << KEY_SIZE << ": MASSTREE_USE " << MASSTREE_USE
@@ -154,4 +163,5 @@ void ShowOptParameters() {
        << ": PARTITION_TABLE " << PARTITION_TABLE << ": PROCEDURE_SORT "
        << PROCEDURE_SORT << ": SLEEP_READ_PHASE " << SLEEP_READ_PHASE
        << ": VAL_SIZE " << VAL_SIZE << ": WAL " << WAL << endl;
+  */
 }
