@@ -11,22 +11,18 @@ makeDBforTPCC()
   std::string a{"a"};
   std::string b{"b"};
 
-	NNN;
+	init();
   enter(token);
-	NNN;
   insert(token, Storage::CUSTOMER, a, b);
-	NNN;
   Tuple *ret_tuple_ptr;
-	NNN;
   commit(token);
-	NNN;
 	
   delete_record(token, Storage::CUSTOMER, a);
 	commit(token);
-	NNN;
   search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr);
   commit(token);
   leave(token);
+	fin();
 }
 
 int
