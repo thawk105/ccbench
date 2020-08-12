@@ -4,7 +4,7 @@
 
 using namespace ccbench;
 
-bool load(size_t warehouse){
+bool init_table_warehouse(size_t nwh){
   Token token{};
 	init();
   enter(token);
@@ -16,11 +16,12 @@ bool load(size_t warehouse){
         std::string mem;
         
 		//CREATE Warehouses by single thread.
-		for (size_t w = 0; w < warehouse; w++) {
+		for (size_t w = 0; w < nwh; w++) {
 			TPCC::Warehouse wh;
 			wh.W_ID = w;
 			wh.W_TAX = 1.5;
 			wh.W_YTD = 1000'000'000;
+
             char* ptr=reinterpret_cast<char*>(&wh);
             size_t siz=sizeof(TPCC::Warehouse);
             //std::cout<<siz<<std::endl;
@@ -42,17 +43,20 @@ bool load(size_t warehouse){
         leave(token);
         fin();
         
-        
+       
 	}
+	commit(token);
+	leave(token);
+	fin();
 }
 
 void
-makeDBforTPCC()
+makedb_tpcc()
 {
   Token token{};
   std::string a{"a"};
   std::string b{"b"};
-
+	
 	init();
   enter(token);
   insert(token, Storage::CUSTOMER, a, b);
@@ -71,7 +75,14 @@ int
 //tpcc_txn_man::run_new_order(tpcc_query * query)
 main(void)
 {
+<<<<<<< HEAD
     //	makeDBforTPCC();
     load(1);
+=======
+	makedb_tpcc();
+	const int nwh = 224;
+	init_table_warehouse(nwh);
+	
+>>>>>>> 67493a9e3ffbb3bed77070f416cedaaa8a508219
 	return 0;
 }
