@@ -210,11 +210,14 @@ int main(void) {
     Result res;
     Xoroshiro128Plus rnd;
     //rnd.init();
-    TPCC::query::Option qery_opt;
+    TPCC::query::Option query_opt;
     TPCC::Query *query = (TPCC::Query*)malloc(sizeof(TPCC::Query)*N);
+
+    query_opt.perc_payment = 100;
     for (int i=0; i<N; ++i) {
         query[i].generate(rnd,query_opt,res);
     }
+
     for (int i=0; i<5; ++i) {
         query[i].print();
     }
