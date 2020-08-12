@@ -18,12 +18,12 @@ struct Warehouse{
     constexpr const static char* kPrefix = "warehouse";
 
     std::uint16_t W_ID; //2*W unique IDs
-    char W_NAME[10];
-    char W_STREET_1[20];
-    char W_STREET_2[20];
-    char W_CITY[20];
-    char W_STATE[2];
-    char W_ZIP[9];
+    char W_NAME[11];
+    char W_STREET_1[21];
+    char W_STREET_2[21];
+    char W_CITY[21];
+    char W_STATE[3];
+    char W_ZIP[10];
     double W_TAX;
     double W_YTD;
 
@@ -42,12 +42,12 @@ struct District{
 
     std::uint8_t D_ID; //20 unique IDs
     std::uint16_t D_W_ID; //2*W unique IDs D_W_ID Foreign Key, references W_ID
-    char D_NAME[10];
-    char D_STREET_1[20];
-    char D_STREET_2[20];
-    char D_CITY[20];
-    char D_STATE[2];
-    char D_ZIP[9];
+    char D_NAME[11];
+    char D_STREET_1[21];
+    char D_STREET_2[21];
+    char D_CITY[21];
+    char D_STATE[3];
+    char D_ZIP[10];
     double D_TAX; //signed numeric(4,4) 
     double D_YTD; //signed numeric(12,2)
     std::uint32_t D_NEXT_O_ID; //10,000,000 unique IDs
@@ -68,24 +68,24 @@ struct Custormer{
     std::uint32_t C_ID; //96,000 unique IDs
     std::uint8_t C_D_ID; //20 unique IDs
     std::uint16_t C_W_ID; //2*W unique IDs
-    char C_FIRST[16];
-    char C_MIDDLE[2];
-    char C_LAST[16]; //the customer's last name
-    char C_STREET_1[20];
-    char C_STREET_2[20];
-    char C_CITY[20];
-    char C_STATE[2];
-    char C_ZIP[9];
-    char C_PHONE[16];
+    char C_FIRST[17];
+    char C_MIDDLE[3];
+    char C_LAST[17]; //the customer's last name
+    char C_STREET_1[21];
+    char C_STREET_2[21];
+    char C_CITY[21];
+    char C_STATE[3];
+    char C_ZIP[10];
+    char C_PHONE[17];
     std::time_t C_SINCE;//date and time
-    char C_CREDIT[2];   //"GC"=good, "BC"=bad
+    char C_CREDIT[3];   //"GC"=good, "BC"=bad
     double C_CREDIT_LIM;
     double C_DISCOUNT;
     double C_BALANCE;
     double C_YTD_PAYMENT;
     double C_PAYMENT_CNT;
     double C_DELIVERY_CNT;
-    char C_DATA[50];
+    char C_DATA[51];
 
     //Primary Key: (C_W_ID, C_D_ID, C_ID)
     static std::string CreateKey(size_t w,size_t d,size_t c){
@@ -107,7 +107,7 @@ struct History{
     uint16_t H_W_ID; // 2*W unique IDs
     std::time_t H_DATE; //date and time
     double H_AMOUNT; //signed numeric(6, 2)
-    char H_DATA[24]; // variable text, size 24 Miscellaneous information
+    char H_DATA[25]; // variable text, size 24 Miscellaneous information
 
 
 };
@@ -177,9 +177,9 @@ struct Item{
 
     std::uint32_t I_ID; //200,000 unique IDs 100,000 items are populated
     std::uint32_t I_IM_ID; //200,000 unique IDs Image ID associated to Item
-    char I_NAME[24]; //variable text, size 24
+    char I_NAME[25]; //variable text, size 24
     double I_PRICE; //numeric(5, 2)
-    char I_DATA[50]; //variable text, size 50 Brand information
+    char I_DATA[51]; //variable text, size 50 Brand information
 
     //Primary Key: I_ID
     static std::string CreateKey(size_t i){
@@ -199,20 +199,20 @@ struct Stock{
     std::uint16_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
     std::uint8_t S_W_ID; //2*W unique IDs
     double S_QUANTITY; //signed numeric(4)
-    char S_DIST_01[24]; //fixed text, size 24
-    char S_DIST_02[24]; //fixed text, size 24
-    char S_DIST_03[24]; //fixed text, size 24
-    char S_DIST_04[24]; // fixed text, size 24
-    char S_DIST_05[24]; // fixed text, size 24
-    char S_DIST_06[24]; // fixed text, size 24
-    char S_DIST_07[24]; // fixed text, size 24
-    char S_DIST_08[24]; // fixed text, size 24
-    char S_DIST_09[24]; // fixed text, size 24
-    char S_DIST_10[24]; // fixed text, size 24
+    char S_DIST_01[25]; //fixed text, size 24
+    char S_DIST_02[25]; //fixed text, size 24
+    char S_DIST_03[25]; //fixed text, size 24
+    char S_DIST_04[25]; // fixed text, size 24
+    char S_DIST_05[25]; // fixed text, size 24
+    char S_DIST_06[25]; // fixed text, size 24
+    char S_DIST_07[25]; // fixed text, size 24
+    char S_DIST_08[25]; // fixed text, size 24
+    char S_DIST_09[25]; // fixed text, size 24
+    char S_DIST_10[25]; // fixed text, size 24
     double S_YTD; // numeric(8)
     double S_ORDER_CNT; // numeric(4)
     double S_REMOTE_CNT; // numeric(4)
-    char S_DATA[50]; // variable text, size 50
+    char S_DATA[51]; // variable text, size 50
 
     // Primary Key: (S_W_ID, S_I_ID) composite.
     static std::string CreateKey(size_t w, size_t i) {
