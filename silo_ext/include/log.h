@@ -14,6 +14,7 @@
 #include "interface.h"
 #include "scheme_global.h"
 #include "tid.h"
+#include "tuple.h"
 
 namespace ccbench {
 
