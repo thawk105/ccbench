@@ -8,8 +8,7 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 
 #include "tpcc_tables.hpp"
 
-namespace TPCC{
-namespace Initializer{
+namespace TPCC::Initializer{
 
     bool load(size_t warehouse){
         std::time_t now = std::time(nullptr);
@@ -118,5 +117,4 @@ namespace Initializer{
 
     }
 
-}
-}
+}//namespace TPCC initializer
