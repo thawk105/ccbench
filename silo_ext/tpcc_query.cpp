@@ -2,11 +2,6 @@
 #include "./tpcc_query.hpp"
 #include "../include/random.hh"
 #include "../include/result.hh"
-#include "tpcc_tables.hpp"
-#include "./include/record.h"
-#include "./include/interface.h"
-#include "./index/masstree_beta/include/masstree_beta_wrapper.h"
-
 
 namespace TPCC {
 
@@ -31,6 +26,7 @@ namespace TPCC {
 
     std::uint64_t Random(std::uint64_t x, std::uint64_t y, Xoroshiro128Plus &rnd) {
         if (x==y) return x;
+        if (x>y) std::abort();
         return (rnd.next() % (y-x+1)) + x;
     }
 
@@ -60,16 +56,16 @@ namespace TPCC {
             C = C_OL_I_ID;
             break;
         default:
-            abort();
+            std::abort();
         }
         return (((Random(0,A,rnd) | Random(x,y,rnd)) + C) % (y-x+1)) + x;
     }
 
-    void query::NewOrder::generate(Xoroshiro128Plus &rnd,
+    void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
                                    [[maybe_unused]]Result &res) {
-        w_id   = Random(1, g_num_wh, rnd);
-        d_id   = Random(1, g_dist_per_ware, rnd);
-        c_id   = NURand(1023, 1, g_cust_per_dist, rnd);
+        w_id   = Random(1, opt.num_wh, rnd);
+        d_id   = Random(1, opt.dist_per_ware, rnd);
+        c_id   = NURand(1023, 1, opt.cust_per_dist, rnd);
         rbk    = Random(1, 100, rnd);
         ol_cnt = Random(5, 15, rnd);
         o_entry_d = 2013;
@@ -77,17 +73,16 @@ namespace TPCC {
 
         for (unsigned int i=0; i<ol_cnt; ++i) {
             { redo1:
-                items[i].ol_i_id = NURand(8191, 1, g_max_items, rnd);
+                items[i].ol_i_id = NURand(8191, 1, opt.max_items, rnd);
                 for (unsigned int j=0; j<i; ++j) {
                     if (items[i].ol_i_id == items[j].ol_i_id) goto redo1;
                 }
             };
-            int x = Random(1, 100, rnd);
-            if (x > 1 || g_num_wh == 1) {
+            if (opt.num_wh == 1 || Random(1, 100, rnd) > 1) {
                 items[i].ol_supply_w_id = w_id;
             } else {
                 do {
-                    items[i].ol_supply_w_id = Random(1, g_num_wh, rnd);
+                    items[i].ol_supply_w_id = Random(1, opt.num_wh, rnd);
                 } while (items[i].ol_supply_w_id == w_id);
                 remote = true;
             }
@@ -95,30 +90,31 @@ namespace TPCC {
         }
     }
 
-    void query::Payment::generate(Xoroshiro128Plus &rnd,
+    void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
                                   [[maybe_unused]]Result &res) {
-        w_id = Random(1, g_num_wh, rnd);
+        w_id = Random(1, opt.num_wh, rnd);
         d_w_id = w_id;
-        d_id = Random(1, g_dist_per_ware, rnd);
+        d_id = Random(1, opt.dist_per_ware, rnd);
         h_amount = Random(100, 500000, rnd)*0.01;
-        int x = Random(1, 100, rnd);
-        int y = Random(1, 100, rnd);
 
+        int x = Random(1, 100, rnd);
         if (x <= 85) {
             // home warehouse
             c_d_id = d_id;
             c_w_id = w_id;
         } else {
             // remote warehouse
-            c_d_id = Random(1, g_dist_per_ware, rnd);
-            if (g_num_wh > 1) {
+            c_d_id = Random(1, opt.dist_per_ware, rnd);
+            if (opt.num_wh > 1) {
                 do {
-                    c_w_id = Random(1, g_num_wh, rnd);
+                    c_w_id = Random(1, opt.num_wh, rnd);
                 } while (c_w_id == w_id);
             } else {
                 c_w_id = w_id;
             }
         }
+
+        int y = Random(1, 100, rnd);
         if (y <= 60) {
             // by last name
             by_last_name = true;
@@ -126,7 +122,7 @@ namespace TPCC {
         } else {
             // by cust id
             by_last_name = false;
-            c_id = NURand(1023, 1, g_cust_per_dist, rnd);
+            c_id = NURand(1023, 1, opt.cust_per_dist, rnd);
         }
     }
 
@@ -150,33 +146,42 @@ namespace TPCC {
 
     }
 
-    void Query::generate(Xoroshiro128Plus &rnd,
+    void Query::generate(Xoroshiro128Plus &rnd, query::Option &opt,
                          [[maybe_unused]]Result &res) {
-        double x = rnd.next() / (((double)~(uint64_t)0)+1.0);
-
-        /*
-        if (x < g_perc_payment) {
-            type = Q_PAYMENT;
+        double x = rnd.next() / (((double)~(uint64_t)0)+1.0) * 100;
+        x -= opt.perc_stock_level;
+        if (x < 0) {
+            type = Q_STOCK_LEVEL;
         } else {
-            type = Q_NEW_ORDER;
+            x -= opt.perc_delivery;
+            if (x < 0) {
+                type = Q_DELIVERY;
+            } else {
+                x -= opt.perc_order_status;
+                if (x < 0) {
+                    type = Q_ORDER_STATUS;
+                } else {
+                    x -= opt.perc_payment;
+                    if (x < 0) {
+                        type = Q_PAYMENT;
+                    } else {
+                        type = Q_NEW_ORDER;
+                    }
+                }
+            }
         }
-        */
-       
-       type=Q_PAYMENT;
-
-
         switch (type) {
         case Q_NEW_ORDER:
-            new_order.generate(rnd,res);
+            new_order.generate(rnd,opt,res);
             break;
         case Q_PAYMENT:
-            payment.generate(rnd,res);
+            payment.generate(rnd,opt,res);
             break;
         case Q_ORDER_STATUS:
         case Q_DELIVERY:
         case Q_STOCK_LEVEL:
         case Q_NONE:
-            abort();
+            std::abort();
         }
     }
 
@@ -192,64 +197,35 @@ namespace TPCC {
         case Q_DELIVERY:
         case Q_STOCK_LEVEL:
         case Q_NONE:
-            abort();
-        }
-    }
-
-
-    void run_payment(TPCC::query::Payment &query,Xoroshiro128Plus &rnd){
-        uint64_t W_ID=query.w_id;
-        uint64_t D_ID=query.d_id;
-
-        uint64_t C_W_ID=query.c_w_id;
-        uint64_t C_D_ID=query.c_d_id;
-        size_t x = Random(1, 100, rnd);
-        size_t y = Random(1,100,rnd);
-
-        std::string customer_key;
-        customer_key=TPCC::Customer::CreateKey(C_W_ID, C_D_ID, D_ID);
-        
-        const double H_AMOUNT=query.h_amount;
-        std::time_t H_DATE=std::time(nullptr);
-
-        Warehouse warehouse;
-        {
-            //ここでkey=CreateKey(W_ID)をよみたい
-            std::string key=Warehouse::CreateKey(W_ID);
-            //Record* record=kohler_masstree::find(record(Storage::WAREHOUSE,key));
+            std::abort();
         }
     }
 }
 
 
-#define TEST true
-
-#if TEST
+#ifdef TEST
 #define N 2000000
 
 int main(void) {
     Result res;
     Xoroshiro128Plus rnd;
-    // TPCC::Query *query = (TPCC::Query*)malloc(sizeof(TPCC::Query)*N);
-    // for (int i=0; i<N; ++i) {
-    //     query[i].generate(rnd,res);
-    // }
-    // for (int i=0; i<5; ++i) {
-    //     query[i].print();
-    // }
-    //free(query);
+    //rnd.init();
+    TPCC::query::Option query_opt;
+    TPCC::Query *query = (TPCC::Query*)malloc(sizeof(TPCC::Query)*N);
 
-    TPCC::Query query;
-    query.generate(rnd,res);
-    switch(query.type){
-        case TPCC::Q_PAYMENT:
-            TPCC::run_payment(query.payment,rnd);
-            break;
-
+    query_opt.perc_payment = 100;
+    for (int i=0; i<N; ++i) {
+        query[i].generate(rnd,query_opt,res);
     }
 
-
-    
+    for (int i=0; i<5; ++i) {
+        query[i].print();
+    }
+    puts("");
+    for (int i=N-5; i<N; ++i) {
+        query[i].print();
+    }
+    free(query);
     return 0;
 }
 #endif
