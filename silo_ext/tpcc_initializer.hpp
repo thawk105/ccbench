@@ -7,24 +7,8 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 */
 
 #include "tpcc_tables.hpp"
-#include <random>
 
-namespace TPCC{
-namespace Initializer{
-
-    //random number generator
-    template <typename T>
-    T rangeRand(const T& min, const T& max) {
-    static thread_local std::mt19937 generator;
-    if constexpr (std::is_integral<T>{}) {
-        std::uniform_int_distribution<T> distribution(min, max);
-        return distribution(generator);
-    } else {
-        std::uniform_real_distribution<T> distribution(min, max);
-        return distribution(generator);
-    }
-    }
-
+namespace TPCC::Initializer{
 
     bool load(size_t warehouse){
         std::time_t now = std::time(nullptr);
@@ -133,5 +117,4 @@ namespace Initializer{
 
     }
 
-}
-}
+}//namespace TPCC initializer
