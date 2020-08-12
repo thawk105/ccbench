@@ -49,6 +49,10 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Backoff backoff(FLAGS_clocks_per_us);
 #endif
 
+  TPCC::Query query;
+  TPCC::query::Option query_opt;
+  query_opt.perc_payment = 100;
+
 #if WAL
   /*
   const boost::filesystem::path log_dir_path("/tmp/ccbench");
@@ -95,9 +99,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
                   thid, myres);
 #endif
     */
-    TPCC::Query query;
-    TPCC::query::Option query_opt;
-    query_opt.perc_payment = 100;
     query.generate(rnd, query_opt, myres);
 
     /*
@@ -119,7 +120,6 @@ RETRY:
 
     //trans.begin();
 
-    query.generate(rnd, query_opt, myres);
     switch (query.type) {
     case TPCC::Q_NEW_ORDER :
       //TPCC::run_new_order(query.new_order);
@@ -137,7 +137,7 @@ RETRY:
       //TPCC::run_stock_level(query.stock_level);
       //break;
     defalut:
-      abort();
+      std::abort();
     }
     /*
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
