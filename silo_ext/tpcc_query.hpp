@@ -10,16 +10,7 @@
 #define LASTNAME_LEN 	16
 
 namespace TPCC {
-    std::uint32_t g_num_wh = NUM_WH;
-    std::uint32_t g_dist_per_ware = DIST_PER_WARE;
-    double        g_perc_payment = PERC_PAYMENT;
-#if TPCC_SMALL
-    std::uint32_t g_max_items = 10000;
-    std::uint32_t g_cust_per_dist = 2000;
-#else
-    std::uint32_t g_max_items = 100000;
-    std::uint32_t g_cust_per_dist = 3000;
-#endif
+
 
     enum QueryType { Q_NONE,
                      Q_NEW_ORDER,
@@ -29,6 +20,23 @@ namespace TPCC {
                      Q_STOCK_LEVEL };
 
     namespace query {
+
+        class Option {
+        public:
+            std::uint32_t num_wh = NUM_WH;
+            std::uint32_t dist_per_ware = DIST_PER_WARE;
+#if TPCC_SMALL
+            std::uint32_t max_items = 10000;
+            std::uint32_t cust_per_dist = 2000;
+#else
+            std::uint32_t max_items = 100000;
+            std::uint32_t cust_per_dist = 3000;
+#endif
+            double perc_payment = 50;     // 43.1
+            double perc_order_status = 0; // 4.1
+            double perc_delivery = 0;     // 4.2
+            double perc_stock_level = 0;  // 4.1
+        };
 
         class NewOrder {
         public:
@@ -45,8 +53,7 @@ namespace TPCC {
             std::uint64_t ol_cnt;
             std::uint64_t o_entry_d;
 
-            void generate(Xoroshiro128Plus &rnd,
-                          [[maybe_unused]]Result &res);
+            void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
             void print();
         };
 
@@ -62,15 +69,15 @@ namespace TPCC {
             double h_amount;
             bool by_last_name;
 
-            void generate(Xoroshiro128Plus &rnd,
-                          [[maybe_unused]]Result &res);
+            void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
             void print();
         };
 
         class OrderStatus {};
         class Delivery {};
         class StockLevel {};
-    }
+
+    } // namespace query
 
     class Query {
     public:
@@ -83,8 +90,7 @@ namespace TPCC {
             query::StockLevel stock_level;
         };
 
-        void generate(Xoroshiro128Plus &rnd,
-                      [[maybe_unused]]Result &res);
+        void generate(Xoroshiro128Plus &rnd, query::Option &opt, Result &res);
         void print();
     };
 }
