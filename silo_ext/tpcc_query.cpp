@@ -3,9 +3,7 @@
 #include "../include/random.hh"
 #include "../include/result.hh"
 #include "tpcc_tables.hpp"
-#include "./include/record.h"
-#include "./include/interface.h"
-#include "./index/masstree_beta/include/masstree_beta_wrapper.h"
+
 
 
 namespace TPCC {
@@ -196,29 +194,6 @@ namespace TPCC {
         }
     }
 
-
-    void run_payment(TPCC::query::Payment &query,Xoroshiro128Plus &rnd){
-        uint64_t W_ID=query.w_id;
-        uint64_t D_ID=query.d_id;
-
-        uint64_t C_W_ID=query.c_w_id;
-        uint64_t C_D_ID=query.c_d_id;
-        size_t x = Random(1, 100, rnd);
-        size_t y = Random(1,100,rnd);
-
-        std::string customer_key;
-        customer_key=TPCC::Customer::CreateKey(C_W_ID, C_D_ID, D_ID);
-        
-        const double H_AMOUNT=query.h_amount;
-        std::time_t H_DATE=std::time(nullptr);
-
-        Warehouse warehouse;
-        {
-            //ここでkey=CreateKey(W_ID)をよみたい
-            std::string key=Warehouse::CreateKey(W_ID);
-            //Record* record=kohler_masstree::find(record(Storage::WAREHOUSE,key));
-        }
-    }
 }
 
 
@@ -230,23 +205,15 @@ namespace TPCC {
 int main(void) {
     Result res;
     Xoroshiro128Plus rnd;
-    // TPCC::Query *query = (TPCC::Query*)malloc(sizeof(TPCC::Query)*N);
-    // for (int i=0; i<N; ++i) {
-    //     query[i].generate(rnd,res);
-    // }
-    // for (int i=0; i<5; ++i) {
-    //     query[i].print();
-    // }
-    //free(query);
-
-    TPCC::Query query;
-    query.generate(rnd,res);
-    switch(query.type){
-        case TPCC::Q_PAYMENT:
-            TPCC::run_payment(query.payment,rnd);
-            break;
-
+    
+    TPCC::Query *query = (TPCC::Query*)malloc(sizeof(TPCC::Query)*N);
+    for (int i=0; i<N; ++i) {
+         query[i].generate(rnd,res);
     }
+    for (int i=0; i<5; ++i) {
+         query[i].print();
+    }
+    free(query);
 
 
     
