@@ -16,13 +16,11 @@ namespace TPCC::Initializer{
         {
             //CREATE Warehouses by single thread.
             for(size_t w=0;w<warehouse;w++){
-                TPCC::Warehouse warehouse;
-                warehouse.W_ID = w;
-                warehouse.W_TAX = 1.5;
-                warehouse.W_YTD = 1000'000'000;
-
-                db.insert(warehouse.createKey(),&warehouse,sizeof(warehouse));
-
+                TPCC::Warehouse wh;
+                wh.W_ID = w;
+                wh.W_TAX = 1.5;
+                wh.W_YTD = 1000'000'000;
+                db.insert(warehouse.createKey(), &warehouse, sizeof(warehouse));
             }
 
         }

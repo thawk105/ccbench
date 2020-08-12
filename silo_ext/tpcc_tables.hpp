@@ -14,7 +14,7 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 
 namespace TPCC {
 
-struct Warehouse{
+struct Warehouse {
     constexpr const static char* kPrefix = "warehouse";
 
     std::uint16_t W_ID; //2*W unique IDs

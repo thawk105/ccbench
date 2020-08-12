@@ -40,7 +40,7 @@ file(GLOB SILO_SOURCES
         )
 
 add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp)
-add_executable(river.exe ${SILO_SOURCES} river.cpp)
+add_executable(river.exe ${SILO_SOURCES} river.cpp river_tpcc_initializer.hpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
 add_executable(dev_test.exe test/dev_test.cpp)
 add_executable(river_test.exe test/river_test.cpp)
