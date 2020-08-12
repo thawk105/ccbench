@@ -45,9 +45,6 @@ bool init_table_warehouse(size_t nwh){
         
        
 	}
-	commit(token);
-	leave(token);
-	fin();
 }
 
 void
@@ -75,14 +72,12 @@ int
 //tpcc_txn_man::run_new_order(tpcc_query * query)
 main(void)
 {
-<<<<<<< HEAD
+
     //	makeDBforTPCC();
-    load(1);
-=======
-	makedb_tpcc();
-	const int nwh = 224;
-	init_table_warehouse(nwh);
+	//makedb_tpcc();
+	//const int nwh = 224;
+	init_table_warehouse(1);
 	
->>>>>>> 67493a9e3ffbb3bed77070f416cedaaa8a508219
+    
 	return 0;
 }
