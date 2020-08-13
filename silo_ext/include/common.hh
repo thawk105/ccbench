@@ -29,31 +29,35 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 
 #ifdef GLOBAL_VALUE_DEFINE
+DEFINE_uint64(thread_num, 10, "Total number of worker threads.");
 DEFINE_uint64(clocks_per_us, 2100,
               "CPU_MHz. Use this info for measuring time.");
 DEFINE_uint64(epoch_time, 40, "Epoch interval[msec].");
 DEFINE_uint64(extime, 3, "Execution time[sec].");
-DEFINE_uint64(max_ope, 10,
-              "Total number of operations per single transaction.");
-DEFINE_bool(rmw, false,
-            "True means read modify write, false means blind write.");
-DEFINE_uint64(rratio, 50, "read ratio of single transaction.");
-DEFINE_uint64(thread_num, 10, "Total number of worker threads.");
-DEFINE_uint64(tuple_num, 1000000, "Total number of records.");
-DEFINE_bool(ycsb, true,
-            "True uses zipf_skew, false uses faster random generator.");
-DEFINE_double(zipf_skew, 0, "zipf skew. 0 ~ 0.999...");
+
+DEFINE_uint32(num_wh, 1, "The number of warehouses");
+DEFINE_uint32(dist_per_ware, 10, "The number of districts in a warehouse");
+DEFINE_uint32(max_items, 100000, "The number of items modeled");
+DEFINE_uint32(cust_per_dist, 3000, "The number of orders per district");
+DEFINE_double(perc_payment, 50, "The percentage of Payment transactions"); // 43.1 for full
+DEFINE_double(perc_order_status, 0, "The percentage of Order-Status transactions"); // 4.1 for full
+DEFINE_double(perc_delivery, 0, "The percentage of Delivery transactions"); // 4.2 for full
+DEFINE_double(perc_stock_level, 0, "The percentage of Stock-Level transactions"); // 4.1 for full
+
 #else
+DECLARE_uint64(thread_num);
 DECLARE_uint64(clocks_per_us);
 DECLARE_uint64(epoch_time);
 DECLARE_uint64(extime);
-DECLARE_uint64(max_ope);
-DECLARE_bool(rmw);
-DECLARE_uint64(rratio);
-DECLARE_uint64(thread_num);
-DECLARE_uint64(tuple_num);
-DECLARE_bool(ycsb);
-DECLARE_double(zipf_skew);
+
+DECLARE_uint32(num_wh);
+DECLARE_uint32(dist_per_ware);
+DECLARE_uint32(max_items);
+DECLARE_uint32(cust_per_dist);
+DECLARE_double(perc_payment);
+DECLARE_double(perc_order_status);
+DECLARE_double(perc_delivery);
+DECLARE_double(perc_stock_level);
 #endif
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;

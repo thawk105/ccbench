@@ -32,15 +32,27 @@
 void chkArg() {
   displayParameter();
 
-  if (FLAGS_rratio > 100) {
+  if (FLAGS_perc_payment > 100) {
+    cout << "FLAGS_perc_payment must be 0..100 ..." << endl;
     ERR;
   }
-
-  if (FLAGS_zipf_skew >= 1) {
-    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
+  if (FLAGS_perc_order_status > 100) {
+    cout << "FLAGS_perc_order_status must be 0..100 ..." << endl;
     ERR;
   }
-
+  if (FLAGS_perc_delivery > 100) {
+    cout << "FLAGS_perc_delivery must be 0..100 ..." << endl;
+    ERR;
+  }
+  if (FLAGS_perc_stock_level > 100) {
+    cout << "FLAGS_perc_stock_level must be 0..100 ..." << endl;
+    ERR;
+  }
+  if (FLAGS_perc_payment + FLAGS_perc_order_status
+      + FLAGS_perc_delivery + FLAGS_perc_stock_level > 100) {
+    cout << "sum of FLAGS_perc_[payment,order_status,delivery,stock_level] must be 0..100 ..." << endl;
+    ERR;
+  }
   if (posix_memalign((void **) &ThLocalEpoch, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
@@ -82,16 +94,16 @@ void displayDB() {
 }
 
 void displayParameter() {
+  cout << "#FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
   cout << "#FLAGS_clocks_per_us:\t" << FLAGS_clocks_per_us << endl;
   cout << "#FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
   cout << "#FLAGS_extime:\t\t" << FLAGS_extime << endl;
-  cout << "#FLAGS_max_ope:\t\t" << FLAGS_max_ope << endl;
-  cout << "#FLAGS_rmw:\t\t" << FLAGS_rmw << endl;
-  cout << "#FLAGS_rratio:\t\t" << FLAGS_rratio << endl;
-  cout << "#FLAGS_thread_num:\t" << FLAGS_thread_num << endl;
-  cout << "#FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
-  cout << "#FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
-  cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
+  cout << "#FLAGS_max_items:\t" << FLAGS_max_items << endl;
+  cout << "#FLAGS_cust_per_dist:\t" << FLAGS_cust_per_dist << endl;
+  cout << "#FLAGS_perc_payment:\t\t" << FLAGS_perc_payment << endl;
+  cout << "#FLAGS_perc_order_status:\t" << FLAGS_perc_order_status << endl;
+  cout << "#FLAGS_perc_delivery:\t\t" << FLAGS_perc_delivery << endl;
+  cout << "#FLAGS_perc_stock_level:\t" << FLAGS_perc_stock_level << endl;
 }
 
 void genLogFile(std::string &logpath, const int thid) {

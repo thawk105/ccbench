@@ -1,7 +1,8 @@
 #include <cstring>
-#include "./tpcc_query.hpp"
 #include "../include/random.hh"
 #include "../include/result.hh"
+#include "../include/result.hh"
+#include "tpcc_query.hpp"
 
 namespace TPCC {
 
@@ -206,14 +207,14 @@ namespace TPCC {
 #ifdef TEST
 #define N 2000000
 
-int main(void) {
+int main(int argc, char *argv[]) {
     Result res;
     Xoroshiro128Plus rnd;
     //rnd.init();
     TPCC::query::Option query_opt;
     TPCC::Query *query = (TPCC::Query*)malloc(sizeof(TPCC::Query)*N);
 
-    query_opt.perc_payment = 100;
+    //query_opt.perc_payment = 100;
     for (int i=0; i<N; ++i) {
         query[i].generate(rnd,query_opt,res);
     }
