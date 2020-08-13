@@ -37,7 +37,6 @@ bool load(size_t warehouse) {
       std::string key{std::move(ware.createKey())};
       db_insert(Storage::WAREHOUSE, key, {reinterpret_cast<char *>(&ware), sizeof(ware)});
     }
-
   }
   {
     //CREATE  District
@@ -56,7 +55,7 @@ bool load(size_t warehouse) {
 
         // CREATE Customer. 3000 customers per a district.
         for (size_t c = 0; c < 3000; c++) {
-          TPCC::Custormer customer;
+          TPCC::Customer customer;
           customer.C_ID = c;
           customer.C_D_ID = d;
           customer.C_W_ID = w;
