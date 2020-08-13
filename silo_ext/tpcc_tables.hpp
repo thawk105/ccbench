@@ -30,7 +30,7 @@ namespace TPCC {
 			return std::string(std::to_string(w_id));
     }
 		
-		//std::string createKey(){return CreateKey(W_ID);}
+		std::string createKey(){return CreateKey(W_ID);}
 	};
 
 struct District{
