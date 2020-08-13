@@ -1,3 +1,4 @@
+#pragma once
 /*
  * TPC-C
  * http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
@@ -106,6 +107,28 @@ struct History{
 
 
 };
+
+
+struct HistoryKeyGenerator
+{
+    union {
+        uint64_t key_;
+        struct {
+            uint64_t counter_:56;
+            uint64_t thread_id_:8;
+        };
+        // upper bits are thread_id in little endian architecture.
+    };
+    void init(uint8_t thread_id) {
+        counter_ = 0;
+        thread_id_ = thread_id;
+    }
+    uint64_t get() {
+        counter_++;
+        return key_;
+    }
+};
+
 
 struct NewOrder{
     constexpr const static char* kPrefix = "neworder";
