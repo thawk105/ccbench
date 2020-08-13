@@ -12,7 +12,7 @@
 namespace TPCC {
 
 	struct Warehouse {
-    constexpr const static char* kPrefix = "warehouse";
+    //constexpr const static char* kPrefix = "warehouse";
     std::uint16_t W_ID; //2*W unique IDs
     char W_NAME[11];
     char W_STREET_1[21];
@@ -29,7 +29,7 @@ namespace TPCC {
 			return std::string(std::to_string(w_id));
     }
 		
-		std::string createKey(){return CreateKey(W_ID);}
+		//std::string createKey(){return CreateKey(W_ID);}
 	};
 
 struct District{
