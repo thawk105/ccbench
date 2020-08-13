@@ -1,18 +1,19 @@
 #include "river.hh"
 #include "interface.h"
 #include "masstree_beta_wrapper.h"
+#include "tpcc_query.hpp"
 
 using namespace ccbench;
 
 #if TPCC_SMALL
-const UInt32 g_max_items = 10000;
-const Int32 g_cust_per_dist = 2000;
+const uint32_t g_max_items = 10000;
+const int32_t g_cust_per_dist = 2000;
 #else
-const UInt32 g_max_items = 100000;
-const UInt32 g_cust_per_dist = 3000;
+const uint32_t g_max_items = 100000;
+const uint32_t g_cust_per_dist = 3000;
 #endif
 
-#define DIST_PER_WARE (10)
+//#define DIST_PER_WARE (10)
 
 // Helper Functions
 uint64_t distKey(uint64_t d_id, uint64_t d_w_id) {
@@ -24,10 +25,11 @@ uint64_t custKey(uint64_t c_id, uint64_t c_d_id, uint64_t c_w_id) {
 }
 
 void
-run_new_order(tpcc_query *query) {
-	uint64_t key;
-	itemid_t * item;
-	INDEX * index;
+run_new_order(TPCC::query::NewOrder *query) {
+  Token token{};
+	
+	//itemid_t * item;
+	//INDEX * index;
 	
 	bool remote = query->remote;
 	uint64_t w_id = query->w_id;
@@ -41,48 +43,26 @@ run_new_order(tpcc_query *query) {
 		FROM customer, warehouse
 		WHERE w_id = :w_id AND c_w_id = w_id AND c_d_id = :d_id AND c_id = :c_id;
 		+========================================================================*/
-	key = w_id;
-	//index = _wl->i_warehouse; 
-	//item = index_read(index, key, wh_to_part(w_id));
+	TPCC::Warehouse *wh;
+	std::string strkey;
+	strkey = wh->CreateKey(w_id);
+	// index = _wl->i_warehouse; 
+	// item = index_read(index, key, wh_to_part(w_id));
 	Tuple *ret_tuple_ptr;
-	stat = search_key(token, Storage::WAREHOUSE, key, &ret_tuple_ptr); if (stat != Status::OK) ERR;
-	TPCC::Warehouse *wh = ret_tuple_ptr->get_val().data();
-	//memcpy(&wh, ret_tuple_ptr->get_val().data(), sizeof(TPCC::Warehouse));
-
-	/*
-	row_t * r_wh = ((row_t *)item->location);
-	row_t * r_wh_local = get_row(r_wh, RD);
-	if (r_wh_local == NULL) {
-		return finish(Abort);
-	}
-	*/
+	Status stat;
+	stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
+	if (stat != Status::OK) ERR;
+	wh = (TPCC::Warehouse *)ret_tuple_ptr->get_val().data();
 	
 	double w_tax;
-	//r_wh_local->get_value(W_TAX, w_tax); 
-	key = custKey(c_id, d_id, w_id);
-	//index = _wl->i_customer_id;
-	//item = index_read(index, key, wh_to_part(w_id));
-	stat = search_key(token, Storage::CUSTOMER, key, &ret_tuple_ptr); if (stat != Status::OK) ERR;
-	TPCC::Customer *cust = ret_tuple_ptr->get_val().data();
-	//assert(item != NULL);
+	//uint64_t key = custKey(c_id, d_id, w_id);
+	TPCC::Customer *cust;
+	strkey = cust->CreateKey(c_id, d_id, w_id);
+	stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
+	cust = (TPCC::Customer *)ret_tuple_ptr->get_val().data();
 	uint64_t c_discount = cust->C_DISCOUNT;
 	char* c_last = cust->C_LAST;
 	char* c_credit = cust->C_CREDIT;
-
-	/*
-	row_t * r_cust = (row_t *) item->location;
-	row_t * r_cust_local = get_row(r_cust, RD);
-	if (r_cust_local == NULL) {
-		return finish(Abort); 
-	}
-
-	uint64_t c_discount;
-	char * c_last;
-	char * c_credit;
-	r_cust_local->get_value(C_DISCOUNT, c_discount);
-	c_last = r_cust_local->get_value(C_LAST);
-	c_credit = r_cust_local->get_value(C_CREDIT);
-	*/
 	
 #ifdef HOGE
 	/*==================================================+
@@ -188,18 +168,16 @@ run_new_order(tpcc_query *query) {
 		int64_t s_remote_cnt;
 		s_quantity = *(int64_t *)r_stock_local->get_value(S_QUANTITY);
 
-		/*
-			#if !TPCC_SMALL
-			int64_t s_ytd;
-			int64_t s_order_cnt;
-			//char * s_data = "test"; ?
-			r_stock_local->get_value(S_YTD, s_ytd);
-			r_stock_local->set_value(S_YTD, s_ytd + ol_quantity);
-			r_stock_local->get_value(S_ORDER_CNT, s_order_cnt);
-			r_stock_local->set_value(S_ORDER_CNT, s_order_cnt + 1);
-			s_data = r_stock_local->get_value(S_DATA);
-			#endif
-		*/
+#if !TPCC_SMALL
+		int64_t s_ytd;
+		int64_t s_order_cnt;
+		r_stock_local->get_value(S_YTD, s_ytd);
+		r_stock_local->set_value(S_YTD, s_ytd + ol_quantity);
+		r_stock_local->get_value(S_ORDER_CNT, s_order_cnt);
+		r_stock_local->set_value(S_ORDER_CNT, s_order_cnt + 1);
+		s_data = r_stock_local->get_value(S_DATA);
+#endif
+
 		if (remote) {
 			s_remote_cnt = *(int64_t*)r_stock_local->get_value(S_REMOTE_CNT);
 			s_remote_cnt ++;
@@ -232,7 +210,6 @@ run_new_order(tpcc_query *query) {
 		r_ol->set_value(OL_NUMBER, &ol_number);
 		r_ol->set_value(OL_I_ID, &ol_i_id);
 
-		/*
 			#if !TPCC_SMALL
 			int w_tax=1, d_tax=1;
 			int64_t ol_amount = ol_quantity * i_price * (1 + w_tax + d_tax) * (1 - c_discount);
@@ -240,7 +217,6 @@ run_new_order(tpcc_query *query) {
 			r_ol->set_value(OL_QUANTITY, &ol_quantity);
 			r_ol->set_value(OL_AMOUNT, &ol_amount);
 			#endif		
-		*/
 		insert_row(r_ol, _wl->t_orderline);
 	}
 	assert( rc == RCOK );
