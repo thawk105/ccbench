@@ -154,7 +154,7 @@ struct Order{
     std::uint16_t O_W_ID; // 2*W unique IDs
     std::uint32_t O_C_ID; //96,000 unique IDs
     std::time_t O_ENTRY_D; //date and time
-    char O_CARRIER_ID[10]; // unique IDs, or null
+    std::uint32_t O_CARRIER_ID; // unique IDs, or null
     double O_OL_CNT; //numeric(2) Count of Order-Lines
     double O_ALL_LOCAL; //numeric(1)
 
@@ -179,7 +179,7 @@ struct OrderLine{
     std::time_t OL_DELIVERY_D;// date and time, or null
     double OL_QUANTITY;// numeric(2)
     double OL_AMOUNT;// signed numeric(6, 2)
-    char OL_DIST_INFO[24];// fixed text, size 24
+    char OL_DIST_INFO[25];// fixed text, size 24
 
     //Primary Key: (OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER)
     static std::string CreateKey(size_t w,size_t d,size_t o,size_t n){

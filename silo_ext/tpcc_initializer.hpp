@@ -234,8 +234,7 @@ bool load(size_t warehouse) {
           if(order.O_ID<2101){
               order.O_CARRIER_ID = random_value(1,10);
           }else{
-              //-1 null
-              order.O_CARRIER_ID = -1;
+              order.O_CARRIER_ID = 0;
           }
           order.O_OL_CNT = random_value(5,15);
           order.O_ALL_LOCAL = 1;
@@ -248,12 +247,24 @@ bool load(size_t warehouse) {
             TPCC::OrderLine order_line;
             order_line.OL_O_ID = order.O_ID;
             order_line.OL_D_ID = d;
+            order_line.OL_W_ID = w;
             order_line.OL_NUMBER = ol;
-            order_line.OL_I_ID = 1;
+            order_line.OL_I_ID = random_value(1,100000);
             order_line.OL_SUPPLY_W_ID = w;
-            order_line.OL_DELIVERY_D = now;
+            if(order_line.OL_O_ID<2101){
+                order_line.OL_DELIVERY_D = order.O_ENTRY_D;
+            }else{
+                order_line.OL_DELIVERY_D = 0;
+            }
+            order_line.OL_QUANTITY = 5;
+            if(order_line.OL_O_ID<2101){
+                order_line.OL_AMOUNT = 0.00;
+            }else{
+                order_line.OL_AMOUNT = random_value(0.01,99999.99);
+            }
             order_line.OL_AMOUNT = 0.0;
-
+            strcpy(order_line.OL_DIST_INFO,random_string(24,24,rnd));
+            
             key = std::move(order_line.createKey());
             db_insert(Storage::ORDERLINE, key, {reinterpret_cast<char *>(&order_line), sizeof(order_line)});
           }
