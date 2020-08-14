@@ -206,21 +206,24 @@ bool load(size_t warehouse) {
           customer.C_YTD_PAYMENT = 10.00;
           customer.C_PAYMENT_CNT = 1;
           customer.C_DELIVERY_CNT = 0;
-          strcpy(customer.C_DATA,random_string(300,500,rnd));
+          //strcpy(customer.C_DATA,random_string(300,500,rnd));
           
           key = std::move(customer.createKey());
           db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
 
           //CREATE History. 1 histories per customer.
           TPCC::History history;
+          
           history.H_C_ID = c;
           history.H_C_D_ID = history.H_D_ID = d;
-          history.H_C_W_ID = w;
+          history.H_C_W_ID = history.H_W_ID = w;
           history.H_DATE = now;
+          history.H_AMOUNT = 10.00;
+          strcpy(history.H_DATA,random_string(12,24,rnd));
 
-          // TODO : History class doesn't has createKey function.
-          // std::string key{std::move(history.createKey())};
-          // db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
+          //TODO
+          //std::string key{std::move(history.createKey())};
+          //db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
 
           //CREATE Order. 1 order per customer.
           TPCC::Order order;
