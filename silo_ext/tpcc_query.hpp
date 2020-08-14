@@ -6,8 +6,23 @@
 #define TPCC_SMALL	false
 #define NUM_WH          224
 #define DIST_PER_WARE	10
-#define PERC_PAYMENT 	0.5
 #define LASTNAME_LEN 	16
+
+#ifndef GFLAGS_GFLAGS_H_
+ #define FLAGS_num_wh NUM_WH
+ #define FLAGS_dist_per_ware DIST_PER_WARE
+#if TPCC_SMALL
+ #define FLAGS_max_items 10000
+ #define FLAGS_cust_per_dist 2000
+#else
+ #define FLAGS_max_items 100000
+ #define FLAGS_cust_per_dist 3000
+#endif
+ #define FLAGS_perc_payment 50      // 43.1 for fullmix
+ #define FLAGS_perc_order_status 0  // 4.1
+ #define FLAGS_perc_delivery 0      // 4.2
+ #define FLAGS_perc_stock_level 0   // 4.1
+#endif
 
 namespace TPCC {
 
@@ -23,19 +38,14 @@ namespace TPCC {
 
         class Option {
         public:
-            std::uint32_t num_wh = NUM_WH;
-            std::uint32_t dist_per_ware = DIST_PER_WARE;
-#if TPCC_SMALL
-            std::uint32_t max_items = 10000;
-            std::uint32_t cust_per_dist = 2000;
-#else
-            std::uint32_t max_items = 100000;
-            std::uint32_t cust_per_dist = 3000;
-#endif
-            double perc_payment = 50;     // 43.1
-            double perc_order_status = 0; // 4.1
-            double perc_delivery = 0;     // 4.2
-            double perc_stock_level = 0;  // 4.1
+            std::uint32_t num_wh = FLAGS_num_wh;
+            std::uint32_t dist_per_ware = FLAGS_dist_per_ware;
+            std::uint32_t max_items = FLAGS_max_items;
+            std::uint32_t cust_per_dist = FLAGS_cust_per_dist;
+            double perc_payment = FLAGS_perc_payment;
+            double perc_order_status = FLAGS_perc_order_status;
+            double perc_delivery = FLAGS_perc_delivery;
+            double perc_stock_level = FLAGS_perc_stock_level;
         };
 
         class NewOrder {

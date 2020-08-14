@@ -119,22 +119,23 @@ RETRY:
     if (loadAcquire(quit)) break;
 
     //trans.begin();
+    bool res = true;
 
     switch (query.type) {
     case TPCC::Q_NEW_ORDER :
-      //TPCC::run_new_order(query.new_order);
+      //res = TPCC::run_new_order(query.new_order);
       break;
     case TPCC::Q_PAYMENT :
-      //TPCC::run_payment(query.payment);
+      //res = TPCC::run_payment(query.payment);
       break;
     case TPCC::Q_ORDER_STATUS:
-      //TPCC::run_order_status(query.order_status);
+      //res = TPCC::run_order_status(query.order_status);
       //break;
     case TPCC::Q_DELIVERY:
-      //TPCC::run_delivery(query.delivery);
+      //res = TPCC::run_delivery(query.delivery);
       //break;
     case TPCC::Q_STOCK_LEVEL:
-      //TPCC::run_stock_level(query.stock_level);
+      //res = TPCC::run_stock_level(query.stock_level);
       //break;
     defalut:
       std::abort();
@@ -159,19 +160,18 @@ RETRY:
     if (trans.validationPhase()) {
       trans.writePhase();
     */
+    if (res) {
       /**
        * local_commit_counts is used at ../include/backoff.hh to calcurate about
        * backoff.
        */
-    /*
       storeRelease(myres.local_commit_counts_,
                    loadAcquire(myres.local_commit_counts_) + 1);
     } else {
-      trans.abort();
+      //trans.abort();
       ++myres.local_abort_counts_;
       goto RETRY;
     }
-    */
   }
 
   return;

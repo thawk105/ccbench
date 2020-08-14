@@ -39,9 +39,10 @@ file(GLOB SILO_SOURCES
         "index/masstree_beta/masstree_beta_wrapper.cpp"
         )
 
-add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp silo_ext.cpp result.cpp util.cpp tpcc_query.cpp ../common/util.cc ../common/result.cc)
-add_executable(river.exe ${SILO_SOURCES} river.cpp river_tpcc_initializer.hpp)
-add_executable(river-2.exe ${SILO_SOURCES} river-2.cpp river_tpcc_initializer.hpp)
+#add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp silo_ext.cpp result.cpp util.cpp tpcc_query.cpp neworder.cpp ../common/util.cc ../common/result.cc)
+add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc_query.cpp neworder.cpp ../common/util.cc ../common/result.cc)
+add_executable(river.exe ${SILO_SOURCES} river.cpp)
+add_executable(river-2.exe ${SILO_SOURCES} river-2.cpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
 add_executable(dev_test.exe test/dev_test.cpp)
 add_executable(river_test.exe test/river_test.cpp)
