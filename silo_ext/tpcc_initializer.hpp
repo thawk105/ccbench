@@ -2,7 +2,7 @@
 TPC-C
 http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 
-1.3 Table Layouts
+4.3.3 Table Population Requirements
 
 */
 #pragma once
@@ -136,9 +136,15 @@ bool load(size_t warehouse) {
         TPCC::District district;
         district.D_ID = d;
         district.D_W_ID = w;
-        district.D_NEXT_O_ID = 0;
-        district.D_TAX = 1.5;
-        district.D_YTD = 1000'000'000;
+        strcpy(district.D_NAME,random_string(6,10,rnd));
+        strcpy(district.D_STREET_1,random_string(10,20,rnd));
+        strcpy(district.D_STREET_2,random_string(10,20,rnd));
+        strcpy(district.D_CITY,random_string(10,20,rnd));
+        strcpy(district.D_STATE,random_string(2,2,rnd));
+        strcpy(district.D_ZIP,gen_zipcode(rnd));
+        district.D_TAX = random_value(0.0000,2.0000);
+        district.D_YTD = 30000.00;
+        district.D_NEXT_O_ID = 3001;
 
         std::string key{std::move(district.createKey())};
         db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
