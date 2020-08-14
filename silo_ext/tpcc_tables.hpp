@@ -81,7 +81,7 @@ struct Customer{
     double C_YTD_PAYMENT;
     double C_PAYMENT_CNT;
     double C_DELIVERY_CNT;
-    char C_DATA[51];
+    char C_DATA[501];
 
     //Primary Key: (C_W_ID, C_D_ID, C_ID)
     static std::string CreateKey(size_t w,size_t d,size_t c){
