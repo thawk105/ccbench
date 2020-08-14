@@ -73,7 +73,6 @@ inline int NURand(int A, const int x,const int y) {
     
 static std::string createC_LAST(size_t rndval){
     const char* LAST_NAMES[10]={"BAR","OUGHT","ABLE","PRI","PRES","ESE","ANTI","CALLY","ATION","EING"};
-
     std::string s;
     s.reserve(16);
     for(int i=2;i>=0;i--){
@@ -206,7 +205,7 @@ bool load(size_t warehouse) {
           customer.C_YTD_PAYMENT = 10.00;
           customer.C_PAYMENT_CNT = 1;
           customer.C_DELIVERY_CNT = 0;
-          //strcpy(customer.C_DATA,random_string(300,500,rnd));
+          strcpy(customer.C_DATA,random_string(300,500,rnd));
           
           key = std::move(customer.createKey());
           db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
@@ -228,11 +227,19 @@ bool load(size_t warehouse) {
           //CREATE Order. 1 order per customer.
           TPCC::Order order;
           order.O_ID = c;
-          order.O_C_ID = c;
+          order.O_C_ID = c; //selected sequentially from a random permutation of [1 .. 3,000]
           order.O_D_ID = d;
           order.O_W_ID = w;
           order.O_ENTRY_D = now;
-
+          if(order.O_ID<2101){
+              order.O_CARRIER_ID = random_value(1,10);
+          }else{
+              //-1 null
+              order.O_CARRIER_ID = -1;
+          }
+          order.O_OL_CNT = random_value(5,15);
+          order.O_ALL_LOCAL = 1;
+          
           key = std::move(order.createKey());
           db_insert(Storage::ORDER, key, {reinterpret_cast<char *>(&order), sizeof(order)});
 
