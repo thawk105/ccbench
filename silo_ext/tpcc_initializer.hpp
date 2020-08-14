@@ -60,6 +60,29 @@ char* gen_zipcode(Xoroshiro128Plus &rnd){
     return s;
 }
 
+//TPC-C Reference 2.1.6 for detail specification.
+/*
+A is a constant chosen according to the size of range [x..y].
+C is a run-time constant randomly chosen within [0..A]
+*/
+inline int NURand(int A, const int x,const int y) {
+  const int C = random_value(0,A);
+  assert(x <= y);
+  return ((( random_value(0,A) | random_value(x, y) + C) % (y - x + 1)) + x);
+}
+    
+static std::string createC_LAST(size_t rndval){
+    const char* LAST_NAMES[10]={"BAR","OUGHT","ABLE","PRI","PRES","ESE","ANTI","CALLY","ATION","EING"};
+
+    std::string s;
+    s.reserve(16);
+    for(int i=2;i>=0;i--){
+        const size_t digit=(rndval/(int)(std::pow(10,i))%10);
+        s+=LAST_NAMES[digit];
+    }
+    return s;
+}
+    
 bool load(size_t warehouse) {
   std::time_t now = std::time(nullptr);
   Xoroshiro128Plus rnd;
@@ -148,23 +171,43 @@ bool load(size_t warehouse) {
 
         std::string key{std::move(district.createKey())};
         db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
-
+        
         // CREATE Customer. 3000 customers per a district.
         for (size_t c = 0; c < 3000; c++) {
           TPCC::Customer customer;
           customer.C_ID = c;
           customer.C_D_ID = d;
           customer.C_W_ID = w;
-          strcpy(customer.C_LAST, "SUZUKI");
+          if(c<1000){
+              //for the first 1,000 customers, and generating a non -uniform random number using the function NURand(255,0,999) 
+              strcpy(customer.C_LAST,createC_LAST(NURand(255,0,999)).c_str());
+              #ifdef DEBUG
+              if(w==0&&d==0&&c==0)std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
+              #endif
+          }
+          else {
+              strcpy(customer.C_LAST,createC_LAST(random_value<int>(0,999)).c_str());
+          }
+          strcpy(customer.C_MIDDLE,"OE");
+          strcpy(customer.C_FIRST,random_string(8,16,rnd));
+          strcpy(customer.C_STREET_1,random_string(10,20,rnd));
+          strcpy(customer.C_STREET_2,random_string(10,20,rnd));
+          strcpy(customer.C_CITY,random_string(10,20,rnd));
+          strcpy(customer.C_STATE,random_string(2,2,rnd));
+          strcpy(customer.C_ZIP,gen_zipcode(rnd));
+          //TODO C_PHONE
+         
           customer.C_SINCE = now;
+          //TODO 10% GC 90% BC
           strcpy(customer.C_CREDIT, "GC");
-          customer.C_DISCOUNT = 0.1;
+          customer.C_CREDIT_LIM = 50000.00;
+          customer.C_DISCOUNT = random_value(0.0000,0.50000);
           customer.C_BALANCE = -10.00;
           customer.C_YTD_PAYMENT = 10.00;
           customer.C_PAYMENT_CNT = 1;
-          customer.C_PAYMENT_CNT = 1;
           customer.C_DELIVERY_CNT = 0;
-
+          strcpy(customer.C_DATA,random_string(300,500,rnd));
+          
           key = std::move(customer.createKey());
           db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
 
