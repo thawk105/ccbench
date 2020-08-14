@@ -85,7 +85,9 @@ static std::string createC_LAST(size_t rndval){
 bool load(size_t warehouse) {
   std::time_t now = std::time(nullptr);
   Xoroshiro128Plus rnd;
-
+  TPCC::HistoryKeyGenerator hkg;
+  hkg.init(255);
+  
   {
     //CREATE Item
     for(size_t i=0;i<100000;i++){
@@ -220,9 +222,8 @@ bool load(size_t warehouse) {
           history.H_AMOUNT = 10.00;
           strcpy(history.H_DATA,random_string(12,24,rnd));
 
-          //TODO
-          //std::string key{std::move(history.createKey())};
-          //db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
+          std::string key = std::move(std::to_string(hkg.get()));
+          db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
 
           //CREATE Order. 1 order per customer.
           TPCC::Order order;
