@@ -4,11 +4,11 @@
 
 using namespace ccbench;
 
-bool init_table_warehouse(size_t nwh, Token token){
+void init_table_warehouse(size_t nwh, Token token){
 	std::time_t now = std::time(nullptr);
 	//CREATE Warehouses by single thread.
 	for (size_t w = 0; w < nwh; w++) {
-		TPCC::Warehouse *wh = (TPCC::Warehouse *)malloc(sizeof(TPCC::Warehouse));	if (!wh) ERR;
+		auto *wh = (TPCC::Warehouse *)malloc(sizeof(TPCC::Warehouse));	if (!wh) ERR;
 		wh->W_ID = w;
 		wh->W_TAX = 1.5;
 		wh->W_YTD = 1000;
@@ -21,8 +21,8 @@ bool init_table_warehouse(size_t nwh, Token token){
 	commit(token);
 
 	for (size_t w = 0; w < nwh; w++) {
-		TPCC::Warehouse wh;
-		std::string key = wh.CreateKey(w);
+		TPCC::Warehouse wh{};
+		std::string key = TPCC::Warehouse::CreateKey(w);
 		Tuple *ret_tuple_ptr;
 		Status stat;
 
@@ -53,7 +53,7 @@ makedb_tpcc(Token token)
 
 int
 //tpcc_txn_man::run_new_order(tpcc_query * query)
-main(void)
+main()
 {
   Token token{};
 

@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cctype>
 
+#include "cpu.h"
+
 #include "boost/filesystem.hpp"
 
 #define GLOBAL_VALUE_DEFINE
@@ -22,7 +24,6 @@
 
 #include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
-#include "../include/cpu.hh"
 #include "../include/debug.hh"
 #include "../include/fileio.hh"
 //#include "../include/masstree_wrapper.hh"
@@ -40,10 +41,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Result &myres = std::ref(SiloResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  /*
-  TxnExecutor trans(thid, (Result *) &myres);
-  FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
-  */
   uint64_t epoch_timer_start, epoch_timer_stop;
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
@@ -71,41 +68,18 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   trans.logfile_.ftruncate(10 ^ 9);
 #endif
 
-#ifdef Linux
-  setThreadAffinity(thid);
+#ifdef CCBENCH_LINUX
+  ccbench::setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
 #endif
 
-  /*
-#if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(thid));
-#endif
-  */
-
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
-    /*
-#if PARTITION_TABLE
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
-                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true,
-                  thid, myres);
-#else
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
-                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
-                  thid, myres);
-#endif
-    */
     query.generate(rnd, query_opt, myres);
-
-    /*
-#if PROCEDURE_SORT
-    sort(trans.pro_set_.begin(), trans.pro_set_.end());
-#endif
-    */
 
 RETRY:
     if (thid == 0) {
@@ -113,12 +87,10 @@ RETRY:
 #if BACK_OFF
       leaderBackoffWork(backoff, SiloResult);
 #endif
-      // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     }
 
     if (loadAcquire(quit)) break;
 
-    //trans.begin();
     bool res = true;
 
     switch (query.type) {
@@ -140,21 +112,6 @@ RETRY:
     defalut:
       std::abort();
     }
-    /*
-    for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
-         ++itr) {
-      if ((*itr).ope_ == Ope::READ) {
-        trans.read((*itr).key_);
-      } else if ((*itr).ope_ == Ope::WRITE) {
-        trans.write((*itr).key_);
-      } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
-        trans.read((*itr).key_);
-        trans.write((*itr).key_);
-      } else {
-        ERR;
-      }
-    }
-  */
 
     /*
     if (trans.validationPhase()) {
@@ -173,8 +130,6 @@ RETRY:
       goto RETRY;
     }
   }
-
-  return;
 }
 
 int main(int argc, char *argv[]) try {
@@ -207,6 +162,6 @@ int main(int argc, char *argv[]) try {
                                  FLAGS_thread_num);
 
   return 0;
-} catch (bad_alloc) {
+} catch (std::bad_alloc&) {
   ERR;
 }
