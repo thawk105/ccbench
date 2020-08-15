@@ -25,12 +25,12 @@ include(CompileOptions)
 file(GLOB SILO_SOURCES
         "epoch.cpp"
         "garbage_collection.cpp"
-        "interface_delete.cpp"
-        "interface_helper.cpp"
-        "interface_scan.cpp"
-        "interface_search.cpp"
-        "interface_termination.cpp"
-        "interface_update_insert.cpp"
+        "interface/interface_delete.cpp"
+        "interface/interface_helper.cpp"
+        "interface/interface_scan.cpp"
+        "interface/interface_search.cpp"
+        "interface/interface_termination.cpp"
+        "interface/interface_update_insert.cpp"
         "log.cpp"
         "scheme.cpp"
         "session_info.cpp"
@@ -40,7 +40,7 @@ file(GLOB SILO_SOURCES
         )
 
 #add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp silo_ext.cpp result.cpp util.cpp tpcc_query.cpp neworder.cpp ../common/util.cc ../common/result.cc)
-add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc_query.cpp neworder.cpp ../common/util.cc ../common/result.cc)
+add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc/tpcc_query.cpp tpcc/neworder.cpp ../common/util.cc ../common/result.cc)
 add_executable(river.exe ${SILO_SOURCES} river.cpp)
 add_executable(river-2.exe ${SILO_SOURCES} river-2.cpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
@@ -52,6 +52,8 @@ target_include_directories(silo_ext.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
+        PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
 target_include_directories(river.exe
@@ -59,6 +61,8 @@ target_include_directories(river.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
+        PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
 target_include_directories(river-2.exe
@@ -66,6 +70,8 @@ target_include_directories(river-2.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
+        PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
 )
 
 target_include_directories(dev_test.exe
@@ -74,6 +80,8 @@ target_include_directories(dev_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
+        PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
 target_include_directories(river_test.exe
@@ -82,6 +90,8 @@ target_include_directories(river_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
+        PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
 target_include_directories(unit_test.exe
@@ -90,6 +100,8 @@ target_include_directories(unit_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
+        PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
 target_link_libraries(silo_ext.exe
