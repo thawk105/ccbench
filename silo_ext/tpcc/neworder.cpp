@@ -359,8 +359,8 @@ run_new_order(TPCC::query::NewOrder *query) {
 		//uint64_t row_id;
 		//_wl->t_orderline->get_new_row(r_ol, 0, row_id);
 
-		int w_tax=1; // correct?
-		int d_tax=1; // correct?
+		int w_tax = wh->W_TAX; 
+		int d_tax = dist->D_TAX; 
 		//amt[ol_number-1]=ol_amount;
 		//total += ol_amount;
 		int64_t ol_amount = ol_quantity * i_price * (1 + w_tax + d_tax) * (1 - c_discount);
