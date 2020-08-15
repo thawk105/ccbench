@@ -258,7 +258,6 @@ run_new_order(TPCC::query::NewOrder *query) {
 			AND s_w_id = :ol_supply_w_id;
 			+===============================================*/
 
-		//uint64_t stock_key = stockKey(ol_i_id, ol_supply_w_id);
 		TPCC::Stock* stock;
 		strkey = stock->CreateKey(ol_supply_w_id, ol_i_id);
 		stat = search_key(token, Storage::STOCK, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
@@ -276,20 +275,16 @@ run_new_order(TPCC::query::NewOrder *query) {
 		char* s_dist_09 = stock->S_DIST_09;
 		char* s_dist_10 = stock->S_DIST_10;
 
-		int64_t s_remote_cnt;
-#if !TPCC_SMALL
 		int64_t s_ytd = stock->S_YTD;
 		int64_t s_order_cnt = stock->S_ORDER_CNT;
 		stock->S_YTD = s_ytd + ol_quantity;
 		stock->S_ORDER_CNT = s_order_cnt + 1;
-#endif
-
 		if (remote) {
-			s_remote_cnt = (int64_t)stock->S_REMOTE_CNT;
+			int64_t s_remote_cnt = (int64_t)stock->S_REMOTE_CNT;
 			s_remote_cnt++;
 			stock->S_REMOTE_CNT = s_remote_cnt;
 		}
-
+		
 		/*====================================================+
 			EXEC SQL UPDATE stock SET s_quantity = :s_quantity
 			WHERE s_i_id = :ol_i_id
@@ -302,8 +297,8 @@ run_new_order(TPCC::query::NewOrder *query) {
 		} else {
 			quantity = s_quantity - ol_quantity + 91; 
 		}
-		stock->S_QUANTITY = (double)quantity.
-		
+		stock->S_QUANTITY = (double)quantity;
+			
 #ifdef DBx1000
 		uint64_t stock_key = stockKey(ol_i_id, ol_supply_w_id);
 		INDEX * stock_index = _wl->i_stock;
@@ -353,17 +348,11 @@ run_new_order(TPCC::query::NewOrder *query) {
 			:ol_i_id, :ol_supply_w_id,
 			:ol_quantity, :ol_amount, :ol_dist_info);
 			+====================================================*/
-		// XXX district info is not inserted.
-
-		//row_t * r_ol;
-		//uint64_t row_id;
-		//_wl->t_orderline->get_new_row(r_ol, 0, row_id);
-
-		int w_tax = wh->W_TAX; 
-		int d_tax = dist->D_TAX; 
+		double w_tax = wh->W_TAX; 
+		double d_tax = dist->D_TAX; 
 		//amt[ol_number-1]=ol_amount;
 		//total += ol_amount;
-		int64_t ol_amount = ol_quantity * i_price * (1 + w_tax + d_tax) * (1 - c_discount);
+		double ol_amount = ol_quantity * i_price * (1.0 + w_tax + d_tax) * (1.0 - c_discount);
 
 		TPCC::OrderLine orderline;
 		orderline.OL_O_ID = o_id;
@@ -374,7 +363,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		orderline.OL_SUPPLY_W_ID = ol_supply_w_id;
 		orderline.OL_QUANTITY = ol_quantity;
 		orderline.OL_AMOUNT = ol_amount;
-		orderline.OL_DIST_INFO = "OL_DIST_INFO"; /* This is not implemented in DBx1000 */		
+		strcpy(orderline.OL_DIST_INFO, "OL_DIST_INFO"); /* This is not implemented in DBx1000 */		
 
 #if !TPCC_SMALL
 		// distinfo?

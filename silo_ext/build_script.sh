@@ -1,4 +1,4 @@
-apt  update -y && apt install -y libgflags-dev libgoogle-glog-dev libboost-filesystem-dev
+#apt  update -y && apt install -y libgflags-dev libgoogle-glog-dev libboost-filesystem-dev
 
 cd ../
 ./bootstrap.sh
