@@ -51,7 +51,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		+========================================================================*/
 	TPCC::Warehouse *wh;
 	std::string strkey;
-	strkey = wh->CreateKey(w_id);
+	strkey = TPCC::Warehouse::CreateKey(w_id);
 	// index = _wl->i_warehouse; 
 	// item = index_read(index, key, wh_to_part(w_id));
 	Tuple *ret_tuple_ptr;
@@ -63,7 +63,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 	double w_tax = wh->W_TAX;
 	//uint64_t key = custKey(c_id, d_id, w_id);
 	TPCC::Customer *cust;
-	strkey = cust->CreateKey(c_id, d_id, w_id);
+	strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
 	stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
 	cust = (TPCC::Customer *)ret_tuple_ptr->get_val().data();
 	uint64_t c_discount = cust->C_DISCOUNT;
@@ -110,7 +110,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		WHERE d_id = :d_id AND d_w_id = :w_id ;
 		+===================================================*/
 	TPCC::District *dist;	
-	strkey = dist->CreateKey(d_id, w_id);
+	strkey = TPCC::District::CreateKey(d_id, w_id);
 	stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
 	dist = (TPCC::District *)ret_tuple_ptr->get_val().data();
 	
@@ -142,7 +142,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		EXEC SQL INSERT INTO ORDERS (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local)
 		VALUES (:o_id, :d_id, :w_id, :c_id, :datetime, :o_ol_cnt, :o_all_local);
 		+========================================================================================*/
-	TPCC::Order order;
+	TPCC::Order order{};
 	uint64_t o_entry_d; // dummy data. Is it necessary?
 
 	order.O_ID = o_id;
@@ -153,7 +153,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 	order.O_OL_CNT = ol_cnt;
 	int64_t all_local = (remote? 0 : 1);
 	order.O_ALL_LOCAL = all_local;
-	strkey = cust->CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
+	strkey = TPCC::Customer::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
 	stat = insert(token, Storage::ORDER, strkey, {(char *)&order, sizeof(TPCC::Order)});
 	if (stat != Status::OK) ERR;
 
@@ -177,11 +177,11 @@ run_new_order(TPCC::query::NewOrder *query) {
 		VALUES (:o_id, :d_id, :w_id);
     +=======================================================*/
 
-	TPCC::NewOrder neworder;
+	TPCC::NewOrder neworder{};
 	neworder.NO_O_ID = o_id;
 	neworder.NO_D_ID = d_id;
 	neworder.NO_W_ID = w_id;
-	strkey = neworder.CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
+	strkey = TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
 	stat = insert(token, Storage::NEWORDER, strkey, {(char *)&neworder, sizeof(TPCC::NewOrder)});
 	if (stat != Status::OK) ERR;
 
@@ -213,7 +213,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		 */
 		
 		TPCC::Item* item;
-		strkey = item->CreateKey(ol_i_id);
+		strkey = TPCC::Item::CreateKey(ol_i_id);
 		stat = search_key(token, Storage::ITEM, strkey, &ret_tuple_ptr);
 		if (stat != Status::OK) {
 			ERR; /* need to write a logic "go to invalidate" */
@@ -259,28 +259,31 @@ run_new_order(TPCC::query::NewOrder *query) {
 			+===============================================*/
 
 		TPCC::Stock* stock;
-		strkey = stock->CreateKey(ol_supply_w_id, ol_i_id);
+		strkey = TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id);
 		stat = search_key(token, Storage::STOCK, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
 		stock = (TPCC::Stock *)ret_tuple_ptr->get_val().data();
 		uint64_t s_quantity = (int64_t)stock->S_QUANTITY;
-		char* s_data = stock->S_DATA;
-		char* s_dist_01 = stock->S_DIST_01;
-		char* s_dist_02 = stock->S_DIST_02;
-		char* s_dist_03 = stock->S_DIST_03;
-		char* s_dist_04 = stock->S_DIST_04;
-		char* s_dist_05 = stock->S_DIST_05;
-		char* s_dist_06 = stock->S_DIST_06;
-		char* s_dist_07 = stock->S_DIST_07;
-		char* s_dist_08 = stock->S_DIST_08;
-		char* s_dist_09 = stock->S_DIST_09;
-		char* s_dist_10 = stock->S_DIST_10;
+		/**
+		 * These data are for application side.
+		 */
+		[[maybe_unused]] char* s_data = stock->S_DATA;
+		[[maybe_unused]] char* s_dist_01 = stock->S_DIST_01;
+		[[maybe_unused]] char* s_dist_02 = stock->S_DIST_02;
+		[[maybe_unused]] char* s_dist_03 = stock->S_DIST_03;
+		[[maybe_unused]] char* s_dist_04 = stock->S_DIST_04;
+		[[maybe_unused]] char* s_dist_05 = stock->S_DIST_05;
+		[[maybe_unused]] char* s_dist_06 = stock->S_DIST_06;
+		[[maybe_unused]] char* s_dist_07 = stock->S_DIST_07;
+		[[maybe_unused]] char* s_dist_08 = stock->S_DIST_08;
+		[[maybe_unused]] char* s_dist_09 = stock->S_DIST_09;
+		[[maybe_unused]] char* s_dist_10 = stock->S_DIST_10;
 
 		int64_t s_ytd = stock->S_YTD;
 		int64_t s_order_cnt = stock->S_ORDER_CNT;
-		stock->S_YTD = s_ytd + ol_quantity;
-		stock->S_ORDER_CNT = s_order_cnt + 1;
+		stock->S_YTD = static_cast<double>(s_ytd + ol_quantity);
+		stock->S_ORDER_CNT = static_cast<double>(s_order_cnt + 1);
 		if (remote) {
-			int64_t s_remote_cnt = (int64_t)stock->S_REMOTE_CNT;
+			auto s_remote_cnt = static_cast<std::int64_t>(stock->S_REMOTE_CNT);
 			s_remote_cnt++;
 			stock->S_REMOTE_CNT = s_remote_cnt;
 		}
@@ -354,7 +357,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		//total += ol_amount;
 		double ol_amount = ol_quantity * i_price * (1.0 + w_tax + d_tax) * (1.0 - c_discount);
 
-		TPCC::OrderLine orderline;
+		TPCC::OrderLine orderline{};
 		orderline.OL_O_ID = o_id;
 		orderline.OL_D_ID = d_id;
 		orderline.OL_W_ID = w_id;
@@ -369,7 +372,7 @@ run_new_order(TPCC::query::NewOrder *query) {
 		// distinfo?
 #endif		
 		// The number of keys is enough? It is different from DBx1000
-		strkey = orderline.CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID, orderline.OL_NUMBER);
+		strkey = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID, orderline.OL_NUMBER);
 		stat = insert(token, Storage::ORDERLINE, strkey, {(char *)&orderline, sizeof(TPCC::OrderLine)});
 		if (stat != Status::OK) ERR;
 
