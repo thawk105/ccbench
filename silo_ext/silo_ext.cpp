@@ -88,6 +88,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 }
 
 int main(int argc, char *argv[]) try {
+  init();
   gflags::SetUsageMessage("Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -115,6 +116,7 @@ int main(int argc, char *argv[]) try {
   SiloResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
                                  FLAGS_thread_num);
 
+  fin();
   return 0;
 } catch (std::bad_alloc &) {
   std::cout << __FILE__ << " : " << __LINE__ << " : fatal error." << std::endl;

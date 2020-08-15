@@ -22,7 +22,6 @@ namespace TPCC {
         strcpy(name,n[num/100]);
         strcat(name,n[(num/10)%10]);
         strcat(name,n[num%10]);
-        return;
     }
 
     std::uint64_t Random(std::uint64_t x, std::uint64_t y, Xoroshiro128Plus &rnd) {

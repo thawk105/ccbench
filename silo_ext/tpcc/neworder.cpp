@@ -32,7 +32,7 @@ uint64_t stockKey(uint64_t s_i_id, uint64_t s_w_id) {
 bool
 run_new_order(TPCC::query::NewOrder *query) {
   Token token{};
-
+  enter(token);
   //itemid_t * item;
   //INDEX * index;
 
@@ -401,8 +401,10 @@ run_new_order(TPCC::query::NewOrder *query) {
 #endif // DBx1000
   } // end of ol loop
   if (commit(token) != Status::OK) {
+    leave(token);
     return true;
   }
+  leave(token);
   return false;
 }
 
