@@ -52,6 +52,7 @@ target_include_directories(silo_ext.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
@@ -60,6 +61,7 @@ target_include_directories(river.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
@@ -68,6 +70,7 @@ target_include_directories(river-2.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
 )
 
@@ -77,6 +80,7 @@ target_include_directories(dev_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
@@ -86,6 +90,7 @@ target_include_directories(river_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
@@ -95,6 +100,7 @@ target_include_directories(unit_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
         PRIVATE ${PROJECT_SOURCE_DIR}/include
         PRIVATE ${PROJECT_SOURCE_DIR}/index/masstree_beta/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/interface
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
