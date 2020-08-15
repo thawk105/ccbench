@@ -25,16 +25,15 @@ void db_insert(Storage st, std::string_view key, std::string_view val) {
     std::abort();
   }
 }
-char* random_string(int minLen,int maxLen,Xoroshiro128Plus &rnd){
+std::string random_string(int minLen,int maxLen,Xoroshiro128Plus &rnd){
     static const char alphanum[]=
         "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     int len=(rnd.next()%(maxLen-minLen+1))+minLen;
     //std::cout<<"len="<<len<<std::endl;
-    char* s=(char*)malloc(sizeof(char)*(len+1));
+    std::string s(len+1,'a');
     for(int i=0;i<len;i++){
         size_t rn = rnd.next();
         int idx=rn%(sizeof(alphanum));
-        assert(idx<len);
         s[i]=alphanum[idx];
     }
     s[len]='\0';
@@ -51,8 +50,8 @@ T random_value(const T& minv,const T& maxv){
       return distribution(generator);
     }
 }
-char* gen_zipcode(Xoroshiro128Plus &rnd){
-    char* s=(char*)malloc(sizeof(char)*(9));
+std::string gen_zipcode(Xoroshiro128Plus &rnd){
+    std::string s(9,'a');
     for(int i=0;i<9;i++){
         if(i>3)s[i]='1';
         else s[i]='0'+(rnd.next()%10);
@@ -95,9 +94,9 @@ void load(size_t warehouse) {
       TPCC::Item item{};
       item.I_ID = i;
       item.I_IM_ID = random_value(1,10000);
-      strcpy(item.I_NAME,random_string(14,24,rnd));
+      strcpy(item.I_NAME,random_string(14,24,rnd).c_str());
       item.I_PRICE = random_value(1.00,100.00);
-      strcpy(item.I_DATA,random_string(26,50,rnd));
+      strcpy(item.I_DATA,random_string(26,50,rnd).c_str());
       //TODO ORIGINAL
 
       #ifdef DEBUG
@@ -112,12 +111,12 @@ void load(size_t warehouse) {
     for (size_t w = 0; w < warehouse; w++) {
       TPCC::Warehouse ware{};
       ware.W_ID = w;      
-      strcpy(ware.W_NAME,random_string(6,10,rnd));
-      strcpy(ware.W_STREET_1,random_string(10,20,rnd));
-      strcpy(ware.W_STREET_2,random_string(10,20,rnd));
-      strcpy(ware.W_CITY,random_string(10,20,rnd));
-      strcpy(ware.W_STATE,random_string(2,2,rnd));
-      strcpy(ware.W_ZIP,gen_zipcode(rnd));
+      strcpy(ware.W_NAME,random_string(6,10,rnd).c_str());
+      strcpy(ware.W_STREET_1,random_string(10,20,rnd).c_str());
+      strcpy(ware.W_STREET_2,random_string(10,20,rnd).c_str());
+      strcpy(ware.W_CITY,random_string(10,20,rnd).c_str());
+      strcpy(ware.W_STATE,random_string(2,2,rnd).c_str());
+      strcpy(ware.W_ZIP,gen_zipcode(rnd).c_str());
       ware.W_TAX = random_value(0.0,0.20);
       ware.W_YTD = 300000;
 
@@ -138,20 +137,20 @@ void load(size_t warehouse) {
           stock.S_I_ID = s;
           stock.S_W_ID = w;
           stock.S_QUANTITY = random_value(10.0,100.0);
-          strcpy(stock.S_DIST_01,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_02,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_03,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_04,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_05,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_06,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_07,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_08,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_09,random_string(24,24,rnd));
-          strcpy(stock.S_DIST_10,random_string(24,24,rnd));
+          strcpy(stock.S_DIST_01,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_02,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_03,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_04,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_05,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_06,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_07,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_08,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_09,random_string(24,24,rnd).c_str());
+          strcpy(stock.S_DIST_10,random_string(24,24,rnd).c_str());
           stock.S_YTD=0;
           stock.S_ORDER_CNT=0;
           stock.S_REMOTE_CNT=0;
-          strcpy(stock.S_DATA,random_string(26,50,rnd));
+          strcpy(stock.S_DATA,random_string(26,50,rnd).c_str());
           //TODO ORIGINAL
           
       }
@@ -161,12 +160,12 @@ void load(size_t warehouse) {
         TPCC::District district{};
         district.D_ID = d;
         district.D_W_ID = w;
-        strcpy(district.D_NAME,random_string(6,10,rnd));
-        strcpy(district.D_STREET_1,random_string(10,20,rnd));
-        strcpy(district.D_STREET_2,random_string(10,20,rnd));
-        strcpy(district.D_CITY,random_string(10,20,rnd));
-        strcpy(district.D_STATE,random_string(2,2,rnd));
-        strcpy(district.D_ZIP,gen_zipcode(rnd));
+        strcpy(district.D_NAME,random_string(6,10,rnd).c_str());
+        strcpy(district.D_STREET_1,random_string(10,20,rnd).c_str());
+        strcpy(district.D_STREET_2,random_string(10,20,rnd).c_str());
+        strcpy(district.D_CITY,random_string(10,20,rnd).c_str());
+        strcpy(district.D_STATE,random_string(2,2,rnd).c_str());
+        strcpy(district.D_ZIP,gen_zipcode(rnd).c_str());
         district.D_TAX = random_value(0.0000,2.0000);
         district.D_YTD = 30000.00;
         district.D_NEXT_O_ID = 3001;
@@ -191,12 +190,12 @@ void load(size_t warehouse) {
               strcpy(customer.C_LAST,createC_LAST(random_value<int>(0,999)).c_str());
           }
           strcpy(customer.C_MIDDLE,"OE");
-          strcpy(customer.C_FIRST,random_string(8,16,rnd));
-          strcpy(customer.C_STREET_1,random_string(10,20,rnd));
-          strcpy(customer.C_STREET_2,random_string(10,20,rnd));
-          strcpy(customer.C_CITY,random_string(10,20,rnd));
-          strcpy(customer.C_STATE,random_string(2,2,rnd));
-          strcpy(customer.C_ZIP,gen_zipcode(rnd));
+          strcpy(customer.C_FIRST,random_string(8,16,rnd).c_str());
+          strcpy(customer.C_STREET_1,random_string(10,20,rnd).c_str());
+          strcpy(customer.C_STREET_2,random_string(10,20,rnd).c_str());
+          strcpy(customer.C_CITY,random_string(10,20,rnd).c_str());
+          strcpy(customer.C_STATE,random_string(2,2,rnd).c_str());
+          strcpy(customer.C_ZIP,gen_zipcode(rnd).c_str());
           //TODO C_PHONE
          
           customer.C_SINCE = now;
@@ -208,7 +207,7 @@ void load(size_t warehouse) {
           customer.C_YTD_PAYMENT = 10.00;
           customer.C_PAYMENT_CNT = 1;
           customer.C_DELIVERY_CNT = 0;
-          strcpy(customer.C_DATA,random_string(300,500,rnd));
+          strcpy(customer.C_DATA,random_string(300,500,rnd).c_str());
           
           key = customer.createKey();
           db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
@@ -221,7 +220,7 @@ void load(size_t warehouse) {
           history.H_C_W_ID = history.H_W_ID = w;
           history.H_DATE = now;
           history.H_AMOUNT = 10.00;
-          strcpy(history.H_DATA,random_string(12,24,rnd));
+          strcpy(history.H_DATA,random_string(12,24,rnd).c_str());
 
           key = std::to_string(hkg.get());
           db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
@@ -265,7 +264,7 @@ void load(size_t warehouse) {
                 order_line.OL_AMOUNT = random_value(0.01,99999.99);
             }
             order_line.OL_AMOUNT = 0.0;
-            strcpy(order_line.OL_DIST_INFO,random_string(24,24,rnd));
+            strcpy(order_line.OL_DIST_INFO,random_string(24,24,rnd).c_str());
             
             key = order_line.createKey();
             db_insert(Storage::ORDERLINE, key, {reinterpret_cast<char *>(&order_line), sizeof(order_line)});
