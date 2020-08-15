@@ -13,6 +13,10 @@ bool run_payment(query::Payment *query) {
   uint64_t key;
   itemid_t * item;
 #else // CCBench
+  TPCC::Warehouse *wh;
+  std::string strkey;
+  Tuple *ret_tuple_ptr;
+  Status stat;
   Token token{};
   enter(token);
 #endif
@@ -53,15 +57,10 @@ bool run_payment(query::Payment *query) {
     return finish(Abort);
   }
 #else // CCBench
-  TPCC::Warehouse *wh;
-  std::string strkey;
   strkey = TPCC::Warehouse::CreateKey(w_id);
-  Tuple *ret_tuple_ptr;
-  Status stat;
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
   if (stat != Status::OK) return false;
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
-
 #endif
 
   double w_ytd;

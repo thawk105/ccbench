@@ -26,81 +26,80 @@
 
 namespace TPCC {
 
+enum QueryType { Q_NONE,
+                 Q_NEW_ORDER,
+                 Q_PAYMENT,
+                 Q_ORDER_STATUS,
+                 Q_DELIVERY,
+                 Q_STOCK_LEVEL };
 
-    enum QueryType { Q_NONE,
-                     Q_NEW_ORDER,
-                     Q_PAYMENT,
-                     Q_ORDER_STATUS,
-                     Q_DELIVERY,
-                     Q_STOCK_LEVEL };
+namespace query {
 
-    namespace query {
+  class Option {
+  public:
+    std::uint32_t num_wh = FLAGS_num_wh;
+    std::uint32_t dist_per_ware = FLAGS_dist_per_ware;
+    std::uint32_t max_items = FLAGS_max_items;
+    std::uint32_t cust_per_dist = FLAGS_cust_per_dist;
+    double perc_payment = FLAGS_perc_payment;
+    double perc_order_status = FLAGS_perc_order_status;
+    double perc_delivery = FLAGS_perc_delivery;
+    double perc_stock_level = FLAGS_perc_stock_level;
+  };
 
-        class Option {
-        public:
-            std::uint32_t num_wh = FLAGS_num_wh;
-            std::uint32_t dist_per_ware = FLAGS_dist_per_ware;
-            std::uint32_t max_items = FLAGS_max_items;
-            std::uint32_t cust_per_dist = FLAGS_cust_per_dist;
-            double perc_payment = FLAGS_perc_payment;
-            double perc_order_status = FLAGS_perc_order_status;
-            double perc_delivery = FLAGS_perc_delivery;
-            double perc_stock_level = FLAGS_perc_stock_level;
-        };
+  class NewOrder {
+  public:
+    std::uint64_t w_id;
+    std::uint64_t d_id;
+    std::uint64_t c_id;
+    struct {
+      std::uint64_t ol_i_id;
+      std::uint64_t ol_supply_w_id;
+      std::uint64_t ol_quantity;
+    } items[15];
+    bool rbk;
+    bool remote;
+    std::uint64_t ol_cnt;
+    std::uint64_t o_entry_d;
 
-        class NewOrder {
-        public:
-            std::uint64_t w_id;
-            std::uint64_t d_id;
-            std::uint64_t c_id;
-            struct {
-                std::uint64_t ol_i_id;
-                std::uint64_t ol_supply_w_id;
-                std::uint64_t ol_quantity;
-            } items[15];
-            bool rbk;
-            bool remote;
-            std::uint64_t ol_cnt;
-            std::uint64_t o_entry_d;
+    void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
+    void print();
+  };
 
-            void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
-            void print();
-        };
+  class Payment {
+  public:
+    std::uint64_t w_id;
+    std::uint64_t d_id;
+    std::uint64_t c_id;
+    std::uint64_t d_w_id;
+    std::uint64_t c_w_id;
+    std::uint64_t c_d_id;
+    char c_last[LASTNAME_LEN];
+    double h_amount;
+    bool by_last_name;
 
-        class Payment {
-        public:
-            std::uint64_t w_id;
-            std::uint64_t d_id;
-            std::uint64_t c_id;
-            std::uint64_t d_w_id;
-            std::uint64_t c_w_id;
-            std::uint64_t c_d_id;
-            char c_last[LASTNAME_LEN];
-            double h_amount;
-            bool by_last_name;
+    void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
+    void print();
+  };
 
-            void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
-            void print();
-        };
+  class OrderStatus {};
+  class Delivery {};
+  class StockLevel {};
 
-        class OrderStatus {};
-        class Delivery {};
-        class StockLevel {};
+} // namespace query
 
-    } // namespace query
+class Query {
+public:
+  QueryType type = Q_NONE;
+  union {
+    query::NewOrder new_order;
+    query::Payment payment;
+    query::OrderStatus order_status;
+    query::Delivery delivery;
+    query::StockLevel stock_level;
+  };
 
-    class Query {
-    public:
-        QueryType type = Q_NONE;
-        union {
-            query::NewOrder new_order;
-            query::Payment payment;
-            query::OrderStatus order_status;
-            query::Delivery delivery;
-            query::StockLevel stock_level;
-        };
-
-        void generate(Xoroshiro128Plus &rnd, query::Option &opt, Result &res);
-        void print();
-    };
+  void generate(Xoroshiro128Plus &rnd, query::Option &opt, Result &res);
+  void print();
+};
 }
