@@ -1,10 +1,10 @@
-#include <ctype.h>
+#include <cctype>
 #include <pthread.h>
 #include <sched.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include <sys/syscall.h>
-#include <sys/time.h>
+#include <ctime>
 #include <sys/types.h>
 #include <unistd.h>
 #include <algorithm>
@@ -16,23 +16,16 @@
 
 #define GLOBAL_VALUE_DEFINE
 
-//#include "include/atomic_tool.hh"
 #include "include/common.hh"
 #include "include/result.hh"
-//#include "include/transaction.hh"
 #include "include/util.hh"
 
-#include "../include/atomic_wrapper.hh"
-#include "../include/backoff.hh"
-#include "../include/debug.hh"
-#include "../include/fileio.hh"
-//#include "../include/masstree_wrapper.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
-#include "../include/tsc.hh"
-#include "../include/util.hh"
 #include "../include/zipf.hh"
+#include "../include/util.hh"
 
+#include "tpcc_initializer.hpp"
 #include "tpcc_query.hpp"
 #include "tpcc_txn.hpp"
 
@@ -40,95 +33,56 @@ using namespace std;
 
 void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Result &myres = std::ref(SiloResult[thid]);
-  Xoroshiro128Plus rnd;
+  Xoroshiro128Plus rnd{};
   rnd.init();
-  uint64_t epoch_timer_start, epoch_timer_stop;
-#if BACK_OFF
-  Backoff backoff(FLAGS_clocks_per_us);
-#endif
 
   TPCC::Query query;
   TPCC::query::Option query_opt;
   query_opt.perc_payment = 100;
 
-#if WAL
-  /*
-  const boost::filesystem::path log_dir_path("/tmp/ccbench");
-  if (boost::filesystem::exists(log_dir_path)) {
-  } else {
-    boost::system::error_code error;
-    const bool result = boost::filesystem::create_directory(log_dir_path,
-  error); if (!result || error) { ERR;
-    }
-  }
-  std::string logpath("/tmp/ccbench");
-  */
-  std::string logpath;
-  genLogFile(logpath, thid);
-  trans.logfile_.open(logpath, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-  trans.logfile_.ftruncate(10 ^ 9);
-#endif
-
 #ifdef CCBENCH_LINUX
   ccbench::setThreadAffinity(thid);
-  // printf("Thread #%d: on CPU %d\n", res.thid_, sched_getcpu());
-  // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
-  // sysconf(_SC_NPROCESSORS_CONF));
 #endif
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
-  if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
     query.generate(rnd, query_opt, myres);
 
-RETRY:
-    if (thid == 0) {
-      leaderWork(epoch_timer_start, epoch_timer_stop);
-#if BACK_OFF
-      leaderBackoffWork(backoff, SiloResult);
-#endif
-    }
+    // TODO : add backoff work.
 
     if (loadAcquire(quit)) break;
 
-    bool res = true;
+    bool validation = true;
 
     switch (query.type) {
-    case TPCC::Q_NEW_ORDER :
-      res = TPCC::run_new_order(&query.new_order);
-      break;
-    case TPCC::Q_PAYMENT :
-      res = TPCC::run_payment(&query.payment);
-      break;
-    case TPCC::Q_ORDER_STATUS:
-      //res = TPCC::run_order_status(query.order_status);
-      //break;
-    case TPCC::Q_DELIVERY:
-      //res = TPCC::run_delivery(query.delivery);
-      //break;
-    case TPCC::Q_STOCK_LEVEL:
-      //res = TPCC::run_stock_level(query.stock_level);
-      //break;
-    defalut:
-      std::abort();
+      case TPCC::Q_NEW_ORDER :
+        validation = TPCC::run_new_order(&query.new_order);
+        break;
+      case TPCC::Q_PAYMENT :
+        validation = TPCC::run_payment(&query.payment);
+        break;
+      case TPCC::Q_ORDER_STATUS:
+        //validation = TPCC::run_order_status(query.order_status);
+        break;
+      case TPCC::Q_DELIVERY:
+        //validation = TPCC::run_delivery(query.delivery);
+        break;
+      case TPCC::Q_STOCK_LEVEL:
+        //validation = TPCC::run_stock_level(query.stock_level);
+        break;
+      case TPCC::Q_NONE:
+        break;
+      [[maybe_unused]] defalut:
+        std::abort();
     }
 
-    /*
-    if (trans.validationPhase()) {
-      trans.writePhase();
-    */
-    if (res) {
-      /**
-       * local_commit_counts is used at ../include/backoff.hh to calcurate about
-       * backoff.
-       */
+    if (validation) {
       storeRelease(myres.local_commit_counts_,
                    loadAcquire(myres.local_commit_counts_) + 1);
     } else {
       //trans.abort();
       ++myres.local_abort_counts_;
-      goto RETRY;
     }
   }
 }
@@ -137,7 +91,7 @@ int main(int argc, char *argv[]) try {
   gflags::SetUsageMessage("Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
-  makeDB();
+  TPCC::Initializer::load(FLAGS_num_wh);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -163,6 +117,7 @@ int main(int argc, char *argv[]) try {
                                  FLAGS_thread_num);
 
   return 0;
-} catch (std::bad_alloc&) {
-  ERR;
+} catch (std::bad_alloc &) {
+  std::cout << __FILE__ << " : " << __LINE__ << " : fatal error." << std::endl;
+  std::abort();
 }

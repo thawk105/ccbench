@@ -1,4 +1,5 @@
 
+#include "./../include/atomic_wrapper.hh"
 #include "./../include/util.hh"
 
 bool chkSpan(struct timeval &start, struct timeval &stop, long threshold) {

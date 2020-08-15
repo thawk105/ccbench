@@ -9,7 +9,6 @@ void init_table_warehouse(size_t nwh){
   enter(token);
   //insert(token, Storage::WAREHOUSE, a, b);
 	
-	std::time_t now = std::time(nullptr);
 	{
 		//CREATE Warehouses by single thread.
 		for (size_t w = 0; w < nwh; w++) {

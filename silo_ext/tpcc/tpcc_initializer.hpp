@@ -7,7 +7,7 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 */
 #pragma once
 
-#include "./include/interface.h"
+#include "interface.h"
 #include "./index/masstree_beta/include/masstree_beta_wrapper.h"
 #include "tpcc_tables.hpp"
 #include "../include/random.hh"
@@ -84,14 +84,15 @@ static std::string createC_LAST(size_t rndval){
     
 bool load(size_t warehouse) {
   std::time_t now = std::time(nullptr);
-  Xoroshiro128Plus rnd;
-  TPCC::HistoryKeyGenerator hkg;
+  Xoroshiro128Plus rnd{};
+  rnd.init();
+  TPCC::HistoryKeyGenerator hkg{};
   hkg.init(255);
   
   {
     //CREATE Item
     for(size_t i=0;i<100000;i++){
-      TPCC::Item item;
+      TPCC::Item item{};
       item.I_ID = i;
       item.I_IM_ID = random_value(1,10000);
       strcpy(item.I_NAME,random_string(14,24,rnd));
@@ -109,7 +110,7 @@ bool load(size_t warehouse) {
   {
     //CREATE Warehouses by single thread.
     for (size_t w = 0; w < warehouse; w++) {
-      TPCC::Warehouse ware;
+      TPCC::Warehouse ware{};
       ware.W_ID = w;      
       strcpy(ware.W_NAME,random_string(6,10,rnd));
       strcpy(ware.W_STREET_1,random_string(10,20,rnd));
@@ -124,7 +125,7 @@ bool load(size_t warehouse) {
       std::cout<<"W_ID:"<<ware.W_ID<<"\tW_NAME:"<<ware.W_NAME<<"\tW_STREET_1:"<<ware.W_STREET_1<<"\tW_CITY:"<<ware.W_CITY<<"\tW_STATE:"<<ware.W_STATE<<"\tW_ZIP:"<<ware.W_ZIP<<"\tW_TAX:"<<ware.W_TAX<<"\tW_YTD:"<<ware.W_YTD<<std::endl;
       #endif
 
-      std::string key{std::move(ware.createKey())};
+      std::string key{ware.createKey()};
       db_insert(Storage::WAREHOUSE, key, {reinterpret_cast<char *>(&ware), sizeof(ware)});
     }
   }
@@ -157,7 +158,7 @@ bool load(size_t warehouse) {
         
       //10 districts per warehouse
       for (size_t d = 0; d < 10; d++) {
-        TPCC::District district;
+        TPCC::District district{};
         district.D_ID = d;
         district.D_W_ID = w;
         strcpy(district.D_NAME,random_string(6,10,rnd));
@@ -170,12 +171,12 @@ bool load(size_t warehouse) {
         district.D_YTD = 30000.00;
         district.D_NEXT_O_ID = 3001;
 
-        std::string key{std::move(district.createKey())};
+        std::string key{district.createKey()};
         db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
         
         // CREATE Customer. 3000 customers per a district.
         for (size_t c = 0; c < 3000; c++) {
-          TPCC::Customer customer;
+          TPCC::Customer customer{};
           customer.C_ID = c;
           customer.C_D_ID = d;
           customer.C_W_ID = w;
@@ -209,11 +210,11 @@ bool load(size_t warehouse) {
           customer.C_DELIVERY_CNT = 0;
           strcpy(customer.C_DATA,random_string(300,500,rnd));
           
-          key = std::move(customer.createKey());
+          key = customer.createKey();
           db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
 
           //CREATE History. 1 histories per customer.
-          TPCC::History history;
+          TPCC::History history{};
           
           history.H_C_ID = c;
           history.H_C_D_ID = history.H_D_ID = d;
@@ -222,11 +223,11 @@ bool load(size_t warehouse) {
           history.H_AMOUNT = 10.00;
           strcpy(history.H_DATA,random_string(12,24,rnd));
 
-          std::string key = std::move(std::to_string(hkg.get()));
+          key = std::to_string(hkg.get());
           db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
 
           //CREATE Order. 1 order per customer.
-          TPCC::Order order;
+          TPCC::Order order{};
           order.O_ID = c;
           order.O_C_ID = c; //selected sequentially from a random permutation of [1 .. 3,000]
           order.O_D_ID = d;
@@ -240,12 +241,12 @@ bool load(size_t warehouse) {
           order.O_OL_CNT = random_value(5,15);
           order.O_ALL_LOCAL = 1;
           
-          key = std::move(order.createKey());
+          key = order.createKey();
           db_insert(Storage::ORDER, key, {reinterpret_cast<char *>(&order), sizeof(order)});
 
           //CREATE OrderLine. O_OL_CNT orderlines per order.
           for (size_t ol = 0; ol < order.O_OL_CNT; ol++) {
-            TPCC::OrderLine order_line;
+            TPCC::OrderLine order_line{};
             order_line.OL_O_ID = order.O_ID;
             order_line.OL_D_ID = d;
             order_line.OL_W_ID = w;
@@ -266,7 +267,7 @@ bool load(size_t warehouse) {
             order_line.OL_AMOUNT = 0.0;
             strcpy(order_line.OL_DIST_INFO,random_string(24,24,rnd));
             
-            key = std::move(order_line.createKey());
+            key = order_line.createKey();
             db_insert(Storage::ORDERLINE, key, {reinterpret_cast<char *>(&order_line), sizeof(order_line)});
           }
 
@@ -274,12 +275,12 @@ bool load(size_t warehouse) {
           //900 rows in the NEW-ORDER table corresponding to the last
           //3000-2100=900
           if (2100 < order.O_ID) {
-            TPCC::NewOrder new_order;
+            TPCC::NewOrder new_order{};
             new_order.NO_O_ID = order.O_ID;
             new_order.NO_D_ID = order.O_D_ID;
             new_order.NO_W_ID = order.O_W_ID;
 
-            key = std::move(new_order.createKey());
+            key = new_order.createKey();
             db_insert(Storage::NEWORDER, key, {reinterpret_cast<char *>(&new_order), sizeof(new_order)});
           }
         }

@@ -5,14 +5,13 @@
 using namespace ccbench;
 
 void init_table_warehouse(size_t nwh, Token token){
-	std::time_t now = std::time(nullptr);
 	//CREATE Warehouses by single thread.
 	for (size_t w = 0; w < nwh; w++) {
 		auto *wh = (TPCC::Warehouse *)malloc(sizeof(TPCC::Warehouse));	if (!wh) ERR;
 		wh->W_ID = w;
 		wh->W_TAX = 1.5;
 		wh->W_YTD = 1000;
-		std::string key = wh->CreateKey(w);
+		std::string key = TPCC::Warehouse::CreateKey(w);
 		std::cout << wh->W_ID << std::endl;
 		Status stat;		
 		stat = insert(token, Storage::WAREHOUSE, key, {(char *)wh, sizeof(TPCC::Warehouse)});

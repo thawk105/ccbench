@@ -23,6 +23,7 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB SILO_SOURCES
+        "../common/util.cc"
         "epoch.cpp"
         "garbage_collection.cpp"
         "interface/interface_delete.cpp"
@@ -45,6 +46,13 @@ add_executable(river-2.exe ${SILO_SOURCES} test/river-2.cpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
 add_executable(dev_test.exe test/dev_test.cpp)
 add_executable(river_test.exe test/river_test.cpp)
+
+set_compile_options(silo_ext.exe)
+set_compile_options(river.exe)
+set_compile_options(river-2.exe)
+set_compile_options(unit_test.exe)
+set_compile_options(dev_test.exe)
+set_compile_options(river_test.exe)
 
 target_include_directories(silo_ext.exe
         PRIVATE ${PROJECT_SOURCE_DIR}

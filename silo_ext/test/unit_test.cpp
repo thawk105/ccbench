@@ -85,7 +85,7 @@ TEST_F(unit_test, tx_scan_test) { // NOLINT
   ASSERT_EQ(commit(token), Status::OK);
   std::vector<const Tuple *> tup_vec;
   ASSERT_EQ(scan_key(token, Storage::CUSTOMER, "", false, "", false, tup_vec), Status::OK);
-  ASSERT_EQ(tup_vec.size(), 3);
+  ASSERT_EQ(tup_vec.size(), static_cast<std::size_t>(3));
   for (std::size_t i = 0; i < 3; ++i) {
     if (i == 0) {
       ASSERT_EQ(tup_vec.at(i)->get_val(), std::string_view(v1));

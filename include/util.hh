@@ -25,7 +25,6 @@
 #include <thread>
 #include <vector>
 
-#include "atomic_wrapper.hh"
 #include "debug.hh"
 #include "procedure.hh"
 #include "random.hh"
