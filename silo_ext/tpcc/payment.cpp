@@ -61,6 +61,7 @@ namespace TPCC {
     stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
     if (stat != Status::OK) return false;
     wh = (TPCC::Warehouse *)ret_tuple_ptr->get_val().data();
+
 #endif
 
     double w_ytd;

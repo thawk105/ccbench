@@ -40,8 +40,8 @@ file(GLOB SILO_SOURCES
         )
 
 add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc/tpcc_query.cpp tpcc/neworder.cpp tpcc/payment.cpp ../common/util.cc ../common/result.cc)
-add_executable(river.exe ${SILO_SOURCES} river.cpp)
-add_executable(river-2.exe ${SILO_SOURCES} river-2.cpp)
+add_executable(river.exe ${SILO_SOURCES} test/river.cpp)
+add_executable(river-2.exe ${SILO_SOURCES} test/river-2.cpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
 add_executable(dev_test.exe test/dev_test.cpp)
 add_executable(river_test.exe test/river_test.cpp)

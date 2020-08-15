@@ -1,0 +1,55 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_da189/fast"
+/usr/bin/make -f CMakeFiles/cmTC_da189.dir/build.make CMakeFiles/cmTC_da189.dir/build
+make[1]: ディレクトリ '/home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp' に入ります
+Building CXX object CMakeFiles/cmTC_da189.dir/CheckSymbolExists.cxx.o
+/usr/bin/c++     -o CMakeFiles/cmTC_da189.dir/CheckSymbolExists.cxx.o -c /home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx
+Linking CXX executable cmTC_da189
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_da189.dir/link.txt --verbose=1
+/usr/bin/c++       CMakeFiles/cmTC_da189.dir/CheckSymbolExists.cxx.o  -o cmTC_da189 
+CMakeFiles/cmTC_da189.dir/CheckSymbolExists.cxx.o: 関数 `main' 内:
+CheckSymbolExists.cxx:(.text+0x1b): `pthread_create' に対する定義されていない参照です
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_da189.dir/build.make:86: recipe for target 'cmTC_da189' failed
+make[1]: *** [cmTC_da189] Error 1
+make[1]: ディレクトリ '/home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp' から出ます
+Makefile:121: recipe for target 'cmTC_da189/fast' failed
+make: *** [cmTC_da189/fast] Error 2
+
+File /home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_391dc/fast"
+/usr/bin/make -f CMakeFiles/cmTC_391dc.dir/build.make CMakeFiles/cmTC_391dc.dir/build
+make[1]: ディレクトリ '/home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp' に入ります
+Building CXX object CMakeFiles/cmTC_391dc.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_391dc.dir/CheckFunctionExists.cxx.o -c /home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_391dc
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_391dc.dir/link.txt --verbose=1
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_391dc.dir/CheckFunctionExists.cxx.o  -o cmTC_391dc -lpthreads 
+/usr/bin/ld: -lpthreads が見つかりません
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_391dc.dir/build.make:86: recipe for target 'cmTC_391dc' failed
+make[1]: *** [cmTC_391dc] Error 1
+make[1]: ディレクトリ '/home/river/tpcc/ccbench/silo_ext/build/CMakeFiles/CMakeTmp' から出ます
+Makefile:121: recipe for target 'cmTC_391dc/fast' failed
+make: *** [cmTC_391dc/fast] Error 2
+
+
