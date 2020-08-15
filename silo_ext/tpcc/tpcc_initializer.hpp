@@ -51,11 +51,12 @@ T random_value(const T& minv,const T& maxv){
     }
 }
 std::string gen_zipcode(Xoroshiro128Plus &rnd){
-    std::string s(9,'a');
+    std::string s(10,'a');
     for(int i=0;i<9;i++){
         if(i>3)s[i]='1';
         else s[i]='0'+(rnd.next()%10);
     }
+    s[9]='\0';
     return s;
 }
 
