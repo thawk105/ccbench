@@ -1,5 +1,5 @@
 #include "river.hh"
-#include "interface/interface.h"
+#include "interface.h"
 #include "masstree_beta_wrapper.h"
 #include "tpcc/tpcc_query.hpp"
 
