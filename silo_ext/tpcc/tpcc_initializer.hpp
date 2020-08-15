@@ -68,7 +68,7 @@ C is a run-time constant randomly chosen within [0..A]
 inline int NURand(int A, const int x,const int y) {
   const int C = random_value(0,A);
   assert(x <= y);
-  return ((( random_value(0,A) | random_value(x, y) + C) % (y - x + 1)) + x);
+  return ((( random_value(0,A) | random_value(x, y)) + C) % (y - x + 1)) + x;
 }
     
 static std::string createC_LAST(size_t rndval){
@@ -82,7 +82,7 @@ static std::string createC_LAST(size_t rndval){
     return s;
 }
     
-bool load(size_t warehouse) {
+void load(size_t warehouse) {
   std::time_t now = std::time(nullptr);
   Xoroshiro128Plus rnd{};
   rnd.init();
