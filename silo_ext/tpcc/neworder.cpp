@@ -60,15 +60,15 @@ run_new_order(TPCC::query::NewOrder *query) {
 	if (stat != Status::OK) ERR;
 	wh = (TPCC::Warehouse *)ret_tuple_ptr->get_val().data();
 	
-	double w_tax = wh->W_TAX;
+	[[maybe_unused]] double w_tax = wh->W_TAX;
 	//uint64_t key = custKey(c_id, d_id, w_id);
 	TPCC::Customer *cust;
 	strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
 	stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
-	cust = (TPCC::Customer *)ret_tuple_ptr->get_val().data();
-	uint64_t c_discount = cust->C_DISCOUNT;
-	char* c_last = cust->C_LAST;
-	char* c_credit = cust->C_CREDIT;
+	cust = reinterpret_cast<TPCC::Customer *>(const_cast<char*>(ret_tuple_ptr->get_val().data()));
+	double c_discount = cust->C_DISCOUNT;
+	[[maybe_unused]] char* c_last = cust->C_LAST;
+	[[maybe_unused]] char* c_credit = cust->C_CREDIT;
 
 #ifdef DBx1000
 	key = w_id;
@@ -114,8 +114,8 @@ run_new_order(TPCC::query::NewOrder *query) {
 	stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr); if (stat != Status::OK) ERR;
 	dist = (TPCC::District *)ret_tuple_ptr->get_val().data();
 	
-	double d_tax = dist->D_TAX;
-	int64_t o_id = dist->D_NEXT_O_ID;
+	[[maybe_unused]] double d_tax = dist->D_TAX;
+	std::uint32_t o_id = dist->D_NEXT_O_ID;
 	o_id++;
 	dist->D_NEXT_O_ID = o_id;
 	// o_id = dist->D_NEXT_O_ID; /* no need to execute */
@@ -219,9 +219,9 @@ run_new_order(TPCC::query::NewOrder *query) {
 			ERR; /* need to write a logic "go to invalidate" */
 		}
 		item = (TPCC::Item *)ret_tuple_ptr->get_val().data();
-		int64_t i_price = item->I_PRICE;
-		char * i_name = item->I_NAME;
-		char * i_data = item->I_DATA;
+		double i_price = item->I_PRICE;
+		[[maybe_unused]] char * i_name = item->I_NAME;
+		[[maybe_unused]] char * i_data = item->I_DATA;
 
 #ifdef DBx1000
 		uint64_t ol_i_id = query->items[ol_number].ol_i_id;
@@ -278,12 +278,12 @@ run_new_order(TPCC::query::NewOrder *query) {
 		[[maybe_unused]] char* s_dist_09 = stock->S_DIST_09;
 		[[maybe_unused]] char* s_dist_10 = stock->S_DIST_10;
 
-		int64_t s_ytd = stock->S_YTD;
-		int64_t s_order_cnt = stock->S_ORDER_CNT;
-		stock->S_YTD = static_cast<double>(s_ytd + ol_quantity);
-		stock->S_ORDER_CNT = static_cast<double>(s_order_cnt + 1);
+		double s_ytd = stock->S_YTD;
+		double s_order_cnt = stock->S_ORDER_CNT;
+		stock->S_YTD = s_ytd + ol_quantity;
+		stock->S_ORDER_CNT = s_order_cnt + 1;
 		if (remote) {
-			auto s_remote_cnt = static_cast<std::int64_t>(stock->S_REMOTE_CNT);
+			double s_remote_cnt = stock->S_REMOTE_CNT;
 			s_remote_cnt++;
 			stock->S_REMOTE_CNT = s_remote_cnt;
 		}
@@ -351,8 +351,8 @@ run_new_order(TPCC::query::NewOrder *query) {
 			:ol_i_id, :ol_supply_w_id,
 			:ol_quantity, :ol_amount, :ol_dist_info);
 			+====================================================*/
-		double w_tax = wh->W_TAX; 
-		double d_tax = dist->D_TAX; 
+		w_tax = wh->W_TAX;
+		d_tax = dist->D_TAX;
 		//amt[ol_number-1]=ol_amount;
 		//total += ol_amount;
 		double ol_amount = ol_quantity * i_price * (1.0 + w_tax + d_tax) * (1.0 - c_discount);
