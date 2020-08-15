@@ -39,8 +39,7 @@ file(GLOB SILO_SOURCES
         "index/masstree_beta/masstree_beta_wrapper.cpp"
         )
 
-#add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp silo_ext.cpp result.cpp util.cpp tpcc_query.cpp neworder.cpp ../common/util.cc ../common/result.cc)
-add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc/tpcc_query.cpp tpcc/neworder.cpp ../common/util.cc ../common/result.cc)
+add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc/tpcc_query.cpp tpcc/neworder.cpp tpcc/payment.cpp ../common/util.cc ../common/result.cc)
 add_executable(river.exe ${SILO_SOURCES} river.cpp)
 add_executable(river-2.exe ${SILO_SOURCES} river-2.cpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
@@ -169,4 +168,3 @@ add_definitions(-DKVS_MAX_PARALLEL_THREADS=500)
 add_definitions(-DKVS_MAX_KEY_LENGTH=1000)
 add_definitions(-DKVS_LOG_GC_THRESHOLD=1)
 add_definitions(-DPROJECT_ROOT=${PROJECT_SOURCE_DIR})
-

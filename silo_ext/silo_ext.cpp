@@ -34,6 +34,7 @@
 #include "../include/zipf.hh"
 
 #include "tpcc_query.hpp"
+#include "tpcc_txn.hpp"
 
 using namespace std;
 
@@ -95,10 +96,10 @@ RETRY:
 
     switch (query.type) {
     case TPCC::Q_NEW_ORDER :
-      //res = TPCC::run_new_order(query.new_order);
+      res = TPCC::run_new_order(&query.new_order);
       break;
     case TPCC::Q_PAYMENT :
-      //res = TPCC::run_payment(query.payment);
+      res = TPCC::run_payment(&query.payment);
       break;
     case TPCC::Q_ORDER_STATUS:
       //res = TPCC::run_order_status(query.order_status);
