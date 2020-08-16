@@ -60,7 +60,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
         validation = TPCC::run_new_order(&query.new_order);
         break;
       case TPCC::Q_PAYMENT :
-        validation = TPCC::run_payment(&query.payment);
+        validation = TPCC::run_payment(&query.payment, thid);
         break;
       case TPCC::Q_ORDER_STATUS:
         //validation = TPCC::run_order_status(query.order_status);
