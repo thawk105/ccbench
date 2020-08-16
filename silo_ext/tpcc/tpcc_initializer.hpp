@@ -280,7 +280,7 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
 }
 
 //CREATE Customer
-void load_customer(const std::size_t w, const std::size_t d) {
+void load_customer(const std::size_t d, const std::size_t w) {
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(d);
   Xoroshiro128Plus rnd{};
@@ -351,7 +351,7 @@ void load_district(const std::size_t w) {
       db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
-      load_customer(w, d);
+      load_customer(d, w);
     }
   };
 
