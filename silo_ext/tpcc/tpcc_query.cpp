@@ -3,6 +3,8 @@
 #include "../include/result.hh"
 #include "tpcc_query.hpp"
 
+#define ID_START 0
+
 namespace TPCC {
 
 /*==================================================================+
@@ -62,9 +64,9 @@ std::uint64_t NURand(std::uint64_t A, std::uint64_t x, std::uint64_t y, Xoroshir
 
 void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
                                [[maybe_unused]]Result &res) {
-  w_id   = Random(1, opt.num_wh, rnd);
-  d_id   = Random(1, opt.dist_per_ware, rnd);
-  c_id   = NURand(1023, 1, opt.cust_per_dist, rnd);
+  w_id   = Random(ID_START, opt.num_wh, rnd);
+  d_id   = Random(ID_START, opt.dist_per_ware, rnd);
+  c_id   = NURand(1023, ID_START, opt.cust_per_dist, rnd);
   rbk    = Random(1, 100, rnd);
   ol_cnt = Random(5, 15, rnd);
   o_entry_d = 2013;
@@ -72,16 +74,16 @@ void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
 
   for (unsigned int i=0; i<ol_cnt; ++i) {
     { redo1:
-      items[i].ol_i_id = NURand(8191, 1, opt.max_items, rnd);
+      items[i].ol_i_id = NURand(8191, ID_START, opt.max_items, rnd);
       for (unsigned int j=0; j<i; ++j) {
         if (items[i].ol_i_id == items[j].ol_i_id) goto redo1;
       }
     }
-    if (opt.num_wh == 1 || Random(1, 100, rnd) > 1) {
+    if (opt.num_wh == 1 || Random(ID_START, 100, rnd) > 1) {
       items[i].ol_supply_w_id = w_id;
     } else {
       do {
-        items[i].ol_supply_w_id = Random(1, opt.num_wh, rnd);
+        items[i].ol_supply_w_id = Random(ID_START, opt.num_wh, rnd);
       } while (items[i].ol_supply_w_id == w_id);
       remote = true;
     }
@@ -91,9 +93,9 @@ void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
 
 void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
                               [[maybe_unused]]Result &res) {
-  w_id = Random(1, opt.num_wh, rnd);
+  w_id = Random(ID_START, opt.num_wh, rnd);
   d_w_id = w_id;
-  d_id = Random(1, opt.dist_per_ware, rnd);
+  d_id = Random(ID_START, opt.dist_per_ware, rnd);
   h_amount = Random(100, 500000, rnd)*0.01;
 
   int x = Random(1, 100, rnd);
@@ -103,10 +105,10 @@ void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
     c_w_id = w_id;
   } else {
     // remote warehouse
-    c_d_id = Random(1, opt.dist_per_ware, rnd);
+    c_d_id = Random(ID_START, opt.dist_per_ware, rnd);
     if (opt.num_wh > 1) {
       do {
-        c_w_id = Random(1, opt.num_wh, rnd);
+        c_w_id = Random(ID_START, opt.num_wh, rnd);
       } while (c_w_id == w_id);
     } else {
       c_w_id = w_id;
@@ -121,7 +123,7 @@ void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
   } else {
     // by cust id
     by_last_name = false;
-    c_id = NURand(1023, 1, opt.cust_per_dist, rnd);
+    c_id = NURand(1023, ID_START, opt.cust_per_dist, rnd);
   }
 }
 
