@@ -85,7 +85,9 @@ static std::string createC_LAST(const std::size_t rndval) {
 
 
 //CREATE Item
-void load_item(Xoroshiro128Plus &rnd) {
+void load_item() {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   for (size_t i = 1; i < 100000 + 1; ++i) {
     TPCC::Item ite{};
     ite.I_ID = i;
@@ -102,7 +104,9 @@ void load_item(Xoroshiro128Plus &rnd) {
 }
 
 //CREATE Warehouses
-void load_warehouse(const std::size_t w, Xoroshiro128Plus &rnd) {
+void load_warehouse(const std::size_t w) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   TPCC::Warehouse ware{};
   ware.W_ID = w;
   strcpy(ware.W_NAME, random_string(6, 10, rnd).c_str());
@@ -122,7 +126,9 @@ void load_warehouse(const std::size_t w, Xoroshiro128Plus &rnd) {
 }
 
 //CREATE Stock
-void load_stock(const std::size_t w, Xoroshiro128Plus &rnd) {
+void load_stock(const std::size_t w) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   for (std::size_t s = 1; s < 100000 + 1; ++s) {
     TPCC::Stock st{};
     st.S_I_ID = s;
@@ -147,7 +153,9 @@ void load_stock(const std::size_t w, Xoroshiro128Plus &rnd) {
 }
 
 //CREATE History
-void load_history(const std::size_t w, const std::size_t d, const std::size_t c, TPCC::HistoryKeyGenerator &hkg, Xoroshiro128Plus &rnd) {
+void load_history(const std::size_t w, const std::size_t d, const std::size_t c, TPCC::HistoryKeyGenerator &hkg) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   std::time_t now = std::time(nullptr);
   TPCC::History history{};
   history.H_C_ID = c;
@@ -162,7 +170,9 @@ void load_history(const std::size_t w, const std::size_t d, const std::size_t c,
 }
 
 //CREATE Orderline
-void load_orderline(const std::size_t w, const std::size_t d, const std::size_t c, const std::size_t ol, Xoroshiro128Plus &rnd) {
+void load_orderline(const std::size_t w, const std::size_t d, const std::size_t c, const std::size_t ol) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   std::time_t now = std::time(nullptr);
   TPCC::OrderLine order_line{};
   order_line.OL_O_ID = c;
@@ -191,7 +201,9 @@ void load_orderline(const std::size_t w, const std::size_t d, const std::size_t 
 }
 
 //CREATE Order
-void load_order(const std::size_t w, const std::size_t d, const std::size_t c, Xoroshiro128Plus &rnd) {
+void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   std::time_t now = std::time(nullptr);
   TPCC::Order order{};
   order.O_ID = c;
@@ -212,7 +224,7 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c, X
 
   //O_OL_CNT orderlines per order.
   for (size_t ol = 1; ol < order.O_OL_CNT + 1; ol++) {
-    load_orderline(w, d, c, ol, rnd);
+    load_orderline(w, d, c, ol);
   }
 
   //CREATE NewOrder 900 rows
@@ -228,7 +240,9 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c, X
 }
 
 //CREATE Customer
-void load_customer(const std::size_t w, const std::size_t d, TPCC::HistoryKeyGenerator &hkg, Xoroshiro128Plus &rnd) {
+void load_customer(const std::size_t w, const std::size_t d, TPCC::HistoryKeyGenerator &hkg) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   for (size_t c = 1; c < 3001; ++c) {
     std::time_t now = std::time(nullptr);
     TPCC::Customer customer{};
@@ -267,13 +281,15 @@ void load_customer(const std::size_t w, const std::size_t d, TPCC::HistoryKeyGen
     std::string key = customer.createKey();
     db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
     //1 histories per customer.
-    load_history(w, d, c, hkg, rnd);
+    load_history(w, d, c, hkg);
     //1 order per customer.
-    load_order(w, d, c, rnd);
+    load_order(w, d, c);
   }
 }
 
-void load_district(const std::size_t w, TPCC::HistoryKeyGenerator &hkg, Xoroshiro128Plus &rnd) {
+void load_district(const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
+  Xoroshiro128Plus rnd{};
+  rnd.init();
   for (size_t d = 1; d < 11; d++) {
     TPCC::District district{};
     district.D_ID = d;
@@ -292,25 +308,24 @@ void load_district(const std::size_t w, TPCC::HistoryKeyGenerator &hkg, Xoroshir
     db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
 
     // CREATE Customer History Order Orderline. 3000 customers per a district.
-    load_customer(w, d, hkg, rnd);
+    load_customer(w, d, hkg);
   }
 }
 
 void load(const std::size_t warehouse) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(255);
   //ID 1-origin
 
-  load_item(rnd);
+  std::vector<std::thread> thv;
+  thv.emplace_back(load_item);
   std::cout << "load_item done." << std::endl;
   for (std::size_t w = 1; w <= warehouse; ++w) {
-    load_warehouse(w, rnd);
+    load_warehouse(w);
     //100,000 stocks per warehouse
-    load_stock(w, rnd);
+    load_stock(w);
     //10 districts per warehouse
-    load_district(w, hkg, rnd);
+    load_district(w, hkg);
   }
   std::cout << "load done." << std::endl;
 }
