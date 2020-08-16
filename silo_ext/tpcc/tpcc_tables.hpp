@@ -115,13 +115,13 @@ struct HistoryKeyGenerator
         std::uint64_t key_;
         struct {
             std::uint64_t counter_:56;
-            std::uint8_t thread_id_:8;
+            std::uint8_t warehouse_id_:8;
         };
         // upper bits are thread_id in little endian architecture.
     };
     void init(uint8_t thread_id) {
         counter_ = 0;
-        thread_id_ = thread_id;
+        warehouse_id_ = thread_id;
     }
     uint64_t get() {
         ++counter_;

@@ -279,10 +279,7 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
 }
 
 //CREATE Customer
-void load_customer(const std::size_t d, const std::size_t w) {
-  TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(d);
-  std::mutex mute_hkg;
+void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg) {
   struct S {
     static void
     work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg,
@@ -340,12 +337,12 @@ void load_customer(const std::size_t d, const std::size_t w) {
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{cust_num / cust_num_per_th};
   std::vector<std::thread> thv;
-  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), std::ref(mute_hkg), d, w);
+  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), std::ref(mutex_hkg), d, w);
   for (std::size_t i = 1; i < para_num - 1; ++i) {
-    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), std::ref(mute_hkg), d,
+    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), std::ref(mutex_hkg), d,
                      w);
   }
-  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, cust_num, std::ref(hkg), std::ref(mute_hkg), d, w);
+  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, cust_num, std::ref(hkg), std::ref(mutex_hkg), d, w);
 
   for (auto &&th : thv) {
     th.join();
@@ -354,7 +351,7 @@ void load_customer(const std::size_t d, const std::size_t w) {
 
 void load_district(const std::size_t w) {
   struct S {
-    static void work(const std::size_t d, const std::size_t w) {
+    static void work(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg) {
       Xoroshiro128Plus rnd{};
       rnd.init();
       TPCC::District district{};
@@ -374,13 +371,16 @@ void load_district(const std::size_t w) {
       db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
-      load_customer(d, w);
+      load_customer(d, w, hkg, mutex_hkg);
     }
   };
+  TPCC::HistoryKeyGenerator hkg{};
+  hkg.init(w);
+  std::mutex mutex_hkg;
 
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= 10; d++) {
-    thv.emplace_back(S::work, d, w);
+    thv.emplace_back(S::work, d, w, std::ref(hkg), std::ref(mutex_hkg));
   }
 
   for (auto &&th : thv) {
