@@ -150,28 +150,45 @@ void load_warehouse(const std::size_t w) {
 
 //CREATE Stock
 void load_stock(const std::size_t w) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
-  for (std::size_t s = 1; s < 100000 + 1; ++s) {
-    TPCC::Stock st{};
-    st.S_I_ID = s;
-    st.S_W_ID = w;
-    st.S_QUANTITY = random_value(10.0, 100.0);
-    strcpy(st.S_DIST_01, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_02, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_03, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_04, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_05, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_06, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_07, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_08, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_09, random_string(24, 24, rnd).c_str());
-    strcpy(st.S_DIST_10, random_string(24, 24, rnd).c_str());
-    st.S_YTD = 0;
-    st.S_ORDER_CNT = 0;
-    st.S_REMOTE_CNT = 0;
-    strcpy(st.S_DATA, random_string(26, 50, rnd).c_str());
-    //TODO ORIGINAL
+  struct S {
+    static void work(const std::size_t start, const std::size_t end, const std::size_t w) {
+      Xoroshiro128Plus rnd{};
+      rnd.init();
+      for (std::size_t s = start; s <= end; ++s) {
+        TPCC::Stock st{};
+        st.S_I_ID = s;
+        st.S_W_ID = w;
+        st.S_QUANTITY = random_value(10.0, 100.0);
+        strcpy(st.S_DIST_01, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_02, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_03, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_04, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_05, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_06, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_07, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_08, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_09, random_string(24, 24, rnd).c_str());
+        strcpy(st.S_DIST_10, random_string(24, 24, rnd).c_str());
+        st.S_YTD = 0;
+        st.S_ORDER_CNT = 0;
+        st.S_REMOTE_CNT = 0;
+        strcpy(st.S_DATA, random_string(26, 50, rnd).c_str());
+        //TODO ORIGINAL
+      }
+    }
+  };
+  constexpr std::size_t stock_num{100000};
+  constexpr std::size_t stock_num_per_thread{500};
+  constexpr std::size_t para_num{stock_num / stock_num_per_thread};
+  std::vector<std::thread> thv;
+  thv.emplace_back(S::work, 1, stock_num_per_thread, w);
+  for (std::size_t i = 1; i < para_num - 1; ++i) {
+    thv.emplace_back(S::work, i * stock_num_per_thread + 1, (i + 1) * stock_num_per_thread, w);
+  }
+  thv.emplace_back(S::work, (para_num - 1) * stock_num_per_thread + 1, stock_num, w);
+
+  for (auto &&th : thv) {
+    th.join();
   }
 }
 
