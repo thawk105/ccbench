@@ -81,8 +81,8 @@ $ ./cicada.exe -tuple_num=1000000 -thread_num=224
 
 ---
 
-## Welcom
-Welcom pull request about 
+## Welcome
+Welcome pull request about 
 - Improvement of performance in any workloads.
 - Bug fix.
 - Improvement about comments (doxygen style is recommended).
