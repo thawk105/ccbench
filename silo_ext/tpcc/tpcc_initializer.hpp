@@ -193,7 +193,7 @@ void load_stock(const std::size_t w) {
 }
 
 //CREATE History
-void load_history(const std::size_t w, const std::size_t d, const std::size_t c, TPCC::HistoryKeyGenerator &hkg) {
+void load_history(const std::size_t w, const std::size_t d, const std::size_t c, const std::string &&key) {
   Xoroshiro128Plus rnd{};
   rnd.init();
   std::time_t now = std::time(nullptr);
@@ -205,7 +205,6 @@ void load_history(const std::size_t w, const std::size_t d, const std::size_t c,
   history.H_AMOUNT = 10.00;
   strcpy(history.H_DATA, random_string(12, 24, rnd).c_str());
 
-  std::string key = std::to_string(hkg.get());
   db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)});
 }
 
@@ -283,49 +282,73 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
 void load_customer(const std::size_t d, const std::size_t w) {
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(d);
-  Xoroshiro128Plus rnd{};
-  rnd.init();
-  for (size_t c = 1; c < 3001; ++c) {
-    std::time_t now = std::time(nullptr);
-    TPCC::Customer customer{};
-    customer.C_ID = c;
-    customer.C_D_ID = d;
-    customer.C_W_ID = w;
-    if (c < 1000) {
-      //for the first 1,000 customers, and generating a non -uniform random number using the function NURand(255,0,999)
-      strcpy(customer.C_LAST, createC_LAST(NURand(255, 0, 999)).c_str());
+  std::mutex mute_hkg;
+  struct S {
+    static void
+    work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg,
+         const std::size_t d, const std::size_t w) {
+      Xoroshiro128Plus rnd{};
+      rnd.init();
+      for (size_t c = start; c <= end; ++c) {
+        std::time_t now = std::time(nullptr);
+        TPCC::Customer customer{};
+        customer.C_ID = c;
+        customer.C_D_ID = d;
+        customer.C_W_ID = w;
+        if (c < 1000) {
+          //for the first 1,000 customers, and generating a non -uniform random number using the function NURand(255,0,999)
+          strcpy(customer.C_LAST, createC_LAST(NURand(255, 0, 999)).c_str());
 #ifdef DEBUG
-      if(w==0&&d==0&&c==0)std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
+          if(w==0&&d==0&&c==0)std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
 #endif
-    } else {
-      strcpy(customer.C_LAST, createC_LAST(random_value<int>(0, 999)).c_str());
+        } else {
+          strcpy(customer.C_LAST, createC_LAST(random_value<int>(0, 999)).c_str());
+        }
+        strcpy(customer.C_MIDDLE, "OE");
+        strcpy(customer.C_FIRST, random_string(8, 16, rnd).c_str());
+        strcpy(customer.C_STREET_1, random_string(10, 20, rnd).c_str());
+        strcpy(customer.C_STREET_2, random_string(10, 20, rnd).c_str());
+        strcpy(customer.C_CITY, random_string(10, 20, rnd).c_str());
+        strcpy(customer.C_STATE, random_string(2, 2, rnd).c_str());
+        strcpy(customer.C_ZIP, gen_zipcode(rnd).c_str());
+        //TODO C_PHONE
+
+        customer.C_SINCE = now;
+        //TODO 10% GC 90% BC
+        strcpy(customer.C_CREDIT, "GC");
+        customer.C_CREDIT_LIM = 50000.00;
+        customer.C_DISCOUNT = random_value(0.0000, 0.50000);
+        customer.C_BALANCE = -10.00;
+        customer.C_YTD_PAYMENT = 10.00;
+        customer.C_PAYMENT_CNT = 1;
+        customer.C_DELIVERY_CNT = 0;
+        strcpy(customer.C_DATA, random_string(300, 500, rnd).c_str());
+
+        std::string key = customer.createKey();
+        db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
+        //1 histories per customer.
+        mutex_hkg.lock();
+        std::string his_key = std::to_string(hkg.get());
+        mutex_hkg.unlock();
+        load_history(w, d, c, static_cast<const std::string &&>(his_key));
+        //1 order per customer.
+        load_order(w, d, c);
+      }
     }
-    strcpy(customer.C_MIDDLE, "OE");
-    strcpy(customer.C_FIRST, random_string(8, 16, rnd).c_str());
-    strcpy(customer.C_STREET_1, random_string(10, 20, rnd).c_str());
-    strcpy(customer.C_STREET_2, random_string(10, 20, rnd).c_str());
-    strcpy(customer.C_CITY, random_string(10, 20, rnd).c_str());
-    strcpy(customer.C_STATE, random_string(2, 2, rnd).c_str());
-    strcpy(customer.C_ZIP, gen_zipcode(rnd).c_str());
-    //TODO C_PHONE
+  };
+  constexpr std::size_t cust_num{3000};
+  constexpr std::size_t cust_num_per_th{500};
+  constexpr std::size_t para_num{cust_num / cust_num_per_th};
+  std::vector<std::thread> thv;
+  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), std::ref(mute_hkg), d, w);
+  for (std::size_t i = 1; i < para_num - 1; ++i) {
+    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), std::ref(mute_hkg), d,
+                     w);
+  }
+  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, cust_num, std::ref(hkg), std::ref(mute_hkg), d, w);
 
-    customer.C_SINCE = now;
-    //TODO 10% GC 90% BC
-    strcpy(customer.C_CREDIT, "GC");
-    customer.C_CREDIT_LIM = 50000.00;
-    customer.C_DISCOUNT = random_value(0.0000, 0.50000);
-    customer.C_BALANCE = -10.00;
-    customer.C_YTD_PAYMENT = 10.00;
-    customer.C_PAYMENT_CNT = 1;
-    customer.C_DELIVERY_CNT = 0;
-    strcpy(customer.C_DATA, random_string(300, 500, rnd).c_str());
-
-    std::string key = customer.createKey();
-    db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
-    //1 histories per customer.
-    load_history(w, d, c, hkg);
-    //1 order per customer.
-    load_order(w, d, c);
+  for (auto &&th : thv) {
+    th.join();
   }
 }
 
