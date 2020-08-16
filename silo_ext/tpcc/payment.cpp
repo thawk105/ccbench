@@ -59,7 +59,7 @@ bool run_payment(query::Payment *query) {
 #else // CCBench
   strkey = TPCC::Warehouse::CreateKey(w_id);
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) return false;
+  if (stat != Status::OK) {leave(token); return false;}
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
 #endif
 
@@ -115,7 +115,7 @@ bool run_payment(query::Payment *query) {
   TPCC::District *dist;
   strkey = TPCC::District::CreateKey(d_id, w_id);
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) return false;
+  if (stat != Status::OK) {leave(token); return false;}
   dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
 
   dist->D_YTD += query->h_amount;
@@ -193,7 +193,7 @@ bool run_payment(query::Payment *query) {
 #else // CCBench
     strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
     stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
-    if (stat != Status::OK) return false;
+    if (stat != Status::OK) {leave(token); return false;}
     cust = (TPCC::Customer *) ret_tuple_ptr->get_val().data();
 #endif
   }
@@ -301,7 +301,7 @@ bool run_payment(query::Payment *query) {
 
   //strkey = hist->CreateKey(hist.H_C_W_ID, hist.H_C_D_ID, hist.H_C_ID);
   stat = insert(token, Storage::HISTORY, strkey, {(char *) &hist, sizeof(TPCC::History)});
-  if (stat != Status::OK) return false;
+  if (stat != Status::OK) {leave(token); return false;}
 #endif
 #endif // DBx1000_COMMENT_OUT
 
