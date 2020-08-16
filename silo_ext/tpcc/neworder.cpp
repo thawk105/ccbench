@@ -60,7 +60,6 @@ run_new_order(TPCC::query::NewOrder *query) {
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
   if (stat != Status::OK) {leave(token); return false;}
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
-  printf("w_id=%lu ",w_id);
 
   [[maybe_unused]] double w_tax = wh->W_TAX;
   //uint64_t key = custKey(c_id, d_id, w_id);
