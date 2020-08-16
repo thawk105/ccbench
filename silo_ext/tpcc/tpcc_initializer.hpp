@@ -11,7 +11,10 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 #include "./index/masstree_beta/include/masstree_beta_wrapper.h"
 #include "tpcc_tables.hpp"
 #include "../include/random.hh"
+
 #include <cassert>
+#include <thread>
+#include <vector>
 
 using namespace ccbench;
 
@@ -86,20 +89,40 @@ static std::string createC_LAST(const std::size_t rndval) {
 
 //CREATE Item
 void load_item() {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
-  for (size_t i = 1; i < 100000 + 1; ++i) {
-    TPCC::Item ite{};
-    ite.I_ID = i;
-    ite.I_IM_ID = random_value(1, 10000);
-    strcpy(ite.I_NAME, random_string(14, 24, rnd).c_str());
-    ite.I_PRICE = random_value(1.00, 100.00);
-    strcpy(ite.I_DATA, random_string(26, 50, rnd).c_str());
-    //TODO ORIGINAL
+  constexpr std::size_t item_num{100000};
+  struct S {
+    static void work(std::size_t start, std::size_t end) {
+      Xoroshiro128Plus rnd{};
+      rnd.init();
+      for (size_t i = start; i <= end; ++i) {
+        TPCC::Item ite{};
+        ite.I_ID = i;
+        ite.I_IM_ID = random_value(1, 10000);
+        strcpy(ite.I_NAME, random_string(14, 24, rnd).c_str());
+        ite.I_PRICE = random_value(1.00, 100.00);
+        strcpy(ite.I_DATA, random_string(26, 50, rnd).c_str());
+        //TODO ORIGINAL
 
 #ifdef DEBUG
-    if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
+        if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
+      }
+    }
+  };
+
+  std::vector<std::thread> thv;
+  /**
+   * precondition : para_num > 3
+   */
+  constexpr std::size_t para_num{10};
+  thv.emplace_back(S::work, 1, item_num / para_num);
+  for (std::size_t i = 1; i < para_num - 1; ++i) {
+    thv.emplace_back(S::work, (item_num / para_num) * i + 1, (item_num / para_num) * (i + 1));
+  }
+  thv.emplace_back(S::work, (item_num / para_num) * (para_num - 1) + 1, item_num);
+
+  for (auto &&th : thv) {
+    th.join();
   }
 }
 
@@ -240,7 +263,9 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
 }
 
 //CREATE Customer
-void load_customer(const std::size_t w, const std::size_t d, TPCC::HistoryKeyGenerator &hkg) {
+void load_customer(const std::size_t w, const std::size_t d) {
+  TPCC::HistoryKeyGenerator hkg{};
+  hkg.init(d);
   Xoroshiro128Plus rnd{};
   rnd.init();
   for (size_t c = 1; c < 3001; ++c) {
@@ -287,45 +312,58 @@ void load_customer(const std::size_t w, const std::size_t d, TPCC::HistoryKeyGen
   }
 }
 
-void load_district(const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
-  for (size_t d = 1; d < 11; d++) {
-    TPCC::District district{};
-    district.D_ID = d;
-    district.D_W_ID = w;
-    strcpy(district.D_NAME, random_string(6, 10, rnd).c_str());
-    strcpy(district.D_STREET_1, random_string(10, 20, rnd).c_str());
-    strcpy(district.D_STREET_2, random_string(10, 20, rnd).c_str());
-    strcpy(district.D_CITY, random_string(10, 20, rnd).c_str());
-    strcpy(district.D_STATE, random_string(2, 2, rnd).c_str());
-    strcpy(district.D_ZIP, gen_zipcode(rnd).c_str());
-    district.D_TAX = random_value(0.0000, 2.0000);
-    district.D_YTD = 30000.00;
-    district.D_NEXT_O_ID = 3001;
+void load_district(const std::size_t w) {
+  struct S {
+    static void work(const std::size_t d, const std::size_t w) {
+      Xoroshiro128Plus rnd{};
+      rnd.init();
+      TPCC::District district{};
+      district.D_ID = d;
+      district.D_W_ID = w;
+      strcpy(district.D_NAME, random_string(6, 10, rnd).c_str());
+      strcpy(district.D_STREET_1, random_string(10, 20, rnd).c_str());
+      strcpy(district.D_STREET_2, random_string(10, 20, rnd).c_str());
+      strcpy(district.D_CITY, random_string(10, 20, rnd).c_str());
+      strcpy(district.D_STATE, random_string(2, 2, rnd).c_str());
+      strcpy(district.D_ZIP, gen_zipcode(rnd).c_str());
+      district.D_TAX = random_value(0.0000, 2.0000);
+      district.D_YTD = 30000.00;
+      district.D_NEXT_O_ID = 3001;
 
-    std::string key{district.createKey()};
-    db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
+      std::string key{district.createKey()};
+      db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
 
-    // CREATE Customer History Order Orderline. 3000 customers per a district.
-    load_customer(w, d, hkg);
+      // CREATE Customer History Order Orderline. 3000 customers per a district.
+      load_customer(w, d);
+    }
+  };
+
+  std::vector<std::thread> thv;
+  for (size_t d = 1; d <= 10; d++) {
+    thv.emplace_back(S::work, d, w);
+  }
+
+  for (auto &&th : thv) {
+    th.join();
   }
 }
 
 void load(const std::size_t warehouse) {
-  TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(255);
   //ID 1-origin
 
-  //std::vector<std::thread> thv;
-  load_item();
+  std::vector<std::thread> thv;
+  thv.emplace_back(load_item);
   std::cout << "load_item done." << std::endl;
   for (std::size_t w = 1; w <= warehouse; ++w) {
-    load_warehouse(w);
+    thv.emplace_back(load_warehouse, w);
     //100,000 stocks per warehouse
-    load_stock(w);
+    thv.emplace_back(load_stock, w);
     //10 districts per warehouse
-    load_district(w, hkg);
+    thv.emplace_back(load_district, w);
+  }
+
+  for (auto &&th : thv) {
+    th.join();
   }
   std::cout << "load done." << std::endl;
 }
