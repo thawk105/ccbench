@@ -7,7 +7,7 @@ using namespace ccbench;
 namespace TPCC {
 constexpr bool g_wh_update = true;
 
-bool run_payment(query::Payment *query, size_t thid) {
+bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
 #ifdef DBx1000
   RC rc = RCOK;
   uint64_t key;
@@ -16,8 +16,6 @@ bool run_payment(query::Payment *query, size_t thid) {
   TPCC::Warehouse *wh;
   std::string strkey;
   Tuple *ret_tuple_ptr;
-  TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(thid);
   Status stat;
   Token token{};
   enter(token);
@@ -298,7 +296,7 @@ bool run_payment(query::Payment *query, size_t thid) {
 #if !TPCC_SMALL
   sprintf(hist.H_DATA, "%-10.10s    %.10s", w_name.c_str(), d_name.c_str());
 #endif
-  strkey = std::to_string(hkg.get());
+  strkey = std::to_string(hkg->get());
   stat = insert(token, Storage::HISTORY, strkey, {reinterpret_cast<char *>(&hist), sizeof(hist)});
   if (stat != Status::OK) {leave(token); return false;}
 #endif

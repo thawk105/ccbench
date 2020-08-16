@@ -38,7 +38,8 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 
   TPCC::Query query;
   TPCC::query::Option query_opt;
-  query_opt.perc_payment = 100;
+  TPCC::HistoryKeyGenerator hkg{};
+  hkg.init(thid);
 
 #ifdef CCBENCH_LINUX
   ccbench::setThreadAffinity(thid);
@@ -60,7 +61,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
         validation = TPCC::run_new_order(&query.new_order);
         break;
       case TPCC::Q_PAYMENT :
-        validation = TPCC::run_payment(&query.payment, thid);
+        validation = TPCC::run_payment(&query.payment, &hkg);
         break;
       case TPCC::Q_ORDER_STATUS:
         //validation = TPCC::run_order_status(query.order_status);
