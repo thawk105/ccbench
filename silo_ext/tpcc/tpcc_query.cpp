@@ -3,7 +3,7 @@
 #include "../include/result.hh"
 #include "tpcc_query.hpp"
 
-#define ID_START 0
+#define ID_START 1
 
 namespace TPCC {
 
