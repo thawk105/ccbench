@@ -317,8 +317,8 @@ void load(const std::size_t warehouse) {
   hkg.init(255);
   //ID 1-origin
 
-  std::vector<std::thread> thv;
-  thv.emplace_back(load_item);
+  //std::vector<std::thread> thv;
+  load_item();
   std::cout << "load_item done." << std::endl;
   for (std::size_t w = 1; w <= warehouse; ++w) {
     load_warehouse(w);
