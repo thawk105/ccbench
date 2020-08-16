@@ -88,10 +88,10 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 }
 
 int main(int argc, char *argv[]) try {
-  init();
   gflags::SetUsageMessage("Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
+  init();
   TPCC::Initializer::load(FLAGS_num_wh);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
