@@ -234,6 +234,11 @@ run_new_order(TPCC::query::NewOrder *query) {
     TPCC::Item *item;
     strkey = TPCC::Item::CreateKey(ol_i_id);
     stat = search_key(token, Storage::ITEM, strkey, &ret_tuple_ptr);
+    if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      leave(token);
+      return false;
+    }
     item = (TPCC::Item *) ret_tuple_ptr->get_val().data();
     double i_price = item->I_PRICE;
     [[maybe_unused]] char *i_name = item->I_NAME;
