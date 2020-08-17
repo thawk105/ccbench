@@ -21,6 +21,8 @@ using namespace ccbench;
 namespace TPCC::Initializer {
 void db_insert(const Storage st, const std::string_view key, const std::string_view val) {
   auto *record_ptr = new Record{key, val};
+  record_ptr->get_tidw().set_absent(false);
+  record_ptr->get_tidw().set_lock(false);
   if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)) {
     std::cout << __FILE__ << " : " << __LINE__ << " : " << "fatal error. unique key restriction." << std::endl;
     std::cout << "st : " << static_cast<int>(st) << ", key : " << key << ", val : " << val << std::endl;
@@ -279,10 +281,10 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
 }
 
 //CREATE Customer
-void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg) {
+void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
   struct S {
     static void
-    work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg,
+    work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg,
          const std::size_t d, const std::size_t w) {
       Xoroshiro128Plus rnd{};
       rnd.init();
@@ -324,9 +326,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         std::string key = customer.createKey();
         db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
         //1 histories per customer.
-        mutex_hkg.lock();
         std::string his_key = std::to_string(hkg.get());
-        mutex_hkg.unlock();
         load_history(w, d, c, static_cast<const std::string &&>(his_key));
         //1 order per customer.
         load_order(w, d, c);
@@ -337,12 +337,11 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{cust_num / cust_num_per_th};
   std::vector<std::thread> thv;
-  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), std::ref(mutex_hkg), d, w);
+  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), d, w);
   for (std::size_t i = 1; i < para_num - 1; ++i) {
-    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), std::ref(mutex_hkg), d,
-                     w);
+    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), d, w);
   }
-  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, cust_num, std::ref(hkg), std::ref(mutex_hkg), d, w);
+  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, cust_num, std::ref(hkg), d, w);
 
   for (auto &&th : thv) {
     th.join();
@@ -351,7 +350,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
 
 void load_district(const std::size_t w) {
   struct S {
-    static void work(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg, std::mutex &mutex_hkg) {
+    static void work(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
       Xoroshiro128Plus rnd{};
       rnd.init();
       TPCC::District district{};
@@ -371,16 +370,15 @@ void load_district(const std::size_t w) {
       db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)});
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
-      load_customer(d, w, hkg, mutex_hkg);
+      load_customer(d, w, hkg);
     }
   };
   TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(w);
-  std::mutex mutex_hkg;
+  hkg.init(w, true);
 
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= 10; d++) {
-    thv.emplace_back(S::work, d, w, std::ref(hkg), std::ref(mutex_hkg));
+    thv.emplace_back(S::work, d, w, std::ref(hkg));
   }
 
   for (auto &&th : thv) {

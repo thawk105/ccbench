@@ -59,7 +59,11 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
 #else // CCBench
   strkey = TPCC::Warehouse::CreateKey(w_id);
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) {leave(token); return false;}
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    leave(token);
+    return false;
+  }
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
 #endif
 
@@ -115,7 +119,11 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   TPCC::District *dist;
   strkey = TPCC::District::CreateKey(d_id, w_id);
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) {leave(token); return false;}
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    leave(token);
+    return false;
+  }
   dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
 
   dist->D_YTD += query->h_amount;
@@ -193,7 +201,11 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
 #else // CCBench
     strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
     stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
-    if (stat != Status::OK) {leave(token); return false;}
+    if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      leave(token);
+      return false;
+    }
     cust = (TPCC::Customer *) ret_tuple_ptr->get_val().data();
 #endif
   }
@@ -298,7 +310,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
 #endif
   strkey = std::to_string(hkg->get());
   stat = insert(token, Storage::HISTORY, strkey, {reinterpret_cast<char *>(&hist), sizeof(hist)});
-  if (stat != Status::OK) {leave(token); return false;}
 #endif
 #endif // DBx1000_COMMENT_OUT
 
@@ -306,6 +317,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
     leave(token);
     return true;
   }
+  abort(token);
   leave(token);
   return false;
 }

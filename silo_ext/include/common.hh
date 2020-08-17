@@ -29,11 +29,11 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 
 #ifdef GLOBAL_VALUE_DEFINE
-DEFINE_uint64(thread_num, 10, "Total number of worker threads.");
+DEFINE_uint64(thread_num, 1, "Total number of worker threads.");
 DEFINE_uint64(clocks_per_us, 2100,
               "CPU_MHz. Use this info for measuring time.");
 DEFINE_uint64(epoch_time, 40, "Epoch interval[msec].");
-DEFINE_uint64(extime, 3, "Execution time[sec].");
+DEFINE_uint64(extime, 1, "Execution time[sec].");
 
 DEFINE_uint32(num_wh, 1, "The number of warehouses");
 DEFINE_uint32(dist_per_ware, 10, "The number of districts in a warehouse");

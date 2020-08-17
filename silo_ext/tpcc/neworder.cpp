@@ -58,7 +58,11 @@ run_new_order(TPCC::query::NewOrder *query) {
   Tuple *ret_tuple_ptr;
   Status stat;
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) {leave(token); return false;}
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    leave(token);
+    return false;
+  }
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
 
   [[maybe_unused]] double w_tax = wh->W_TAX;
@@ -66,7 +70,11 @@ run_new_order(TPCC::query::NewOrder *query) {
   TPCC::Customer *cust;
   strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
   stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) {leave(token); return false;}
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    leave(token);
+    return false;
+  }
   cust = reinterpret_cast<TPCC::Customer *>(const_cast<char *>(ret_tuple_ptr->get_val().data()));
   double c_discount = cust->C_DISCOUNT;
   [[maybe_unused]] char *c_last = cust->C_LAST;
@@ -114,7 +122,11 @@ run_new_order(TPCC::query::NewOrder *query) {
   TPCC::District *dist;
   strkey = TPCC::District::CreateKey(d_id, w_id);
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
-  if (stat != Status::OK) {leave(token); return false;}
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    leave(token);
+    return false;
+  }
   dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
 
   [[maybe_unused]] double d_tax = dist->D_TAX;
@@ -157,8 +169,10 @@ run_new_order(TPCC::query::NewOrder *query) {
   int64_t all_local = (remote ? 0 : 1);
   order.O_ALL_LOCAL = all_local;
   strkey = TPCC::Customer::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
-  stat = insert(token, Storage::ORDER, strkey, {(char *) &order, sizeof(TPCC::Order)});
-  if (stat != Status::OK) {leave(token); return false;}
+  /**
+   * TODO : check. Is it ok either insert operation successes or not.
+   */
+  insert(token, Storage::ORDER, strkey, {(char *) &order, sizeof(TPCC::Order)});
 
 #ifdef DBx1000
   row_t * r_order;
@@ -185,8 +199,10 @@ run_new_order(TPCC::query::NewOrder *query) {
   neworder.NO_D_ID = d_id;
   neworder.NO_W_ID = w_id;
   strkey = TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
-  stat = insert(token, Storage::NEWORDER, strkey, {(char *) &neworder, sizeof(TPCC::NewOrder)});
-  if (stat != Status::OK) {leave(token); return false;}
+  /**
+   * TODO : check. Is it ok either insert operation successes or not.
+   */
+  insert(token, Storage::NEWORDER, strkey, {(char *) &neworder, sizeof(TPCC::NewOrder)});
 
 #ifdef DBx1000
   row_t * r_no;
@@ -218,7 +234,6 @@ run_new_order(TPCC::query::NewOrder *query) {
     TPCC::Item *item;
     strkey = TPCC::Item::CreateKey(ol_i_id);
     stat = search_key(token, Storage::ITEM, strkey, &ret_tuple_ptr);
-    if (stat != Status::OK) {leave(token); return false;}
     item = (TPCC::Item *) ret_tuple_ptr->get_val().data();
     double i_price = item->I_PRICE;
     [[maybe_unused]] char *i_name = item->I_NAME;
@@ -262,7 +277,11 @@ run_new_order(TPCC::query::NewOrder *query) {
     TPCC::Stock *stock;
     strkey = TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id);
     stat = search_key(token, Storage::STOCK, strkey, &ret_tuple_ptr);
-    if (stat != Status::OK) {leave(token); return false;}
+    if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      leave(token);
+      return false;
+    }
     stock = (TPCC::Stock *) ret_tuple_ptr->get_val().data();
     uint64_t s_quantity = (int64_t) stock->S_QUANTITY;
     /**
@@ -375,9 +394,10 @@ run_new_order(TPCC::query::NewOrder *query) {
 #endif
     // The number of keys is enough? It is different from DBx1000
     strkey = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID, orderline.OL_NUMBER);
+    /**
+     * TODO : check. Is it ok either insert operation successes or not.
+     */
     stat = insert(token, Storage::ORDERLINE, strkey, {(char *) &orderline, sizeof(TPCC::OrderLine)});
-    if (stat != Status::OK) {leave(token); return false;}
-
 #ifdef DBx1000
     row_t * r_ol;
     uint64_t row_id;
@@ -406,6 +426,7 @@ run_new_order(TPCC::query::NewOrder *query) {
     leave(token);
     return true;
   }
+  abort(token);
   leave(token);
   return false;
 }

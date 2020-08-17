@@ -39,7 +39,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   TPCC::Query query;
   TPCC::query::Option query_opt;
   TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(thid);
+  hkg.init(thid, false);
 
 #ifdef CCBENCH_LINUX
   ccbench::setThreadAffinity(thid);
