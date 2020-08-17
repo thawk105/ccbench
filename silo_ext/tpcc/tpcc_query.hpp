@@ -1,3 +1,4 @@
+#include "../include/common.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
 
@@ -38,9 +39,9 @@ namespace query {
   class Option {
   public:
     std::uint32_t num_wh = FLAGS_num_wh;
-    std::uint32_t dist_per_ware = FLAGS_dist_per_ware;
-    std::uint32_t max_items = FLAGS_max_items;
-    std::uint32_t cust_per_dist = FLAGS_cust_per_dist;
+    std::uint32_t dist_per_ware = DIST_PER_WARE;
+    std::uint32_t max_items = MAX_ITEMS;
+    std::uint32_t cust_per_dist = CUST_PER_DIST;
     double perc_payment = FLAGS_perc_payment;
     double perc_order_status = FLAGS_perc_order_status;
     double perc_delivery = FLAGS_perc_delivery;

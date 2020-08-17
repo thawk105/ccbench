@@ -73,9 +73,6 @@ void displayParameter() {
   cout << "#FLAGS_epoch_time:\t" << FLAGS_epoch_time << endl;
   cout << "#FLAGS_extime:\t\t" << FLAGS_extime << endl;
   cout << "#FLAGS_num_wh:\t\t" << FLAGS_num_wh << endl;
-  cout << "#FLAGS_dist_per_ware:\t" << FLAGS_dist_per_ware << endl;
-  cout << "#FLAGS_cust_per_dist:\t" << FLAGS_cust_per_dist << endl;
-  cout << "#FLAGS_max_items:\t" << FLAGS_max_items << endl;
   cout << "#FLAGS_perc_payment:\t\t" << FLAGS_perc_payment << endl;
   cout << "#FLAGS_perc_order_status:\t" << FLAGS_perc_order_status << endl;
   cout << "#FLAGS_perc_delivery:\t\t" << FLAGS_perc_delivery << endl;

@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) try {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   init();
-  TPCC::Initializer::load(FLAGS_num_wh);
+  TPCC::Initializer::load();
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;

@@ -10,6 +10,7 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 #include "interface.h"
 #include "./index/masstree_beta/include/masstree_beta_wrapper.h"
 #include "tpcc_tables.hpp"
+#include "common.hh"
 #include "../include/random.hh"
 
 #include <cassert>
@@ -19,11 +20,11 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 using namespace ccbench;
 
 namespace TPCC::Initializer {
-    void db_insert(const Storage st, const std::string_view key, const std::string_view val, bool isPrimal=1) {
+void db_insert(const Storage st, const std::string_view key, const std::string_view val) {
   auto *record_ptr = new Record{key, val};
   record_ptr->get_tidw().set_absent(false);
   record_ptr->get_tidw().set_lock(false);
-  if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)&&isPrimal) {
+  if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)) {
     std::cout << __FILE__ << " : " << __LINE__ << " : " << "fatal error. unique key restriction." << std::endl;
     std::cout << "st : " << static_cast<int>(st) << ", key : " << key << ", val : " << val << std::endl;
     std::abort();
@@ -91,7 +92,6 @@ static std::string createC_LAST(const std::size_t rndval) {
 
 //CREATE Item
 void load_item() {
-  constexpr std::size_t item_num{100000};
   struct S {
     static void work(std::size_t start, std::size_t end) {
       Xoroshiro128Plus rnd{};
@@ -119,11 +119,11 @@ void load_item() {
    * precondition : para_num > 3
    */
   constexpr std::size_t para_num{10};
-  thv.emplace_back(S::work, 1, item_num / para_num);
+  thv.emplace_back(S::work, 1, MAX_ITEMS / para_num);
   for (std::size_t i = 1; i < para_num - 1; ++i) {
-    thv.emplace_back(S::work, (item_num / para_num) * i + 1, (item_num / para_num) * (i + 1));
+    thv.emplace_back(S::work, (MAX_ITEMS / para_num) * i + 1, (MAX_ITEMS / para_num) * (i + 1));
   }
-  thv.emplace_back(S::work, (item_num / para_num) * (para_num - 1) + 1, item_num);
+  thv.emplace_back(S::work, (MAX_ITEMS / para_num) * (para_num - 1) + 1, MAX_ITEMS);
 
   for (auto &&th : thv) {
     th.join();
@@ -181,9 +181,9 @@ void load_stock(const std::size_t w) {
       }
     }
   };
-  constexpr std::size_t stock_num{100000};
+  const std::size_t stock_num{w * MAX_ITEMS};
   constexpr std::size_t stock_num_per_thread{500};
-  constexpr std::size_t para_num{stock_num / stock_num_per_thread};
+  const std::size_t para_num{stock_num / stock_num_per_thread};
   std::vector<std::thread> thv;
   thv.emplace_back(S::work, 1, stock_num_per_thread, w);
   for (std::size_t i = 1; i < para_num - 1; ++i) {
@@ -328,9 +328,12 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         std::string key = customer.createKey();
         db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
 
+#if 0
+        void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, key);
         key = customer.createSecondaryKey();
-        db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer),sizeof(customer)},0);
-        
+        db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&rec_ptr), sizeof(rec_ptr)});
+#endif
+
         //1 histories per customer.
         std::string his_key = std::to_string(hkg.get());
         load_history(w, d, c, static_cast<const std::string &&>(his_key));
@@ -339,15 +342,14 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
       }
     }
   };
-  constexpr std::size_t cust_num{3000};
   constexpr std::size_t cust_num_per_th{500};
-  constexpr std::size_t para_num{cust_num / cust_num_per_th};
+  constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
   thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), d, w);
   for (std::size_t i = 1; i < para_num - 1; ++i) {
     thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), d, w);
   }
-  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, cust_num, std::ref(hkg), d, w);
+  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, CUST_PER_DIST, std::ref(hkg), d, w);
 
   for (auto &&th : thv) {
     th.join();
@@ -383,7 +385,7 @@ void load_district(const std::size_t w) {
   hkg.init(w, true);
 
   std::vector<std::thread> thv;
-  for (size_t d = 1; d <= 10; d++) {
+  for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
     thv.emplace_back(S::work, d, w, std::ref(hkg));
   }
 
@@ -392,13 +394,13 @@ void load_district(const std::size_t w) {
   }
 }
 
-void load(const std::size_t warehouse) {
+void load() {
   //ID 1-origin
 
   std::vector<std::thread> thv;
+  std::cout << "[start] load." << std::endl;
   thv.emplace_back(load_item);
-  std::cout << "load_item done." << std::endl;
-  for (std::size_t w = 1; w <= warehouse; ++w) {
+  for (std::size_t w = 1; w <= FLAGS_num_wh; ++w) {
     thv.emplace_back(load_warehouse, w);
     //100,000 stocks per warehouse
     thv.emplace_back(load_stock, w);
@@ -409,7 +411,7 @@ void load(const std::size_t warehouse) {
   for (auto &&th : thv) {
     th.join();
   }
-  std::cout << "load done." << std::endl;
+  std::cout << "[end] load." << std::endl;
 }
 
 }//namespace TPCC initializer
