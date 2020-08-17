@@ -13,12 +13,12 @@
 namespace ccbench {
 
 Status insert(Token token, Storage st,  // NOLINT
-              std::string_view key, std::string_view val) {
+              std::string_view key, std::string_view val, std::size_t val_align) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
   write_set_obj *inws{ti->search_write_set(key)};
   if (inws != nullptr) {
-    inws->reset_tuple_value(val);
+    inws->reset_tuple_value(val, val_align);
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
   }
 
@@ -27,7 +27,7 @@ Status insert(Token token, Storage st,  // NOLINT
     return Status::WARN_ALREADY_EXISTS;
   }
 
-  Record *rec_ptr = new Record(key, val);
+  Record *rec_ptr = new Record(key, val, val_align);
   Status insert_result(
           kohler_masstree::insert_record(st, key, rec_ptr));
   if (insert_result == Status::OK) {
@@ -38,13 +38,13 @@ Status insert(Token token, Storage st,  // NOLINT
   return Status::WARN_ALREADY_EXISTS;
 }
 
-Status update(Token token, Storage st, std::string_view key, std::string_view val) {
+Status update(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
 
   write_set_obj *inws{ti->search_write_set(key)};
   if (inws != nullptr) {
-    inws->reset_tuple_value(val);
+    inws->reset_tuple_value(val, val_align);
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
   }
 
@@ -62,17 +62,17 @@ Status update(Token token, Storage st, std::string_view key, std::string_view va
     return Status::WARN_NOT_FOUND;
   }
 
-  ti->get_write_set().emplace_back(key, val, OP_TYPE::UPDATE, st, rec_ptr);
+  ti->get_write_set().emplace_back(key, val, val_align, OP_TYPE::UPDATE, st, rec_ptr);
 
   return Status::OK;
 }
 
-Status upsert(Token token, Storage st, std::string_view key, std::string_view val) {
+Status upsert(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
   write_set_obj *in_ws{ti->search_write_set(key)};
   if (in_ws != nullptr) {
-    in_ws->reset_tuple_value(val);
+    in_ws->reset_tuple_value(val, val_align);
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
   }
 
@@ -80,7 +80,7 @@ Status upsert(Token token, Storage st, std::string_view key, std::string_view va
   Record *rec_ptr{
           static_cast<Record *>(kohler_masstree::kohler_masstree::find_record(st, key))};
   if (rec_ptr == nullptr) {
-    rec_ptr = new Record(key, val);
+    rec_ptr = new Record(key, val, val_align);
     Status insert_result(
             kohler_masstree::insert_record(st, key, rec_ptr));
     if (insert_result == Status::OK) {
@@ -92,7 +92,7 @@ Status upsert(Token token, Storage st, std::string_view key, std::string_view va
     delete rec_ptr;  // NOLINT
   }
 
-  ti->get_write_set().emplace_back(key, val, OP_TYPE::UPDATE, st, rec_ptr);  // NOLINT
+  ti->get_write_set().emplace_back(key, val, val_align, OP_TYPE::UPDATE, st, rec_ptr);  // NOLINT
 
   return Status::OK;
 }

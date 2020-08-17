@@ -172,7 +172,7 @@ run_new_order(TPCC::query::NewOrder *query) {
   /**
    * TODO : check. Is it ok either insert operation successes or not.
    */
-  insert(token, Storage::ORDER, strkey, {(char *) &order, sizeof(TPCC::Order)});
+  insert(token, Storage::ORDER, strkey, {(char *) &order, sizeof(TPCC::Order)}, alignof(TPCC::Order));
 
 #ifdef DBx1000
   row_t * r_order;
@@ -202,7 +202,7 @@ run_new_order(TPCC::query::NewOrder *query) {
   /**
    * TODO : check. Is it ok either insert operation successes or not.
    */
-  insert(token, Storage::NEWORDER, strkey, {(char *) &neworder, sizeof(TPCC::NewOrder)});
+  insert(token, Storage::NEWORDER, strkey, {(char *) &neworder, sizeof(TPCC::NewOrder)}, alignof(TPCC::NewOrder));
 
 #ifdef DBx1000
   row_t * r_no;
@@ -402,7 +402,8 @@ run_new_order(TPCC::query::NewOrder *query) {
     /**
      * TODO : check. Is it ok either insert operation successes or not.
      */
-    stat = insert(token, Storage::ORDERLINE, strkey, {(char *) &orderline, sizeof(TPCC::OrderLine)});
+    stat = insert(token, Storage::ORDERLINE, strkey, {(char *) &orderline, sizeof(TPCC::OrderLine)},
+                  alignof(TPCC::OrderLine));
 #ifdef DBx1000
     row_t * r_ol;
     uint64_t row_id;

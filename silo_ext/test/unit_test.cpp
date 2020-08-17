@@ -20,7 +20,7 @@ public:
 TEST_F(unit_test, direct_db_access) { // NOLINT
   std::string a{"a"};
   std::string b{"b"};
-  auto *record_ptr = new Record{a, b}; // NOLINT
+  auto *record_ptr = new Record{a, b, alignof(std::string)}; // NOLINT
   /**
    * If Status::OK is returned, the ownership of the memory moves to kohler_masstree,
    * so there is no responsibility for releasing it. If not, you are responsible for doing a delete record_ptr.
@@ -44,7 +44,7 @@ TEST_F(unit_test, tx_delete_test) { // NOLINT
   std::string a{"a"};
   std::string b{"b"};
   ASSERT_EQ(enter(token), Status::OK);
-  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, b), Status::OK);
+  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, b, alignof(std::string)), Status::OK);
   Tuple *ret_tuple_ptr;
   ASSERT_EQ(commit(token), Status::OK);
   ASSERT_EQ(delete_record(token, Storage::CUSTOMER, a), Status::OK);
@@ -59,7 +59,7 @@ TEST_F(unit_test, tx_insert_test) { // NOLINT
   std::string a{"a"};
   std::string b{"b"};
   ASSERT_EQ(enter(token), Status::OK);
-  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, b), Status::OK);
+  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, b, alignof(std::string)), Status::OK);
   Tuple *ret_tuple_ptr;
   ASSERT_EQ(search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr), Status::WARN_READ_FROM_OWN_OPERATION);
   ASSERT_EQ(ret_tuple_ptr->get_val(), std::string_view(b));
@@ -79,9 +79,9 @@ TEST_F(unit_test, tx_scan_test) { // NOLINT
   std::string v2{"v2"};
   std::string v3{"v3"};
   ASSERT_EQ(enter(token), Status::OK);
-  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, v1), Status::OK);
-  ASSERT_EQ(insert(token, Storage::CUSTOMER, b, v2), Status::OK);
-  ASSERT_EQ(insert(token, Storage::CUSTOMER, c, v3), Status::OK);
+  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, v1, alignof(std::string)), Status::OK);
+  ASSERT_EQ(insert(token, Storage::CUSTOMER, b, v2, alignof(std::string)), Status::OK);
+  ASSERT_EQ(insert(token, Storage::CUSTOMER, c, v3, alignof(std::string)), Status::OK);
   ASSERT_EQ(commit(token), Status::OK);
   std::vector<const Tuple *> tup_vec;
   ASSERT_EQ(scan_key(token, Storage::CUSTOMER, "", false, "", false, tup_vec), Status::OK);
@@ -107,7 +107,7 @@ TEST_F(unit_test, tx_search_key_test) { // NOLINT
   Tuple *ret_tuple_ptr;
   ASSERT_EQ(search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr), Status::WARN_NOT_FOUND);
   ASSERT_EQ(commit(token), Status::OK);
-  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, b), Status::OK);
+  ASSERT_EQ(insert(token, Storage::CUSTOMER, a, b, alignof(std::string)), Status::OK);
   ASSERT_EQ(commit(token), Status::OK);
   ASSERT_EQ(search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr), Status::OK);
   ASSERT_EQ(ret_tuple_ptr->get_val(), std::string_view(b));
@@ -121,7 +121,7 @@ TEST_F(unit_test, tx_upsert_test) { // NOLINT
   std::string b{"b"};
   std::string c{"c"};
   ASSERT_EQ(enter(token), Status::OK);
-  ASSERT_EQ(upsert(token, Storage::CUSTOMER, a, b), Status::OK);
+  ASSERT_EQ(upsert(token, Storage::CUSTOMER, a, b, alignof(std::string)), Status::OK);
   Tuple *ret_tuple_ptr;
   ASSERT_EQ(search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr), Status::WARN_READ_FROM_OWN_OPERATION);
   ASSERT_EQ(ret_tuple_ptr->get_val(), std::string_view(b));
@@ -129,7 +129,7 @@ TEST_F(unit_test, tx_upsert_test) { // NOLINT
   ASSERT_EQ(search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr), Status::OK);
   ASSERT_EQ(ret_tuple_ptr->get_val(), std::string_view(b));
   ASSERT_EQ(commit(token), Status::OK);
-  ASSERT_EQ(upsert(token, Storage::CUSTOMER, a, c), Status::OK);
+  ASSERT_EQ(upsert(token, Storage::CUSTOMER, a, c, alignof(std::string)), Status::OK);
   ASSERT_EQ(commit(token), Status::OK);
   ASSERT_EQ(search_key(token, Storage::CUSTOMER, a, &ret_tuple_ptr), Status::OK);
   ASSERT_EQ(ret_tuple_ptr->get_val(), std::string_view(c));

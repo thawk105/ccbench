@@ -309,7 +309,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   sprintf(hist.H_DATA, "%-10.10s    %.10s", w_name.c_str(), d_name.c_str());
 #endif
   strkey = std::to_string(hkg->get());
-  stat = insert(token, Storage::HISTORY, strkey, {reinterpret_cast<char *>(&hist), sizeof(hist)});
+  stat = insert(token, Storage::HISTORY, strkey, {reinterpret_cast<char *>(&hist), sizeof(hist)}, alignof(TPCC::History));
 #endif
 #endif // DBx1000_COMMENT_OUT
 

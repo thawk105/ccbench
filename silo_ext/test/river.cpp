@@ -16,7 +16,7 @@ void init_table_warehouse(size_t nwh){
 			wh.W_ID = w;
 			wh.W_TAX = 1.5;
 			wh.W_YTD = 1000'000'000;
-			insert(token, Storage::WAREHOUSE, wh.CreateKey(w), (char *)&wh);
+			insert(token, Storage::WAREHOUSE, wh.CreateKey(w), (char *)&wh, alignof(TPCC::Warehouse));
 		}
 	}
 	commit(token);
@@ -31,7 +31,7 @@ makedb_tpcc()
   std::string b{"b"};
 	
   enter(token);
-  insert(token, Storage::CUSTOMER, a, b);
+  insert(token, Storage::CUSTOMER, a, b, alignof(std::string));
   Tuple *ret_tuple_ptr;
   commit(token);
 	

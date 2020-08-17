@@ -165,7 +165,7 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
         std::string *old_value{};
         std::string_view new_value_view =
                 iws->get_tuple(iws->get_op()).get_val();
-        rec_ptr->get_tuple().set_value(new_value_view, &old_value);
+        rec_ptr->get_tuple().set_value(new_value_view, &old_value, iws->get_tuple().get_val_align());
         storeRelease(rec_ptr->get_tidw().get_obj(), max_tid.get_obj());
         if (old_value != nullptr) {
           std::mutex &mutex_for_gc_list =

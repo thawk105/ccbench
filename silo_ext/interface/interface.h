@@ -158,7 +158,7 @@ extern Status init(                                                // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE it already executed
  * update/insert/upsert, so it update the local write set object.
  */
-extern Status insert(Token token, Storage st, std::string_view key, std::string_view val);
+extern Status insert(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align);
 
 /**
  * @brief leave session
@@ -310,7 +310,7 @@ extern Status search_key(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE It already executed update/insert,
  * so it update the value which is going to be updated.
  */
-extern Status update(Token token, Storage st, std::string_view key, std::string_view val);
+extern Status update(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align);
 
 /**
  * @brief update the record for the given key, or insert the key/value if the
@@ -324,6 +324,6 @@ extern Status update(Token token, Storage st, std::string_view key, std::string_
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE It already did
  * insert/update/upsert, so it overwrite its local write set.
  */
-extern Status upsert(Token token, Storage st, std::string_view key, std::string_view val);
+extern Status upsert(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align);
 
 }  // namespace ccbench

@@ -14,7 +14,7 @@ void init_table_warehouse(size_t nwh, Token token){
 		std::string key = TPCC::Warehouse::CreateKey(w);
 		std::cout << wh->W_ID << std::endl;
 		Status stat;		
-		stat = insert(token, Storage::WAREHOUSE, key, {(char *)wh, sizeof(TPCC::Warehouse)});
+		stat = insert(token, Storage::WAREHOUSE, key, {(char *)wh, sizeof(TPCC::Warehouse)}, alignof(TPCC::Warehouse));
 		if (stat != Status::OK) ERR;
 	}
 	commit(token);
@@ -39,7 +39,7 @@ makedb_tpcc(Token token)
   std::string a{"a"};
   std::string b{"b"};
 	
-  insert(token, Storage::CUSTOMER, a, b);
+  insert(token, Storage::CUSTOMER, a, b, alignof(std::string));
   Tuple *ret_tuple_ptr;
   commit(token);
 	
