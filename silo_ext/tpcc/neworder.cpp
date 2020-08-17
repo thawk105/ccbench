@@ -68,7 +68,7 @@ run_new_order(TPCC::query::NewOrder *query) {
   [[maybe_unused]] double w_tax = wh->W_TAX;
   //uint64_t key = custKey(c_id, d_id, w_id);
   TPCC::Customer *cust;
-  strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
+  strkey = TPCC::Customer::CreateKey(w_id, d_id, c_id);
   stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
@@ -120,7 +120,7 @@ run_new_order(TPCC::query::NewOrder *query) {
     WHERE d_id = :d_id AND d_w_id = :w_id ;
     +===================================================*/
   TPCC::District *dist;
-  strkey = TPCC::District::CreateKey(d_id, w_id);
+  strkey = TPCC::District::CreateKey(w_id, d_id);
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
