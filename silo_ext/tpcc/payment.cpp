@@ -129,7 +129,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   dist->D_YTD += query->h_amount;
   std::string d_name(dist->D_NAME);
 
-  TPCC::Customer *cust;
+  TPCC::Customer cust;
 #endif
 
   if (query->by_last_name) {
@@ -206,7 +206,10 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
       leave(token);
       return false;
     }
-    cust = reinterpret_cast<TPCC::Customer *>(const_cast<char *>(ret_tuple_ptr->get_val().data()));
+    /**
+     * TODO : improvement. not memcpy but use pointer.
+     */
+    memcpy(&cust, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Customer));
 #endif
   }
 
@@ -232,10 +235,10 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
 
   char * c_credit = r_cust_local->get_value(C_CREDIT);
 #else // CCBench
-  cust->C_BALANCE += query->h_amount;
-  cust->C_YTD_PAYMENT += query->h_amount;
-  cust->C_PAYMENT_CNT += 1;
-  std::string c_credit(cust->C_CREDIT);
+  cust.C_BALANCE += query->h_amount;
+  cust.C_YTD_PAYMENT += query->h_amount;
+  cust.C_PAYMENT_CNT += 1;
+  std::string c_credit(cust.C_CREDIT);
 #endif
 
 #ifndef DBx1000_COMMENT_OUT
