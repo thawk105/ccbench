@@ -14,7 +14,6 @@
 namespace TPCC {
 
 struct Warehouse {
-  //constexpr const static char* kPrefix = "warehouse";
   std::uint16_t W_ID; //2*W unique IDs
   char W_NAME[11];
   char W_STREET_1[21];
@@ -27,7 +26,6 @@ struct Warehouse {
 
   //Primary Key: W_ID
   static std::string CreateKey(size_t w_id) {
-    //return std::string(kPrefix + std::to_string(w_id));
     return std::string(std::to_string(w_id));
   }
 
@@ -35,8 +33,6 @@ struct Warehouse {
 };
 
 struct District {
-  constexpr const static char *kPrefix = "district";
-
   std::uint8_t D_ID; //20 unique IDs
   std::uint16_t D_W_ID; //2*W unique IDs D_W_ID Foreign Key, references W_ID
   char D_NAME[11];
@@ -51,7 +47,7 @@ struct District {
 
   //Primary Key: (D_W_ID, D_ID)
   static std::string CreateKey(size_t w, size_t d) {
-    return std::string(Warehouse::CreateKey(w) + kPrefix + std::to_string(d));
+    return std::string(Warehouse::CreateKey(w) + std::to_string(d));
   }
 
   std::string createKey() { return CreateKey(D_W_ID, D_ID); }
@@ -59,8 +55,6 @@ struct District {
 };
 
 struct Customer {
-  constexpr const static char *kPrefix = "customer";
-
   //(C_W_ID, C_D_ID) Foreign Key, references (D_W_ID, D_ID)
   std::uint32_t C_ID; //96,000 unique IDs
   std::uint8_t C_D_ID; //20 unique IDs
@@ -86,7 +80,7 @@ struct Customer {
 
   //Primary Key: (C_W_ID, C_D_ID, C_ID)
   static std::string CreateKey(size_t w, size_t d, size_t c) {
-    return std::string(District::CreateKey(w, d) + kPrefix + std::to_string(c));
+    return std::string(District::CreateKey(w, d) + std::to_string(c));
   }
   std::string createKey() { return CreateKey(C_W_ID, C_D_ID, C_ID); }
   //Secondary Key: (C_LAST, C_D_ID, C_W_ID)
@@ -97,7 +91,6 @@ struct Customer {
 };
 
 struct History {
-
   // Primary Key: none
   // (H_C_W_ID, H_C_D_ID, H_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
   // (H_W_ID, H_D_ID) Foreign Key, references (D_W_ID, D_ID)
@@ -110,8 +103,6 @@ struct History {
   std::time_t H_DATE; //date and time
   double H_AMOUNT; //signed numeric(6, 2)
   char H_DATA[25]; // variable text, size 24 Miscellaneous information
-
-
 };
 
 
@@ -150,7 +141,6 @@ private:
 
 
 struct NewOrder {
-  constexpr const static char *kPrefix = "neworder";
   //(NO_W_ID, NO_D_ID, NO_O_ID) Foreign Key, references (O_W_ID, O_D_ID, O_ID)
   std::uint32_t NO_O_ID; //10,000,000 unique IDs
   std::uint8_t NO_D_ID; //20 unique IDs
@@ -158,7 +148,7 @@ struct NewOrder {
 
   //Primary Key: (NO_W_ID, NO_D_ID, NO_O_ID)
   static std::string CreateKey(size_t w, size_t d, size_t o) {
-    return std::string(kPrefix + std::to_string(w) + "-" + std::to_string(d) + "-" + std::to_string(o));
+    return std::string(std::to_string(w) + "-" + std::to_string(d) + "-" + std::to_string(o));
   }
 
   std::string createKey() { return CreateKey(NO_W_ID, NO_D_ID, NO_O_ID); }
@@ -166,7 +156,6 @@ struct NewOrder {
 };
 
 struct Order {
-  constexpr const static char *kPrefix = "order";
   //(O_W_ID, O_D_ID, O_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
   std::uint32_t O_ID; //10,000,000 unique IDs
   std::uint8_t O_D_ID; // 20 unique IDs
@@ -179,15 +168,13 @@ struct Order {
 
   //Primary Key: (O_W_ID, O_D_ID, O_ID)
   static std::string CreateKey(size_t w, size_t d, size_t i) {
-    return std::string(kPrefix + std::to_string(w) + "-" + std::to_string(d) + "-" + std::to_string(i));
+    return std::string(std::to_string(w) + "-" + std::to_string(d) + "-" + std::to_string(i));
   }
 
   std::string createKey() { return CreateKey(O_W_ID, O_D_ID, O_ID); }
 };
 
 struct OrderLine {
-  constexpr const static char *kPrefix = "orderline";
-
   //(OL_W_ID, OL_D_ID, OL_O_ID) Foreign Key, references (O_W_ID, O_D_ID, O_ID)
   //(OL_SUPPLY_W_ID, OL_I_ID) Foreign Key, references (S_W_ID, S_I_ID)
   std::uint32_t OL_O_ID;// 10,000,000 unique IDs
@@ -204,7 +191,7 @@ struct OrderLine {
   //Primary Key: (OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER)
   static std::string CreateKey(size_t w, size_t d, size_t o, size_t n) {
     return std::string(
-            kPrefix + std::to_string(w) + "-" + std::to_string(d) + "-" + std::to_string(o) + "-" + std::to_string(n));
+            std::to_string(w) + "-" + std::to_string(d) + "-" + std::to_string(o) + "-" + std::to_string(n));
   }
 
   std::string createKey() {
@@ -213,8 +200,6 @@ struct OrderLine {
 };
 
 struct Item {
-  constexpr const static char *kPrefix = "item";
-
   std::uint32_t I_ID; //200,000 unique IDs 100,000 items are populated
   std::uint32_t I_IM_ID; //200,000 unique IDs Image ID associated to Item
   char I_NAME[25]; //variable text, size 24
@@ -223,7 +208,7 @@ struct Item {
 
   //Primary Key: I_ID
   static std::string CreateKey(size_t i) {
-    return std::string(kPrefix + std::to_string(i));
+    return std::string(std::to_string(i));
   }
 
   std::string createKey() {
@@ -233,8 +218,6 @@ struct Item {
 };
 
 struct Stock {
-  constexpr const static char *kPrefix = "stock";
-
   //S_W_ID Foreign Key, references W_ID
   //S_I_ID Foreign Key, references I_ID
   std::uint16_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
@@ -257,7 +240,7 @@ struct Stock {
 
   // Primary Key: (S_W_ID, S_I_ID) composite.
   static std::string CreateKey(size_t w, size_t i) {
-    return std::string(Warehouse::CreateKey(w) + kPrefix + std::to_string(i));
+    return std::string(Warehouse::CreateKey(w) + std::to_string(i));
   }
 
   std::string createKey() { return CreateKey(S_W_ID, S_I_ID); }
