@@ -263,8 +263,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
     char c_new_data[501];
     sprintf(c_new_data, "| %4ld %2ld %4ld %2ld %4ld $%7.2f",
             c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
-    strncat(c_new_data, cust->C_DATA, 500 - strlen(c_new_data));
-    strncpy(cust->C_DATA, c_new_data, 501); // update?
+    strncat(c_new_data, cust.C_DATA, 500 - strlen(c_new_data));
+    strncpy(cust.C_DATA, c_new_data, 501); // update?
   }
 #endif
 #endif // DBx1000_COMMENT_OUT
