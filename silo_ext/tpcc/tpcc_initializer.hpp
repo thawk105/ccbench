@@ -328,11 +328,18 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         std::string key = customer.createKey();
         db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
 
-#if 0
         void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, key);
         key = customer.createSecondaryKey();
-        db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&rec_ptr), sizeof(rec_ptr)});
-#endif
+        std::vector<void *> *ctn_ptr;
+        void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, key);
+        if (ret_ptr != nullptr) {
+          ctn_ptr = *reinterpret_cast<std::vector<void*>**>(ret_ptr);
+          ctn_ptr->emplace_back(rec_ptr);
+        } else {
+          ctn_ptr = new std::vector<void*>;
+          ctn_ptr->emplace_back(rec_ptr);
+          db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(ctn_ptr)});
+        }
 
         //1 histories per customer.
         std::string his_key = std::to_string(hkg.get());
@@ -342,6 +349,8 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
       }
     }
   };
+  S::work(1, CUST_PER_DIST, std::ref(hkg), d, w);
+#if 0
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
@@ -354,6 +363,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
   for (auto &&th : thv) {
     th.join();
   }
+#endif
 }
 
 void load_district(const std::size_t w) {
