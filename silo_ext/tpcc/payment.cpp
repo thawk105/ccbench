@@ -199,7 +199,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
     assert(item != NULL);
     r_cust = (row_t *) item->location;
 #else // CCBench
-    strkey = TPCC::Customer::CreateKey(c_id, d_id, w_id);
+    strkey = TPCC::Customer::CreateKey(w_id, d_id, c_id);
     stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
