@@ -206,7 +206,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
       leave(token);
       return false;
     }
-    cust = (TPCC::Customer *) ret_tuple_ptr->get_val().data();
+    cust = reinterpret_cast<TPCC::Customer *>(const_cast<char *>(ret_tuple_ptr->get_val().data()));
 #endif
   }
 

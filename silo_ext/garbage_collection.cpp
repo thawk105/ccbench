@@ -24,6 +24,12 @@ void remove_all_leaf_from_mt_db_and_release() {
     for (auto &&itr : scan_res) {
       std::string_view key_view = itr->get_tuple().get_key();
       kohler_masstree::get_mtdb(static_cast<Storage>(i)).remove_value(key_view.data(), key_view.size());
+      if (i == static_cast<int>(Storage::SECONDARY)) {
+        std::vector<void *> *ctn_ptr;
+        memcpy(&ctn_ptr,
+               reinterpret_cast<void *>(const_cast<char *>(itr->get_tuple().get_val().data())), 8);
+        delete ctn_ptr;
+      }
       delete itr;  // NOLINT
     }
 
