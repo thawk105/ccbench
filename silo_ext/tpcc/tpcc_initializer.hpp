@@ -108,6 +108,8 @@ void load_item() {
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
+        std::string key{ite.createKey()};
+        db_insert(Storage::ITEM, key, {reinterpret_cast<char *>(&ite), sizeof(ite)});
       }
     }
   };
