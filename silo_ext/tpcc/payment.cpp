@@ -117,7 +117,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   row_t * r_cust;
 #else // CCBench
   TPCC::District *dist;
-  strkey = TPCC::District::CreateKey(d_id, w_id);
+  strkey = TPCC::District::CreateKey(w_id, d_id);
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
