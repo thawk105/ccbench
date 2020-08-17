@@ -88,8 +88,12 @@ struct Customer {
   static std::string CreateKey(size_t w, size_t d, size_t c) {
     return std::string(District::CreateKey(w, d) + kPrefix + std::to_string(c));
   }
-
   std::string createKey() { return CreateKey(C_W_ID, C_D_ID, C_ID); }
+  //Secondary Key: (C_LAST, C_D_ID, C_W_ID)
+  static std::string CreateSecondaryKey(char* C_LAST, size_t C_D_ID, size_t C_W_ID){
+      return std::string(std::string(C_LAST)+std::to_string(C_D_ID)+std::to_string(C_W_ID));
+  }
+  std::string createSecondaryKey(){return CreateSecondaryKey(C_LAST,C_D_ID,C_W_ID);}
 };
 
 struct History {

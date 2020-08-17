@@ -19,11 +19,11 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 using namespace ccbench;
 
 namespace TPCC::Initializer {
-void db_insert(const Storage st, const std::string_view key, const std::string_view val) {
+    void db_insert(const Storage st, const std::string_view key, const std::string_view val, bool isPrimal=1) {
   auto *record_ptr = new Record{key, val};
   record_ptr->get_tidw().set_absent(false);
   record_ptr->get_tidw().set_lock(false);
-  if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)) {
+  if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)&&isPrimal) {
     std::cout << __FILE__ << " : " << __LINE__ << " : " << "fatal error. unique key restriction." << std::endl;
     std::cout << "st : " << static_cast<int>(st) << ", key : " << key << ", val : " << val << std::endl;
     std::abort();
@@ -325,6 +325,10 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
 
         std::string key = customer.createKey();
         db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)});
+
+        key = customer.createSecondaryKey();
+        db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer),sizeof(customer)},0);
+        
         //1 histories per customer.
         std::string his_key = std::to_string(hkg.get());
         load_history(w, d, c, static_cast<const std::string &&>(his_key));
