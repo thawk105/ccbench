@@ -333,10 +333,10 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         std::vector<void *> *ctn_ptr;
         void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, key);
         if (ret_ptr != nullptr) {
-          ctn_ptr = *reinterpret_cast<std::vector<void*>**>(ret_ptr);
+          ctn_ptr = reinterpret_cast<std::vector<void *> *>(const_cast<char *>(reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val().data()));
           ctn_ptr->emplace_back(rec_ptr);
         } else {
-          ctn_ptr = new std::vector<void*>;
+          ctn_ptr = new std::vector<void *>;
           ctn_ptr->emplace_back(rec_ptr);
           db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(ctn_ptr)});
         }
