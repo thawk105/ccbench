@@ -117,14 +117,14 @@ void load_item() {
         strcpy(ite.I_DATA, random_string(dataLen, dataLen, rnd).c_str());
         if(random_value<int>(1,100)<=10){
             std::uint64_t pos = random_value(0,(int)(dataLen-8));
-            ite.I_DATA[pos]='o';
-            ite.I_DATA[pos+1]='r';
-            ite.I_DATA[pos+2]='i';
-            ite.I_DATA[pos+3]='g';
-            ite.I_DATA[pos+4]='i';
-            ite.I_DATA[pos+5]='n';
-            ite.I_DATA[pos+6]='a';
-            ite.I_DATA[pos+7]='l';
+            ite.I_DATA[pos]='O';
+            ite.I_DATA[pos+1]='R';
+            ite.I_DATA[pos+2]='I';
+            ite.I_DATA[pos+3]='G';
+            ite.I_DATA[pos+4]='I';
+            ite.I_DATA[pos+5]='N';
+            ite.I_DATA[pos+6]='A';
+            ite.I_DATA[pos+7]='L';
        }        
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
@@ -201,14 +201,14 @@ void load_stock(const std::size_t w) {
         strcpy(st.S_DATA, random_string(dataLen, dataLen, rnd).c_str());
         if(random_value<int>(1,100)<=10){
             std::uint64_t pos = random_value(0,(int)(dataLen-8));
-            st.S_DATA[pos]='o';
-            st.S_DATA[pos+1]='r';
-            st.S_DATA[pos+2]='i';
-            st.S_DATA[pos+3]='g';
-            st.S_DATA[pos+4]='i';
-            st.S_DATA[pos+5]='n';
-            st.S_DATA[pos+6]='a';
-            st.S_DATA[pos+7]='l';
+            st.S_DATA[pos]='O';
+            st.S_DATA[pos+1]='R';
+            st.S_DATA[pos+2]='I';
+            st.S_DATA[pos+3]='G';
+            st.S_DATA[pos+4]='I';
+            st.S_DATA[pos+5]='N';
+            st.S_DATA[pos+6]='A';
+            st.S_DATA[pos+7]='L';
         }
         std::string key{st.createKey()};
         db_insert(Storage::STOCK, key, {reinterpret_cast<char *>(&st), sizeof(st)}, alignof(TPCC::Stock));
