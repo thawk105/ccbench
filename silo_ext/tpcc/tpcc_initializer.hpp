@@ -13,6 +13,7 @@ http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
 #include "common.hh"
 #include "../include/random.hh"
 
+#include <algorithm>
 #include <cassert>
 #include <thread>
 #include <vector>
@@ -241,7 +242,8 @@ void load_orderline(const std::size_t w, const std::size_t d, const std::size_t 
   strcpy(order_line.OL_DIST_INFO, random_string(24, 24, rnd).c_str());
 
   std::string key = order_line.createKey();
-  db_insert(Storage::ORDERLINE, key, {reinterpret_cast<char *>(&order_line), sizeof(order_line)}, alignof(TPCC::OrderLine));
+  db_insert(Storage::ORDERLINE, key, {reinterpret_cast<char *>(&order_line), sizeof(order_line)},
+            alignof(TPCC::OrderLine));
 
 }
 
@@ -280,7 +282,8 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
     new_order.NO_W_ID = w;
 
     key = new_order.createKey();
-    db_insert(Storage::NEWORDER, key, {reinterpret_cast<char *>(&new_order), sizeof(new_order)}, alignof(TPCC::NewOrder));
+    db_insert(Storage::NEWORDER, key, {reinterpret_cast<char *>(&new_order), sizeof(new_order)},
+              alignof(TPCC::NewOrder));
   }
 }
 
@@ -328,7 +331,8 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         strcpy(customer.C_DATA, random_string(300, 500, rnd).c_str());
 
         std::string key = customer.createKey();
-        db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)}, alignof(TPCC::Customer));
+        db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)},
+                  alignof(TPCC::Customer));
 
         void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, key);
         key = customer.createSecondaryKey();
@@ -342,9 +346,27 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         } else {
           ctn_ptr = new std::vector<void *>;
           ctn_ptr->emplace_back(rec_ptr);
-          db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(ctn_ptr)}, alignof(std::vector<void*>*));
+          db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(ctn_ptr)},
+                    alignof(std::vector<void *> *));
         }
 
+        struct S {
+          static bool comp(const void *lh, const void *rh) {
+            std::string_view lh_key_view = static_cast<const Record *>(lh)->get_tuple().get_key();
+            std::string_view rh_key_view = static_cast<const Record *>(rh)->get_tuple().get_key();
+            int ret = memcmp(lh_key_view.data(), rh_key_view.data(),
+                             lh_key_view.size() < rh_key_view.size() ? lh_key_view.size() : rh_key_view.size());
+            if (ret < 0) {
+              return true;
+            } else if (ret == 0) {
+              return lh_key_view.size() < rh_key_view.size();
+            } else {
+              return false;
+            }
+          }
+        };
+
+        std::sort(ctn_ptr->begin(), ctn_ptr->end(), S::comp);
         //1 histories per customer.
         std::string his_key = std::to_string(hkg.get());
         load_history(w, d, c, static_cast<const std::string &&>(his_key));
@@ -389,7 +411,8 @@ void load_district(const std::size_t w) {
       district.D_NEXT_O_ID = 3001;
 
       std::string key{district.createKey()};
-      db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)}, alignof(TPCC::District));
+      db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)},
+                alignof(TPCC::District));
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
       load_customer(d, w, hkg);
