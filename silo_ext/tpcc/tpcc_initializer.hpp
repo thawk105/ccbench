@@ -44,6 +44,19 @@ std::string random_string(const int minLen, const int maxLen, Xoroshiro128Plus &
   s[len] = '\0';
   return s;
 }
+    
+std::string MakeNumberString(const int minLen, const int maxLen, Xoroshiro128Plus &rnd){
+    static const char Numbers[] = "0123456789";
+    int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
+    std::string s(len + 1, '0');
+    for(int i=0;i<len;i++){
+        size_t rn = rnd.next();
+        int idx = rn % (sizeof(Numbers));
+        s[i] = Numbers[idx];
+    }
+    s[len]='\0';
+    return s;
+}
 
 template<typename T>
 T random_value(const T &minv, const T &maxv) {
@@ -290,6 +303,9 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
     static void
     work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg,
          const std::size_t d, const std::size_t w) {
+#ifdef DEBUG
+        std::cout<<"call load customer work"<<std::endl;
+#endif
       Xoroshiro128Plus rnd{};
       rnd.init();
       for (size_t c = start; c <= end; ++c) {
@@ -302,7 +318,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
           //for the first 1,000 customers, and generating a non -uniform random number using the function NURand(255,0,999)
           strcpy(customer.C_LAST, createC_LAST(NURand(255, 0, 999)).c_str());
 #ifdef DEBUG
-          if(w==0&&d==0&&c==0)std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
+          std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
 #endif
         } else {
           strcpy(customer.C_LAST, createC_LAST(random_value<int>(0, 999)).c_str());
@@ -314,8 +330,11 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         strcpy(customer.C_CITY, random_string(10, 20, rnd).c_str());
         strcpy(customer.C_STATE, random_string(2, 2, rnd).c_str());
         strcpy(customer.C_ZIP, gen_zipcode(rnd).c_str());
-        //TODO C_PHONE
-
+        //C_PHONE
+        strcpy(customer.C_PHONE, MakeNumberString(16,16,rnd).c_str());
+#ifdef DEBUG
+        std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
+#endif        
         customer.C_SINCE = now;
         //90% GC 10% BC
         if(random_value(0,99)>=90){
@@ -358,7 +377,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
     }
   };
   S::work(1, CUST_PER_DIST, std::ref(hkg), d, w);
-#if 0
+  #if 0
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
@@ -371,10 +390,13 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
   for (auto &&th : thv) {
     th.join();
   }
-#endif
+  #endif
 }
 
 void load_district(const std::size_t w) {
+
+       std::cout<<"here"<<std::endl;
+
   struct S {
     static void work(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
       Xoroshiro128Plus rnd{};
@@ -392,6 +414,10 @@ void load_district(const std::size_t w) {
       district.D_YTD = 30000.00;
       district.D_NEXT_O_ID = 3001;
 
+#ifdef DEBUG
+      std::cout<<"D_ID:"<<district.D_ID<<std::endl;
+#endif
+      
       std::string key{district.createKey()};
       db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)}, alignof(TPCC::District));
 
@@ -401,6 +427,10 @@ void load_district(const std::size_t w) {
   };
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(w, true);
+  
+#ifdef DEBUG
+  std::cout<<"here"<<std::endl;
+#endif
 
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
@@ -410,6 +440,7 @@ void load_district(const std::size_t w) {
   for (auto &&th : thv) {
     th.join();
   }
+  
 }
 
 void load() {
