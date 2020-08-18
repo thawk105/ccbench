@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(ccbench_silo_ext
+project(ccbench_tpcc_silo
         VERSION 0.0.1
-        DESCRIPTION "silo_ext of ccbench"
+        DESCRIPTION "tpcc_silo of ccbench"
         LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
