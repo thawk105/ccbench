@@ -32,9 +32,7 @@ uint64_t stockKey(uint64_t s_i_id, uint64_t s_w_id) {
 #endif
 
 bool
-run_new_order(TPCC::query::NewOrder *query) {
-  Token token{};
-  enter(token);
+run_new_order(TPCC::query::NewOrder *query, Token& token) {
   //itemid_t * item;
   //INDEX * index;
 
@@ -60,7 +58,6 @@ run_new_order(TPCC::query::NewOrder *query) {
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
-    leave(token);
     return false;
   }
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
@@ -72,7 +69,6 @@ run_new_order(TPCC::query::NewOrder *query) {
   stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
-    leave(token);
     return false;
   }
   cust = reinterpret_cast<TPCC::Customer *>(const_cast<char *>(ret_tuple_ptr->get_val().data()));
@@ -124,7 +120,6 @@ run_new_order(TPCC::query::NewOrder *query) {
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
-    leave(token);
     return false;
   }
   dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
@@ -236,7 +231,6 @@ run_new_order(TPCC::query::NewOrder *query) {
     stat = search_key(token, Storage::ITEM, strkey, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
-      leave(token);
       return false;
     }
     item = (TPCC::Item *) ret_tuple_ptr->get_val().data();
@@ -284,7 +278,6 @@ run_new_order(TPCC::query::NewOrder *query) {
     stat = search_key(token, Storage::STOCK, strkey, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
-      leave(token);
       return false;
     }
     stock = (TPCC::Stock *) ret_tuple_ptr->get_val().data();
@@ -429,11 +422,9 @@ run_new_order(TPCC::query::NewOrder *query) {
 #endif // DBx1000
   } // end of ol loop
   if (commit(token) != Status::OK) {
-    leave(token);
     return true;
   }
   abort(token);
-  leave(token);
   return false;
 }
 

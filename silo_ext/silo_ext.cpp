@@ -37,6 +37,8 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   rnd.init();
 
   TPCC::Query query;
+  Token token{};
+  enter(token);
   TPCC::query::Option query_opt;
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(thid, false);
@@ -58,10 +60,10 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 
     switch (query.type) {
       case TPCC::Q_NEW_ORDER :
-        validation = TPCC::run_new_order(&query.new_order);
+        validation = TPCC::run_new_order(&query.new_order, token);
         break;
       case TPCC::Q_PAYMENT :
-        validation = TPCC::run_payment(&query.payment, &hkg);
+        validation = TPCC::run_payment(&query.payment, &hkg, token);
         break;
       case TPCC::Q_ORDER_STATUS:
         //validation = TPCC::run_order_status(query.order_status);
@@ -86,6 +88,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
       ++myres.local_abort_counts_;
     }
   }
+  leave(token);
 }
 
 int main(int argc, char *argv[]) try {

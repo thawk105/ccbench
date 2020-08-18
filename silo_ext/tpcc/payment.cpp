@@ -7,7 +7,7 @@ using namespace ccbench;
 namespace TPCC {
 constexpr bool g_wh_update = true;
 
-bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
+bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) {
 #ifdef DBx1000
   RC rc = RCOK;
   uint64_t key;
@@ -17,8 +17,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   std::string strkey;
   Tuple *ret_tuple_ptr;
   Status stat;
-  Token token{};
-  enter(token);
 #endif
 
   uint64_t w_id = query->w_id;
@@ -61,7 +59,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
-    leave(token);
     return false;
   }
   wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
@@ -121,7 +118,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
   stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
-    leave(token);
     return false;
   }
   dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
@@ -203,7 +199,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
     stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
-      leave(token);
       return false;
     }
     /**
@@ -317,11 +312,9 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg) {
 #endif // DBx1000_COMMENT_OUT
 
   if (commit(token) == Status::OK) {
-    leave(token);
     return true;
   }
   abort(token);
-  leave(token);
   return false;
 }
 }
