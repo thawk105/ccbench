@@ -178,6 +178,8 @@ void load_stock(const std::size_t w) {
         st.S_REMOTE_CNT = 0;
         strcpy(st.S_DATA, random_string(26, 50, rnd).c_str());
         //TODO ORIGINAL
+        std::string key{st.createKey()};
+        db_insert(Storage::STOCK, key, {reinterpret_cast<char *>(&st), sizeof(st)}, alignof(TPCC::Stock));
       }
     }
   };
