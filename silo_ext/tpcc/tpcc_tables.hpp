@@ -220,8 +220,8 @@ struct Item {
 struct Stock {
   //S_W_ID Foreign Key, references W_ID
   //S_I_ID Foreign Key, references I_ID
-  std::uint16_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
-  std::uint8_t S_W_ID; //2*W unique IDs
+  std::uint32_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
+  std::uint16_t S_W_ID; //2*W unique IDs
   double S_QUANTITY; //signed numeric(4)
   char S_DIST_01[25]; //fixed text, size 24
   char S_DIST_02[25]; //fixed text, size 24
@@ -240,7 +240,7 @@ struct Stock {
 
   // Primary Key: (S_W_ID, S_I_ID) composite.
   static std::string CreateKey(size_t w, size_t i) {
-    return std::string(Warehouse::CreateKey(w) + std::to_string(i));
+    return std::string(Warehouse::CreateKey(w) + "-" + std::to_string(i));
   }
 
   std::string createKey() { return CreateKey(S_W_ID, S_I_ID); }
