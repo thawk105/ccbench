@@ -58,7 +58,7 @@ namespace query {
       std::uint64_t ol_supply_w_id;
       std::uint64_t ol_quantity;
     } items[15];
-    bool rbk;
+    std::uint32_t rbk;
     bool remote;
     std::uint64_t ol_cnt;
     std::uint64_t o_entry_d;
