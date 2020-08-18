@@ -47,7 +47,7 @@ struct District {
 
   //Primary Key: (D_W_ID, D_ID)
   static std::string CreateKey(size_t w, size_t d) {
-    return std::string(Warehouse::CreateKey(w) + std::to_string(d));
+    return std::string(Warehouse::CreateKey(w)+ "-" +std::to_string(d));
   }
 
   std::string createKey() { return CreateKey(D_W_ID, D_ID); }
@@ -80,7 +80,7 @@ struct Customer {
 
   //Primary Key: (C_W_ID, C_D_ID, C_ID)
   static std::string CreateKey(size_t w, size_t d, size_t c) {
-    return std::string(District::CreateKey(w, d) + std::to_string(c));
+    return std::string(District::CreateKey(w, d)+ "-" +std::to_string(c));
   }
   std::string createKey() { return CreateKey(C_W_ID, C_D_ID, C_ID); }
   //Secondary Key: (C_LAST, C_D_ID, C_W_ID)

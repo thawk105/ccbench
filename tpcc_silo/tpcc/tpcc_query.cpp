@@ -89,6 +89,9 @@ void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
     }
     items[i].ol_quantity = Random(1, 10, rnd);
   }
+  if (rbk == 1) { // set an unused item number to produce "not-found" for roll back
+    items[ol_cnt-1].ol_i_id += opt.max_items;
+  }
 }
 
 void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
@@ -116,7 +119,7 @@ void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
   }
 
   int y = Random(1, 100, rnd);
-  if (y <= 60) {
+  if (y < 1) { //if (y <= 60) { // disable by_last_name for test
     // by last name
     by_last_name = true;
     Lastname(NURand(255, 0, 999, rnd), c_last);
@@ -128,8 +131,8 @@ void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
 }
 
 void query::NewOrder::print() {
-  printf("nod: w_id=%lu d_id=%lu c_id=%lu rbk=%s remote=%s ol_cnt=%lu o_entry_d=%lu\n",
-         w_id, d_id, c_id, rbk?"t":"f", remote?"t":"f", ol_cnt, o_entry_d);
+  printf("nod: w_id=%lu d_id=%lu c_id=%lu rbk=%u remote=%s ol_cnt=%lu o_entry_d=%lu\n",
+         w_id, d_id, c_id, rbk, remote?"t":"f", ol_cnt, o_entry_d);
   for (unsigned int i=0; i<ol_cnt; ++i) {
     printf(" [%d]: ol_i_id=%lu ol_supply_w_id=%lu c_quantity=%lu\n", i,
            items[i].ol_i_id, items[i].ol_supply_w_id, items[i].ol_quantity);
