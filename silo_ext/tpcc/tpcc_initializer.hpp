@@ -31,30 +31,28 @@ void db_insert(const Storage st, const std::string_view key, const std::string_v
   }
 }
 
-std::string random_string(const int minLen, const int maxLen, Xoroshiro128Plus &rnd) {
+std::string random_string(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd) {
   static const char alphanum[] =
           "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
-  std::string s(len + 1, 'a');
+  std::string s(len, 'a');
   for (int i = 0; i < len; i++) {
     size_t rn = rnd.next();
-    int idx = rn % (sizeof(alphanum));
+    size_t idx = rn % (sizeof(alphanum)-1);
     s[i] = alphanum[idx];
   }
-  s[len] = '\0';
   return s;
 }
     
-std::string MakeNumberString(const int minLen, const int maxLen, Xoroshiro128Plus &rnd){
+std::string MakeNumberString(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd){
     static const char Numbers[] = "0123456789";
     int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
-    std::string s(len + 1, '0');
+    std::string s(len, '1');
     for(int i=0;i<len;i++){
         size_t rn = rnd.next();
-        int idx = rn % (sizeof(Numbers));
+        size_t idx = rn % (sizeof(Numbers)-1);
         s[i] = Numbers[idx];
     }
-    s[len]='\0';
     return s;
 }
 
@@ -71,12 +69,11 @@ T random_value(const T &minv, const T &maxv) {
 }
 
 std::string gen_zipcode(Xoroshiro128Plus &rnd) {
-  std::string s(10, 'a');
+  std::string s(9, 'a');
   for (int i = 0; i < 9; i++) {
     if (i > 3)s[i] = '1';
     else s[i] = '0' + (rnd.next() % 10);
   }
-  s[9] = '\0';
   return s;
 }
 
@@ -85,7 +82,7 @@ std::string gen_zipcode(Xoroshiro128Plus &rnd) {
 A is a constant chosen according to the size of range [x..y].
 C is a run-time constant randomly chosen within [0..A]
 */
-inline int NURand(int A, const int x, const int y) {
+inline unsigned int NURand(int A, const int x, const int y) {
   const int C = random_value(0, A);
   assert(x <= y);
   return (((random_value(0, A) | random_value(x, y)) + C) % (y - x + 1)) + x;
@@ -303,9 +300,6 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
     static void
     work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg,
          const std::size_t d, const std::size_t w) {
-#ifdef DEBUG
-        std::cout<<"call load customer work"<<std::endl;
-#endif
       Xoroshiro128Plus rnd{};
       rnd.init();
       for (size_t c = start; c <= end; ++c) {
@@ -333,7 +327,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         //C_PHONE
         strcpy(customer.C_PHONE, MakeNumberString(16,16,rnd).c_str());
 #ifdef DEBUG
-        std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
+        if(c==start&& w==1&& d==2)std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
 #endif        
         customer.C_SINCE = now;
         //90% GC 10% BC
@@ -394,9 +388,6 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
 }
 
 void load_district(const std::size_t w) {
-
-       std::cout<<"here"<<std::endl;
-
   struct S {
     static void work(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
       Xoroshiro128Plus rnd{};
@@ -428,10 +419,6 @@ void load_district(const std::size_t w) {
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(w, true);
   
-#ifdef DEBUG
-  std::cout<<"here"<<std::endl;
-#endif
-
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
     thv.emplace_back(S::work, d, w, std::ref(hkg));
