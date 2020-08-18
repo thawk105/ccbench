@@ -421,7 +421,7 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   //return finish(rc);
 #endif // DBx1000
   } // end of ol loop
-  if (commit(token) != Status::OK) {
+  if (commit(token) == Status::OK) {
     return true;
   }
   abort(token);
