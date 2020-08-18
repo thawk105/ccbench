@@ -197,8 +197,19 @@ void load_stock(const std::size_t w) {
         st.S_YTD = 0;
         st.S_ORDER_CNT = 0;
         st.S_REMOTE_CNT = 0;
-        strcpy(st.S_DATA, random_string(26, 50, rnd).c_str());
-        //TODO ORIGINAL
+        size_t dataLen = random_value(26,50);
+        strcpy(st.S_DATA, random_string(dataLen, dataLen, rnd).c_str());
+        if(random_value<int>(1,100)<=10){
+            std::uint64_t pos = random_value(0,(int)(dataLen-8));
+            st.S_DATA[pos]='o';
+            st.S_DATA[pos+1]='r';
+            st.S_DATA[pos+2]='i';
+            st.S_DATA[pos+3]='g';
+            st.S_DATA[pos+4]='i';
+            st.S_DATA[pos+5]='n';
+            st.S_DATA[pos+6]='a';
+            st.S_DATA[pos+7]='l';
+        }
         std::string key{st.createKey()};
         db_insert(Storage::STOCK, key, {reinterpret_cast<char *>(&st), sizeof(st)}, alignof(TPCC::Stock));
       }
