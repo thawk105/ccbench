@@ -112,9 +112,19 @@ void load_item() {
         ite.I_IM_ID = random_value(1, 10000);
         strcpy(ite.I_NAME, random_string(14, 24, rnd).c_str());
         ite.I_PRICE = random_value(1.00, 100.00);
-        strcpy(ite.I_DATA, random_string(26, 50, rnd).c_str());
-        //TODO ORIGINAL
-
+        size_t dataLen=random_value(26,50);
+        strcpy(ite.I_DATA, random_string(dataLen, dataLen, rnd).c_str());
+        if(random_value<int>(1,100)<=10){
+            std::uint64_t pos = random_value(0,(int)(dataLen-8));
+            ite.I_DATA[pos]='o';
+            ite.I_DATA[pos+1]='r';
+            ite.I_DATA[pos+2]='i';
+            ite.I_DATA[pos+3]='g';
+            ite.I_DATA[pos+4]='i';
+            ite.I_DATA[pos+5]='n';
+            ite.I_DATA[pos+6]='a';
+            ite.I_DATA[pos+7]='l';
+       }        
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
