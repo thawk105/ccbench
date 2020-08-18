@@ -317,8 +317,12 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         //TODO C_PHONE
 
         customer.C_SINCE = now;
-        //TODO 10% GC 90% BC
-        strcpy(customer.C_CREDIT, "GC");
+        //90% GC 10% BC
+        if(random_value(0,99)>=90){
+            strcpy(customer.C_CREDIT, "BC");
+        }else{
+            strcpy(customer.C_CREDIT, "GC");
+        }
         customer.C_CREDIT_LIM = 50000.00;
         customer.C_DISCOUNT = random_value(0.0000, 0.50000);
         customer.C_BALANCE = -10.00;
