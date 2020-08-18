@@ -9,9 +9,9 @@ namespace ccbench::testing {
 
 using namespace ccbench;
 
-class dev_test : public ::testing::Test {};
+class scheme_global_test : public ::testing::Test {};
 
-TEST_F(dev_test, storage_test) { // NOLINT
+TEST_F(scheme_global_test, storage_test) { // NOLINT
   ASSERT_EQ(static_cast<int>(Storage::CUSTOMER), 0);
   ASSERT_EQ(static_cast<int>(Storage::DISTRICT), 1);
   ASSERT_EQ(static_cast<int>(Storage::HISTORY), 2);

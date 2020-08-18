@@ -44,14 +44,14 @@ add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpc
 add_executable(river.exe ${SILO_SOURCES} test/river.cpp)
 add_executable(river-2.exe ${SILO_SOURCES} test/river-2.cpp)
 add_executable(unit_test.exe ${SILO_SOURCES} test/unit_test.cpp)
-add_executable(dev_test.exe test/dev_test.cpp)
+add_executable(scheme_global_test.exe test/scheme_global_test.cpp)
 add_executable(river_test.exe test/river_test.cpp)
 
 set_compile_options(silo_ext.exe)
 set_compile_options(river.exe)
 set_compile_options(river-2.exe)
 set_compile_options(unit_test.exe)
-set_compile_options(dev_test.exe)
+set_compile_options(scheme_global_test.exe)
 set_compile_options(river_test.exe)
 
 target_include_directories(silo_ext.exe
@@ -81,7 +81,7 @@ target_include_directories(river-2.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
 )
 
-target_include_directories(dev_test.exe
+target_include_directories(scheme_global_test.exe
         PRIVATE ${PROJECT_SOURCE_DIR}
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
@@ -135,7 +135,7 @@ target_link_libraries(river-2.exe
         Threads::Threads
 )
 
-target_link_libraries(dev_test.exe
+target_link_libraries(scheme_global_test.exe
         Boost::filesystem
         gflags::gflags
         ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
