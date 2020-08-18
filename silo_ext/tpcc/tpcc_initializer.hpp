@@ -32,18 +32,29 @@ void db_insert(const Storage st, const std::string_view key, const std::string_v
   }
 }
 
-std::string random_string(const int minLen, const int maxLen, Xoroshiro128Plus &rnd) {
+std::string random_string(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd) {
   static const char alphanum[] =
           "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
-  std::string s(len + 1, 'a');
+  std::string s(len, 'a');
   for (int i = 0; i < len; i++) {
     size_t rn = rnd.next();
-    int idx = rn % (sizeof(alphanum));
+    size_t idx = rn % (sizeof(alphanum)-1);
     s[i] = alphanum[idx];
   }
-  s[len] = '\0';
   return s;
+}
+    
+std::string MakeNumberString(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd){
+    static const char Numbers[] = "0123456789";
+    int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
+    std::string s(len, '1');
+    for(int i=0;i<len;i++){
+        size_t rn = rnd.next();
+        size_t idx = rn % (sizeof(Numbers)-1);
+        s[i] = Numbers[idx];
+    }
+    return s;
 }
 
 template<typename T>
@@ -59,12 +70,11 @@ T random_value(const T &minv, const T &maxv) {
 }
 
 std::string gen_zipcode(Xoroshiro128Plus &rnd) {
-  std::string s(10, 'a');
+  std::string s(9, 'a');
   for (int i = 0; i < 9; i++) {
     if (i > 3)s[i] = '1';
     else s[i] = '0' + (rnd.next() % 10);
   }
-  s[9] = '\0';
   return s;
 }
 
@@ -73,7 +83,7 @@ std::string gen_zipcode(Xoroshiro128Plus &rnd) {
 A is a constant chosen according to the size of range [x..y].
 C is a run-time constant randomly chosen within [0..A]
 */
-inline int NURand(int A, const int x, const int y) {
+inline unsigned int NURand(int A, const int x, const int y) {
   const int C = random_value(0, A);
   assert(x <= y);
   return (((random_value(0, A) | random_value(x, y)) + C) % (y - x + 1)) + x;
@@ -305,7 +315,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
           //for the first 1,000 customers, and generating a non -uniform random number using the function NURand(255,0,999)
           strcpy(customer.C_LAST, createC_LAST(NURand(255, 0, 999)).c_str());
 #ifdef DEBUG
-          if(w==0&&d==0&&c==0)std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
+          std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
 #endif
         } else {
           strcpy(customer.C_LAST, createC_LAST(random_value<int>(0, 999)).c_str());
@@ -317,11 +327,18 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         strcpy(customer.C_CITY, random_string(10, 20, rnd).c_str());
         strcpy(customer.C_STATE, random_string(2, 2, rnd).c_str());
         strcpy(customer.C_ZIP, gen_zipcode(rnd).c_str());
-        //TODO C_PHONE
-
+        //C_PHONE
+        strcpy(customer.C_PHONE, MakeNumberString(16,16,rnd).c_str());
+#ifdef DEBUG
+        if(c==start&& w==1&& d==2)std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
+#endif        
         customer.C_SINCE = now;
-        //TODO 10% GC 90% BC
-        strcpy(customer.C_CREDIT, "GC");
+        //90% GC 10% BC
+        if(random_value(0,99)>=90){
+            strcpy(customer.C_CREDIT, "BC");
+        }else{
+            strcpy(customer.C_CREDIT, "GC");
+        }
         customer.C_CREDIT_LIM = 50000.00;
         customer.C_DISCOUNT = random_value(0.0000, 0.50000);
         customer.C_BALANCE = -10.00;
@@ -376,7 +393,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
     }
   };
   S::work(1, CUST_PER_DIST, std::ref(hkg), d, w);
-#if 0
+  #if 0
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
@@ -389,7 +406,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
   for (auto &&th : thv) {
     th.join();
   }
-#endif
+  #endif
 }
 
 void load_district(const std::size_t w) {
@@ -410,6 +427,10 @@ void load_district(const std::size_t w) {
       district.D_YTD = 30000.00;
       district.D_NEXT_O_ID = 3001;
 
+#ifdef DEBUG
+      std::cout<<"D_ID:"<<district.D_ID<<std::endl;
+#endif
+      
       std::string key{district.createKey()};
       db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)},
                 alignof(TPCC::District));
@@ -420,7 +441,7 @@ void load_district(const std::size_t w) {
   };
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(w, true);
-
+  
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
     thv.emplace_back(S::work, d, w, std::ref(hkg));
@@ -429,6 +450,7 @@ void load_district(const std::size_t w) {
   for (auto &&th : thv) {
     th.join();
   }
+  
 }
 
 void load() {
