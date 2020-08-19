@@ -13,7 +13,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   uint64_t key;
   itemid_t * item;
 #else // CCBench
-  TPCC::Warehouse wh;
   Tuple *ret_tuple_ptr;
   Status stat;
 #endif
@@ -35,6 +34,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   //   FROM warehouse
   //   WHERE w_id=:w_id;
   // +===================================================================*/
+  double w_ytd;
 
 #ifdef DBx1000
   // TODO for variable length variable (string). Should store the size of
@@ -53,23 +53,10 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   if (r_wh_local == NULL) {
     return finish(Abort);
   }
-#else // CCBench
-  std::string wh_key = TPCC::Warehouse::CreateKey(w_id);
-  stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
-  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
-    abort(token);
-    return false;
-  }
-  memcpy(&wh, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Warehouse));
-#endif
-
-  double w_ytd;
-
   // =====================================================+
   // EXEC SQL UPDATE district SET d_ytd = d_ytd + :h_amount
   // WHERE d_w_id=:w_id AND d_id=:d_id;
   // +=====================================================*/
-#ifdef DBx1000
   r_wh_local->get_value(W_YTD, w_ytd);
   if (g_wh_update) {
     r_wh_local->set_value(W_YTD, w_ytd + query->h_amount);
@@ -79,9 +66,19 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   memcpy(w_name, tmp_str, 10);
   w_name[10] = '\0';
 #else // CCBench
+
+  TPCC::Warehouse wh;
+  std::string wh_key = TPCC::Warehouse::CreateKey(w_id);
+  stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
+  memcpy(&wh, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Warehouse));
   w_ytd = wh.W_YTD;
   if (g_wh_update) {
     wh.W_YTD = w_ytd + query->h_amount;
+
     // TODO : tanabe will write below
     // update(token, Storage::WAREHOUSE, wh_key, wh, alignof(TPCC::Warehouse));
   }
@@ -123,6 +120,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   memcpy(&dist, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
 
   dist.D_YTD += query->h_amount;
+
   // TODO : tanabe will write below
   // update(token, Storage::DISTRICT, dist_key, dist, alignof(TPCC::District));
 
