@@ -111,9 +111,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   tmp_str = r_dist_local->get_value(D_NAME);
   memcpy(d_name, tmp_str, 10);
   d_name[10] = '\0';
-
-  row_t * r_cust;
 #else // CCBench
+
   TPCC::District dist;
   std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
   stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
@@ -128,9 +127,10 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   // update(token, Storage::DISTRICT, dist_key, dist, alignof(TPCC::District));
 
   std::string d_name(dist.D_NAME);
-
-  TPCC::Customer cust;
 #endif
+
+#ifdef DBx1000
+  row_t * r_cust;
 
   if (query->by_last_name) {
     // ==========================================================+
@@ -157,7 +157,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     // EXEC SQL CLOSE c_byname;
     // +=============================================================================*/
     // XXX: we don't retrieve all the info, just the tuple we are interested in
-#ifdef DBx1000
     uint64_t key = custNPKey(query->c_last, query->c_d_id, query->c_w_id);
     // XXX: the list is not sorted. But let's assume it's sorted...
     // The performance won't be much different.
@@ -175,12 +174,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
         mid = mid->next;
     }
     r_cust = ((row_t *)mid->location);
-
-#else // CCBench
-
-    // to be implemented for CCBench
-
-#endif
   } else { // search customers by cust_id
     // =====================================================================+
     // EXEC SQL SELECT c_first, c_middle, c_last, c_street_1, c_street_2,
@@ -192,31 +185,16 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     //   FROM customer
     //   WHERE c_w_id=:c_w_id AND c_d_id=:c_d_id AND c_id=:c_id;
     // +======================================================================*/
-#ifdef DBx1000
     key = custKey(query->c_id, query->c_d_id, query->c_w_id);
     INDEX * index = _wl->i_customer_id;
     item = index_read(index, key, wh_to_part(c_w_id));
     assert(item != NULL);
     r_cust = (row_t *) item->location;
-#else // CCBench
-    std::string cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
-    stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
-    if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
-      abort(token);
-      return false;
-    }
-    /**
-     * TODO : improvement. not memcpy but use pointer.
-     */
-    memcpy(&cust, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Customer));
-#endif
   }
-
   // ======================================================================+
   // EXEC SQL UPDATE customer SET c_balance = :c_balance, c_data = :c_new_data
   //   WHERE c_w_id = :c_w_id AND c_d_id = :c_d_id AND c_id = :c_id;
   // +======================================================================*/
-#ifdef DBx1000
   row_t * r_cust_local = get_row(r_cust, WR);
   if (r_cust_local == NULL) {
     return finish(Abort);
@@ -234,6 +212,25 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
 
   char * c_credit = r_cust_local->get_value(C_CREDIT);
 #else // CCBench
+
+  TPCC::Customer cust;
+
+  if (query->by_last_name) {
+
+    // TODO : to be implemented for CCBench
+
+  } else { // search customers by cust_id
+    std::string cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
+    stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
+    if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      return false;
+    }
+    /**
+     * TODO : improvement. not memcpy but use pointer.
+     */
+    memcpy(&cust, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Customer));
+  }
   cust.C_BALANCE += query->h_amount;
   cust.C_YTD_PAYMENT += query->h_amount;
   cust.C_PAYMENT_CNT += 1;
