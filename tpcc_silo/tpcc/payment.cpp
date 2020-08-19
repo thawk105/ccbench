@@ -13,8 +13,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   uint64_t key;
   itemid_t * item;
 #else // CCBench
-  TPCC::Warehouse *wh;
-  std::string strkey;
+  TPCC::Warehouse wh;
   Tuple *ret_tuple_ptr;
   Status stat;
 #endif
@@ -55,13 +54,13 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     return finish(Abort);
   }
 #else // CCBench
-  strkey = TPCC::Warehouse::CreateKey(w_id);
-  stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
+  std::string wh_key = TPCC::Warehouse::CreateKey(w_id);
+  stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
   }
-  wh = (TPCC::Warehouse *) ret_tuple_ptr->get_val().data();
+  memcpy(&wh, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Warehouse));
 #endif
 
   double w_ytd;
@@ -80,11 +79,13 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   memcpy(w_name, tmp_str, 10);
   w_name[10] = '\0';
 #else // CCBench
-  w_ytd = wh->W_YTD;
+  w_ytd = wh.W_YTD;
   if (g_wh_update) {
-    wh->W_YTD = w_ytd + query->h_amount;
+    wh.W_YTD = w_ytd + query->h_amount;
+    // TODO : tanabe will write below
+    // update(token, Storage::WAREHOUSE, wh_key, wh, alignof(TPCC::Warehouse));
   }
-  std::string w_name(wh->W_NAME);
+  std::string w_name(wh.W_NAME);
 #endif
 
   // ====================================================================+
@@ -113,17 +114,20 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
 
   row_t * r_cust;
 #else // CCBench
-  TPCC::District *dist;
-  strkey = TPCC::District::CreateKey(w_id, d_id);
-  stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
+  TPCC::District dist;
+  std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
+  stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
   }
-  dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
+  memcpy(&dist, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
 
-  dist->D_YTD += query->h_amount;
-  std::string d_name(dist->D_NAME);
+  dist.D_YTD += query->h_amount;
+  // TODO : tanabe will write below
+  // update(token, Storage::DISTRICT, dist_key, dist, alignof(TPCC::District));
+
+  std::string d_name(dist.D_NAME);
 
   TPCC::Customer cust;
 #endif
@@ -195,8 +199,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     assert(item != NULL);
     r_cust = (row_t *) item->location;
 #else // CCBench
-    strkey = TPCC::Customer::CreateKey(w_id, d_id, c_id);
-    stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
+    std::string cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
+    stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -259,8 +263,10 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     sprintf(c_new_data, "| %4ld %2ld %4ld %2ld %4ld $%7.2f",
             c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
     strncat(c_new_data, cust.C_DATA, 500 - strlen(c_new_data));
-    strncpy(cust.C_DATA, c_new_data, 501); // update?
+    strncpy(cust.C_DATA, c_new_data, 501);
   }
+  // TODO : tanabe will write below
+  // update(token, Storage::CUSTOMER, cust_key, cust, alignof(TPCC::Customer));
 #endif
 #endif // DBx1000_COMMENT_OUT
 
@@ -306,8 +312,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
 #if !TPCC_SMALL
   sprintf(hist.H_DATA, "%-10.10s    %.10s", w_name.c_str(), d_name.c_str());
 #endif
-  strkey = std::to_string(hkg->get());
-  stat = insert(token, Storage::HISTORY, strkey, {reinterpret_cast<char *>(&hist), sizeof(hist)}, alignof(TPCC::History));
+  std::string hist_key = std::to_string(hkg->get());
+  stat = insert(token, Storage::HISTORY, hist_key, {reinterpret_cast<char *>(&hist), sizeof(hist)}, alignof(TPCC::History));
 #endif
 #endif // DBx1000_COMMENT_OUT
 

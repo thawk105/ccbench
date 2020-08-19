@@ -49,13 +49,13 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
     WHERE w_id = :w_id AND c_w_id = w_id AND c_d_id = :d_id AND c_id = :c_id;
     +========================================================================*/
   TPCC::Warehouse *wh;
-  std::string strkey;
-  strkey = TPCC::Warehouse::CreateKey(w_id);
+  std::string wh_key;
+  wh_key = TPCC::Warehouse::CreateKey(w_id);
   // index = _wl->i_warehouse;
   // item = index_read(index, key, wh_to_part(w_id));
   Tuple *ret_tuple_ptr;
   Status stat;
-  stat = search_key(token, Storage::WAREHOUSE, strkey, &ret_tuple_ptr);
+  stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -65,8 +65,8 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   [[maybe_unused]] double w_tax = wh->W_TAX;
   //uint64_t key = custKey(c_id, d_id, w_id);
   TPCC::Customer *cust;
-  strkey = TPCC::Customer::CreateKey(w_id, d_id, c_id);
-  stat = search_key(token, Storage::CUSTOMER, strkey, &ret_tuple_ptr);
+  std::string cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
+  stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -115,20 +115,22 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
     EXEC SQL UPDATE district SET d_next_o_id = :d_next_o_id + 1
     WHERE d_id = :d_id AND d_w_id = :w_id ;
     +===================================================*/
-  TPCC::District *dist;
-  strkey = TPCC::District::CreateKey(w_id, d_id);
-  stat = search_key(token, Storage::DISTRICT, strkey, &ret_tuple_ptr);
+  TPCC::District dist;
+  std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
+  stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
   }
-  dist = (TPCC::District *) ret_tuple_ptr->get_val().data();
+  memcpy(&dist, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
 
-  [[maybe_unused]] double d_tax = dist->D_TAX;
-  std::uint32_t o_id = dist->D_NEXT_O_ID;
+  [[maybe_unused]] double d_tax = dist.D_TAX;
+  std::uint32_t o_id = dist.D_NEXT_O_ID;
   o_id++;
-  dist->D_NEXT_O_ID = o_id;
-  // o_id = dist->D_NEXT_O_ID; /* no need to execute */
+  dist.D_NEXT_O_ID = o_id;
+  // o_id = dist.D_NEXT_O_ID; /* no need to execute */
+  // TODO : tanabe will write below
+  // update(token, Storage::DISTRICT, dist_key, dist, alignof(TPCC::District));
 
 #ifdef DBx1000
   key = distKey(d_id, w_id);
@@ -163,11 +165,11 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   order.O_OL_CNT = ol_cnt;
   int64_t all_local = (remote ? 0 : 1);
   order.O_ALL_LOCAL = all_local;
-  strkey = TPCC::Customer::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
+  std::string order_key = TPCC::Order::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
   /**
    * TODO : check. Is it ok either insert operation successes or not.
    */
-  insert(token, Storage::ORDER, strkey, {(char *) &order, sizeof(TPCC::Order)}, alignof(TPCC::Order));
+  insert(token, Storage::ORDER, order_key, {(char *) &order, sizeof(TPCC::Order)}, alignof(TPCC::Order));
 
 #ifdef DBx1000
   row_t * r_order;
@@ -193,11 +195,11 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   neworder.NO_O_ID = o_id;
   neworder.NO_D_ID = d_id;
   neworder.NO_W_ID = w_id;
-  strkey = TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
+  std::string no_key = TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
   /**
    * TODO : check. Is it ok either insert operation successes or not.
    */
-  insert(token, Storage::NEWORDER, strkey, {(char *) &neworder, sizeof(TPCC::NewOrder)}, alignof(TPCC::NewOrder));
+  insert(token, Storage::NEWORDER, no_key, {(char *) &neworder, sizeof(TPCC::NewOrder)}, alignof(TPCC::NewOrder));
 
 #ifdef DBx1000
   row_t * r_no;
@@ -227,8 +229,8 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
      */
 
     TPCC::Item *item;
-    strkey = TPCC::Item::CreateKey(ol_i_id);
-    stat = search_key(token, Storage::ITEM, strkey, &ret_tuple_ptr);
+    std::string item_key = TPCC::Item::CreateKey(ol_i_id);
+    stat = search_key(token, Storage::ITEM, item_key, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -273,38 +275,38 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
       AND s_w_id = :ol_supply_w_id;
       +===============================================*/
 
-    TPCC::Stock *stock;
-    strkey = TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id);
-    stat = search_key(token, Storage::STOCK, strkey, &ret_tuple_ptr);
+    TPCC::Stock stock;
+    std::string stock_key = TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id);
+    stat = search_key(token, Storage::STOCK, stock_key, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
     }
-    stock = (TPCC::Stock *) ret_tuple_ptr->get_val().data();
-    uint64_t s_quantity = (int64_t) stock->S_QUANTITY;
+    memcpy(&stock, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Stock));
+    uint64_t s_quantity = (int64_t) stock.S_QUANTITY;
     /**
      * These data are for application side.
      */
-    [[maybe_unused]] char *s_data = stock->S_DATA;
-    [[maybe_unused]] char *s_dist_01 = stock->S_DIST_01;
-    [[maybe_unused]] char *s_dist_02 = stock->S_DIST_02;
-    [[maybe_unused]] char *s_dist_03 = stock->S_DIST_03;
-    [[maybe_unused]] char *s_dist_04 = stock->S_DIST_04;
-    [[maybe_unused]] char *s_dist_05 = stock->S_DIST_05;
-    [[maybe_unused]] char *s_dist_06 = stock->S_DIST_06;
-    [[maybe_unused]] char *s_dist_07 = stock->S_DIST_07;
-    [[maybe_unused]] char *s_dist_08 = stock->S_DIST_08;
-    [[maybe_unused]] char *s_dist_09 = stock->S_DIST_09;
-    [[maybe_unused]] char *s_dist_10 = stock->S_DIST_10;
+    [[maybe_unused]] char *s_data = stock.S_DATA;
+    [[maybe_unused]] char *s_dist_01 = stock.S_DIST_01;
+    [[maybe_unused]] char *s_dist_02 = stock.S_DIST_02;
+    [[maybe_unused]] char *s_dist_03 = stock.S_DIST_03;
+    [[maybe_unused]] char *s_dist_04 = stock.S_DIST_04;
+    [[maybe_unused]] char *s_dist_05 = stock.S_DIST_05;
+    [[maybe_unused]] char *s_dist_06 = stock.S_DIST_06;
+    [[maybe_unused]] char *s_dist_07 = stock.S_DIST_07;
+    [[maybe_unused]] char *s_dist_08 = stock.S_DIST_08;
+    [[maybe_unused]] char *s_dist_09 = stock.S_DIST_09;
+    [[maybe_unused]] char *s_dist_10 = stock.S_DIST_10;
 
-    double s_ytd = stock->S_YTD;
-    double s_order_cnt = stock->S_ORDER_CNT;
-    stock->S_YTD = s_ytd + ol_quantity;
-    stock->S_ORDER_CNT = s_order_cnt + 1;
+    double s_ytd = stock.S_YTD;
+    double s_order_cnt = stock.S_ORDER_CNT;
+    stock.S_YTD = s_ytd + ol_quantity;
+    stock.S_ORDER_CNT = s_order_cnt + 1;
     if (remote) {
-      double s_remote_cnt = stock->S_REMOTE_CNT;
+      double s_remote_cnt = stock.S_REMOTE_CNT;
       s_remote_cnt++;
-      stock->S_REMOTE_CNT = s_remote_cnt;
+      stock.S_REMOTE_CNT = s_remote_cnt;
     }
 
     /*====================================================+
@@ -319,7 +321,9 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
     } else {
       quantity = s_quantity - ol_quantity + 91;
     }
-    stock->S_QUANTITY = (double) quantity;
+    stock.S_QUANTITY = (double) quantity;
+    // TODO : tanabe will write below
+    // update(token, Storage::STOCK, stock_key, stock, alignof(TPCC::Stock));
 
 #ifdef DBx1000
     uint64_t stock_key = stockKey(ol_i_id, ol_supply_w_id);
@@ -371,7 +375,7 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
       :ol_quantity, :ol_amount, :ol_dist_info);
       +====================================================*/
     w_tax = wh->W_TAX;
-    d_tax = dist->D_TAX;
+    d_tax = dist.D_TAX;
     //amt[ol_number-1]=ol_amount;
     //total += ol_amount;
     double ol_amount = ol_quantity * i_price * (1.0 + w_tax + d_tax) * (1.0 - c_discount);
@@ -391,11 +395,11 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
     // distinfo?
 #endif
     // The number of keys is enough? It is different from DBx1000
-    strkey = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID, orderline.OL_NUMBER);
+    std::string ol_key = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID, orderline.OL_NUMBER);
     /**
      * TODO : check. Is it ok either insert operation successes or not.
      */
-    stat = insert(token, Storage::ORDERLINE, strkey, {(char *) &orderline, sizeof(TPCC::OrderLine)},
+    stat = insert(token, Storage::ORDERLINE, ol_key, {(char *) &orderline, sizeof(TPCC::OrderLine)},
                   alignof(TPCC::OrderLine));
 #ifdef DBx1000
     row_t * r_ol;
