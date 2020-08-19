@@ -211,6 +211,25 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   r_cust_local->set_value(C_PAYMENT_CNT, c_payment_cnt + 1);
 
   char * c_credit = r_cust_local->get_value(C_CREDIT);
+
+  // =====================================================+
+  // EXEC SQL SELECT c_data
+  //   INTO :c_data
+  //   FROM customer
+  //   WHERE c_w_id=:c_w_id AND c_d_id=:c_d_id AND c_id=:c_id;
+  // +=====================================================*/
+#ifndef DBx1000_COMMENT_OUT
+  if ( strstr(c_credit, "BC") ) {
+    char c_new_data[501];
+    sprintf(c_new_data,"| %4ld %2ld %4ld %2ld %4ld $%7.2f",
+            c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
+    char k_c_data[] = "C_DATA";
+    char * c_data = r_cust->get_value(k_c_data);
+    strncat(c_new_data, c_data, 500 - strlen(c_new_data));
+    r_cust->set_value("C_DATA", c_new_data);
+  }
+#endif // DBx1000_COMMENT_OUT
+
 #else // CCBench
 
   TPCC::Customer cust;
@@ -235,26 +254,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   cust.C_YTD_PAYMENT += query->h_amount;
   cust.C_PAYMENT_CNT += 1;
   std::string c_credit(cust.C_CREDIT);
-#endif
 
 #ifndef DBx1000_COMMENT_OUT
-  // =====================================================+
-  // EXEC SQL SELECT c_data
-  //   INTO :c_data
-  //   FROM customer
-  //   WHERE c_w_id=:c_w_id AND c_d_id=:c_d_id AND c_id=:c_id;
-  // +=====================================================*/
-#ifdef DBx1000
-  if ( strstr(c_credit, "BC") ) {
-    char c_new_data[501];
-    sprintf(c_new_data,"| %4ld %2ld %4ld %2ld %4ld $%7.2f",
-            c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
-    char k_c_data[] = "C_DATA";
-    char * c_data = r_cust->get_value(k_c_data);
-    strncat(c_new_data, c_data, 500 - strlen(c_new_data));
-    r_cust->set_value("C_DATA", c_new_data);
-  }
-#else // CCBench
   if (c_credit.find("BC") != std::string::npos) {
     char c_new_data[501];
     sprintf(c_new_data, "| %4ld %2ld %4ld %2ld %4ld $%7.2f",
@@ -262,10 +263,12 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     strncat(c_new_data, cust.C_DATA, 500 - strlen(c_new_data));
     strncpy(cust.C_DATA, c_new_data, 501);
   }
+
   // TODO : tanabe will write below
   // update(token, Storage::CUSTOMER, cust_key, cust, alignof(TPCC::Customer));
-#endif
+
 #endif // DBx1000_COMMENT_OUT
+#endif // CCBench end
 
   // =============================================================================+
   // EXEC SQL INSERT INTO
