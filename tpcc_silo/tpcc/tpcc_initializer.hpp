@@ -215,8 +215,8 @@ void load_stock(const std::size_t w) {
       }
     }
   };
-  const std::size_t stock_num{w * MAX_ITEMS};
-  constexpr std::size_t stock_num_per_thread{500};
+  const std::size_t stock_num{MAX_ITEMS};
+  constexpr std::size_t stock_num_per_thread{5000};
   const std::size_t para_num{stock_num / stock_num_per_thread};
   std::vector<std::thread> thv;
   thv.emplace_back(S::work, 1, stock_num_per_thread, w);
