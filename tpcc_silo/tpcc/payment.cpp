@@ -7,7 +7,7 @@ using namespace ccbench;
 namespace TPCC {
 constexpr bool g_wh_update = true;
 
-bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) {
+bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) {
 #ifdef DBx1000
   RC rc = RCOK;
   uint64_t key;
@@ -17,12 +17,12 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   Status stat;
 #endif
 
-  uint64_t w_id = query->w_id;
-  uint64_t c_w_id = query->c_w_id;
+  std::uint64_t w_id = query->w_id;
+  std::uint64_t c_w_id = query->c_w_id;
 #ifndef DBx1000_COMMENT_OUT
-  uint64_t d_id = query->d_id;
-  uint64_t c_id = query->c_id;
-  uint64_t c_d_id = query->c_d_id;
+  std::uint64_t d_id = query->d_id;
+  std::uint64_t c_id = query->c_id;
+  std::uint64_t c_d_id = query->c_d_id;
 #endif
   // ====================================================+
   // EXEC SQL UPDATE warehouse SET w_ytd = w_ytd + :h_amount
@@ -67,14 +67,14 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   w_name[10] = '\0';
 #else // CCBench
 
-  TPCC::Warehouse wh;
+  TPCC::Warehouse wh{};
   std::string wh_key = TPCC::Warehouse::CreateKey(w_id);
   stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
   }
-  memcpy(&wh, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Warehouse));
+  memcpy(&wh, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Warehouse));
   w_ytd = wh.W_YTD;
   if (g_wh_update) {
     wh.W_YTD = w_ytd + query->h_amount;
@@ -110,19 +110,23 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   d_name[10] = '\0';
 #else // CCBench
 
-  TPCC::District dist;
+  TPCC::District dist{};
   std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
   stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
   }
-  memcpy(&dist, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
+  memcpy(&dist, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
 
   dist.D_YTD += query->h_amount;
 
-  // TODO : tanabe will write below
-  // update(token, Storage::DISTRICT, dist_key, dist, alignof(TPCC::District));
+  stat = update(token, Storage::DISTRICT, dist_key, {reinterpret_cast<char *>(&dist), sizeof(dist)},
+                alignof(TPCC::District));
+  if (stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
 
   std::string d_name(dist.D_NAME);
 #endif
@@ -230,14 +234,14 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
 
 #else // CCBench
 
-  TPCC::Customer cust;
-
+  TPCC::Customer cust{};
+  std::string cust_key;
   if (query->by_last_name) {
 
     // TODO : to be implemented for CCBench
 
   } else { // search customers by cust_id
-    std::string cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
+    cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
     stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
@@ -246,7 +250,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     /**
      * TODO : improvement. not memcpy but use pointer.
      */
-    memcpy(&cust, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Customer));
+    memcpy(&cust, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())),
+           sizeof(TPCC::Customer));
   }
   cust.C_BALANCE += query->h_amount;
   cust.C_YTD_PAYMENT += query->h_amount;
@@ -262,8 +267,12 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
     strncpy(cust.C_DATA, c_new_data, 501);
   }
 
-  // TODO : tanabe will write below
-  // update(token, Storage::CUSTOMER, cust_key, cust, alignof(TPCC::Customer));
+  stat = update(token, Storage::CUSTOMER, cust_key, {reinterpret_cast<char *>(&cust), sizeof(cust)},
+                alignof(TPCC::Customer));
+  if (stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
 
 #endif // DBx1000_COMMENT_OUT
 #endif // CCBench end
@@ -311,7 +320,12 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token& token) 
   sprintf(hist.H_DATA, "%-10.10s    %.10s", w_name.c_str(), d_name.c_str());
 #endif
   std::string hist_key = std::to_string(hkg->get());
-  stat = insert(token, Storage::HISTORY, hist_key, {reinterpret_cast<char *>(&hist), sizeof(hist)}, alignof(TPCC::History));
+  stat = insert(token, Storage::HISTORY, hist_key, {reinterpret_cast<char *>(&hist), sizeof(hist)},
+                alignof(TPCC::History));
+  if (stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
 #endif
 #endif // DBx1000_COMMENT_OUT
 

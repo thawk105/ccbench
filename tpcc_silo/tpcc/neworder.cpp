@@ -32,7 +32,7 @@ uint64_t stockKey(uint64_t s_i_id, uint64_t s_w_id) {
 #endif
 
 bool
-run_new_order(TPCC::query::NewOrder *query, Token& token) {
+run_new_order(TPCC::query::NewOrder *query, Token &token) {
   //itemid_t * item;
   //INDEX * index;
 
@@ -115,22 +115,26 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
     EXEC SQL UPDATE district SET d_next_o_id = :d_next_o_id + 1
     WHERE d_id = :d_id AND d_w_id = :w_id ;
     +===================================================*/
-  TPCC::District dist;
+  TPCC::District dist{};
   std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
   stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
   }
-  memcpy(&dist, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
+  memcpy(&dist, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
 
   [[maybe_unused]] double d_tax = dist.D_TAX;
   std::uint32_t o_id = dist.D_NEXT_O_ID;
   o_id++;
   dist.D_NEXT_O_ID = o_id;
   // o_id = dist.D_NEXT_O_ID; /* no need to execute */
-  // TODO : tanabe will write below
-  // update(token, Storage::DISTRICT, dist_key, dist, alignof(TPCC::District));
+  stat = update(token, Storage::DISTRICT, dist_key, {reinterpret_cast<char *>(&dist), sizeof(dist)},
+                alignof(TPCC::District));
+  if (stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
 
 #ifdef DBx1000
   key = distKey(d_id, w_id);
@@ -166,10 +170,11 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   int64_t all_local = (remote ? 0 : 1);
   order.O_ALL_LOCAL = all_local;
   std::string order_key = TPCC::Order::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
-  /**
-   * TODO : check. Is it ok either insert operation successes or not.
-   */
-  insert(token, Storage::ORDER, order_key, {(char *) &order, sizeof(TPCC::Order)}, alignof(TPCC::Order));
+  stat = insert(token, Storage::ORDER, order_key, {(char *) &order, sizeof(TPCC::Order)}, alignof(TPCC::Order));
+  if (stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
 
 #ifdef DBx1000
   row_t * r_order;
@@ -196,10 +201,13 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   neworder.NO_D_ID = d_id;
   neworder.NO_W_ID = w_id;
   std::string no_key = TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
-  /**
-   * TODO : check. Is it ok either insert operation successes or not.
-   */
-  insert(token, Storage::NEWORDER, no_key, {(char *) &neworder, sizeof(TPCC::NewOrder)}, alignof(TPCC::NewOrder));
+  stat = insert(token, Storage::NEWORDER, no_key, {(char *) &neworder, sizeof(TPCC::NewOrder)},
+                alignof(TPCC::NewOrder));
+  if (stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
+
 
 #ifdef DBx1000
   row_t * r_no;
@@ -210,7 +218,7 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
   insert_row(r_no, _wl->t_neworder);
 #endif
 
-  for (uint32_t ol_number = 0; ol_number < ol_cnt; ol_number++) {
+  for (std::uint32_t ol_number = 0; ol_number < ol_cnt; ++ol_number) {
     /*===========================================+
       EXEC SQL SELECT i_price, i_name , i_data
       INTO :i_price, :i_name, :i_data
@@ -218,9 +226,9 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
       WHERE i_id = :ol_i_id;
       +===========================================*/
 
-    uint64_t ol_i_id = query->items[ol_number].ol_i_id;
-    uint64_t ol_supply_w_id = query->items[ol_number].ol_supply_w_id;
-    uint64_t ol_quantity = query->items[ol_number].ol_quantity;
+    std::uint64_t ol_i_id = query->items[ol_number].ol_i_id;
+    std::uint64_t ol_supply_w_id = query->items[ol_number].ol_supply_w_id;
+    std::uint64_t ol_quantity = query->items[ol_number].ol_quantity;
 
     /*
      * ### Unnecessary? ###
@@ -275,14 +283,14 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
       AND s_w_id = :ol_supply_w_id;
       +===============================================*/
 
-    TPCC::Stock stock;
+    TPCC::Stock stock{};
     std::string stock_key = TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id);
     stat = search_key(token, Storage::STOCK, stock_key, &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
     }
-    memcpy(&stock, reinterpret_cast<void*>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Stock));
+    memcpy(&stock, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Stock));
     uint64_t s_quantity = (int64_t) stock.S_QUANTITY;
     /**
      * These data are for application side.
@@ -322,8 +330,12 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
       quantity = s_quantity - ol_quantity + 91;
     }
     stock.S_QUANTITY = (double) quantity;
-    // TODO : tanabe will write below
-    // update(token, Storage::STOCK, stock_key, stock, alignof(TPCC::Stock));
+    stat = update(token, Storage::STOCK, stock_key, {reinterpret_cast<char *>(&stock), sizeof(stock)},
+                  alignof(TPCC::Stock));
+    if (stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      return false;
+    }
 
 #ifdef DBx1000
     uint64_t stock_key = stockKey(ol_i_id, ol_supply_w_id);
@@ -395,12 +407,14 @@ run_new_order(TPCC::query::NewOrder *query, Token& token) {
     // distinfo?
 #endif
     // The number of keys is enough? It is different from DBx1000
-    std::string ol_key = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID, orderline.OL_NUMBER);
-    /**
-     * TODO : check. Is it ok either insert operation successes or not.
-     */
+    std::string ol_key = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID,
+                                                    orderline.OL_NUMBER);
     stat = insert(token, Storage::ORDERLINE, ol_key, {(char *) &orderline, sizeof(TPCC::OrderLine)},
                   alignof(TPCC::OrderLine));
+    if (stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      return false;
+    }
 #ifdef DBx1000
     row_t * r_ol;
     uint64_t row_id;
