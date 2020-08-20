@@ -55,7 +55,8 @@ void delete_all_garbage_records() {
 void delete_all_garbage_values() {
   for (auto i = 0; i < KVS_NUMBER_OF_LOGICAL_CORES; ++i) {
     for (auto &&itr : get_garbage_values_at(i)) {
-      delete itr.first;  // NOLINT
+      ::operator delete(std::get<ptr_index>(itr.first), std::get<size_index>(itr.first),
+                        std::get<align_index>(itr.first));
     }
     get_garbage_values_at(i).clear();
   }

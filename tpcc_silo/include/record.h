@@ -15,7 +15,7 @@ class Record {  // NOLINT
 public:
   Record() {}
 
-  Record(std::string_view key, std::string_view val, std::size_t align) : tuple_(key, val, align) {
+  Record(std::string_view key, std::string_view val, std::align_val_t align) : tuple_(key, val, align) {
     // init tidw
     tidw_.set_absent(true);
     tidw_.set_lock(true);

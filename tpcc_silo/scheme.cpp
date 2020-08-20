@@ -36,7 +36,7 @@ bool write_set_obj::operator<(const write_set_obj &right) const {  // NOLINT
   std::abort();
 }
 
-void write_set_obj::reset_tuple_value(std::string_view val, std::size_t val_align) {
+void write_set_obj::reset_tuple_value(std::string_view val, std::align_val_t val_align) {
   (this->get_op() == OP_TYPE::UPDATE ? this->get_tuple_to_local()
                                      : this->get_tuple_to_db())
           .set_value(val, val_align);

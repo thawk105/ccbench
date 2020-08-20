@@ -45,7 +45,7 @@ public:
       return record_container_;
     }
 
-    [[nodiscard]] std::vector<std::pair<std::string *, epoch::epoch_t>> *
+    [[nodiscard]] std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *
     get_value_container() const {  // NOLINT
       return value_container_;
     }
@@ -57,14 +57,14 @@ public:
     }
 
     void set_value_container(
-            std::vector<std::pair<std::string *, epoch::epoch_t>> *cont) {
+            std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *cont) {
       value_container_ = cont;
     }
 
   private:
     std::size_t container_index_{};  // common to record and value;
     std::vector<Record *> *record_container_{};
-    std::vector<std::pair<std::string *, epoch::epoch_t>> *value_container_{};
+    std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *value_container_{};
   };
 
   class scan_handler {
@@ -83,7 +83,7 @@ public:
       return rkey_;
     }
 
-    std::map<ScanHandle, std::vector<const Record*>> &get_scan_cache() {
+    std::map<ScanHandle, std::vector<const Record *>> &get_scan_cache() {
       return scan_cache_;
     }
 
@@ -176,7 +176,7 @@ public:
     return gc_handle_.get_record_container();
   }
 
-  std::vector<std::pair<std::string *, epoch::epoch_t>> *
+  std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *
   get_gc_value_container() {  // NOLINT
     return gc_handle_.get_value_container();
   }
@@ -313,7 +313,7 @@ public:
   }
 
   void set_gc_value_container(  // NOLINT
-          std::vector<std::pair<std::string *, epoch::epoch_t>> *cont) {
+          std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *cont) {
     gc_handle_.set_value_container(cont);
   }
 

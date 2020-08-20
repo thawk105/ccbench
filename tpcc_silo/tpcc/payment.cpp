@@ -80,7 +80,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     wh.W_YTD = w_ytd + query->h_amount;
 
     stat = update(token, Storage::WAREHOUSE, wh_key, {reinterpret_cast<char *>(&wh), sizeof(wh)},
-                  alignof(TPCC::Warehouse));
+                  static_cast<std::align_val_t>(alignof(TPCC::Warehouse)));
     if (stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -126,7 +126,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   dist.D_YTD += query->h_amount;
 
   stat = update(token, Storage::DISTRICT, dist_key, {reinterpret_cast<char *>(&dist), sizeof(dist)},
-                alignof(TPCC::District));
+                static_cast<std::align_val_t>(alignof(TPCC::District)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -269,7 +269,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   }
 
   stat = update(token, Storage::CUSTOMER, cust_key, {reinterpret_cast<char *>(&cust), sizeof(cust)},
-                alignof(TPCC::Customer));
+                static_cast<std::align_val_t>(alignof(TPCC::Customer)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -322,7 +322,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
 #endif
   std::string hist_key = std::to_string(hkg->get());
   stat = insert(token, Storage::HISTORY, hist_key, {reinterpret_cast<char *>(&hist), sizeof(hist)},
-                alignof(TPCC::History));
+                static_cast<std::align_val_t>(alignof(TPCC::History)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;

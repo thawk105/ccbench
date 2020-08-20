@@ -12,8 +12,7 @@
 
 namespace ccbench {
 
-Status insert(Token token, Storage st,  // NOLINT
-              std::string_view key, std::string_view val, std::size_t val_align) {
+Status insert(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
   write_set_obj *inws{ti->search_write_set(key)};
@@ -38,7 +37,7 @@ Status insert(Token token, Storage st,  // NOLINT
   return Status::WARN_ALREADY_EXISTS;
 }
 
-Status update(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align) {
+Status update(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
 
@@ -67,7 +66,7 @@ Status update(Token token, Storage st, std::string_view key, std::string_view va
   return Status::OK;
 }
 
-Status upsert(Token token, Storage st, std::string_view key, std::string_view val, std::size_t val_align) {
+Status upsert(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
   write_set_obj *in_ws{ti->search_write_set(key)};

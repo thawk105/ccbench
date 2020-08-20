@@ -162,18 +162,13 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
     Record *rec_ptr = iws->get_rec_ptr();
     switch (iws->get_op()) {
       case OP_TYPE::UPDATE: {
-        std::string *old_value{};
-        std::string_view new_value_view =
-                iws->get_tuple(iws->get_op()).get_val();
-        rec_ptr->get_tuple().set_value(new_value_view, &old_value, iws->get_tuple().get_val_align());
+        std::string_view new_value_view = iws->get_tuple(iws->get_op()).get_val();
+        auto old_val = rec_ptr->get_tuple().set_value_get_old_val(new_value_view, iws->get_tuple().get_val_align());
         storeRelease(rec_ptr->get_tidw().get_obj(), max_tid.get_obj());
-        if (old_value != nullptr) {
-          std::mutex &mutex_for_gc_list =
-                  garbage_collection::get_mutex_garbage_values_at(
-                          ti->get_gc_container_index());
+        if (std::get<garbage_collection::ptr_index>(old_val) != nullptr) {
+          std::mutex &mutex_for_gc_list = garbage_collection::get_mutex_garbage_values_at(ti->get_gc_container_index());
           mutex_for_gc_list.lock();
-          ti->get_gc_value_container()->emplace_back(
-                  std::make_pair(old_value, ti->get_epoch()));
+          ti->get_gc_value_container()->emplace_back(std::make_pair(old_val, ti->get_epoch()));
           mutex_for_gc_list.unlock();
         }
         break;

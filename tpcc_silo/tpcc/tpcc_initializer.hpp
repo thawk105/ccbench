@@ -22,7 +22,7 @@ using namespace ccbench;
 
 namespace TPCC::Initializer {
 void db_insert(const Storage st, const std::string_view key, const std::string_view val, std::size_t val_align) {
-  auto *record_ptr = new Record{key, val, val_align};
+  auto *record_ptr = new Record{key, val, static_cast<std::align_val_t>(val_align)};
   record_ptr->get_tidw().set_absent(false);
   record_ptr->get_tidw().set_lock(false);
   if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)) {

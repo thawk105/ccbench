@@ -111,7 +111,9 @@ void session_info::gc_records_and_values() const {
       auto itr = this->gc_handle_.get_value_container()->begin();
       while (itr != this->gc_handle_.get_value_container()->end()) {
         if (itr->second <= epoch::get_reclamation_epoch()) {
-          delete itr->first;  // NOLINT
+          ::operator delete(std::get<garbage_collection::ptr_index>(itr->first),
+                            std::get<garbage_collection::size_index>(itr->first),
+                            std::get<garbage_collection::align_index>(itr->first));  // NOLINT
           itr = this->gc_handle_.get_value_container()->erase(itr);
         } else {
           break;
@@ -128,7 +130,7 @@ void session_info::remove_inserted_records_of_write_set_from_masstree() {
       Record *record = itr.get_rec_ptr();
       std::string_view key_view = record->get_tuple().get_key();
       kohler_masstree::get_mtdb(itr.get_st()).remove_value(key_view.data(),
-                                               key_view.size());
+                                                           key_view.size());
 
       /**
        * create information for garbage collection.
