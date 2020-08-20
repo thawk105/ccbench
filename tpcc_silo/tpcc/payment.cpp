@@ -79,8 +79,12 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   if (g_wh_update) {
     wh.W_YTD = w_ytd + query->h_amount;
 
-    // TODO : tanabe will write below
-    // update(token, Storage::WAREHOUSE, wh_key, wh, alignof(TPCC::Warehouse));
+    stat = update(token, Storage::WAREHOUSE, wh_key, {reinterpret_cast<char *>(&wh), sizeof(wh)},
+                  alignof(TPCC::Warehouse));
+    if (stat == Status::WARN_NOT_FOUND) {
+      abort(token);
+      return false;
+    }
   }
   std::string w_name(wh.W_NAME);
 #endif
@@ -247,9 +251,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
       abort(token);
       return false;
     }
-    /**
-     * TODO : improvement. not memcpy but use pointer.
-     */
     memcpy(&cust, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())),
            sizeof(TPCC::Customer));
   }
