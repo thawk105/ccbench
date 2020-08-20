@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -DNDEBUG   CMakeFiles/aligned_allocator_test.exe.dir/aligned_allocator_test.cpp.o  -o aligned_allocator_test.exe -Wl,-rpath,/usr/local/lib /usr/local/lib/libgflags.a ../../third_party/googletest/build/lib/libgtest.a ../../third_party/googletest/build/lib/libgtest_main.a -lpthread 
