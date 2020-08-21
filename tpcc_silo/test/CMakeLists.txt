@@ -39,7 +39,7 @@ foreach (src IN LISTS TEST_SOURCES)
     if (fname MATCHES "test$")
         set(test_name "${fname}.exe")
 
-        if (fname MATCHES "unit_test")
+        if (fname MATCHES "unit_test$")
             add_executable(${test_name} ${src} ${SILO_SOURCES})
 
             target_include_directories(${test_name}
