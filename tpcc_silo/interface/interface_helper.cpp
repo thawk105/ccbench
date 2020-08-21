@@ -27,7 +27,8 @@ void fin() {
   session_info_table::fin_kThreadTable();
 }
 
-Status init(std::string_view log_directory_path) {  // NOLINT
+Status init(__attribute__((unused)) std::string_view log_directory_path) {  // NOLINT
+#if 0
   /**
    * The default value of log_directory is PROJECT_ROOT.
    */
@@ -55,6 +56,7 @@ Status init(std::string_view log_directory_path) {  // NOLINT
      */
     boost::filesystem::create_directories(log_dir);
   }
+#endif
 
   /**
    * If it already exists log files, it recoveries from those.
