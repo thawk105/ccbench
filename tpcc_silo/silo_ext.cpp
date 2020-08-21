@@ -123,6 +123,8 @@ int main(int argc, char *argv[]) try {
   fin();
   return 0;
 } catch (std::bad_alloc &) {
-  std::cout << __FILE__ << " : " << __LINE__ << " : fatal error." << std::endl;
+  std::cout << __FILE__ << " : " << __LINE__ << " : bad_alloc error." << std::endl;
   std::abort();
+} catch (std::exception& e) {
+  std::cout << __FILE__ << " : " << __LINE__ << " : std::exception caught : " << e.what() << std::endl;
 }
