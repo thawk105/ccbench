@@ -1,6 +1,3 @@
-[submodule "third_party/mimalloc"]
-	path = third_party/mimalloc
-	url = https://github.com/thawk105/mimalloc.git
 [submodule "third_party/masstree"]
 	path = third_party/masstree
 	url = https://github.com/thawk105/masstree-beta.git
