@@ -144,8 +144,9 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     char c_new_data[501];
     sprintf(c_new_data, "| %4ld %2ld %4ld %2ld %4ld $%7.2f",
             c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
-    strncat(c_new_data, cust.C_DATA, 500 - strlen(c_new_data));
-    strncpy(cust.C_DATA, c_new_data, 501);
+    std::string s1(c_new_data);
+    std::string s2(cust.C_DATA, 500-s1.size());
+    strncpy(cust.C_DATA, (s1+s2).c_str(), 500);
   }
   // ==========================================================
   // EXEC SQL UPDATE customer
