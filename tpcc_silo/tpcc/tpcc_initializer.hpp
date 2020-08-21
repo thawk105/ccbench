@@ -35,26 +35,36 @@ void db_insert(const Storage st, const std::string_view key, const std::string_v
 std::string random_string(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd) {
   static const char alphanum[] =
           "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
+  std::size_t len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
   std::string s(len, 'a');
-  for (int i = 0; i < len; i++) {
+  for (std::size_t i = 0; i < len; ++i) {
     size_t rn = rnd.next();
-    size_t idx = rn % (sizeof(alphanum)-1);
-    s[i] = alphanum[idx];
+    size_t idx = rn % (sizeof(alphanum) - 1);
+    try {
+      s.at(i) = alphanum[idx];
+    } catch (std::out_of_range &) {
+      std::cout << __FILE__ << " : " << __LINE__ << " : " << "out of range" << std::endl;
+      std::abort();
+    }
   }
   return s;
 }
-    
-std::string MakeNumberString(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd){
-    static const char Numbers[] = "0123456789";
-    int len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
-    std::string s(len, '1');
-    for(int i=0;i<len;i++){
-        size_t rn = rnd.next();
-        size_t idx = rn % (sizeof(Numbers)-1);
-        s[i] = Numbers[idx];
+
+std::string MakeNumberString(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd) {
+  static const char Numbers[] = "0123456789";
+  std::size_t len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
+  std::string s(len, '1');
+  for (std::size_t i = 0; i < len; ++i) {
+    std::size_t rn = rnd.next();
+    std::size_t idx = rn % (sizeof(Numbers) - 1);
+    try {
+      s.at(i) = Numbers[idx];
+    } catch (std::out_of_range &) {
+      std::cout << __FILE__ << " : " << __LINE__ << " : " << "out of range" << std::endl;
+      std::abort();
     }
-    return s;
+  }
+  return s;
 }
 
 template<typename T>
@@ -83,10 +93,10 @@ std::string gen_zipcode(Xoroshiro128Plus &rnd) {
 A is a constant chosen according to the size of range [x..y].
 C is a run-time constant randomly chosen within [0..A]
 */
-inline unsigned int NURand(int A, const int x, const int y) {
-  const int C = random_value(0, A);
+inline unsigned int NURand(unsigned int A, const unsigned int x, const unsigned int y) {
+  const unsigned int C = random_value(static_cast<unsigned int >(0), A);
   assert(x <= y);
-  return (((random_value(0, A) | random_value(x, y)) + C) % (y - x + 1)) + x;
+  return (((random_value(static_cast<unsigned int>(0), A) | random_value(x, y)) + C) % (y - x + 1)) + x;
 }
 
 static std::string createC_LAST(const std::size_t rndval) {
@@ -113,19 +123,19 @@ void load_item() {
         ite.I_IM_ID = random_value(1, 10000);
         strcpy(ite.I_NAME, random_string(14, 24, rnd).c_str());
         ite.I_PRICE = random_value(1.00, 100.00);
-        size_t dataLen=random_value(26,50);
+        size_t dataLen = random_value(26, 50);
         strcpy(ite.I_DATA, random_string(dataLen, dataLen, rnd).c_str());
-        if(random_value<int>(1,100)<=10){
-            std::uint64_t pos = random_value(0,(int)(dataLen-8));
-            ite.I_DATA[pos]='O';
-            ite.I_DATA[pos+1]='R';
-            ite.I_DATA[pos+2]='I';
-            ite.I_DATA[pos+3]='G';
-            ite.I_DATA[pos+4]='I';
-            ite.I_DATA[pos+5]='N';
-            ite.I_DATA[pos+6]='A';
-            ite.I_DATA[pos+7]='L';
-       }        
+        if (random_value<int>(1, 100) <= 10) {
+          std::uint64_t pos = random_value(0, (int) (dataLen - 8));
+          ite.I_DATA[pos] = 'O';
+          ite.I_DATA[pos + 1] = 'R';
+          ite.I_DATA[pos + 2] = 'I';
+          ite.I_DATA[pos + 3] = 'G';
+          ite.I_DATA[pos + 4] = 'I';
+          ite.I_DATA[pos + 5] = 'N';
+          ite.I_DATA[pos + 6] = 'A';
+          ite.I_DATA[pos + 7] = 'L';
+        }
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
@@ -197,18 +207,18 @@ void load_stock(const std::size_t w) {
         st.S_YTD = 0;
         st.S_ORDER_CNT = 0;
         st.S_REMOTE_CNT = 0;
-        size_t dataLen = random_value(26,50);
+        size_t dataLen = random_value(26, 50);
         strcpy(st.S_DATA, random_string(dataLen, dataLen, rnd).c_str());
-        if(random_value<int>(1,100)<=10){
-            std::uint64_t pos = random_value(0,(int)(dataLen-8));
-            st.S_DATA[pos]='O';
-            st.S_DATA[pos+1]='R';
-            st.S_DATA[pos+2]='I';
-            st.S_DATA[pos+3]='G';
-            st.S_DATA[pos+4]='I';
-            st.S_DATA[pos+5]='N';
-            st.S_DATA[pos+6]='A';
-            st.S_DATA[pos+7]='L';
+        if (random_value<int>(1, 100) <= 10) {
+          std::uint64_t pos = random_value(0, (int) (dataLen - 8));
+          st.S_DATA[pos] = 'O';
+          st.S_DATA[pos + 1] = 'R';
+          st.S_DATA[pos + 2] = 'I';
+          st.S_DATA[pos + 3] = 'G';
+          st.S_DATA[pos + 4] = 'I';
+          st.S_DATA[pos + 5] = 'N';
+          st.S_DATA[pos + 6] = 'A';
+          st.S_DATA[pos + 7] = 'L';
         }
         std::string key{st.createKey()};
         db_insert(Storage::STOCK, key, {reinterpret_cast<char *>(&st), sizeof(st)}, alignof(TPCC::Stock));
@@ -349,16 +359,16 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         strcpy(customer.C_STATE, random_string(2, 2, rnd).c_str());
         strcpy(customer.C_ZIP, gen_zipcode(rnd).c_str());
         //C_PHONE
-        strcpy(customer.C_PHONE, MakeNumberString(16,16,rnd).c_str());
+        strcpy(customer.C_PHONE, MakeNumberString(16, 16, rnd).c_str());
 #ifdef DEBUG
         if(c==start&& w==1&& d==2)std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
-#endif        
+#endif
         customer.C_SINCE = now;
         //90% GC 10% BC
-        if(random_value(0,99)>=90){
-            strcpy(customer.C_CREDIT, "BC");
-        }else{
-            strcpy(customer.C_CREDIT, "GC");
+        if (random_value(0, 99) >= 90) {
+          strcpy(customer.C_CREDIT, "BC");
+        } else {
+          strcpy(customer.C_CREDIT, "GC");
         }
         customer.C_CREDIT_LIM = 50000.00;
         customer.C_DISCOUNT = random_value(0.0000, 0.50000);
@@ -379,12 +389,12 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         if (ret_ptr != nullptr) {
           memcpy(&ctn_ptr,
                  reinterpret_cast<void *>(const_cast<char *>(reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val().data())),
-                 8);
+                 sizeof(std::vector<void *> *));
           ctn_ptr->emplace_back(rec_ptr);
         } else {
           ctn_ptr = new std::vector<void *>;
           ctn_ptr->emplace_back(rec_ptr);
-          db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(ctn_ptr)},
+          db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(std::vector<void *> *)},
                     alignof(std::vector<void *> *));
         }
 
@@ -414,7 +424,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
     }
   };
   S::work(1, CUST_PER_DIST, std::ref(hkg), d, w);
-  #if 0
+#if 0
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
@@ -427,7 +437,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
   for (auto &&th : thv) {
     th.join();
   }
-  #endif
+#endif
 }
 
 void load_district(const std::size_t w) {
@@ -451,7 +461,7 @@ void load_district(const std::size_t w) {
 #ifdef DEBUG
       std::cout<<"D_ID:"<<district.D_ID<<std::endl;
 #endif
-      
+
       std::string key{district.createKey()};
       db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)},
                 alignof(TPCC::District));
@@ -462,7 +472,7 @@ void load_district(const std::size_t w) {
   };
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(w, true);
-  
+
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
     thv.emplace_back(S::work, d, w, std::ref(hkg));
@@ -471,7 +481,7 @@ void load_district(const std::size_t w) {
   for (auto &&th : thv) {
     th.join();
   }
-  
+
 }
 
 void load() {
