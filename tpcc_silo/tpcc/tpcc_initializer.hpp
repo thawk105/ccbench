@@ -139,7 +139,7 @@ void load_item() {
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
-        SimpleKey<8> key;
+        SimpleKey<8> key{};
         ite.createKey(key.ptr());
         db_insert(Storage::ITEM, key.view(), ite.view(), alignof(TPCC::Item));
       }
@@ -187,7 +187,7 @@ void load_warehouse(const std::size_t w) {
 #ifdef DEBUG
   std::cout<<"W_ID:"<<ware.W_ID<<"\tW_NAME:"<<ware.W_NAME<<"\tW_STREET_1:"<<ware.W_STREET_1<<"\tW_CITY:"<<ware.W_CITY<<"\tW_STATE:"<<ware.W_STATE<<"\tW_ZIP:"<<ware.W_ZIP<<"\tW_TAX:"<<ware.W_TAX<<"\tW_YTD:"<<ware.W_YTD<<std::endl;
 #endif
-  SimpleKey<8> wh_key;
+  SimpleKey<8> wh_key{};
   ware.createKey(wh_key.ptr());
   db_insert(Storage::WAREHOUSE, wh_key.view(), ware.view(), alignof(TPCC::Warehouse));
 }
@@ -229,7 +229,7 @@ void load_stock(const std::size_t w) {
           st.S_DATA[pos + 6] = 'A';
           st.S_DATA[pos + 7] = 'L';
         }
-        SimpleKey<8> st_key;
+        SimpleKey<8> st_key{};
         st.createKey(st_key.ptr());
         db_insert(Storage::STOCK, st_key.view(), st.view(), alignof(TPCC::Stock));
       }
@@ -297,7 +297,7 @@ void load_orderline(const std::size_t w, const std::size_t d, const std::size_t 
   order_line.OL_AMOUNT = 0.0;
   strcpy(order_line.OL_DIST_INFO, random_string(24, 24, rnd).c_str());
 
-  SimpleKey<8> key;
+  SimpleKey<8> key{};
   order_line.createKey(key.ptr());
   db_insert(Storage::ORDERLINE, key.view(), order_line.view(), alignof(TPCC::OrderLine));
 }
@@ -321,10 +321,11 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
   order.O_OL_CNT = random_value(5, 15);
   order.O_ALL_LOCAL = 1;
 
-  SimpleKey<8> key;
-  order.createKey(key.ptr());
-  db_insert(Storage::ORDER, key.view(), order.view(), alignof(TPCC::Order));
-
+  {
+    SimpleKey<8> key{};
+    order.createKey(key.ptr());
+    db_insert(Storage::ORDER, key.view(), order.view(), alignof(TPCC::Order));
+  }
   //O_OL_CNT orderlines per order.
   for (size_t ol = 1; ol < order.O_OL_CNT + 1; ol++) {
     load_orderline(w, d, c, ol);
@@ -336,10 +337,11 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
     new_order.NO_O_ID = c;
     new_order.NO_D_ID = d;
     new_order.NO_W_ID = w;
-
-    SimpleKey<8> key;
-    new_order.createKey(key.ptr());
-    db_insert(Storage::NEWORDER, key.view(), new_order.view(), alignof(TPCC::NewOrder));
+    {
+      SimpleKey<8> key{};
+      new_order.createKey(key.ptr());
+      db_insert(Storage::NEWORDER, key.view(), new_order.view(), alignof(TPCC::NewOrder));
+    }
   }
 }
 
@@ -395,7 +397,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         customer.C_DELIVERY_CNT = 0;
         strcpy(customer.C_DATA, random_string(300, 500, rnd).c_str());
 
-        SimpleKey<8> pkey;
+        SimpleKey<8> pkey{};
         customer.createKey(pkey.ptr());
         db_insert(Storage::CUSTOMER, pkey.view(), customer.view(), alignof(TPCC::Customer));
 
@@ -481,7 +483,7 @@ void load_district(const std::size_t w) {
 #ifdef DEBUG
       std::cout<<"D_ID:"<<district.D_ID<<std::endl;
 #endif
-      SimpleKey<8> key;
+      SimpleKey<8> key{};
       district.createKey(key.ptr());
       db_insert(Storage::DISTRICT, key.view(), district.view(), alignof(TPCC::District));
 

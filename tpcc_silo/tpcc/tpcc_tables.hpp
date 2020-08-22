@@ -14,59 +14,64 @@
 #include "atomic_wrapper.h"
 
 
-template <typename Int>
-void assign_as_bigendian(Int value, char *out)
-{
-    Int tmp;
-    switch (sizeof(Int)) {
-    case 1: tmp = value; break;
-    case 2: tmp = __builtin_bswap16(value); break;
-    case 4: tmp = __builtin_bswap32(value); break;
-    case 8: tmp = __builtin_bswap64(value); break;
-    default: assert(false);
-    };
-    ::memcpy(out, &tmp, sizeof(tmp));
+template<typename Int>
+void assign_as_bigendian(Int value, char *out) {
+  Int tmp;
+  switch (sizeof(Int)) {
+    case 1:
+      tmp = value;
+      break;
+    case 2:
+      tmp = __builtin_bswap16(value);
+      break;
+    case 4:
+      tmp = __builtin_bswap32(value);
+      break;
+    case 8:
+      tmp = __builtin_bswap64(value);
+      break;
+    default:
+      assert(false);
+  };
+  ::memcpy(out, &tmp, sizeof(tmp));
 }
 
 
-template <typename T>
-std::string_view struct_str_view(const T& t)
-{
-    return std::string_view(reinterpret_cast<const char*>(&t), sizeof(t));
+template<typename T>
+std::string_view struct_str_view(const T &t) {
+  return std::string_view(reinterpret_cast<const char *>(&t), sizeof(t));
 }
 
 
 /**
  * for debug.
  */
-inline std::string str_view_hex(std::string_view sv)
-{
-    std::stringstream ss;
-    char buf[3];
-    for (size_t i = 0; i < sv.size(); i++) {
-        ::snprintf(buf, sizeof(buf), "%02x", sv[i]);
-        ss << buf;
-    }
-    return ss.str();
+inline std::string str_view_hex(std::string_view sv) {
+  std::stringstream ss;
+  char buf[3];
+  for (auto &&i : sv) {
+    ::snprintf(buf, sizeof(buf), "%02x", i);
+    ss << buf;
+  }
+  return ss.str();
 }
 
 
-template <size_t N>
-struct SimpleKey
-{
-    char data[N]; // not null-terminated.
+template<size_t N>
+struct SimpleKey {
+  char data[N]; // not null-terminated.
 
-    char* ptr() { return &data[0]; }
-    std::string_view view() const {
-        return std::string_view(&data[0], N);
-    }
+  char *ptr() { return &data[0]; }
+
+  [[nodiscard]] std::string_view view() const {
+    return std::string_view(&data[0], N);
+  }
 };
 
 
-template <typename T>
-inline std::string_view str_view(const T& t)
-{
-    return std::string_view(reinterpret_cast<const char*>(&t), sizeof(t));
+template<typename T>
+inline std::string_view str_view(const T &t) {
+  return std::string_view(reinterpret_cast<const char *>(&t), sizeof(t));
 }
 
 
@@ -85,14 +90,14 @@ struct Warehouse {
 
   //Primary Key: W_ID
   //key size is 8 bytes.
-  static void CreateKey(uint16_t w_id, char* out) {
+  static void CreateKey(uint16_t w_id, char *out) {
     ::memset(out, 0, 6);
     assign_as_bigendian(w_id, &out[6]);
   }
 
-  void createKey(char* out) const { return CreateKey(W_ID, out); }
+  void createKey(char *out) const { return CreateKey(W_ID, out); }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct District {
@@ -110,14 +115,15 @@ struct District {
 
   //Primary Key: (D_W_ID, D_ID)
   //key size is 8.
-  static void CreateKey(uint16_t w_id, uint8_t d_id, char* out) {
+  static void CreateKey(uint16_t w_id, uint8_t d_id, char *out) {
     ::memset(out, 0, 5);
     assign_as_bigendian(w_id, &out[5]);
     assign_as_bigendian(d_id, &out[7]);
   }
 
-  void createKey(char* out) { return CreateKey(D_W_ID, D_ID, out); }
-  std::string_view view() const { return struct_str_view(*this); }
+  void createKey(char *out) const { return CreateKey(D_W_ID, D_ID, out); }
+
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct Customer {
@@ -146,18 +152,19 @@ struct Customer {
 
   //Primary Key: (C_W_ID, C_D_ID, C_ID)
   //key size is 8 bytes.
-  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t c_id, char* out) {
+  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t c_id, char *out) {
     assign_as_bigendian(w_id, &out[0]);
     out[2] = 0;
     assign_as_bigendian(d_id, &out[3]);
     assign_as_bigendian(c_id, &out[4]);
   }
-  void createKey(char* out) { return CreateKey(C_W_ID, C_D_ID, C_ID, out); }
+
+  void createKey(char *out) const { return CreateKey(C_W_ID, C_D_ID, C_ID, out); }
 
 
   //Secondary Key: (C_W_ID, C_D_ID, C_LAST)
   //key length is variable. (maximum length is maxLenOfSecondaryKey()).
-  static void CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char* c_last, std::string& out) {
+  static void CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char *c_last, std::string &out) {
     out.clear();
     const size_t c_last_len = ::strnlen(c_last, sizeof(Customer::C_LAST));
     out.resize(sizeof(w_id) + sizeof(d_id) + c_last_len);
@@ -165,12 +172,14 @@ struct Customer {
     assign_as_bigendian(d_id, &out[2]);
     ::memcpy(&out[3], c_last, c_last_len);
   }
-  void createSecondaryKey(std::string& out){ CreateSecondaryKey(C_W_ID, C_D_ID, &C_LAST[0], out); }
+
+  void createSecondaryKey(std::string &out) { CreateSecondaryKey(C_W_ID, C_D_ID, &C_LAST[0], out); }
+
   static size_t maxLenOfSecondaryKey() {
     return sizeof(Customer::C_W_ID) + sizeof(Customer::C_D_ID) + sizeof(Customer::C_LAST);
   }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct History {
@@ -178,16 +187,16 @@ struct History {
   // (H_C_W_ID, H_C_D_ID, H_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
   // (H_W_ID, H_D_ID) Foreign Key, references (D_W_ID, D_ID)
 
-  uint32_t H_C_ID; //96,000 unique IDs
-  uint8_t H_C_D_ID;// 20 unique IDs
-  uint16_t H_C_W_ID; // 2*W unique IDs
-  uint8_t H_D_ID; //20 unique IDs
-  uint16_t H_W_ID; // 2*W unique IDs
+  std::uint32_t H_C_ID; //96,000 unique IDs
+  std::uint8_t H_C_D_ID;// 20 unique IDs
+  std::uint16_t H_C_W_ID; // 2*W unique IDs
+  std::uint8_t H_D_ID; //20 unique IDs
+  std::uint16_t H_W_ID; // 2*W unique IDs
   std::time_t H_DATE; //date and time
   double H_AMOUNT; //signed numeric(6, 2)
   char H_DATA[25]; // variable text, size 24 Miscellaneous information
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 
@@ -196,9 +205,9 @@ public:
   union {
     std::uint64_t key_;
     struct {
-      uint64_t counter_:47;
-      uint64_t at_work_:1; // 0 at initial load, 1 at work.
-      uint64_t id_:16;
+      std::uint64_t counter_: 47;
+      std::uint64_t at_work_: 1; // 0 at initial load, 1 at work.
+      std::uint64_t id_: 16;
     };
     // upper bits are thread_id in little endian architecture.
   };
@@ -206,8 +215,9 @@ public:
   std::uint64_t get_raw() {
     return ccbench::fetchAdd(key_, 1);
   }
+
   SimpleKey<8> get_as_simple_key() {
-    SimpleKey<8> ret;
+    SimpleKey<8> ret{};
     assign_as_bigendian<uint64_t>(get_raw(), ret.ptr());
     return ret;
   }
@@ -228,16 +238,16 @@ struct NewOrder {
 
   //Primary Key: (NO_W_ID, NO_D_ID, NO_O_ID)
   //key size is 8 bytes.
-  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t o_id, char* out) {
+  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t o_id, char *out) {
     assign_as_bigendian(w_id, &out[0]);
     out[2] = 0;
     assign_as_bigendian(d_id, &out[3]);
     assign_as_bigendian(o_id, &out[4]);
   }
 
-  void createKey(char* out) { return CreateKey(NO_W_ID, NO_D_ID, NO_O_ID, out); }
+  void createKey(char *out) const { return CreateKey(NO_W_ID, NO_D_ID, NO_O_ID, out); }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct Order {
@@ -253,16 +263,16 @@ struct Order {
 
   //Primary Key: (O_W_ID, O_D_ID, O_ID)
   //key size is 8 bytes.
-  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t o_id, char* out) {
+  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t o_id, char *out) {
     assign_as_bigendian(w_id, &out[0]);
     out[2] = 0;
     assign_as_bigendian(d_id, &out[3]);
     assign_as_bigendian(o_id, &out[4]);
   }
 
-  void createKey(char* out) { return CreateKey(O_W_ID, O_D_ID, O_ID, out); }
+  void createKey(char *out) const { return CreateKey(O_W_ID, O_D_ID, O_ID, out); }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct OrderLine {
@@ -281,16 +291,16 @@ struct OrderLine {
 
   //Primary Key: (OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER)
   //key size is 8 bytes.
-  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t o_id, uint8_t ol_num, char* out) {
+  static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t o_id, uint8_t ol_num, char *out) {
     assign_as_bigendian(w_id, &out[0]);
     assign_as_bigendian(d_id, &out[2]);
     assign_as_bigendian(o_id, &out[3]);
     assign_as_bigendian(ol_num, &out[7]);
   }
 
-  void createKey(char* out) { CreateKey(OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER, out); }
+  void createKey(char *out) const { CreateKey(OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER, out); }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct Item {
@@ -302,14 +312,14 @@ struct Item {
 
   //Primary Key: I_ID
   //key size is 8 bytes.
-  static void CreateKey(uint32_t i_id, char* out) {
+  static void CreateKey(uint32_t i_id, char *out) {
     ::memset(&out[0], 0, 4);
     assign_as_bigendian(i_id, &out[4]);
   }
 
-  void createKey(char* out) { CreateKey(I_ID, out); }
+  void createKey(char *out) const { CreateKey(I_ID, out); }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 struct Stock {
@@ -335,15 +345,15 @@ struct Stock {
 
   // Primary Key: (S_W_ID, S_I_ID) composite.
   // key size is 8 bytes.
-  static void CreateKey(uint16_t w_id, uint32_t i_id, char* out) {
+  static void CreateKey(uint16_t w_id, uint32_t i_id, char *out) {
     ::memset(&out[0], 0, 2);
     assign_as_bigendian(w_id, &out[2]);
     assign_as_bigendian(i_id, &out[4]);
   }
 
-  void createKey(char* out) { CreateKey(S_W_ID, S_I_ID, out); }
+  void createKey(char *out) const { CreateKey(S_W_ID, S_I_ID, out); }
 
-  std::string_view view() const { return struct_str_view(*this); }
+  [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
 
 }
