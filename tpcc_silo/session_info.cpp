@@ -86,28 +86,39 @@ Status session_info::check_delete_after_write(std::string_view key) {  // NOLINT
 void session_info::gc_records_and_values() const {
   // for records
   {
-    auto itr = this->gc_handle_.get_record_container()->begin();
-    while (itr != this->gc_handle_.get_record_container()->end()) {
+    auto erase_begin_itr = this->gc_handle_.get_record_container()->begin();
+    auto erase_end_itr = this->gc_handle_.get_record_container()->end();
+    for (auto itr = erase_begin_itr; itr != this->gc_handle_.get_record_container()->end(); ++itr) {
       if ((*itr)->get_tidw().get_epoch() <= epoch::get_reclamation_epoch()) {
+        erase_end_itr = itr;
         delete *itr;  // NOLINT
-        itr = this->gc_handle_.get_record_container()->erase(itr);
       } else {
         break;
       }
     }
+    if (erase_end_itr != this->gc_handle_.get_record_container()->end()) {
+      // note : erase func [begin, end)
+      this->gc_handle_.get_record_container()->erase(erase_begin_itr, (erase_end_itr + 1));
+    }
   }
   // for values
   {
-    auto itr = this->gc_handle_.get_value_container()->begin();
-    while (itr != this->gc_handle_.get_value_container()->end()) {
+    auto erase_begin_itr = this->gc_handle_.get_value_container()->begin();
+    auto erase_end_itr = this->gc_handle_.get_value_container()->end();
+    for (auto itr = erase_begin_itr; itr != this->gc_handle_.get_value_container()->end(); ++itr) {
+
       if (itr->second <= epoch::get_reclamation_epoch()) {
+        erase_end_itr = itr;
         ::operator delete(std::get<garbage_collection::ptr_index>(itr->first),
                           std::get<garbage_collection::size_index>(itr->first),
                           std::get<garbage_collection::align_index>(itr->first));  // NOLINT
-        itr = this->gc_handle_.get_value_container()->erase(itr);
       } else {
         break;
       }
+    }
+    if (erase_end_itr != this->gc_handle_.get_value_container()->end()) {
+      // note : erase func [begin, end)
+      this->gc_handle_.get_value_container()->erase(erase_begin_itr, (erase_end_itr + 1));
     }
   }
 }
