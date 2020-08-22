@@ -39,7 +39,8 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   ccbench::setThreadAffinity(thid);
 #endif
 
-  Result &myres = std::ref(SiloResult[thid]);
+  std::uint64_t lcl_cmt_cnt{0};
+  std::uint64_t lcl_abt_cnt{0};
   Xoroshiro128Plus rnd{};
   rnd.init();
 
@@ -56,9 +57,9 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   // The worker thread of thid in [0, FLAGS_num_wh - 1]
   // should load data for the warehouse with w_id = thid + 1.
   if (thid < FLAGS_num_wh) {
-      //::printf("load for warehouse %u ...\n", w_id);
-      TPCC::Initializer::load_per_warehouse(w_id);
-      //::printf("load for warehouse %u done.\n", w_id);
+    //::printf("load for warehouse %u ...\n", w_id);
+    TPCC::Initializer::load_per_warehouse(w_id);
+    //::printf("load for warehouse %u done.\n", w_id);
   }
 #endif
 
@@ -69,7 +70,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
 
-    query.generate(w_id, rnd, query_opt, myres);
+    query.generate(w_id, rnd, query_opt);
 
     // TODO : add backoff work.
 
@@ -100,16 +101,17 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
     }
 
     if (validation) {
-      ++myres.local_commit_counts_;
+      ++lcl_cmt_cnt;
     } else {
-      //trans.abort();
-      ++myres.local_abort_counts_;
+      ++lcl_abt_cnt;
     }
   }
   leave(token);
-} catch (std::exception& e) {
-    std::cout << "worker thread caught error " << e.what();
-    std::abort();
+  SiloResult[thid].local_commit_counts_ = lcl_cmt_cnt;
+  SiloResult[thid].local_abort_counts_ = lcl_abt_cnt;
+} catch (std::exception &e) {
+  std::cout << "worker thread caught error " << e.what();
+  std::abort();
 }
 
 int main(int argc, char *argv[]) try {
@@ -155,6 +157,6 @@ int main(int argc, char *argv[]) try {
 } catch (std::bad_alloc &) {
   std::cout << __FILE__ << " : " << __LINE__ << " : bad_alloc error." << std::endl;
   std::abort();
-} catch (std::exception& e) {
+} catch (std::exception &e) {
   std::cout << __FILE__ << " : " << __LINE__ << " : std::exception caught : " << e.what() << std::endl;
 }

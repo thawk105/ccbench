@@ -73,8 +73,7 @@ std::uint64_t NURand(std::uint64_t A, std::uint64_t x, std::uint64_t y, Xoroshir
   return (((Random(0,A,rnd) | Random(x,y,rnd)) + C) % (y-x+1)) + x;
 }
 
-void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt,
-                               [[maybe_unused]]Result &res) {
+void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt) {
 
 #ifdef FIXED_WAREHOUSE_PER_THREAD
   w_id = w_id0;
@@ -110,8 +109,7 @@ void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus 
   }
 }
 
-void query::Payment::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt,
-                              [[maybe_unused]]Result &res) {
+void query::Payment::generate([[maybe_unused]]std::uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt) {
 
 #ifdef FIXED_WAREHOUSE_PER_THREAD
   w_id = w_id0;
@@ -171,8 +169,7 @@ void query::Payment::print() {
 
 }
 
-void Query::generate(uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt,
-                     [[maybe_unused]]Result &res) {
+void Query::generate(std::uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt) {
   double x = rnd.next() / (((double)~(uint64_t)0)+1.0) * 100;
   x -= opt.perc_stock_level;
   if (x < 0) {
@@ -197,10 +194,10 @@ void Query::generate(uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt,
   }
   switch (type) {
   case Q_NEW_ORDER:
-    new_order.generate(w_id,rnd,opt,res);
+    new_order.generate(w_id,rnd,opt);
     break;
   case Q_PAYMENT:
-    payment.generate(w_id,rnd,opt,res);
+    payment.generate(w_id,rnd,opt);
     break;
   case Q_ORDER_STATUS:
   case Q_DELIVERY:
