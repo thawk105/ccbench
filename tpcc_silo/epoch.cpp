@@ -9,6 +9,8 @@
 
 #include "session_info_table.h"
 #include "clock.h"
+#include "../include/util.hh"
+
 
 namespace ccbench::epoch {
 

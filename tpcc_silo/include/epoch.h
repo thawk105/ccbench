@@ -10,6 +10,7 @@
 
 #include "atomic_wrapper.h"
 
+
 namespace ccbench::epoch {
 
 /**

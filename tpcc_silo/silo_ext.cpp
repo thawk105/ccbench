@@ -28,6 +28,8 @@
 #include "tpcc_initializer.hpp"
 #include "tpcc_query.hpp"
 #include "tpcc_txn.hpp"
+#include "clock.h"
+
 
 using namespace std;
 
@@ -115,6 +117,7 @@ int main(int argc, char *argv[]) try {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   init();
+  ccbench::StopWatch stopwatch;
 #if 0
   TPCC::Initializer::load();
 #else
@@ -131,6 +134,8 @@ int main(int argc, char *argv[]) try {
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
                      std::ref(quit));
   waitForReady(readys);
+  stopwatch.mark();
+  ::printf("load latency: %.3f sec.\n", stopwatch.period());
   ::printf("starting workload...\n");
   storeRelease(start, true);
   for (size_t i = 0; i < FLAGS_extime; ++i) {
