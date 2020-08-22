@@ -33,7 +33,7 @@ inline epoch_t kReclamationEpoch;              // NOLINT
 [[maybe_unused]] inline std::thread kEpochThread;  // NOLINT
 inline std::atomic<bool> kEpochThreadEnd;          // NOLINT
 
-[[maybe_unused]] extern void atomic_add_global_epoch();
+[[maybe_unused]] extern uint32_t atomic_add_global_epoch();
 
 [[maybe_unused]] extern bool check_epoch_loaded();  // NOLINT
 

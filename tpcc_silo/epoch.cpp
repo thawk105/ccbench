@@ -14,14 +14,14 @@
 
 namespace ccbench::epoch {
 
-void atomic_add_global_epoch() {
+uint32_t atomic_add_global_epoch() {
   std::uint32_t expected = load_acquire_global_epoch();
   for (;;) {
     std::uint32_t desired = expected + 1;
     if (__atomic_compare_exchange_n(&(kGlobalEpoch), &(expected), desired,
                                     false, __ATOMIC_ACQ_REL,
                                     __ATOMIC_ACQUIRE)) {
-      break;
+      return desired;
     }
   }
 }
@@ -51,15 +51,15 @@ void epocher() {
      * check_epoch_loaded() checks whether the
      * latest global epoch is read by all the threads
      */
-     std::size_t exp_ctr{1};
+    std::size_t exp_ctr{1};
     while (!check_epoch_loaded()) {
       if (kEpochThreadEnd.load(std::memory_order_acquire)) return;
       usleep(exp_ctr);
-      exp_ctr *= 2;
+      exp_ctr = std::min<size_t>(exp_ctr * 2, 1000);
     }
 
-    atomic_add_global_epoch();
-    storeRelease(kReclamationEpoch, loadAcquire(kGlobalEpoch) - 2);
+    uint32_t curEpoch = atomic_add_global_epoch();
+    storeRelease(kReclamationEpoch, curEpoch - 2);
   }
 }
 
