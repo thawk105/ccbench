@@ -116,7 +116,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     //   FROM customer
     //   WHERE c_w_id=:c_w_id AND c_d_id=:c_d_id AND c_id=:c_id;
     // ==========================================================
-    TPCC::Customer::CreateKey(w_id, d_id, c_id, cust_key.ptr());
+    TPCC::Customer::CreateKey(c_w_id, c_d_id, c_id, cust_key.ptr());
     stat = search_key(token, Storage::CUSTOMER, cust_key.view(), &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
