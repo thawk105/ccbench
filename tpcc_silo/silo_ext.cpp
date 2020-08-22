@@ -81,8 +81,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
     }
 
     if (validation) {
-      storeRelease(myres.local_commit_counts_,
-                   loadAcquire(myres.local_commit_counts_) + 1);
+      ++myres.local_commit_counts_;
     } else {
       //trans.abort();
       ++myres.local_abort_counts_;
