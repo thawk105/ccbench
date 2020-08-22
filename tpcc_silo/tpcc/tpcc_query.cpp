@@ -142,7 +142,11 @@ void query::Payment::generate([[maybe_unused]]std::uint16_t w_id0, Xoroshiro128P
   }
 
   int y = Random(1, 100, rnd);
-  if (y < 1) { //if (y <= 60) { // disable by_last_name for test
+#if 0 // by last name is still buggy... hoshino is debugging on it.
+  if (y <= 60) {
+#else
+  if (y < 1) {
+#endif
     // by last name
     by_last_name = true;
     Lastname(NURand(255, 0, 999, rnd), c_last);

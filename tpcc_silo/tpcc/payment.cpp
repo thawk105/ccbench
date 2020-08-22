@@ -98,11 +98,26 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     // }
     // EXEC SQL CLOSE c_byname;
     // ==========================================================
+    char c_last_key_buf[Customer::maxLenOfSecondaryKey()];
+    std::string_view c_last_key = Customer::CreateSecondaryKey(c_w_id, c_d_id, query->c_last, &c_last_key_buf[0]);
+    void* ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
 
+    // QQQQQ
+    if (ret_ptr == nullptr) {
+        // debug
+        ::printf("c_w_id %u  c_d_id %u  c_last %s\n", c_w_id, c_d_id, query->c_last);
 
-    // TODO : to be implemented for CCBench
+    }
 
-
+    assert(ret_ptr != nullptr);
+    std::vector<SimpleKey<8>>* vec_ptr;
+    std::string_view value_view = reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val();
+    assert(value_view.size() == sizeof(uintptr_t));
+    ::memcpy(&vec_ptr, value_view.data(), sizeof(uintptr_t));
+    size_t nr_same_name = vec_ptr->size();
+    assert(nr_same_name > 0);
+    size_t idx = (nr_same_name + 1) / 2 - 1; // midpoint.
+    cust_key = (*vec_ptr)[idx];
   } else { // search customers by cust_id
     // ==========================================================
     // EXEC SQL SELECT c_first, c_middle, c_last,
@@ -117,14 +132,15 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     //   WHERE c_w_id=:c_w_id AND c_d_id=:c_d_id AND c_id=:c_id;
     // ==========================================================
     TPCC::Customer::CreateKey(c_w_id, c_d_id, c_id, cust_key.ptr());
-    stat = search_key(token, Storage::CUSTOMER, cust_key.view(), &ret_tuple_ptr);
-    if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
-      abort(token);
-      return false;
-    }
-    memcpy(&cust, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())),
-           sizeof(TPCC::Customer));
   }
+  stat = search_key(token, Storage::CUSTOMER, cust_key.view(), &ret_tuple_ptr);
+  if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
+    abort(token);
+    return false;
+  }
+  memcpy(&cust, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())),
+         sizeof(TPCC::Customer));
+
   cust.C_BALANCE += query->h_amount;
   cust.C_YTD_PAYMENT += query->h_amount;
   cust.C_PAYMENT_CNT += 1;

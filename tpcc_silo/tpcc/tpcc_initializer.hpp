@@ -353,8 +353,6 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
          const std::size_t d, const std::size_t w) {
       Xoroshiro128Plus rnd{};
       rnd.init();
-      std::string c_last_key; // reuse.
-      c_last_key.reserve(Customer::maxLenOfSecondaryKey());
       for (size_t c = start; c <= end; ++c) {
         std::time_t now = std::time(nullptr);
         TPCC::Customer customer{};
@@ -400,43 +398,40 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         SimpleKey<8> pkey{};
         customer.createKey(pkey.ptr());
         db_insert(Storage::CUSTOMER, pkey.view(), customer.view(), alignof(TPCC::Customer));
+        // void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, pkey.view());
 
-        void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, pkey.view());
-
-        customer.createSecondaryKey(c_last_key);
+        char c_last_key_buf[Customer::maxLenOfSecondaryKey()];
+        std::string_view c_last_key = customer.createSecondaryKey(&c_last_key_buf[0]);
         // ::printf("c_last_key %s\n", str_view_hex(c_last_key).c_str());
-        std::vector<void *> *ctn_ptr;
+        std::vector<SimpleKey<8>> *ctn_ptr;
         void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
         if (ret_ptr != nullptr) {
           memcpy(&ctn_ptr,
                  reinterpret_cast<void *>(const_cast<char *>(reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val().data())),
                  sizeof(uintptr_t));
           //::printf("found %p\n", ctn_ptr);
-          ctn_ptr->emplace_back(rec_ptr);
+          ctn_ptr->push_back(pkey);
         } else {
-          ctn_ptr = new std::vector<void *>;
+          ctn_ptr = new std::vector<SimpleKey<8>>;
+          ctn_ptr->reserve(8); // 8 * 8 = 64 bytes.
           //::printf("new   %p\n", ctn_ptr);
-          ctn_ptr->emplace_back(rec_ptr);
+          ctn_ptr->push_back(pkey);
           db_insert(Storage::SECONDARY, c_last_key, str_view(ctn_ptr), sizeof(uintptr_t));
         }
 
         struct S {
-          static bool comp(const void *lh, const void *rh) {
-            std::string_view lh_key_view = static_cast<const Record *>(lh)->get_tuple().get_key();
-            std::string_view rh_key_view = static_cast<const Record *>(rh)->get_tuple().get_key();
-            int ret = memcmp(lh_key_view.data(), rh_key_view.data(),
-                             lh_key_view.size() < rh_key_view.size() ? lh_key_view.size() : rh_key_view.size());
-            if (ret < 0) {
-              return true;
-            } else if (ret == 0) {
-              return lh_key_view.size() < rh_key_view.size();
-            } else {
-              return false;
-            }
+          static Customer* search(const SimpleKey<8>& pkey) {
+              Record *rec = reinterpret_cast<Record*>(kohler_masstree::find_record(Storage::CUSTOMER, pkey.view()));
+              return reinterpret_cast<Customer*>(const_cast<char*>(rec->get_tuple().get_val().data()));
+          }
+          static bool less(const SimpleKey<8>& lh, const SimpleKey<8>& rh) {
+              const Customer* lh_cust = search(lh);
+              const Customer* rh_cust = search(rh);
+              return ::strncmp(lh_cust->C_FIRST, rh_cust->C_FIRST, sizeof(Customer::C_FIRST)) < 0;
           }
         };
 
-        std::sort(ctn_ptr->begin(), ctn_ptr->end(), S::comp);
+        std::sort(ctn_ptr->begin(), ctn_ptr->end(), S::less);
         //1 histories per customer.
         SimpleKey<8> his_key = hkg.get_as_simple_key();
         load_history(w, d, c, his_key.view());
