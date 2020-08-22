@@ -27,9 +27,9 @@ void atomic_add_global_epoch() {
 }
 
 bool check_epoch_loaded() {  // NOLINT
-  uint64_t curEpoch = load_acquire_global_epoch();
+  std::uint64_t curEpoch = load_acquire_global_epoch();
 
-  for (auto&& itr : session_info_table::get_thread_info_table()) {  // NOLINT
+  for (auto &&itr : session_info_table::get_thread_info_table()) {  // NOLINT
     if (itr.get_visible() && itr.get_epoch() != curEpoch) {
       return false;
     }
@@ -51,9 +51,11 @@ void epocher() {
      * check_epoch_loaded() checks whether the
      * latest global epoch is read by all the threads
      */
+     std::size_t exp_ctr{1};
     while (!check_epoch_loaded()) {
       if (kEpochThreadEnd.load(std::memory_order_acquire)) return;
-      _mm_pause();
+      usleep(exp_ctr);
+      exp_ctr *= 2;
     }
 
     atomic_add_global_epoch();
