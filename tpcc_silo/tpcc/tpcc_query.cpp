@@ -5,6 +5,17 @@
 
 #define ID_START 1
 
+#if 1
+#define FIXED_WAREHOUSE_PER_THREAD
+// In TPC-C specification 5.11, there exists the following explanation:
+// "2.5.1.1 For any given terminal, the home warehouse number (W_ID) is constant over the whole measurement interval.",
+// so each thread can use just one w_id.
+#else
+#undef FIXED_WAREHOUSE_PER_THREAD
+#endif
+
+
+
 namespace TPCC {
 
 /*==================================================================+
@@ -62,9 +73,14 @@ std::uint64_t NURand(std::uint64_t A, std::uint64_t x, std::uint64_t y, Xoroshir
   return (((Random(0,A,rnd) | Random(x,y,rnd)) + C) % (y-x+1)) + x;
 }
 
-void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
+void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt,
                                [[maybe_unused]]Result &res) {
-  w_id   = Random(ID_START, opt.num_wh, rnd);
+
+#ifdef FIXED_WAREHOUSE_PER_THREAD
+  w_id = w_id0;
+#else
+  w_id = Random(ID_START, opt.num_wh, rnd);
+#endif
   d_id   = Random(ID_START, opt.dist_per_ware, rnd);
   c_id   = NURand(1023, ID_START, opt.cust_per_dist, rnd);
   rbk    = Random(1, 100, rnd);
@@ -94,9 +110,14 @@ void query::NewOrder::generate(Xoroshiro128Plus &rnd, query::Option &opt,
   }
 }
 
-void query::Payment::generate(Xoroshiro128Plus &rnd, query::Option &opt,
+void query::Payment::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt,
                               [[maybe_unused]]Result &res) {
+
+#ifdef FIXED_WAREHOUSE_PER_THREAD
+  w_id = w_id0;
+#else
   w_id = Random(ID_START, opt.num_wh, rnd);
+#endif
   d_w_id = w_id;
   d_id = Random(ID_START, opt.dist_per_ware, rnd);
   h_amount = Random(100, 500000, rnd)*0.01;
@@ -150,7 +171,7 @@ void query::Payment::print() {
 
 }
 
-void Query::generate(Xoroshiro128Plus &rnd, query::Option &opt,
+void Query::generate(uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt,
                      [[maybe_unused]]Result &res) {
   double x = rnd.next() / (((double)~(uint64_t)0)+1.0) * 100;
   x -= opt.perc_stock_level;
@@ -176,10 +197,10 @@ void Query::generate(Xoroshiro128Plus &rnd, query::Option &opt,
   }
   switch (type) {
   case Q_NEW_ORDER:
-    new_order.generate(rnd,opt,res);
+    new_order.generate(w_id,rnd,opt,res);
     break;
   case Q_PAYMENT:
-    payment.generate(rnd,opt,res);
+    payment.generate(w_id,rnd,opt,res);
     break;
   case Q_ORDER_STATUS:
   case Q_DELIVERY:

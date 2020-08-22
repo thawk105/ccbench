@@ -63,7 +63,7 @@ namespace query {
     std::uint64_t ol_cnt;
     std::uint64_t o_entry_d;
 
-    void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
+    void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, Option &opt, Result &res);
     void print();
   };
 
@@ -79,7 +79,7 @@ namespace query {
     double h_amount;
     bool by_last_name;
 
-    void generate(Xoroshiro128Plus &rnd, Option &opt, Result &res);
+    void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, Option &opt, Result &res);
     void print();
   };
 
@@ -100,7 +100,7 @@ public:
     query::StockLevel stock_level;
   };
 
-  void generate(Xoroshiro128Plus &rnd, query::Option &opt, Result &res);
+  void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt, Result &res);
   void print();
 };
 }

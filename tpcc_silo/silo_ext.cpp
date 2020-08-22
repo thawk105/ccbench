@@ -46,17 +46,19 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   enter(token);
   TPCC::query::Option query_opt;
 
+  const uint16_t w_id = (thid % FLAGS_num_wh) + 1;
+#if 1
   // Load per warehouse if necessary.
   // thid in [0, num_th - 1].
   // w_id in [1, FLAGS_num_wh].
   // The worker thread of thid in [0, FLAGS_num_wh - 1]
   // should load data for the warehouse with w_id = thid + 1.
-  const uint16_t w_id = (thid % FLAGS_num_wh) + 1;
   if (thid < FLAGS_num_wh) {
       //::printf("load for warehouse %u ...\n", w_id);
       TPCC::Initializer::load_per_warehouse(w_id);
       //::printf("load for warehouse %u done.\n", w_id);
   }
+#endif
 
   TPCC::HistoryKeyGenerator hkg{};
   hkg.init(thid, true);
@@ -64,7 +66,8 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    query.generate(rnd, query_opt, myres);
+
+    query.generate(w_id, rnd, query_opt, myres);
 
     // TODO : add backoff work.
 
