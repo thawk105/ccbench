@@ -11,12 +11,12 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   Tuple *ret_tuple_ptr;
   Status stat;
 
-  std::uint64_t w_id = query->w_id;
-  std::uint64_t c_w_id = query->c_w_id;
+  std::uint16_t w_id = query->w_id;
+  std::uint16_t c_w_id = query->c_w_id;
 #ifndef DBx1000_COMMENT_OUT
-  std::uint64_t d_id = query->d_id;
-  std::uint64_t c_id = query->c_id;
-  std::uint64_t c_d_id = query->c_d_id;
+  std::uint8_t d_id = query->d_id;
+  std::uint32_t c_id = query->c_id;
+  std::uint8_t c_d_id = query->c_d_id;
 #endif
   // ====================================================+
   // EXEC SQL UPDATE warehouse SET w_ytd = w_ytd + :h_amount
@@ -36,7 +36,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   }
   memcpy(&wh, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Warehouse));
   double w_ytd = wh.W_YTD;
-  std::string w_name(wh.W_NAME);
   if (g_wh_update) {
     wh.W_YTD = w_ytd + query->h_amount;
 
@@ -68,7 +67,6 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   memcpy(&dist, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
 
   dist.D_YTD += query->h_amount;
-  std::string d_name(dist.D_NAME);
 
   stat = update(token, Storage::DISTRICT, dist_key.view(), dist.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::District)));
@@ -130,10 +128,9 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   cust.C_BALANCE += query->h_amount;
   cust.C_YTD_PAYMENT += query->h_amount;
   cust.C_PAYMENT_CNT += 1;
-  std::string c_credit(cust.C_CREDIT);
 
 #ifndef DBx1000_COMMENT_OUT
-  if (c_credit.find("BC") != std::string::npos) {
+  if (cust.C_CREDIT[0] == 'B' && cust.C_CREDIT[1] == 'C') {
     // ==========================================================
     // EXEC SQL SELECT c_data INTO :c_data
     //   FROM customer
@@ -144,11 +141,28 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     // strncat(c_new_data,c_data,500-strlen(c_new_data));
     // ==========================================================
     char c_new_data[501];
-    sprintf(c_new_data, "| %4ld %2ld %4ld %2ld %4ld $%7.2f",
-            c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
-    std::string s1(c_new_data);
-    std::string s2(cust.C_DATA, 500-s1.size());
-    strncpy(cust.C_DATA, (s1+s2).c_str(), 500);
+    size_t len = snprintf(&c_new_data[0], 501, "| %4" PRIu32 " %2" PRIu8 " %4" PRIu16 " %2" PRIu16 " %4" PRIu16 " $%7.2f",
+                           c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
+    assert(len <= 500);
+#if 1
+    size_t i = 0;
+    while (len < 500) {
+        char c = cust.C_DATA[i];
+        if (c == '\0') break;
+        c_new_data[len] = c;
+        len++; i++;
+    }
+#else
+    if (len < 500) {
+        size_t len2 = snprintf(&c_new_data[len], 500 - len, "%s", &cust.C_DATA[0]);
+        len2 = std::min(len2, 500 - len);
+        // ::printf("len %zu len2 %zu total %zu\n", len, len2, len + len2);
+        len += len2;
+        assert(len <= 500);
+    }
+#endif
+    ::memcpy(&cust.C_DATA[0], &c_new_data[0], len);
+    cust.C_DATA[len] = '\0';
   }
   // ==========================================================
   // EXEC SQL UPDATE customer
@@ -177,7 +191,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   hist.H_DATE = 2013;
   hist.H_AMOUNT = query->h_amount;
 #if !TPCC_SMALL
-  sprintf(hist.H_DATA, "%-10.10s    %.10s", w_name.c_str(), d_name.c_str());
+  sprintf(hist.H_DATA, "%-10.10s    %.10s", &wh.W_NAME[0], &dist.D_NAME[0]);
 #endif
   SimpleKey<8> hist_key = hkg->get_as_simple_key();
   stat = insert(token, Storage::HISTORY, hist_key.view(), hist.view(),

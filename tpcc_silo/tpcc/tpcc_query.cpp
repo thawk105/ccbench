@@ -88,12 +88,16 @@ void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus 
   remote = false;
 
   for (unsigned int i=0; i<ol_cnt; ++i) {
+#if 0 // ol_i_id is no need to be unique.
     { redo1:
       items[i].ol_i_id = NURand(8191, ID_START, opt.max_items, rnd);
       for (unsigned int j=0; j<i; ++j) {
         if (items[i].ol_i_id == items[j].ol_i_id) goto redo1;
       }
     }
+#else
+    items[i].ol_i_id = NURand(8191, ID_START, opt.max_items, rnd);
+#endif
     if (opt.num_wh == 1 || Random(ID_START, 100, rnd) > 1) {
       items[i].ol_supply_w_id = w_id;
     } else {
@@ -150,21 +154,21 @@ void query::Payment::generate([[maybe_unused]]std::uint16_t w_id0, Xoroshiro128P
 }
 
 void query::NewOrder::print() {
-  printf("nod: w_id=%lu d_id=%lu c_id=%lu rbk=%u remote=%s ol_cnt=%lu o_entry_d=%lu\n",
-         w_id, d_id, c_id, rbk, remote?"t":"f", ol_cnt, o_entry_d);
+  printf("nod: w_id=%" PRIu16 " d_id=%" PRIu8 " c_id=%" PRIu32 " rbk=%" PRIu8 " remote=%s ol_cnt=%" PRIu8 " o_entry_d=%lu\n",
+         w_id, d_id, c_id, rbk, remote?"t":"f", ol_cnt, (ulong)o_entry_d);
   for (unsigned int i=0; i<ol_cnt; ++i) {
-    printf(" [%d]: ol_i_id=%lu ol_supply_w_id=%lu c_quantity=%lu\n", i,
+    printf(" [%d]: ol_i_id=%" PRIu32 " ol_supply_w_id=%" PRIu16 " c_quantity=%" PRIu8 "\n", i,
            items[i].ol_i_id, items[i].ol_supply_w_id, items[i].ol_quantity);
   }
 }
 
 void query::Payment::print() {
-  printf("pay: w_id=%lu d_id=%lu d_w_id=%lu c_w_id=%lu c_d_id=%lu h_amount=%.2f\n",
+  printf("pay: w_id=%" PRIu16 " d_id=%" PRIu8 " d_w_id=%" PRIu16 " c_w_id=%" PRIu16 " c_d_id=%" PRIu8 " h_amount=%.2f\n",
          w_id, d_id, d_w_id, c_w_id, c_d_id, h_amount);
   if (by_last_name) {
     printf(" by_last_name=t c_last=%s\n",c_last);
   } else {
-    printf(" by_last_name=f c_id=%lu\n",c_id);
+    printf(" by_last_name=f c_id=%" PRIu32 "\n",c_id);
   }
 
 }

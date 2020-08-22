@@ -80,18 +80,18 @@ namespace query {
 
   class NewOrder {
   public:
-    std::uint64_t w_id;
-    std::uint64_t d_id;
-    std::uint64_t c_id;
+    std::uint16_t w_id;
+    std::uint8_t d_id;
+    std::uint32_t c_id;
     struct {
-      std::uint64_t ol_i_id;
-      std::uint64_t ol_supply_w_id;
-      std::uint64_t ol_quantity;
+      std::uint32_t ol_i_id;
+      std::uint16_t ol_supply_w_id;
+      std::uint8_t ol_quantity;
     } items[15];
-    std::uint32_t rbk;
+    std::uint8_t rbk;
     bool remote;
-    std::uint64_t ol_cnt;
-    std::uint64_t o_entry_d;
+    std::uint8_t ol_cnt;
+    std::time_t o_entry_d;
 
     void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, Option &opt);
     void print();
@@ -99,13 +99,13 @@ namespace query {
 
   class Payment {
   public:
-    std::uint64_t w_id;
-    std::uint64_t d_id;
-    std::uint64_t c_id;
-    std::uint64_t d_w_id;
-    std::uint64_t c_w_id;
-    std::uint64_t c_d_id;
-    char c_last[LASTNAME_LEN];
+    std::uint16_t w_id;
+    std::uint8_t d_id;
+    std::uint32_t c_id;
+    std::uint16_t d_w_id;
+    std::uint16_t c_w_id;
+    std::uint8_t c_d_id;
+    char c_last[LASTNAME_LEN + 1];
     double h_amount;
     bool by_last_name;
 

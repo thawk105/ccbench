@@ -37,10 +37,10 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   //INDEX * index;
 
   bool remote = query->remote;
-  uint64_t w_id = query->w_id;
-  uint64_t d_id = query->d_id;
-  uint64_t c_id = query->c_id;
-  uint64_t ol_cnt = query->ol_cnt;
+  uint16_t w_id = query->w_id;
+  uint8_t d_id = query->d_id;
+  uint32_t c_id = query->c_id;
+  uint8_t ol_cnt = query->ol_cnt;
 
   /*=======================================================================+
     EXEC SQL SELECT c_discount, c_last, c_credit, w_tax
