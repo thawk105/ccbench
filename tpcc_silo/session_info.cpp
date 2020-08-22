@@ -86,40 +86,28 @@ Status session_info::check_delete_after_write(std::string_view key) {  // NOLINT
 void session_info::gc_records_and_values() const {
   // for records
   {
-    std::mutex &mutex_for_gc_list =
-            garbage_collection::get_mutex_garbage_records_at(
-                    this->gc_handle_.get_container_index());
-    if (mutex_for_gc_list.try_lock()) {
-      auto itr = this->gc_handle_.get_record_container()->begin();
-      while (itr != this->gc_handle_.get_record_container()->end()) {
-        if ((*itr)->get_tidw().get_epoch() <= epoch::get_reclamation_epoch()) {
-          delete *itr;  // NOLINT
-          itr = this->gc_handle_.get_record_container()->erase(itr);
-        } else {
-          break;
-        }
+    auto itr = this->gc_handle_.get_record_container()->begin();
+    while (itr != this->gc_handle_.get_record_container()->end()) {
+      if ((*itr)->get_tidw().get_epoch() <= epoch::get_reclamation_epoch()) {
+        delete *itr;  // NOLINT
+        itr = this->gc_handle_.get_record_container()->erase(itr);
+      } else {
+        break;
       }
-      mutex_for_gc_list.unlock();
     }
   }
   // for values
   {
-    std::mutex &mutex_for_gc_list =
-            garbage_collection::get_mutex_garbage_values_at(
-                    this->gc_handle_.get_container_index());
-    if (mutex_for_gc_list.try_lock()) {
-      auto itr = this->gc_handle_.get_value_container()->begin();
-      while (itr != this->gc_handle_.get_value_container()->end()) {
-        if (itr->second <= epoch::get_reclamation_epoch()) {
-          ::operator delete(std::get<garbage_collection::ptr_index>(itr->first),
-                            std::get<garbage_collection::size_index>(itr->first),
-                            std::get<garbage_collection::align_index>(itr->first));  // NOLINT
-          itr = this->gc_handle_.get_value_container()->erase(itr);
-        } else {
-          break;
-        }
+    auto itr = this->gc_handle_.get_value_container()->begin();
+    while (itr != this->gc_handle_.get_value_container()->end()) {
+      if (itr->second <= epoch::get_reclamation_epoch()) {
+        ::operator delete(std::get<garbage_collection::ptr_index>(itr->first),
+                          std::get<garbage_collection::size_index>(itr->first),
+                          std::get<garbage_collection::align_index>(itr->first));  // NOLINT
+        itr = this->gc_handle_.get_value_container()->erase(itr);
+      } else {
+        break;
       }
-      mutex_for_gc_list.unlock();
     }
   }
 }
@@ -135,12 +123,7 @@ void session_info::remove_inserted_records_of_write_set_from_masstree() {
       /**
        * create information for garbage collection.
        */
-      std::mutex &mutex_for_gclist =
-              garbage_collection::get_mutex_garbage_records_at(
-                      gc_handle_.get_container_index());
-      mutex_for_gclist.lock();
       gc_handle_.get_record_container()->emplace_back(itr.get_rec_ptr());
-      mutex_for_gclist.unlock();
       tid_word deletetid;
       deletetid.set_lock(false);
       deletetid.set_latest(false);

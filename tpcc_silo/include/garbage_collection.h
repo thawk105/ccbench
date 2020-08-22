@@ -20,16 +20,12 @@ namespace ccbench::garbage_collection {
 alignas(CACHE_LINE_SIZE) inline std::array<  // NOLINT
         std::vector<Record *>,
         KVS_NUMBER_OF_LOGICAL_CORES> kGarbageRecords;  // NOLINT
-alignas(CACHE_LINE_SIZE) inline std::array<
-        std::mutex, KVS_NUMBER_OF_LOGICAL_CORES> kMutexGarbageRecords;  // NOLINT
 constexpr std::size_t ptr_index = 0;
 constexpr std::size_t size_index = 1;
 constexpr std::size_t align_index = 2;
 alignas(CACHE_LINE_SIZE) inline std::array<                         // NOLINT
         std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>>,
         KVS_NUMBER_OF_LOGICAL_CORES> kGarbageValues;                   // NOLINT
-alignas(CACHE_LINE_SIZE) inline std::array<                        // NOLINT
-        std::mutex, KVS_NUMBER_OF_LOGICAL_CORES> kMutexGarbageValues;  // NOLINT
 
 /**
  * @brief Delete std::vector<Record*> kGarbageRecords at
@@ -55,16 +51,6 @@ extern void delete_all_garbage_values();
 [[maybe_unused]] static std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> &
 get_garbage_values_at(std::size_t index) {  // NOLINT
   return kGarbageValues.at(index);
-}
-
-[[maybe_unused]] static std::mutex &get_mutex_garbage_records_at(  // NOLINT
-        std::size_t index) {
-  return kMutexGarbageRecords.at(index);
-}
-
-[[maybe_unused]] static std::mutex &get_mutex_garbage_values_at(  // NOLINT
-        std::size_t index) {
-  return kMutexGarbageValues.at(index);
 }
 
 /**

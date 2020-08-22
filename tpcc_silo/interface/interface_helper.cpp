@@ -168,10 +168,7 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
         auto old_val = rec_ptr->get_tuple().set_value_get_old_val(new_value_view, iws->get_tuple().get_val_align());
         storeRelease(rec_ptr->get_tidw().get_obj(), max_tid.get_obj());
         if (std::get<garbage_collection::ptr_index>(old_val) != nullptr) {
-          std::mutex &mutex_for_gc_list = garbage_collection::get_mutex_garbage_values_at(ti->get_gc_container_index());
-          mutex_for_gc_list.lock();
           ti->get_gc_value_container()->emplace_back(std::make_pair(old_val, ti->get_epoch()));
-          mutex_for_gc_list.unlock();
         }
         break;
       }
@@ -190,12 +187,7 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
         /**
          * create information for garbage collection.
          */
-        std::mutex &mutex_for_gc_list =
-                garbage_collection::get_mutex_garbage_records_at(
-                        ti->get_gc_container_index());
-        mutex_for_gc_list.lock();
         ti->get_gc_record_container()->emplace_back(rec_ptr);
-        mutex_for_gc_list.unlock();
 
         break;
       }
