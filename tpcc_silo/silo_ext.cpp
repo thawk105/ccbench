@@ -31,7 +31,12 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
+
+#ifdef CCBENCH_LINUX
+  ccbench::setThreadAffinity(thid);
+#endif
+
   Result &myres = std::ref(SiloResult[thid]);
   Xoroshiro128Plus rnd{};
   rnd.init();
@@ -40,12 +45,21 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Token token{};
   enter(token);
   TPCC::query::Option query_opt;
-  TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(thid, false);
 
-#ifdef CCBENCH_LINUX
-  ccbench::setThreadAffinity(thid);
-#endif
+  // Load per warehouse if necessary.
+  // thid in [0, num_th - 1].
+  // w_id in [1, FLAGS_num_wh].
+  // The worker thread of thid in [0, FLAGS_num_wh - 1]
+  // should load data for the warehouse with w_id = thid + 1.
+  const uint16_t w_id = (thid % FLAGS_num_wh) + 1;
+  if (thid < FLAGS_num_wh) {
+      //::printf("load for warehouse %u ...\n", w_id);
+      TPCC::Initializer::load_per_warehouse(w_id);
+      //::printf("load for warehouse %u done.\n", w_id);
+  }
+
+  TPCC::HistoryKeyGenerator hkg{};
+  hkg.init(thid, true);
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
@@ -88,6 +102,9 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
     }
   }
   leave(token);
+} catch (std::exception& e) {
+    std::cout << "worker thread caught error " << e.what();
+    std::abort();
 }
 
 int main(int argc, char *argv[]) try {
@@ -95,7 +112,12 @@ int main(int argc, char *argv[]) try {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   init();
+#if 0
   TPCC::Initializer::load();
+#else
+  TPCC::Initializer::load_item();
+  // The remaining load will be processed by each worker threads.
+#endif
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -106,6 +128,7 @@ int main(int argc, char *argv[]) try {
     thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
                      std::ref(quit));
   waitForReady(readys);
+  ::printf("starting workload...\n");
   storeRelease(start, true);
   for (size_t i = 0; i < FLAGS_extime; ++i) {
     sleepMs(1000);

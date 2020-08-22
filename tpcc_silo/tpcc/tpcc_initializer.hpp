@@ -146,6 +146,7 @@ void load_item() {
     }
   };
 
+#if 0
   std::vector<std::thread> thv;
   /**
    * precondition : para_num > 3
@@ -160,6 +161,12 @@ void load_item() {
   for (auto &&th : thv) {
     th.join();
   }
+#else
+  // single threaded.
+  //::printf("load item...\n");
+  S::work(1, MAX_ITEMS);
+  //::printf("load item done\n");
+#endif
 }
 
 //CREATE Warehouses
@@ -229,6 +236,7 @@ void load_stock(const std::size_t w) {
     }
   };
   const std::size_t stock_num{MAX_ITEMS};
+#if 0
   constexpr std::size_t stock_num_per_thread{5000};
   const std::size_t para_num{stock_num / stock_num_per_thread};
   std::vector<std::thread> thv;
@@ -241,6 +249,10 @@ void load_stock(const std::size_t w) {
   for (auto &&th : thv) {
     th.join();
   }
+#else
+  // single-threaded
+  S::work(1, stock_num, w);
+#endif
 }
 
 //CREATE History
@@ -431,7 +443,7 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
       }
     }
   };
-  S::work(1, CUST_PER_DIST, std::ref(hkg), d, w);
+  S::work(1, CUST_PER_DIST, hkg, d, w);
 #if 0
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
@@ -478,16 +490,23 @@ void load_district(const std::size_t w) {
     }
   };
   TPCC::HistoryKeyGenerator hkg{};
-  hkg.init(w, true);
+  assert(w != 0);
+  hkg.init(w - 1, false);
 
+#if 0
   std::vector<std::thread> thv;
   for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
     thv.emplace_back(S::work, d, w, std::ref(hkg));
   }
-
   for (auto &&th : thv) {
     th.join();
   }
+#else
+  // single-threaded.
+  for (uint8_t d = 1; d <= DIST_PER_WARE; ++d) {
+      S::work(d, w, hkg);
+  }
+#endif
 
 }
 
@@ -496,6 +515,7 @@ void load() {
 
   std::vector<std::thread> thv;
   std::cout << "[start] load." << std::endl;
+
   thv.emplace_back(load_item);
   for (std::size_t w = 1; w <= FLAGS_num_wh; ++w) {
     thv.emplace_back(load_warehouse, w);
@@ -510,5 +530,14 @@ void load() {
   }
   std::cout << "[end] load." << std::endl;
 }
+
+
+void load_per_warehouse(uint16_t w_id)
+{
+    load_warehouse(w_id);
+    load_stock(w_id);
+    load_district(w_id);
+}
+
 
 }//namespace TPCC initializer

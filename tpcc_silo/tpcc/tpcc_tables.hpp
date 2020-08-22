@@ -197,11 +197,8 @@ public:
     std::uint64_t key_;
     struct {
       uint64_t counter_:47;
-      uint64_t at_load_:1;
-      /**
-       * @details If at_load_ is true, this is warehosue_id. If not, warehouse_id_ is thread_id.
-       */
-      uint64_t warehouse_or_thread_id_:16;
+      uint64_t at_work_:1; // 0 at initial load, 1 at work.
+      uint64_t id_:16;
     };
     // upper bits are thread_id in little endian architecture.
   };
@@ -215,10 +212,10 @@ public:
     return ret;
   }
 
-  void init(uint16_t warehouse_or_thread_id, bool at_load) {
+  void init(uint16_t id, bool at_work) {
     counter_ = 0;
-    at_load_ = at_load;
-    warehouse_or_thread_id_ = warehouse_or_thread_id;
+    at_work_ = at_work ? 1 : 0;
+    id_ = id;
   }
 };
 
