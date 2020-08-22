@@ -46,6 +46,36 @@ namespace query {
     double perc_order_status = FLAGS_perc_order_status;
     double perc_delivery = FLAGS_perc_delivery;
     double perc_stock_level = FLAGS_perc_stock_level;
+
+    /**
+     * 0                                                    UINT64_MAX
+     * |----|--------|--------|--------------|--------------|
+     *      ^        ^        ^              ^
+     *      |        |        |              threshold_new_order
+     *      |        |        threshold_payment
+     *      |        threshold_order_status
+     *      threshold_delivery
+     *
+     * used by decideQueryType().
+     */
+    uint64_t threshold_new_order;
+    uint64_t threshold_payment;
+    uint64_t threshold_order_status;
+    uint64_t threshold_delivery;
+
+    Option() {
+      threshold_delivery = perc_stock_level / 100.0 * UINT64_MAX;
+      threshold_order_status = threshold_delivery + (perc_delivery / 100.0 * UINT64_MAX);
+      threshold_payment = threshold_order_status + (perc_order_status / 100.0 * UINT64_MAX);
+      threshold_new_order = threshold_payment + (perc_payment / 100.0 * UINT64_MAX);
+#if 0
+      ::printf("query_type_threshold: %.3f %.3f %.3f %.3f\n"
+               , threshold_new_order    / (double)UINT64_MAX
+               , threshold_payment      / (double)UINT64_MAX
+               , threshold_order_status / (double)UINT64_MAX
+               , threshold_delivery     / (double)UINT64_MAX);
+#endif
+    }
   };
 
   class NewOrder {

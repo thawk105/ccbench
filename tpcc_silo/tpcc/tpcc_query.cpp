@@ -169,29 +169,19 @@ void query::Payment::print() {
 
 }
 
-void Query::generate(std::uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt) {
-  double x = rnd.next() / (((double)~(uint64_t)0)+1.0) * 100;
-  x -= opt.perc_stock_level;
-  if (x < 0) {
-    type = Q_STOCK_LEVEL;
-  } else {
-    x -= opt.perc_delivery;
-    if (x < 0) {
-      type = Q_DELIVERY;
-    } else {
-      x -= opt.perc_order_status;
-      if (x < 0) {
-        type = Q_ORDER_STATUS;
-      } else {
-        x -= opt.perc_payment;
-        if (x < 0) {
-          type = Q_PAYMENT;
-        } else {
-          type = Q_NEW_ORDER;
-        }
-      }
-    }
-  }
+static QueryType decideQueryType(Xoroshiro128Plus& rnd, query::Option& opt)
+{
+    uint64_t x = rnd.next();
+    if (x >= opt.threshold_new_order) return Q_NEW_ORDER;
+    if (x >= opt.threshold_payment) return Q_PAYMENT;
+    if (x >= opt.threshold_order_status) return Q_ORDER_STATUS;
+    if (x >= opt.threshold_delivery) return Q_DELIVERY;
+    return Q_STOCK_LEVEL;
+}
+
+void Query::generate(std::uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt)
+{
+  type = decideQueryType(rnd, opt);
   switch (type) {
   case Q_NEW_ORDER:
     new_order.generate(w_id,rnd,opt);
