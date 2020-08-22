@@ -139,8 +139,9 @@ void load_item() {
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
-        std::string key{ite.createKey()};
-        db_insert(Storage::ITEM, key, {reinterpret_cast<char *>(&ite), sizeof(ite)}, alignof(TPCC::Item));
+        SimpleKey<8> key;
+        ite.createKey(key.ptr());
+        db_insert(Storage::ITEM, key.view(), ite.view(), alignof(TPCC::Item));
       }
     }
   };
@@ -179,8 +180,9 @@ void load_warehouse(const std::size_t w) {
 #ifdef DEBUG
   std::cout<<"W_ID:"<<ware.W_ID<<"\tW_NAME:"<<ware.W_NAME<<"\tW_STREET_1:"<<ware.W_STREET_1<<"\tW_CITY:"<<ware.W_CITY<<"\tW_STATE:"<<ware.W_STATE<<"\tW_ZIP:"<<ware.W_ZIP<<"\tW_TAX:"<<ware.W_TAX<<"\tW_YTD:"<<ware.W_YTD<<std::endl;
 #endif
-  std::string key{ware.createKey()};
-  db_insert(Storage::WAREHOUSE, key, {reinterpret_cast<char *>(&ware), sizeof(ware)}, alignof(TPCC::Warehouse));
+  SimpleKey<8> wh_key;
+  ware.createKey(wh_key.ptr());
+  db_insert(Storage::WAREHOUSE, wh_key.view(), ware.view(), alignof(TPCC::Warehouse));
 }
 
 //CREATE Stock
@@ -220,8 +222,9 @@ void load_stock(const std::size_t w) {
           st.S_DATA[pos + 6] = 'A';
           st.S_DATA[pos + 7] = 'L';
         }
-        std::string key{st.createKey()};
-        db_insert(Storage::STOCK, key, {reinterpret_cast<char *>(&st), sizeof(st)}, alignof(TPCC::Stock));
+        SimpleKey<8> st_key;
+        st.createKey(st_key.ptr());
+        db_insert(Storage::STOCK, st_key.view(), st.view(), alignof(TPCC::Stock));
       }
     }
   };
@@ -241,7 +244,7 @@ void load_stock(const std::size_t w) {
 }
 
 //CREATE History
-void load_history(const std::size_t w, const std::size_t d, const std::size_t c, const std::string &&key) {
+void load_history(const std::size_t w, const std::size_t d, const std::size_t c, std::string_view key) {
   Xoroshiro128Plus rnd{};
   rnd.init();
   std::time_t now = std::time(nullptr);
@@ -253,7 +256,7 @@ void load_history(const std::size_t w, const std::size_t d, const std::size_t c,
   history.H_AMOUNT = 10.00;
   strcpy(history.H_DATA, random_string(12, 24, rnd).c_str());
 
-  db_insert(Storage::HISTORY, key, {reinterpret_cast<char *>(&history), sizeof(history)}, alignof(TPCC::History));
+  db_insert(Storage::HISTORY, key, history.view(), alignof(TPCC::History));
 }
 
 //CREATE Orderline
@@ -282,10 +285,9 @@ void load_orderline(const std::size_t w, const std::size_t d, const std::size_t 
   order_line.OL_AMOUNT = 0.0;
   strcpy(order_line.OL_DIST_INFO, random_string(24, 24, rnd).c_str());
 
-  std::string key = order_line.createKey();
-  db_insert(Storage::ORDERLINE, key, {reinterpret_cast<char *>(&order_line), sizeof(order_line)},
-            alignof(TPCC::OrderLine));
-
+  SimpleKey<8> key;
+  order_line.createKey(key.ptr());
+  db_insert(Storage::ORDERLINE, key.view(), order_line.view(), alignof(TPCC::OrderLine));
 }
 
 //CREATE Order
@@ -307,8 +309,9 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
   order.O_OL_CNT = random_value(5, 15);
   order.O_ALL_LOCAL = 1;
 
-  std::string key = order.createKey();
-  db_insert(Storage::ORDER, key, {reinterpret_cast<char *>(&order), sizeof(order)}, alignof(TPCC::Order));
+  SimpleKey<8> key;
+  order.createKey(key.ptr());
+  db_insert(Storage::ORDER, key.view(), order.view(), alignof(TPCC::Order));
 
   //O_OL_CNT orderlines per order.
   for (size_t ol = 1; ol < order.O_OL_CNT + 1; ol++) {
@@ -322,9 +325,9 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
     new_order.NO_D_ID = d;
     new_order.NO_W_ID = w;
 
-    key = new_order.createKey();
-    db_insert(Storage::NEWORDER, key, {reinterpret_cast<char *>(&new_order), sizeof(new_order)},
-              alignof(TPCC::NewOrder));
+    SimpleKey<8> key;
+    new_order.createKey(key.ptr());
+    db_insert(Storage::NEWORDER, key.view(), new_order.view(), alignof(TPCC::NewOrder));
   }
 }
 
@@ -336,6 +339,8 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
          const std::size_t d, const std::size_t w) {
       Xoroshiro128Plus rnd{};
       rnd.init();
+      std::string c_last_key; // reuse.
+      c_last_key.reserve(Customer::maxLenOfSecondaryKey());
       for (size_t c = start; c <= end; ++c) {
         std::time_t now = std::time(nullptr);
         TPCC::Customer customer{};
@@ -378,24 +383,27 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         customer.C_DELIVERY_CNT = 0;
         strcpy(customer.C_DATA, random_string(300, 500, rnd).c_str());
 
-        std::string key = customer.createKey();
-        db_insert(Storage::CUSTOMER, key, {reinterpret_cast<char *>(&customer), sizeof(customer)},
-                  alignof(TPCC::Customer));
+        SimpleKey<8> pkey;
+        customer.createKey(pkey.ptr());
+        db_insert(Storage::CUSTOMER, pkey.view(), customer.view(), alignof(TPCC::Customer));
 
-        void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, key);
-        key = customer.createSecondaryKey();
+        void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, pkey.view());
+
+        customer.createSecondaryKey(c_last_key);
+        // ::printf("c_last_key %s\n", str_view_hex(c_last_key).c_str());
         std::vector<void *> *ctn_ptr;
-        void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, key);
+        void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
         if (ret_ptr != nullptr) {
           memcpy(&ctn_ptr,
                  reinterpret_cast<void *>(const_cast<char *>(reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val().data())),
-                 sizeof(std::vector<void *> *));
+                 sizeof(uintptr_t));
+          //::printf("found %p\n", ctn_ptr);
           ctn_ptr->emplace_back(rec_ptr);
         } else {
           ctn_ptr = new std::vector<void *>;
+          //::printf("new   %p\n", ctn_ptr);
           ctn_ptr->emplace_back(rec_ptr);
-          db_insert(Storage::SECONDARY, key, {reinterpret_cast<char *>(&ctn_ptr), sizeof(std::vector<void *> *)},
-                    alignof(std::vector<void *> *));
+          db_insert(Storage::SECONDARY, c_last_key, str_view(ctn_ptr), sizeof(uintptr_t));
         }
 
         struct S {
@@ -416,8 +424,8 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
 
         std::sort(ctn_ptr->begin(), ctn_ptr->end(), S::comp);
         //1 histories per customer.
-        std::string his_key = std::to_string(hkg.get());
-        load_history(w, d, c, static_cast<const std::string &&>(his_key));
+        SimpleKey<8> his_key = hkg.get_as_simple_key();
+        load_history(w, d, c, his_key.view());
         //1 order per customer.
         load_order(w, d, c);
       }
@@ -461,10 +469,9 @@ void load_district(const std::size_t w) {
 #ifdef DEBUG
       std::cout<<"D_ID:"<<district.D_ID<<std::endl;
 #endif
-
-      std::string key{district.createKey()};
-      db_insert(Storage::DISTRICT, key, {reinterpret_cast<char *>(&district), sizeof(district)},
-                alignof(TPCC::District));
+      SimpleKey<8> key;
+      district.createKey(key.ptr());
+      db_insert(Storage::DISTRICT, key.view(), district.view(), alignof(TPCC::District));
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
       load_customer(d, w, hkg);

@@ -49,13 +49,13 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     WHERE w_id = :w_id AND c_w_id = w_id AND c_d_id = :d_id AND c_id = :c_id;
     +========================================================================*/
   TPCC::Warehouse *wh;
-  std::string wh_key;
-  wh_key = TPCC::Warehouse::CreateKey(w_id);
+  SimpleKey<8> wh_key;
+  TPCC::Warehouse::CreateKey(w_id, wh_key.ptr());
   // index = _wl->i_warehouse;
   // item = index_read(index, key, wh_to_part(w_id));
   Tuple *ret_tuple_ptr;
   Status stat;
-  stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
+  stat = search_key(token, Storage::WAREHOUSE, wh_key.view(), &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -65,8 +65,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   [[maybe_unused]] double w_tax = wh->W_TAX;
   //uint64_t key = custKey(c_id, d_id, w_id);
   TPCC::Customer *cust;
-  std::string cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
-  stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
+  SimpleKey<8> cust_key;
+  TPCC::Customer::CreateKey(w_id, d_id, c_id, cust_key.ptr());
+  stat = search_key(token, Storage::CUSTOMER, cust_key.view(), &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -116,8 +117,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     WHERE d_id = :d_id AND d_w_id = :w_id ;
     +===================================================*/
   TPCC::District dist{};
-  std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
-  stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
+  SimpleKey<8> dist_key;
+  TPCC::District::CreateKey(w_id, d_id, dist_key.ptr());
+  stat = search_key(token, Storage::DISTRICT, dist_key.view(), &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -129,7 +131,7 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   o_id++;
   dist.D_NEXT_O_ID = o_id;
   // o_id = dist.D_NEXT_O_ID; /* no need to execute */
-  stat = update(token, Storage::DISTRICT, dist_key, {reinterpret_cast<char *>(&dist), sizeof(dist)},
+  stat = update(token, Storage::DISTRICT, dist_key.view(), dist.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::District)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
@@ -169,8 +171,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   order.O_OL_CNT = ol_cnt;
   int64_t all_local = (remote ? 0 : 1);
   order.O_ALL_LOCAL = all_local;
-  std::string order_key = TPCC::Order::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID);
-  stat = insert(token, Storage::ORDER, order_key, {(char *) &order, sizeof(TPCC::Order)},
+  SimpleKey<8> order_key;
+  TPCC::Order::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID, order_key.ptr());
+  stat = insert(token, Storage::ORDER, order_key.view(), order.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::Order)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
@@ -201,8 +204,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   neworder.NO_O_ID = o_id;
   neworder.NO_D_ID = d_id;
   neworder.NO_W_ID = w_id;
-  std::string no_key = TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID);
-  stat = insert(token, Storage::NEWORDER, no_key, {(char *) &neworder, sizeof(TPCC::NewOrder)},
+  SimpleKey<8> no_key;
+  TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID, no_key.ptr());
+  stat = insert(token, Storage::NEWORDER, no_key.view(), neworder.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::NewOrder)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
@@ -238,8 +242,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
      */
 
     TPCC::Item *item;
-    std::string item_key = TPCC::Item::CreateKey(ol_i_id);
-    stat = search_key(token, Storage::ITEM, item_key, &ret_tuple_ptr);
+    SimpleKey<8> item_key;
+    TPCC::Item::CreateKey(ol_i_id, item_key.ptr());
+    stat = search_key(token, Storage::ITEM, item_key.view(), &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -285,8 +290,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
       +===============================================*/
 
     TPCC::Stock stock{};
-    std::string stock_key = TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id);
-    stat = search_key(token, Storage::STOCK, stock_key, &ret_tuple_ptr);
+    SimpleKey<8> stock_key;
+    TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id, stock_key.ptr());
+    stat = search_key(token, Storage::STOCK, stock_key.view(), &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -331,7 +337,7 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
       quantity = s_quantity - ol_quantity + 91;
     }
     stock.S_QUANTITY = (double) quantity;
-    stat = update(token, Storage::STOCK, stock_key, {reinterpret_cast<char *>(&stock), sizeof(stock)},
+    stat = update(token, Storage::STOCK, stock_key.view(), stock.view(),
                   static_cast<std::align_val_t>(alignof(TPCC::Stock)));
     if (stat == Status::WARN_NOT_FOUND) {
       abort(token);
@@ -408,9 +414,10 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     // distinfo?
 #endif
     // The number of keys is enough? It is different from DBx1000
-    std::string ol_key = TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID,
-                                                    orderline.OL_NUMBER);
-    stat = insert(token, Storage::ORDERLINE, ol_key, {(char *) &orderline, sizeof(TPCC::OrderLine)},
+    SimpleKey<8> ol_key;
+    TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID,
+                               orderline.OL_NUMBER, ol_key.ptr());
+    stat = insert(token, Storage::ORDERLINE, ol_key.view(), orderline.view(),
                   static_cast<std::align_val_t>(alignof(TPCC::OrderLine)));
     if (stat == Status::WARN_NOT_FOUND) {
       abort(token);

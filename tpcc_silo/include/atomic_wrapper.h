@@ -68,4 +68,11 @@ static bool compareExchange(T& m, T& before, T2 after) {                   // NO
                                      __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
 }
 
+template <typename Int1, typename Int2>
+static Int1 fetchAdd(Int1& m, Int2 v, int memorder = __ATOMIC_ACQ_REL)
+{
+  return __atomic_fetch_add(&m, v, memorder);
+}
+
+
 } // namespace ccbench

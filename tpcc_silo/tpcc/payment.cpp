@@ -27,8 +27,9 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   //   WHERE w_id=:w_id;
   // +===================================================================*/
   TPCC::Warehouse wh{};
-  std::string wh_key = TPCC::Warehouse::CreateKey(w_id);
-  stat = search_key(token, Storage::WAREHOUSE, wh_key, &ret_tuple_ptr);
+  SimpleKey<8> wh_key;
+  TPCC::Warehouse::CreateKey(w_id, wh_key.ptr());
+  stat = search_key(token, Storage::WAREHOUSE, wh_key.view(), &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -39,7 +40,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   if (g_wh_update) {
     wh.W_YTD = w_ytd + query->h_amount;
 
-    stat = update(token, Storage::WAREHOUSE, wh_key, {reinterpret_cast<char *>(&wh), sizeof(wh)},
+    stat = update(token, Storage::WAREHOUSE, wh_key.view(), wh.view(),
                   static_cast<std::align_val_t>(alignof(TPCC::Warehouse)));
     if (stat == Status::WARN_NOT_FOUND) {
       abort(token);
@@ -57,8 +58,9 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   // +====================================================================*/
 
   TPCC::District dist{};
-  std::string dist_key = TPCC::District::CreateKey(w_id, d_id);
-  stat = search_key(token, Storage::DISTRICT, dist_key, &ret_tuple_ptr);
+  SimpleKey<8> dist_key;
+  TPCC::District::CreateKey(w_id, d_id, dist_key.ptr());
+  stat = search_key(token, Storage::DISTRICT, dist_key.view(), &ret_tuple_ptr);
   if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -68,7 +70,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   dist.D_YTD += query->h_amount;
   std::string d_name(dist.D_NAME);
 
-  stat = update(token, Storage::DISTRICT, dist_key, {reinterpret_cast<char *>(&dist), sizeof(dist)},
+  stat = update(token, Storage::DISTRICT, dist_key.view(), dist.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::District)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
@@ -76,7 +78,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   }
 
   TPCC::Customer cust{};
-  std::string cust_key;
+  SimpleKey<8> cust_key;
   if (query->by_last_name) {
     // ==========================================================
     // EXEC SQL SELECT count(c_id) INTO :namecnt
@@ -116,8 +118,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     //   FROM customer
     //   WHERE c_w_id=:c_w_id AND c_d_id=:c_d_id AND c_id=:c_id;
     // ==========================================================
-    cust_key = TPCC::Customer::CreateKey(w_id, d_id, c_id);
-    stat = search_key(token, Storage::CUSTOMER, cust_key, &ret_tuple_ptr);
+    TPCC::Customer::CreateKey(w_id, d_id, c_id, cust_key.ptr());
+    stat = search_key(token, Storage::CUSTOMER, cust_key.view(), &ret_tuple_ptr);
     if (stat == Status::WARN_CONCURRENT_DELETE || stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -154,7 +156,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   //   WHERE c_w_id = :c_w_id AND c_d_id = :c_d_id AND
   //     c_id = :c_id;
   // ==========================================================
-  stat = update(token, Storage::CUSTOMER, cust_key, {reinterpret_cast<char *>(&cust), sizeof(cust)},
+  stat = update(token, Storage::CUSTOMER, cust_key.view(), cust.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::Customer)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
@@ -177,8 +179,8 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
 #if !TPCC_SMALL
   sprintf(hist.H_DATA, "%-10.10s    %.10s", w_name.c_str(), d_name.c_str());
 #endif
-  std::string hist_key = std::to_string(hkg->get());
-  stat = insert(token, Storage::HISTORY, hist_key, {reinterpret_cast<char *>(&hist), sizeof(hist)},
+  SimpleKey<8> hist_key = hkg->get_as_simple_key();
+  stat = insert(token, Storage::HISTORY, hist_key.view(), hist.view(),
                 static_cast<std::align_val_t>(alignof(TPCC::History)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
