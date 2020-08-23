@@ -1,4 +1,5 @@
 # CCBench : Redesign and Implement Many Concurrency Control
+![build_and_test](https://github.com/thawk105/ccbench/workflows/build_and_test/badge.svg)
 
 ---
 

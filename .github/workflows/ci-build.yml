@@ -1,4 +1,4 @@
-name: ccbench-CI
+name: build_and_test
 
 on: [push, pull_request]
 
