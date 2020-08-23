@@ -95,17 +95,28 @@ struct Xoroshiro128PlusWrapper : Xoroshiro128Plus {
 /**
  * All thread can use 64bit random number generator.
  */
-inline thread_local Xoroshiro128PlusWrapper rand_; // NOLINT
+inline std::uint64_t random_64bits()
+{
+  thread_local Xoroshiro128PlusWrapper rand;
+  return rand();
+}
 
 
 /**
  * returned value is in [min, max]. (both-side inclusive)
  */
-inline std::uint64_t random_number(std::uint64_t min, std::uint64_t max) {
+inline std::uint64_t random_int(std::uint64_t min, std::uint64_t max)
+{
   assert(min <= max);
   assert(max < UINT64_MAX);
 
-  return rand_() % (max - min + 1) + min;
+  return random_64bits() % (max - min + 1) + min;
+}
+
+
+inline double random_double(std::uint64_t min, std::uint64_t max, std::size_t divider)
+{
+  return random_int(min, max) / (double)divider;
 }
 
 
@@ -160,7 +171,7 @@ std::uint64_t non_uniform_random(std::uint64_t x, std::uint64_t y) {
   if (C == UINT64_MAX) {
     throw std::runtime_error("non_uniform_random() bug");
   }
-  return (((random_number(0, A) | random_number(x, y)) + C) % (y - x + 1)) + x;
+  return (((random_int(0, A) | random_int(x, y)) + C) % (y - x + 1)) + x;
 }
 
 
@@ -174,9 +185,9 @@ std::size_t random_string_detail(std::size_t min_len, std::size_t max_len, char 
   const char c[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const std::size_t max_idx = is_number_only ? 9 : (sizeof(c) - 1);
 
-  std::size_t len = random_number(min_len, max_len);
+  std::size_t len = random_int(min_len, max_len);
   for (std::size_t i = 0; i < len; i++) {
-    out[i] = c[random_number(0, max_idx)];
+    out[i] = c[random_int(0, max_idx)];
   }
   out[len] = '\0';
   return len;
@@ -252,7 +263,7 @@ public:
     for (std::size_t i = 0; i < nr_original; i++) {
       std::size_t id;
       do {
-        id = random_number(0, nr_total - 1);
+        id = random_int(0, nr_total - 1);
       } while (bitvec_[id]);
       bitvec_[id] = true;
     }
@@ -268,7 +279,7 @@ public:
 inline void make_original(char *target, std::size_t len) {
   assert(len >= 8);
   const char orig[] = "ORIGINAL";
-  std::size_t pos = random_number(0, len - 8);
+  std::size_t pos = random_int(0, len - 8);
   for (std::size_t i = 0; i < 8; i++) {
     target[pos + i] = orig[i];
   }
@@ -283,16 +294,18 @@ struct Permutation {
    */
   Permutation(std::size_t min, std::size_t max) : perm_(max - min + 1) {
     assert(min < max);
-    std::size_t i = min;
-    for (std::size_t &val : perm_) {
-      val = i;
-      i++;
+    {
+      std::size_t i = min;
+      for (std::size_t &val : perm_) {
+        val = i;
+        i++;
+      }
+      assert(i - 1 == max);
     }
-    assert(i - 1 == max);
 
     const std::size_t s = perm_.size();
-    for (i = 0; i < s - 1; i++) {
-      std::size_t j = random_number(0, s - i - 1);
+    for (std::size_t i = 0; i < s - 1; i++) {
+      std::size_t j = random_int(0, s - i - 1);
       assert(i + j < s);
       if (j != 0) std::swap(perm_[i], perm_[i + j]);
     }

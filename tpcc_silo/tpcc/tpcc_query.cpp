@@ -5,6 +5,7 @@
 #include <cstring>
 #include "../include/random.hh"
 #include "tpcc_query.hpp"
+#include "tpcc_util.hpp"
 
 #define ID_START 1
 
@@ -20,142 +21,84 @@
 
 namespace TPCC {
 
-/*==================================================================+
-  | ROUTINE NAME
-  |   Lastname
-  | DESCRIPTION
-  |   TPC-C Lastname Function.
-  | ARGUMENTS
-  |   num - non-uniform random number
-  |   name - last name string
-  +==================================================================*/
-void Lastname(std::uint64_t num, char *name) {
-  static const char *n[] =
-          {"BAR", "OUGHT", "ABLE", "PRI", "PRES",
-           "ESE", "ANTI", "CALLY", "ATION", "EING"};
-  strcpy(name, n[num / 100]);
-  strcat(name, n[(num / 10) % 10]);
-  strcat(name, n[num % 10]);
-}
 
-std::uint64_t Random(std::uint64_t x, std::uint64_t y, Xoroshiro128Plus &rnd) {
-  if (x == y) return x;
-  if (x > y) std::abort();
-  return (rnd.next() % (y - x + 1)) + x;
-}
-
-std::uint64_t NURand(std::uint64_t A, std::uint64_t x, std::uint64_t y, Xoroshiro128Plus &rnd) {
-  static int C_C_LAST = -1;
-  static int C_C_ID = -1;
-  static int C_OL_I_ID = -1;
-  std::uint64_t C;
-
-  switch (A) {
-    case 255:
-      if (C_C_LAST == -1) {
-        C_C_LAST = Random(0, 255, rnd);
-      }
-      C = C_C_LAST;
-      break;
-    case 1023:
-      if (C_C_ID == -1) {
-        C_C_ID = Random(0, 1023, rnd);
-      }
-      C = C_C_ID;
-      break;
-    case 8191:
-      if (C_OL_I_ID == -1) {
-        C_OL_I_ID = Random(0, 8191, rnd);
-      }
-      C = C_OL_I_ID;
-      break;
-    default:
-      std::abort();
-  }
-  return (((Random(0, A, rnd) | Random(x, y, rnd)) + C) % (y - x + 1)) + x;
-}
-
-void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt) {
+void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, query::Option &opt) {
 
 #ifdef FIXED_WAREHOUSE_PER_THREAD
   w_id = w_id0;
 #else
-  w_id = Random(ID_START, opt.num_wh, rnd);
+  w_id = random_int(ID_START, opt.num_wh);
 #endif
-  d_id = Random(ID_START, opt.dist_per_ware, rnd);
-  c_id = NURand(1023, ID_START, opt.cust_per_dist, rnd);
-  rbk = Random(1, 100, rnd);
-  ol_cnt = Random(5, 15, rnd);
+  d_id = random_int(ID_START, opt.dist_per_ware);
+  c_id = non_uniform_random<1023>(ID_START, opt.cust_per_dist);
+  rbk = random_int(1, 100);
+  ol_cnt = random_int(5, 15);
   o_entry_d = 2013;
-  remote = false;
 
   for (unsigned int i = 0; i < ol_cnt; ++i) {
 #if 0 // ol_i_id is no need to be unique.
     { redo1:
-      items[i].ol_i_id = NURand(8191, ID_START, opt.max_items, rnd);
+      items[i].ol_i_id = non_uniform_random<8191>(ID_START, opt.max_items);
       for (unsigned int j=0; j<i; ++j) {
         if (items[i].ol_i_id == items[j].ol_i_id) goto redo1;
       }
     }
 #else
-    items[i].ol_i_id = NURand(8191, ID_START, opt.max_items, rnd);
+    items[i].ol_i_id = non_uniform_random<8191>(ID_START, opt.max_items);
 #endif
-    if (opt.num_wh == 1 || Random(ID_START, 100, rnd) > 1) {
+    if (opt.num_wh == 1 || random_int(0, 99) != 0) {
       items[i].ol_supply_w_id = w_id;
+      remote = false;
     } else {
       do {
-        items[i].ol_supply_w_id = Random(ID_START, opt.num_wh, rnd);
+        items[i].ol_supply_w_id = random_int(ID_START, opt.num_wh);
       } while (items[i].ol_supply_w_id == w_id);
       remote = true;
     }
-    items[i].ol_quantity = Random(1, 10, rnd);
+    items[i].ol_quantity = random_int(1, 10);
   }
   if (rbk == 1) { // set an unused item number to produce "not-found" for roll back
     items[ol_cnt - 1].ol_i_id += opt.max_items;
   }
 }
 
-void query::Payment::generate([[maybe_unused]]std::uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt) {
+void query::Payment::generate([[maybe_unused]]std::uint16_t w_id0, query::Option &opt) {
 
 #ifdef FIXED_WAREHOUSE_PER_THREAD
   w_id = w_id0;
 #else
-  w_id = Random(ID_START, opt.num_wh, rnd);
+  w_id = random_int(ID_START, opt.num_wh);
 #endif
   d_w_id = w_id;
-  d_id = Random(ID_START, opt.dist_per_ware, rnd);
-  h_amount = Random(100, 500000, rnd) * 0.01;
+  d_id = random_int(ID_START, opt.dist_per_ware);
+  h_amount = random_double(100, 500000, 100);
 
-  int x = Random(1, 100, rnd);
+  size_t x = random_int(1, 100);
   if (x <= 85) {
     // home warehouse
     c_d_id = d_id;
     c_w_id = w_id;
   } else {
     // remote warehouse
-    c_d_id = Random(ID_START, opt.dist_per_ware, rnd);
+    c_d_id = random_int(ID_START, opt.dist_per_ware);
     if (opt.num_wh > 1) {
       do {
-        c_w_id = Random(ID_START, opt.num_wh, rnd);
+        c_w_id = random_int(ID_START, opt.num_wh);
       } while (c_w_id == w_id);
     } else {
       c_w_id = w_id;
     }
   }
 
-  int y = Random(1, 100, rnd);
-#if 0 // by last name is still buggy... hoshino is debugging on it.
+  size_t y = random_int(1, 100);
   if (y <= 60) {
-#else
-  if (y < 1) {
-#endif
     // by last name
     by_last_name = true;
-    Lastname(NURand(255, 0, 999, rnd), c_last);
+    make_c_last(non_uniform_random<255>(0, 999), c_last);
   } else {
     // by cust id
     by_last_name = false;
-    c_id = NURand(1023, ID_START, opt.cust_per_dist, rnd);
+    c_id = non_uniform_random<1023>(ID_START, opt.cust_per_dist);
   }
 }
 
@@ -179,8 +122,8 @@ void query::Payment::print() {
 
 }
 
-static QueryType decideQueryType(Xoroshiro128Plus &rnd, query::Option &opt) {
-  uint64_t x = rnd.next();
+static QueryType decideQueryType(query::Option &opt) {
+  uint64_t x = random_64bits();
   if (x >= opt.threshold_new_order) return Q_NEW_ORDER;
   if (x >= opt.threshold_payment) return Q_PAYMENT;
   if (x >= opt.threshold_order_status) return Q_ORDER_STATUS;
@@ -188,14 +131,14 @@ static QueryType decideQueryType(Xoroshiro128Plus &rnd, query::Option &opt) {
   return Q_STOCK_LEVEL;
 }
 
-void Query::generate(std::uint16_t w_id, Xoroshiro128Plus &rnd, query::Option &opt) {
-  type = decideQueryType(rnd, opt);
+void Query::generate(std::uint16_t w_id, query::Option &opt) {
+  type = decideQueryType(opt);
   switch (type) {
     case Q_NEW_ORDER:
-      new_order.generate(w_id, rnd, opt);
+      new_order.generate(w_id, opt);
       break;
     case Q_PAYMENT:
-      payment.generate(w_id, rnd, opt);
+      payment.generate(w_id, opt);
       break;
     case Q_ORDER_STATUS:
     case Q_DELIVERY:
