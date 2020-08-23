@@ -13,7 +13,7 @@
 namespace ccbench {
 
 static void displayRusageRUMaxrss() {  // NOLINT
-  struct rusage r {};
+  struct rusage r{};
   if (getrusage(RUSAGE_SELF, &r) != 0) {
     std::cout << __FILE__ << " : " << __LINE__ << " : fatal error."
               << std::endl;

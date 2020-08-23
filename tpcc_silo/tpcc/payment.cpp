@@ -100,17 +100,17 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     // ==========================================================
     char c_last_key_buf[Customer::maxLenOfSecondaryKey()];
     std::string_view c_last_key = Customer::CreateSecondaryKey(c_w_id, c_d_id, query->c_last, &c_last_key_buf[0]);
-    void* ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
+    void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
 
     // QQQQQ
     if (ret_ptr == nullptr) {
-        // debug
-        ::printf("c_w_id %u  c_d_id %u  c_last %s\n", c_w_id, c_d_id, query->c_last);
+      // debug
+      ::printf("c_w_id %u  c_d_id %u  c_last %s\n", c_w_id, c_d_id, query->c_last);
 
     }
 
     assert(ret_ptr != nullptr);
-    std::vector<SimpleKey<8>>* vec_ptr;
+    std::vector<SimpleKey<8>> *vec_ptr;
     std::string_view value_view = reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val();
     assert(value_view.size() == sizeof(uintptr_t));
     ::memcpy(&vec_ptr, value_view.data(), sizeof(uintptr_t));
@@ -157,16 +157,18 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     // strncat(c_new_data,c_data,500-strlen(c_new_data));
     // ==========================================================
     char c_new_data[501];
-    size_t len = snprintf(&c_new_data[0], 501, "| %4" PRIu32 " %2" PRIu8 " %4" PRIu16 " %2" PRIu16 " %4" PRIu16 " $%7.2f",
-                           c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
+    size_t len = snprintf(&c_new_data[0], 501,
+                          "| %4" PRIu32 " %2" PRIu8 " %4" PRIu16 " %2" PRIu16 " %4" PRIu16 " $%7.2f",
+                          c_id, c_d_id, c_w_id, d_id, w_id, query->h_amount);
     assert(len <= 500);
 #if 1
     size_t i = 0;
     while (len < 500) {
-        char c = cust.C_DATA[i];
-        if (c == '\0') break;
-        c_new_data[len] = c;
-        len++; i++;
+      char c = cust.C_DATA[i];
+      if (c == '\0') break;
+      c_new_data[len] = c;
+      len++;
+      i++;
     }
 #else
     if (len < 500) {

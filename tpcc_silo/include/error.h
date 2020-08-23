@@ -17,6 +17,7 @@ namespace ccbench {
 class LibcError : public std::exception {
 private:
   std::string str_;
+
   static std::string generateMessage(int errnum,  // NOLINT
                                      const std::string &msg) {
     std::string s(msg);
@@ -33,7 +34,7 @@ private:
 public:
   explicit LibcError(int err_num = errno,                     // NOLINT
                      const std::string &msg = "libc_error:")  // NOLINT
-      : str_(generateMessage(err_num, msg)) {}
+          : str_(generateMessage(err_num, msg)) {}
 };
 
 } // namespace ccbench

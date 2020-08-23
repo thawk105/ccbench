@@ -19,7 +19,7 @@ namespace ccbench {
  * @return Status::OK, it was ended correctly.
  * but it isn't committed yet.
  */
-Status read_record(Record& res, const Record* dest);  // NOLINT
+Status read_record(Record &res, const Record *dest);  // NOLINT
 
 /**
  * @brief Transaction begins.
@@ -28,7 +28,7 @@ Status read_record(Record& res, const Record* dest);  // NOLINT
  */
 void tx_begin(Token token);
 
-void write_phase(session_info* ti, const tid_word& max_r_set,
-                 const tid_word& max_w_set);
+void write_phase(session_info *ti, const tid_word &max_r_set,
+                 const tid_word &max_w_set);
 
 }  // namespace ccbench

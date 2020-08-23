@@ -27,6 +27,7 @@ static constexpr std::size_t CACHE_LINE_SIZE{64};  // NOLINT
 #endif
 
 #ifdef CCBENCH_LINUX
+
 [[maybe_unused]] static void setThreadAffinity(const int my_id) {
   using namespace std;
   static std::atomic<int> n_processors(-1);

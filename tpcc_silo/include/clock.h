@@ -25,27 +25,27 @@ namespace ccbench {
 #endif
 
 
-template <typename Clock = std::chrono::high_resolution_clock>
-class StopWatch
-{
-    using TimePoint = std::chrono::time_point<Clock>;
-    TimePoint tp[2];
+template<typename Clock = std::chrono::high_resolution_clock>
+class StopWatch {
+  using TimePoint = std::chrono::time_point<Clock>;
+  TimePoint tp[2];
 public:
-    StopWatch() {
-        tp[0] = Clock::now();
-        tp[1] = tp[0];
-    }
-    void mark() {
-        TimePoint now = Clock::now();
-        tp[0] = tp[1];
-        tp[1] = now;
-    }
-    double period() const {
-        std::chrono::duration<double> ret = tp[1] - tp[0];
-        return ret.count();
-    }
-};
+  StopWatch() {
+    tp[0] = Clock::now();
+    tp[1] = tp[0];
+  }
 
+  void mark() {
+    TimePoint now = Clock::now();
+    tp[0] = tp[1];
+    tp[1] = now;
+  }
+
+  double period() const {
+    std::chrono::duration<double> ret = tp[1] - tp[0];
+    return ret.count();
+  }
+};
 
 
 } // namespace ccbench

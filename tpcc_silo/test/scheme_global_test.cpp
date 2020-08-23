@@ -9,7 +9,8 @@ namespace ccbench::testing {
 
 using namespace ccbench;
 
-class scheme_global_test : public ::testing::Test {};
+class scheme_global_test : public ::testing::Test {
+};
 
 TEST_F(scheme_global_test, storage_test) { // NOLINT
   ASSERT_EQ(static_cast<int>(Storage::CUSTOMER), 0);

@@ -273,6 +273,7 @@ __thread typename masstree_wrapper<T>::table_params::threadinfo_type *
 class kohler_masstree {
 public:
   static constexpr std::size_t db_length = 10;
+
   /**
    * @brief find record from masstree by using args informations.
    * @return the found record pointer.

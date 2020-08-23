@@ -420,14 +420,15 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         }
 
         struct S {
-          static Customer* search(const SimpleKey<8>& pkey) {
-              Record *rec = reinterpret_cast<Record*>(kohler_masstree::find_record(Storage::CUSTOMER, pkey.view()));
-              return reinterpret_cast<Customer*>(const_cast<char*>(rec->get_tuple().get_val().data()));
+          static Customer *search(const SimpleKey<8> &pkey) {
+            Record *rec = reinterpret_cast<Record *>(kohler_masstree::find_record(Storage::CUSTOMER, pkey.view()));
+            return reinterpret_cast<Customer *>(const_cast<char *>(rec->get_tuple().get_val().data()));
           }
-          static bool less(const SimpleKey<8>& lh, const SimpleKey<8>& rh) {
-              const Customer* lh_cust = search(lh);
-              const Customer* rh_cust = search(rh);
-              return ::strncmp(lh_cust->C_FIRST, rh_cust->C_FIRST, sizeof(Customer::C_FIRST)) < 0;
+
+          static bool less(const SimpleKey<8> &lh, const SimpleKey<8> &rh) {
+            const Customer *lh_cust = search(lh);
+            const Customer *rh_cust = search(rh);
+            return ::strncmp(lh_cust->C_FIRST, rh_cust->C_FIRST, sizeof(Customer::C_FIRST)) < 0;
           }
         };
 
@@ -501,7 +502,7 @@ void load_district(const std::size_t w) {
 #else
   // single-threaded.
   for (uint8_t d = 1; d <= DIST_PER_WARE; ++d) {
-      S::work(d, w, hkg);
+    S::work(d, w, hkg);
   }
 #endif
 
@@ -529,11 +530,10 @@ void load() {
 }
 
 
-void load_per_warehouse(uint16_t w_id)
-{
-    load_warehouse(w_id);
-    load_stock(w_id);
-    load_district(w_id);
+void load_per_warehouse(uint16_t w_id) {
+  load_warehouse(w_id);
+  load_stock(w_id);
+  load_district(w_id);
 }
 
 

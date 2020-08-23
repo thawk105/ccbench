@@ -9,13 +9,13 @@
 
 namespace ccbench {
 
-Status session_info_table::decide_token(Token& token) {  // NOLINT
-  for (auto&& itr : kThreadTable) {
+Status session_info_table::decide_token(Token &token) {  // NOLINT
+  for (auto &&itr : kThreadTable) {
     if (!itr.get_visible()) {
       bool expected(false);
       bool desired(true);
       if (itr.cas_visible(expected, desired)) {
-        token = static_cast<void*>(&(itr));
+        token = static_cast<void *>(&(itr));
         break;
       }
     }
@@ -27,7 +27,7 @@ Status session_info_table::decide_token(Token& token) {  // NOLINT
 
 void session_info_table::init_kThreadTable() {
   uint64_t ctr(0);
-  for (auto&& itr : kThreadTable) {
+  for (auto &&itr : kThreadTable) {
     itr.set_visible(false);
     itr.set_tx_began(false);
 
@@ -39,9 +39,9 @@ void session_info_table::init_kThreadTable() {
     std::size_t gc_index = ctr % KVS_NUMBER_OF_LOGICAL_CORES;
     itr.set_gc_container_index(gc_index);
     itr.set_gc_record_container(
-        &garbage_collection::get_garbage_records_at(gc_index));
+            &garbage_collection::get_garbage_records_at(gc_index));
     itr.set_gc_value_container(
-        &garbage_collection::get_garbage_values_at(gc_index));
+            &garbage_collection::get_garbage_values_at(gc_index));
 
     /**
      * about logging.
@@ -62,7 +62,7 @@ void session_info_table::init_kThreadTable() {
 }
 
 void session_info_table::fin_kThreadTable() {
-  for (auto&& itr : kThreadTable) {
+  for (auto &&itr : kThreadTable) {
     /**
      * about holding operation info.
      */

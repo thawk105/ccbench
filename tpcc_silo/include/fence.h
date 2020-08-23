@@ -8,7 +8,7 @@
 
 namespace ccbench {
 
-INLINE void compilerFence() { asm volatile("" ::: "memory"); }
+INLINE void compilerFence() { asm volatile("":: : "memory"); }
 
 } // namespace ccbench
 

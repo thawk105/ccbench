@@ -62,7 +62,8 @@ struct SimpleKey {
   char data[N]; // not null-terminated.
 
   char *ptr() { return &data[0]; }
-  const char* ptr() const { return &data[0]; }
+
+  const char *ptr() const { return &data[0]; }
 
   [[nodiscard]] std::string_view view() const {
     return std::string_view(&data[0], N);
@@ -166,7 +167,7 @@ struct Customer {
   //Secondary Key: (C_W_ID, C_D_ID, C_LAST)
   //key length is variable. (maximum length is maxLenOfSecondaryKey()).
   //out buffer will not be null-terminated.
-  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char* c_last, char* out) {
+  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char *c_last, char *out) {
     const size_t c_last_len = ::strnlen(c_last, sizeof(Customer::C_LAST));
     const size_t key_len = sizeof(w_id) + sizeof(d_id) + c_last_len;
     assign_as_bigendian(w_id, &out[0]);
@@ -175,7 +176,8 @@ struct Customer {
     return std::string_view(out, key_len);
   }
 
-  std::string_view createSecondaryKey(char* out){ return CreateSecondaryKey(C_W_ID, C_D_ID, &C_LAST[0], out); }
+  std::string_view createSecondaryKey(char *out) { return CreateSecondaryKey(C_W_ID, C_D_ID, &C_LAST[0], out); }
+
   constexpr static size_t maxLenOfSecondaryKey() {
     return sizeof(Customer::C_W_ID) + sizeof(Customer::C_D_ID) + sizeof(Customer::C_LAST);
   }
