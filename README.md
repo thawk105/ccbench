@@ -90,15 +90,8 @@ Welcome pull request about
 - Improvement of versatile.
 - Extending CCBench
   - Reference materials : https://github.com/thawk105/ccbench/pull/7
+- Extend tests.
   
----
-
-## TODO
-- doxygen
-- Jenkins
-- google test
-- improve software architecture
-
 ---
 
 ## Acknowledgments
