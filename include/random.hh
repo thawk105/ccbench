@@ -13,6 +13,10 @@
 
 class Xoroshiro128Plus {
 public:
+  Xoroshiro128Plus() {
+    init();
+  }
+
   uint64_t s[2];
 
   inline void init() {
