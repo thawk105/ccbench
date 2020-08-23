@@ -169,8 +169,7 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   order.O_C_ID = c_id;
   order.O_ENTRY_D = o_entry_d;
   order.O_OL_CNT = ol_cnt;
-  int64_t all_local = (remote ? 0 : 1);
-  order.O_ALL_LOCAL = all_local;
+  order.O_ALL_LOCAL = (remote ? 0 : 1);
   SimpleKey<8> order_key;
   TPCC::Order::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID, order_key.ptr());
   stat = insert(token, Storage::ORDER, order_key.view(), order.view(),
