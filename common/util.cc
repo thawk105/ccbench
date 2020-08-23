@@ -30,20 +30,20 @@ size_t decideParallelBuildNumber(size_t tuple_num) {
 void displayProcedureVector(std::vector<Procedure> &pro) {
   printf("--------------------\n");
   size_t index = 0;
-  for (auto itr = pro.begin(); itr != pro.end(); ++itr) {
+  for (auto &&elem : pro) {
     printf(
             "-----\n"
             "op_num\t: %zu\n"
             "key\t: %zu\n"
             "r/w\t: %d\n",
-            index, (*itr).key_, (int) ((*itr).ope_));
+            index, elem.key_, (int) (elem.ope_));
     ++index;
   }
   printf("--------------------\n");
 }
 
 void displayRusageRUMaxrss() {
-  struct rusage r;
+  struct rusage r{};
   if (getrusage(RUSAGE_SELF, &r) != 0) ERR;
   printf("maxrss:\t%ld kB\n", r.ru_maxrss);
 }
@@ -52,14 +52,10 @@ void readyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
                                      const size_t thnm) {
   running++;
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
-
-  return;
 }
 
 void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm) {
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
-
-  return;
 }
 
 bool isReady(const std::vector<char> &readys) {

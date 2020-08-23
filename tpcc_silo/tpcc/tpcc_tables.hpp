@@ -1,9 +1,12 @@
-#pragma once
-/*
+/**
+ * @file tpcc_tables.hpp
+ * @details
  * TPC-C
  * http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
  * 1.3 Table Layouts
  */
+
+#pragma once
 
 #include <cstdint>
 #include <chrono>

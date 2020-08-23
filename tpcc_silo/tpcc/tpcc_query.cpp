@@ -1,6 +1,9 @@
+/**
+ * @file tpcc_query.cpp
+ */
+
 #include <cstring>
 #include "../include/random.hh"
-#include "../include/result.hh"
 #include "tpcc_query.hpp"
 
 #define ID_START 1

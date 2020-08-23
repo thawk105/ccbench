@@ -1,3 +1,7 @@
+/**
+ * @file payment.cpp
+ */
+
 #include "interface.h"
 #include "index/masstree_beta/include/masstree_beta_wrapper.h"
 #include "tpcc/tpcc_query.hpp"

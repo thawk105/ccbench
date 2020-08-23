@@ -1,33 +1,14 @@
 #include <stdio.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/time.h>
 #include <sys/types.h>  // syscall(SYS_gettid),
-#include <unistd.h>     // syscall(SYS_gettid),
 
 #include <bitset>
-#include <cstdint>
-#include <fstream>
-#include <iomanip>
 #include <iostream>
-#include <limits>
-#include <thread>
-#include <vector>
 
 #include "include/atomic_tool.hh"
-#include "include/common.hh"
-//#include "include/transaction.hh"
-//#include "include/tuple.hh"
 #include "include/util.hh"
 
-#include "../include/cache_line_size.hh"
-#include "../include/config.hh"
 #include "../include/debug.hh"
-//#include "../include/masstree_wrapper.hh"
-#include "../include/procedure.hh"
-#include "../include/random.hh"
-#include "../include/tsc.hh"
 #include "../include/util.hh"
-#include "../include/zipf.hh"
 
 void chkArg() {
   displayParameter();

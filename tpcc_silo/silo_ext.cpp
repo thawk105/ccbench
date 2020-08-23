@@ -1,18 +1,8 @@
-#include <cctype>
-#include <pthread.h>
-#include <sched.h>
 #include <cstdlib>
 #include <cstring>
-#include <sys/syscall.h>
-#include <ctime>
-#include <sys/types.h>
-#include <unistd.h>
 #include <algorithm>
-#include <cctype>
 
 #include "cpu.h"
-
-#include "boost/filesystem.hpp"
 
 #define GLOBAL_VALUE_DEFINE
 
@@ -21,8 +11,6 @@
 #include "include/util.hh"
 
 #include "../include/random.hh"
-#include "../include/result.hh"
-#include "../include/zipf.hh"
 #include "../include/util.hh"
 
 #include "tpcc_initializer.hpp"

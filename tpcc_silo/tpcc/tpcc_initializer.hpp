@@ -1,10 +1,10 @@
-/*
-TPC-C
-http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
+/**
+ * @file tpcc_initializer.hpp
+ * @details TPC-C
+ * http://www.tpc.org/tpc_documents_current_versions/pdf/tpc-c_v5.11.0.pdf
+ * 4.3.3 Table Population Requirements
+ */
 
-4.3.3 Table Population Requirements
-
-*/
 #pragma once
 
 #include "interface.h"

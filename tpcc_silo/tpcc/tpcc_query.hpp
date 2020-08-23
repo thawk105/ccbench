@@ -1,29 +1,15 @@
+/**
+ * @file tpcc_query.hpp
+ */
+
+#pragma once
+
 #include "../include/common.hh"
 #include "../include/random.hh"
 #include "../include/result.hh"
 
-#pragma once
-
 #define TPCC_SMALL  false
-#define NUM_WH          224
-#define DIST_PER_WARE  10
 #define LASTNAME_LEN  16
-
-#ifndef GFLAGS_GFLAGS_H_
-#define FLAGS_num_wh NUM_WH
-#define FLAGS_dist_per_ware DIST_PER_WARE
-#if TPCC_SMALL
-#define FLAGS_max_items 10000
-#define FLAGS_cust_per_dist 2000
-#else
-#define FLAGS_max_items 100000
-#define FLAGS_cust_per_dist 3000
-#endif
-#define FLAGS_perc_payment 50      // 43.1 for fullmix
-#define FLAGS_perc_order_status 0  // 4.1
-#define FLAGS_perc_delivery 0      // 4.2
-#define FLAGS_perc_stock_level 0   // 4.1
-#endif
 
 namespace TPCC {
 
