@@ -47,6 +47,15 @@ jobs:
           cmake ../..
           make all -j
 
+      - id: Build_third_party_googletest
+        name: Build_third_party_googletest
+        run: |
+          cd third_party/googletest
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j
+
       - id: Build_tpcc_silo
         name: Build_tpcc_silo
         run: |
