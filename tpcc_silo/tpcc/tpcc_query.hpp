@@ -30,10 +30,10 @@ public:
   std::uint32_t dist_per_ware = DIST_PER_WARE;
   std::uint32_t max_items = MAX_ITEMS;
   std::uint32_t cust_per_dist = CUST_PER_DIST;
-  double perc_payment = FLAGS_perc_payment;
-  double perc_order_status = FLAGS_perc_order_status;
-  double perc_delivery = FLAGS_perc_delivery;
-  double perc_stock_level = FLAGS_perc_stock_level;
+  std::uint64_t perc_payment = FLAGS_perc_payment;
+  std::uint64_t perc_order_status = FLAGS_perc_order_status;
+  std::uint64_t perc_delivery = FLAGS_perc_delivery;
+  std::uint64_t perc_stock_level = FLAGS_perc_stock_level;
 
   /**
    * 0                                                    UINT64_MAX
@@ -46,16 +46,16 @@ public:
    *
    * used by decideQueryType().
    */
-  uint64_t threshold_new_order;
-  uint64_t threshold_payment;
-  uint64_t threshold_order_status;
-  uint64_t threshold_delivery;
+  std::uint64_t threshold_new_order;
+  std::uint64_t threshold_payment;
+  std::uint64_t threshold_order_status;
+  std::uint64_t threshold_delivery;
 
   Option() {
-    threshold_delivery = perc_stock_level / 100.0 * UINT64_MAX;
-    threshold_order_status = threshold_delivery + (perc_delivery / 100.0 * UINT64_MAX);
-    threshold_payment = threshold_order_status + (perc_order_status / 100.0 * UINT64_MAX);
-    threshold_new_order = threshold_payment + (perc_payment / 100.0 * UINT64_MAX);
+    threshold_delivery = perc_stock_level * (UINT64_MAX / 100);
+    threshold_order_status = threshold_delivery + (perc_delivery * (UINT64_MAX / 100));
+    threshold_payment = threshold_order_status + (perc_order_status * (UINT64_MAX / 100));
+    threshold_new_order = threshold_payment + (perc_payment * (UINT64_MAX / 100));
 #if 0
     ::printf("query_type_threshold: %.3f %.3f %.3f %.3f\n"
              , threshold_new_order    / (double)UINT64_MAX

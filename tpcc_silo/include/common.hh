@@ -36,10 +36,10 @@ DEFINE_uint64(epoch_time, 40, "Epoch interval[msec].");
 DEFINE_uint64(extime, 1, "Execution time[sec].");
 
 DEFINE_uint32(num_wh, 1, "The number of warehouses");
-DEFINE_double(perc_payment, 50, "The percentage of Payment transactions"); // 43.1 for full
-DEFINE_double(perc_order_status, 0, "The percentage of Order-Status transactions"); // 4.1 for full
-DEFINE_double(perc_delivery, 0, "The percentage of Delivery transactions"); // 4.2 for full
-DEFINE_double(perc_stock_level, 0, "The percentage of Stock-Level transactions"); // 4.1 for full
+DEFINE_uint64(perc_payment, 50, "The percentage of Payment transactions"); // 43.1 for full
+DEFINE_uint64(perc_order_status, 0, "The percentage of Order-Status transactions"); // 4.1 for full
+DEFINE_uint64(perc_delivery, 0, "The percentage of Delivery transactions"); // 4.2 for full
+DEFINE_uint64(perc_stock_level, 0, "The percentage of Stock-Level transactions"); // 4.1 for full
 
 #else
 DECLARE_uint64(thread_num);
@@ -48,10 +48,10 @@ DECLARE_uint64(epoch_time);
 DECLARE_uint64(extime);
 
 DECLARE_uint32(num_wh);
-DECLARE_double(perc_payment);
-DECLARE_double(perc_order_status);
-DECLARE_double(perc_delivery);
-DECLARE_double(perc_stock_level);
+DECLARE_uint64(perc_payment);
+DECLARE_uint64(perc_order_status);
+DECLARE_uint64(perc_delivery);
+DECLARE_uint64(perc_stock_level);
 #endif
 
 constexpr std::size_t DIST_PER_WARE{10};
