@@ -11,6 +11,9 @@
 namespace ccbench {
 
 void session_info::clean_up_ops_set() {
+  for (auto &&elem : read_set) {
+    elem.get_rec_read().get_tuple().set_val_ptr(nullptr);
+  }
   read_set.clear();
   write_set.clear();
 }

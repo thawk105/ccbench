@@ -103,7 +103,13 @@ Status read_record(Record &res, const Record *const dest) {  // NOLINT
       // but it isn't committed yet.
     }
 
-    res.get_tuple() = dest->get_tuple();  // execute copy assign.
+    Tuple& sc_tup = res.get_tuple();
+    const Tuple& dest_tup = dest->get_tuple();
+    sc_tup.set_key(dest_tup.get_key());
+    sc_tup.set_val_ptr(dest_tup.get_val_ptr());
+    sc_tup.set_val_size(dest_tup.get_val_size());
+    sc_tup.set_val_align(dest_tup.get_val_align());
+
 
     s_check.set_obj(loadAcquire(dest->get_tidw().get_obj()));
     if (f_check == s_check) {

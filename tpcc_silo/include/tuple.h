@@ -82,6 +82,10 @@ public:
 
   [[nodiscard]] std::align_val_t get_val_align() const { return val_align_; }
 
+  void set_key(std::string_view key) {
+    this->key_ = key;
+  }
+
   void set_value(std::string_view val, std::align_val_t val_align) {
     ::operator delete(val_ptr_.load(std::memory_order_acquire), val_size_, val_align_);
     set_val_ptr(::operator new(val.size(), val_align));
