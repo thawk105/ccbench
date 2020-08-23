@@ -1,5 +1,6 @@
 # CCBench : Redesign and Implement Many Concurrency Control
-![build_and_test](https://github.com/thawk105/ccbench/workflows/build_and_test/badge.svg)
+![cicada_build](https://github.com/thawk105/ccbench/workflows/cicada_build/badge.svg)
+![tpcc_silo_build_and_ctest](https://github.com/thawk105/ccbench/workflows/tpcc_silo_build_and_ctest/badge.svg)
 
 ---
 
