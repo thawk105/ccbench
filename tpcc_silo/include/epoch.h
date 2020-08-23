@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "atomic_wrapper.h"
+#include "cpu.h"
 
 
 namespace ccbench::epoch {
@@ -26,8 +27,8 @@ namespace ccbench::epoch {
  */
 using epoch_t = std::uint32_t;
 
-[[maybe_unused]] inline epoch_t kGlobalEpoch;  // NOLINT
-inline epoch_t kReclamationEpoch;              // NOLINT
+[[maybe_unused]] alignas(CACHE_LINE_SIZE) inline epoch_t kGlobalEpoch;  // NOLINT
+alignas(CACHE_LINE_SIZE) inline epoch_t kReclamationEpoch;              // NOLINT
 
 // about epoch thread
 [[maybe_unused]] inline std::thread kEpochThread;  // NOLINT
