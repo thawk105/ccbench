@@ -19,6 +19,7 @@ file(GLOB SILO_SOURCES
 file(GLOB TEST_SOURCES
         "aligned_allocator_test.cpp"
         "scheme_global_test.cpp"
+        "tpcc_initializer_test.cpp"
         "unit_test.cpp"
         )
 
@@ -39,7 +40,8 @@ foreach (src IN LISTS TEST_SOURCES)
     if (fname MATCHES "test$")
         set(test_name "${fname}.exe")
 
-        if (fname MATCHES "unit_test$")
+        if ((fname MATCHES "unit_test$") OR
+        (fname MATCHES "tpcc_initializer_test"))
             add_executable(${test_name} ${src} ${SILO_SOURCES})
 
             target_include_directories(${test_name}
