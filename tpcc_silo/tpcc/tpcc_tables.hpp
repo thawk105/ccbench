@@ -107,7 +107,7 @@ struct Customer {
   char C_STATE[3];
   char C_ZIP[10];
   char C_PHONE[17];
-  std::time_t C_SINCE;//date and time
+  std::uint64_t C_SINCE;//date and time
   char C_CREDIT[3];   //"GC"=good, "BC"=bad
   double C_CREDIT_LIM;
   double C_DISCOUNT;
@@ -215,7 +215,7 @@ struct History {
   std::uint16_t H_C_W_ID; // 2*W unique IDs
   std::uint8_t H_D_ID; //20 unique IDs
   std::uint16_t H_W_ID; // 2*W unique IDs
-  std::time_t H_DATE; //date and time
+  std::uint64_t H_DATE; //date and time
   double H_AMOUNT; //signed numeric(6, 2)
   char H_DATA[25]; // variable text, size 24 Miscellaneous information
 
@@ -279,10 +279,10 @@ struct Order {
   std::uint8_t O_D_ID; // 20 unique IDs
   std::uint16_t O_W_ID; // 2*W unique IDs
   std::uint32_t O_C_ID; //96,000 unique IDs
-  std::time_t O_ENTRY_D; //date and time
+  std::uint64_t O_ENTRY_D; //date and time
   std::uint32_t O_CARRIER_ID; // unique IDs, or null
-  double O_OL_CNT; //numeric(2) Count of Order-Lines
-  double O_ALL_LOCAL; //numeric(1)
+  std::uint8_t O_OL_CNT; //numeric(2) Count of Order-Lines
+  std::uint8_t O_ALL_LOCAL; //numeric(1)
 
   //Primary Key: (O_W_ID, O_D_ID, O_ID)
   //key size is 8 bytes.
@@ -307,8 +307,8 @@ struct OrderLine {
   std::uint8_t OL_NUMBER;// 15 unique IDs
   std::uint32_t OL_I_ID;// 200,000 unique IDs
   std::uint16_t OL_SUPPLY_W_ID;// 2*W unique IDs
-  std::time_t OL_DELIVERY_D;// date and time, or null
-  double OL_QUANTITY;// numeric(2)
+  std::uint64_t OL_DELIVERY_D;// date and time, or null
+  std::uint8_t OL_QUANTITY;// numeric(2)
   double OL_AMOUNT;// signed numeric(6, 2)
   char OL_DIST_INFO[25];// fixed text, size 24
 
@@ -361,9 +361,9 @@ struct Stock {
   char S_DIST_08[25]; // fixed text, size 24
   char S_DIST_09[25]; // fixed text, size 24
   char S_DIST_10[25]; // fixed text, size 24
-  double S_YTD; // numeric(8)
-  double S_ORDER_CNT; // numeric(4)
-  double S_REMOTE_CNT; // numeric(4)
+  std::uint32_t S_YTD; // numeric(8)
+  std::uint16_t S_ORDER_CNT; // numeric(4)
+  std::uint16_t S_REMOTE_CNT; // numeric(4)
   char S_DATA[51]; // variable text, size 50
 
   // Primary Key: (S_W_ID, S_I_ID) composite.
