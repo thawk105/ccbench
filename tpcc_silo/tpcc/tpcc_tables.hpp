@@ -15,49 +15,7 @@
 #include <cassert>
 #include <sstream>
 #include "atomic_wrapper.h"
-
-
-template<typename Int>
-void assign_as_bigendian(Int value, char *out) {
-  Int tmp;
-  switch (sizeof(Int)) {
-    case 1:
-      tmp = value;
-      break;
-    case 2:
-      tmp = __builtin_bswap16(value);
-      break;
-    case 4:
-      tmp = __builtin_bswap32(value);
-      break;
-    case 8:
-      tmp = __builtin_bswap64(value);
-      break;
-    default:
-      assert(false);
-  };
-  ::memcpy(out, &tmp, sizeof(tmp));
-}
-
-
-template<typename T>
-std::string_view struct_str_view(const T &t) {
-  return std::string_view(reinterpret_cast<const char *>(&t), sizeof(t));
-}
-
-
-/**
- * for debug.
- */
-inline std::string str_view_hex(std::string_view sv) {
-  std::stringstream ss;
-  char buf[3];
-  for (auto &&i : sv) {
-    ::snprintf(buf, sizeof(buf), "%02x", i);
-    ss << buf;
-  }
-  return ss.str();
-}
+#include "tpcc_util.hpp"
 
 
 template<size_t N>
@@ -71,13 +29,17 @@ struct SimpleKey {
   [[nodiscard]] std::string_view view() const {
     return std::string_view(&data[0], N);
   }
+
+  int compare(const SimpleKey& rhs) const {
+    return ::memcmp(data, rhs.data, N);
+  }
+  bool operator<(const SimpleKey& rhs) const {
+    return compare(rhs) < 0;
+  }
+  bool operator==(const SimpleKey& rhs) const {
+    return compare(rhs) == 0;
+  }
 };
-
-
-template<typename T>
-inline std::string_view str_view(const T &t) {
-  return std::string_view(reinterpret_cast<const char *>(&t), sizeof(t));
-}
 
 
 namespace TPCC {
@@ -151,17 +113,79 @@ struct Customer {
   double C_DISCOUNT;
   double C_BALANCE;
   double C_YTD_PAYMENT;
-  double C_PAYMENT_CNT;
-  double C_DELIVERY_CNT;
+  uint16_t C_PAYMENT_CNT;
+  uint16_t C_DELIVERY_CNT;
   char C_DATA[501];
+
+
+  struct Key {
+    uint16_t w_id;
+    uint8_t d_id;
+    uint32_t c_id;
+
+    constexpr static size_t required_size() { return 8; }
+
+    size_t parse(const char* in) {
+      parse_bigendian(&in[0], w_id);
+      parse_bigendian(&in[3], d_id);
+      parse_bigendian(&in[4], c_id);
+      return required_size();
+    }
+    size_t create(char* out) const {
+      assign_as_bigendian(w_id, &out[0]);
+      out[2] = 0;
+      assign_as_bigendian(d_id, &out[3]);
+      assign_as_bigendian(c_id, &out[4]);
+      return required_size();
+    }
+    SimpleKey<8> create() const {
+      SimpleKey<8> ret;
+      create(ret.ptr());
+      return ret;
+    }
+    std::string pretty_str() const {
+      char buf[128];
+      ::snprintf(buf, sizeof(buf), "Customer_Key: w_id %u  d_id %u  c_id %u", w_id, d_id, c_id);
+      return std::string(buf);
+    }
+  };
+
+  struct CLastKey {
+    uint16_t c_w_id;
+    uint8_t c_d_id;
+    char* c_last;
+
+    constexpr static size_t required_size() { return sizeof(C_W_ID) + sizeof(C_D_ID) + sizeof(C_LAST); }
+
+    /**
+     * CAUSION: c_last is just a pointer. Set it approprieately before calling parse().
+     */
+    size_t parse(const char* in) {
+      parse_bigendian(&in[0], c_w_id);
+      parse_bigendian(&in[2], c_d_id);
+      size_t len = copy_cstr(c_last, &in[3], sizeof(C_LAST));
+      return sizeof(c_w_id) + sizeof(c_d_id) + len;
+    }
+    // out buffer size must no less than sizeof(CLastKey).
+    size_t create(char* out) {
+      assign_as_bigendian(c_w_id, &out[0]);
+      assign_as_bigendian(c_d_id, &out[2]);
+      size_t len = copy_cstr(&out[3], c_last, sizeof(C_LAST));
+      return sizeof(c_w_id) + sizeof(c_d_id) + len;
+    }
+    std::string pretty_str() const {
+      char buf[128];
+      ::snprintf(buf, sizeof(buf), "Customer_CLastKey: c_w_id %u  c_d_id %u  c_last %s\n", c_w_id, c_d_id, c_last);
+      return std::string(buf);
+    }
+  };
+
 
   //Primary Key: (C_W_ID, C_D_ID, C_ID)
   //key size is 8 bytes.
   static void CreateKey(uint16_t w_id, uint8_t d_id, uint32_t c_id, char *out) {
-    assign_as_bigendian(w_id, &out[0]);
-    out[2] = 0;
-    assign_as_bigendian(d_id, &out[3]);
-    assign_as_bigendian(c_id, &out[4]);
+    Key key{w_id, d_id, c_id};
+    key.create(out);
   }
 
   void createKey(char *out) const { return CreateKey(C_W_ID, C_D_ID, C_ID, out); }
@@ -170,20 +194,13 @@ struct Customer {
   //Secondary Key: (C_W_ID, C_D_ID, C_LAST)
   //key length is variable. (maximum length is maxLenOfSecondaryKey()).
   //out buffer will not be null-terminated.
-  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char *c_last, char *out) {
-    const size_t c_last_len = ::strnlen(c_last, sizeof(Customer::C_LAST));
-    const size_t key_len = sizeof(w_id) + sizeof(d_id) + c_last_len;
-    assign_as_bigendian(w_id, &out[0]);
-    assign_as_bigendian(d_id, &out[2]);
-    ::memcpy(&out[3], c_last, c_last_len);
-    return std::string_view(out, key_len);
+  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char* c_last, char* out) {
+    CLastKey key{w_id, d_id, c_last};
+    size_t len = key.create(out);
+    return std::string_view(out, len);
   }
 
-  std::string_view createSecondaryKey(char *out) { return CreateSecondaryKey(C_W_ID, C_D_ID, &C_LAST[0], out); }
-
-  constexpr static size_t maxLenOfSecondaryKey() {
-    return sizeof(Customer::C_W_ID) + sizeof(Customer::C_D_ID) + sizeof(Customer::C_LAST);
-  }
+  std::string_view createSecondaryKey(char* out){ return CreateSecondaryKey(C_W_ID, C_D_ID, &C_LAST[0], out); }
 
   [[nodiscard]] std::string_view view() const { return struct_str_view(*this); }
 };
@@ -333,7 +350,7 @@ struct Stock {
   //S_I_ID Foreign Key, references I_ID
   std::uint32_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
   std::uint16_t S_W_ID; //2*W unique IDs
-  double S_QUANTITY; //signed numeric(4)
+  int16_t S_QUANTITY; //signed numeric(4)
   char S_DIST_01[25]; //fixed text, size 24
   char S_DIST_02[25]; //fixed text, size 24
   char S_DIST_03[25]; //fixed text, size 24

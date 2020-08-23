@@ -6,6 +6,11 @@
 #include "index/masstree_beta/include/masstree_beta_wrapper.h"
 #include "tpcc/tpcc_query.hpp"
 
+#if 0
+#include "tpcc/debug.hpp"
+#endif
+
+
 using namespace ccbench;
 
 namespace TPCC {
@@ -102,16 +107,25 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
     // }
     // EXEC SQL CLOSE c_byname;
     // ==========================================================
-    char c_last_key_buf[Customer::maxLenOfSecondaryKey()];
+    char c_last_key_buf[Customer::CLastKey::required_size()];
     std::string_view c_last_key = Customer::CreateSecondaryKey(c_w_id, c_d_id, query->c_last, &c_last_key_buf[0]);
     void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
 
+#if 0
     // QQQQQ
     if (ret_ptr == nullptr) {
       // debug
       ::printf("c_w_id %u  c_d_id %u  c_last %s\n", c_w_id, c_d_id, query->c_last);
 
+      ::printf("debug_clast_map size: %zu\n", debug_clast_map_.map_.size());
+      std::cout << debug_clast_map_.pretty_str();
+      DebugClastMap::PriKeyVec vec = debug_clast_map_.get(c_last_key);
+      ::printf("vec size %zu\n", vec.size());
+      for (size_t i = 0; i < vec.size(); i++) {
+        ::printf("primary_keys: %s\n", str_view_hex(vec[i].view()).c_str());
+      }
     }
+#endif
 
     assert(ret_ptr != nullptr);
     std::vector<SimpleKey<8>> *vec_ptr;
