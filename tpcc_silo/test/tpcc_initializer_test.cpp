@@ -23,6 +23,7 @@ TEST_F(tpcc_initializer_test, db_insert_test) { // NOLINT
   ASSERT_NE(ret_ptr, nullptr);
   std::string_view ret_val_view = static_cast<Record *>(ret_ptr)->get_tuple().get_val();
   ASSERT_EQ(memcmp(val.data(), ret_val_view.data(), val.size()), 0);
+  ASSERT_EQ(true, false);
 }
 
 } // namespace ccbench::testing
