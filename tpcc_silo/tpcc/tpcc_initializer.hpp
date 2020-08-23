@@ -38,13 +38,13 @@ void db_insert(const Storage st, const std::string_view key, const std::string_v
   }
 }
 
-uint64_t random_int(uint64_t min, uint64_t max)
+std::uint64_t random_int(std::uint64_t min, std::uint64_t max)
 {
   return random_number(min, max);
 }
 
 
-double random_double(uint64_t min, uint64_t max, size_t divider)
+double random_double(std::uint64_t min, std::uint64_t max, std::size_t divider)
 {
   return random_number(min, max) / (double)divider;
 }
@@ -54,15 +54,15 @@ double random_double(uint64_t min, uint64_t max, size_t divider)
 void load_item() {
 
   struct S {
-    static void work(uint32_t i_id_start, uint32_t i_id_end, const IsOriginal& is_original) {
-      for (uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
+    static void work(std::uint32_t i_id_start, std::uint32_t i_id_end, const IsOriginal& is_original) {
+      for (std::uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
         assert(i_id != 0); // 1-origin
         TPCC::Item ite{};
         ite.I_ID = i_id;
         ite.I_IM_ID = random_int(1, 10000);
         random_alpha_string(14, 24, ite.I_NAME);
         ite.I_PRICE = random_double(100, 10000, 100);
-        size_t dataLen = random_alpha_string(26, 50, ite.I_DATA);
+        std::size_t dataLen = random_alpha_string(26, 50, ite.I_DATA);
         if (is_original[i_id - 1]) make_original(ite.I_DATA, dataLen);
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
@@ -80,9 +80,9 @@ void load_item() {
   /**
    * precondition : para_num > 3
    */
-  constexpr std::size_t para_num{10};
+  constexpr std::std::size_t para_num{10};
   thv.emplace_back(S::work, 1, MAX_ITEMS / para_num, std::ref(is_original));
-  for (std::size_t i = 1; i < para_num - 1; ++i) {
+  for (std::std::size_t i = 1; i < para_num - 1; ++i) {
     thv.emplace_back(S::work, (MAX_ITEMS / para_num) * i + 1, (MAX_ITEMS / para_num) * (i + 1), , std::ref(is_original));
   }
   thv.emplace_back(S::work, (MAX_ITEMS / para_num) * (para_num - 1) + 1, MAX_ITEMS, , std::ref(is_original));
@@ -99,7 +99,7 @@ void load_item() {
 }
 
 //CREATE Warehouses
-void load_warehouse(uint16_t w_id) {
+void load_warehouse(std::uint16_t w_id) {
   assert(w_id != 0); // 1-origin
   TPCC::Warehouse ware{};
   ware.W_ID = w_id;
@@ -121,11 +121,11 @@ void load_warehouse(uint16_t w_id) {
 }
 
 //CREATE Stock
-void load_stock(uint16_t w_id) {
+void load_stock(std::uint16_t w_id) {
 
   struct S {
-    static void work(uint32_t i_id_start, uint32_t i_id_end, uint16_t w_id, const IsOriginal& is_original) {
-      for (uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
+    static void work(std::uint32_t i_id_start, std::uint32_t i_id_end, std::uint16_t w_id, const IsOriginal& is_original) {
+      for (std::uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
         assert(i_id != 0); // 1-origin
         TPCC::Stock st{};
         st.S_I_ID = i_id;
@@ -139,7 +139,7 @@ void load_stock(uint16_t w_id) {
         st.S_YTD = 0;
         st.S_ORDER_CNT = 0;
         st.S_REMOTE_CNT = 0;
-        size_t dataLen = random_alpha_string(26, 50, st.S_DATA);
+        std::size_t dataLen = random_alpha_string(26, 50, st.S_DATA);
         if (is_original[i_id - 1]) make_original(st.S_DATA, dataLen);
 
         SimpleKey<8> st_key{};
@@ -152,11 +152,11 @@ void load_stock(uint16_t w_id) {
   IsOriginal is_original(stock_num, stock_num / 10);
 
 #if 0
-  constexpr std::size_t stock_num_per_thread{5000};
-  const std::size_t para_num{stock_num / stock_num_per_thread};
+  constexpr std::std::size_t stock_num_per_thread{5000};
+  const std::std::size_t para_num{stock_num / stock_num_per_thread};
   std::vector<std::thread> thv;
   thv.emplace_back(S::work, 1, stock_num_per_thread, w_id, std::ref(is_original));
-  for (std::size_t i = 1; i < para_num - 1; ++i) {
+  for (std::std::size_t i = 1; i < para_num - 1; ++i) {
     thv.emplace_back(S::work, i * stock_num_per_thread + 1, (i + 1) * stock_num_per_thread, w_id, , std::ref(is_original));
   }
   thv.emplace_back(S::work, (para_num - 1) * stock_num_per_thread + 1, stock_num, w_id, , std::ref(is_original));
@@ -171,7 +171,7 @@ void load_stock(uint16_t w_id) {
 }
 
 //CREATE History
-void load_history(uint16_t w_id, uint8_t d_id, uint32_t c_id, std::string_view key) {
+void load_history(std::uint16_t w_id, uint8_t d_id, std::uint32_t c_id, std::string_view key) {
   std::time_t now = std::time(nullptr);
   TPCC::History history{};
   history.H_C_ID = c_id;
@@ -185,7 +185,7 @@ void load_history(uint16_t w_id, uint8_t d_id, uint32_t c_id, std::string_view k
 }
 
 //CREATE Orderline
-void load_orderline(uint16_t w_id, uint16_t d_id, uint32_t o_id, uint8_t ol_num) {
+void load_orderline(std::uint16_t w_id, std::uint16_t d_id, std::uint32_t o_id, uint8_t ol_num) {
   std::time_t now = std::time(nullptr);
   TPCC::OrderLine order_line{};
   order_line.OL_O_ID = o_id;
@@ -213,7 +213,7 @@ void load_orderline(uint16_t w_id, uint16_t d_id, uint32_t o_id, uint8_t ol_num)
 }
 
 //CREATE Order
-void load_order(uint16_t w_id, uint8_t d_id, uint32_t o_id, uint32_t c_id) {
+void load_order(std::uint16_t w_id, uint8_t d_id, std::uint32_t o_id, std::uint32_t c_id) {
   std::time_t now = std::time(nullptr);
   TPCC::Order order{};
   order.O_ID = o_id;
@@ -255,12 +255,12 @@ void load_order(uint16_t w_id, uint8_t d_id, uint32_t o_id, uint32_t c_id) {
 
 
 //CREATE Customer
-void load_customer(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
+void load_customer(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
   struct S {
     static void
-    work(uint32_t c_id_start, uint32_t c_id_end, TPCC::HistoryKeyGenerator &hkg,
-         uint8_t d_id, uint16_t w_id, const Permutation& perm) {
-      for (uint32_t c_id = c_id_start; c_id <= c_id_end; ++c_id) {
+    work(std::uint32_t c_id_start, std::uint32_t c_id_end, TPCC::HistoryKeyGenerator &hkg,
+         uint8_t d_id, std::uint16_t w_id, const Permutation& perm) {
+      for (std::uint32_t c_id = c_id_start; c_id <= c_id_end; ++c_id) {
         assert(c_id != 0); // 1-origin.
         std::time_t now = std::time(nullptr);
         TPCC::Customer customer{};
@@ -338,7 +338,7 @@ void load_customer(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) 
 
         struct S {
           static Customer *search(const SimpleKey<8> &pkey) {
-            Record *rec = reinterpret_cast<Record *>(kohler_masstree::find_record(Storage::CUSTOMER, pkey.view()));
+            auto *rec = reinterpret_cast<Record *>(kohler_masstree::find_record(Storage::CUSTOMER, pkey.view()));
             return reinterpret_cast<Customer *>(const_cast<char *>(rec->get_tuple().get_val().data()));
           }
 
@@ -354,7 +354,7 @@ void load_customer(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) 
         SimpleKey<8> his_key = hkg.get_as_simple_key();
         load_history(w_id, d_id, c_id, his_key.view());
         //1 order per customer.
-        uint32_t o_id = c_id;
+        std::uint32_t o_id = c_id;
         load_order(w_id, d_id, o_id, perm[c_id - 1]);
       }
     }
@@ -364,11 +364,11 @@ void load_customer(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) 
   S::work(1, CUST_PER_DIST, hkg, d_id, w_id, perm);
 
 #if 0
-  constexpr std::size_t cust_num_per_th{500};
-  constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
+  constexpr std::std::size_t cust_num_per_th{500};
+  constexpr std::std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
   thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), d, w, std::ref(perm));
-  for (std::size_t i = 1; i < para_num - 1; ++i) {
+  for (std::std::size_t i = 1; i < para_num - 1; ++i) {
     thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), d, w, , std::ref(perm));
   }
   thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, CUST_PER_DIST, std::ref(hkg), d, w, , std::ref(perm));
@@ -379,9 +379,9 @@ void load_customer(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) 
 #endif
 }
 
-void load_district(uint16_t w_id) {
+void load_district(std::uint16_t w_id) {
   struct S {
-    static void work(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
+    static void work(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
       assert(d_id != 0); // 1-origin.
       TPCC::District district{};
       district.D_ID = d_id;
@@ -413,7 +413,7 @@ void load_district(uint16_t w_id) {
 
 #if 0
   std::vector<std::thread> thv;
-  for (size_t d = 1; d <= DIST_PER_WARE; ++d) {
+  for (std::size_t d = 1; d <= DIST_PER_WARE; ++d) {
     thv.emplace_back(S::work, d, w, std::ref(hkg));
   }
   for (auto &&th : thv) {
@@ -450,7 +450,7 @@ void load() {
 }
 
 
-void load_per_warehouse(uint16_t w_id) {
+void load_per_warehouse(std::uint16_t w_id) {
   load_warehouse(w_id);
   load_stock(w_id);
   load_district(w_id);
