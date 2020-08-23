@@ -1,5 +1,11 @@
 # CCBench : Redesign and Implement Many Concurrency Control
 ![cicada_build](https://github.com/thawk105/ccbench/workflows/cicada_build/badge.svg)
+![ermia_build](https://github.com/thawk105/ccbench/workflows/ermia_build/badge.svg)
+![mocc_build](https://github.com/thawk105/ccbench/workflows/mocc_build/badge.svg)
+![si_build](https://github.com/thawk105/ccbench/workflows/si_build/badge.svg)
+![silo_build](https://github.com/thawk105/ccbench/workflows/silo_build/badge.svg)
+![ss2pl_build](https://github.com/thawk105/ccbench/workflows/ss2pl_build/badge.svg)
+![tictoc_build](https://github.com/thawk105/ccbench/workflows/tictoc_build/badge.svg)
 ![tpcc_silo_build_and_ctest](https://github.com/thawk105/ccbench/workflows/tpcc_silo_build_and_ctest/badge.svg)
 
 ---
