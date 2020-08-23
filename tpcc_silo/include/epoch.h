@@ -67,4 +67,14 @@ inline std::atomic<bool> kEpochThreadEnd;          // NOLINT
   kEpochThreadEnd.store(tf, std::memory_order_release);
 }
 
+
+alignas(CACHE_LINE_SIZE) inline time_t timestamp_;
+
+
+[[maybe_unused]] inline time_t get_lightweight_timestamp()
+{
+    return loadAcquire(timestamp_);
+}
+
+
 }  // namespace ccbench::epoch

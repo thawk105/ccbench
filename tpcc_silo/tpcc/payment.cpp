@@ -203,7 +203,7 @@ bool run_payment(query::Payment *query, HistoryKeyGenerator *hkg, Token &token) 
   hist.H_C_W_ID = c_w_id;
   hist.H_D_ID = d_id;
   hist.H_W_ID = w_id;
-  hist.H_DATE = 2013;
+  hist.H_DATE = ccbench::epoch::get_lightweight_timestamp();
   hist.H_AMOUNT = query->h_amount;
 #if !TPCC_SMALL
   sprintf(hist.H_DATA, "%-10.10s    %.10s", &wh.W_NAME[0], &dist.D_NAME[0]);

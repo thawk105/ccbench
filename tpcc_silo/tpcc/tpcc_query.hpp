@@ -79,7 +79,6 @@ public:
   std::uint8_t rbk;
   bool remote;
   std::uint8_t ol_cnt;
-  std::time_t o_entry_d;
 
   void generate(uint16_t w_id0, Option &opt);
 

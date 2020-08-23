@@ -161,13 +161,12 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     VALUES (:o_id, :d_id, :w_id, :c_id, :datetime, :o_ol_cnt, :o_all_local);
     +========================================================================================*/
   TPCC::Order order{};
-  std::uint64_t o_entry_d{}; // dummy data. Is it necessary?
 
   order.O_ID = o_id;
   order.O_D_ID = d_id;
   order.O_W_ID = w_id;
   order.O_C_ID = c_id;
-  order.O_ENTRY_D = o_entry_d;
+  order.O_ENTRY_D = ccbench::epoch::get_lightweight_timestamp();
   order.O_OL_CNT = ol_cnt;
   order.O_ALL_LOCAL = (remote ? 0 : 1);
   SimpleKey<8> order_key;

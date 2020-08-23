@@ -12,6 +12,7 @@
 #include "tpcc_tables.hpp"
 #include "common.hh"
 #include "../include/random.hh"
+#include "epoch.h"
 
 #include <algorithm>
 #include <cassert>
@@ -157,7 +158,7 @@ void load_stock(std::uint16_t w_id) {
 
 //CREATE History
 void load_history(std::uint16_t w_id, uint8_t d_id, std::uint32_t c_id, std::string_view key) {
-  std::time_t now = std::time(nullptr);
+  std::time_t now = ccbench::epoch::get_lightweight_timestamp();
   TPCC::History history{};
   history.H_C_ID = c_id;
   history.H_C_D_ID = history.H_D_ID = d_id;
@@ -171,7 +172,7 @@ void load_history(std::uint16_t w_id, uint8_t d_id, std::uint32_t c_id, std::str
 
 //CREATE Orderline
 void load_orderline(std::uint16_t w_id, std::uint16_t d_id, std::uint32_t o_id, uint8_t ol_num) {
-  std::time_t now = std::time(nullptr);
+  std::time_t now = ccbench::epoch::get_lightweight_timestamp();
   TPCC::OrderLine order_line{};
   order_line.OL_O_ID = o_id;
   order_line.OL_D_ID = d_id;
@@ -199,7 +200,7 @@ void load_orderline(std::uint16_t w_id, std::uint16_t d_id, std::uint32_t o_id, 
 
 //CREATE Order
 void load_order(std::uint16_t w_id, uint8_t d_id, std::uint32_t o_id, std::uint32_t c_id) {
-  std::time_t now = std::time(nullptr);
+  std::time_t now = ccbench::epoch::get_lightweight_timestamp();
   TPCC::Order order{};
   order.O_ID = o_id;
   order.O_C_ID = c_id;
@@ -247,7 +248,7 @@ void load_customer(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &
          uint8_t d_id, std::uint16_t w_id, const Permutation& perm) {
       for (std::uint32_t c_id = c_id_start; c_id <= c_id_end; ++c_id) {
         assert(c_id != 0); // 1-origin.
-        std::time_t now = std::time(nullptr);
+        std::time_t now = ccbench::epoch::get_lightweight_timestamp();
         TPCC::Customer customer{};
         customer.C_ID = c_id;
         customer.C_D_ID = d_id;

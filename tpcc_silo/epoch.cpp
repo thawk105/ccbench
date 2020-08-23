@@ -10,6 +10,7 @@
 #include "session_info_table.h"
 #include "clock.h"
 #include "../include/util.hh"
+#include <ctime>
 
 
 namespace ccbench::epoch {
@@ -46,6 +47,16 @@ void epocher() {
    */
   while (likely(!kEpochThreadEnd.load(std::memory_order_acquire))) {
     sleepMs(KVS_EPOCH_TIME);
+
+    {
+        // reset timestamp.
+        struct timespec ts;
+        [[maybe_unused]] int ret = ::clock_gettime(CLOCK_MONOTONIC, &ts);
+        assert(ret == 0);
+        if (get_lightweight_timestamp() != ts.tv_sec) {
+            storeRelease(timestamp_, ts.tv_sec);
+        }
+    }
 
     /**
      * check_epoch_loaded() checks whether the

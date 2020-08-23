@@ -6,6 +6,8 @@
 #include "../include/random.hh"
 #include "tpcc_query.hpp"
 #include "tpcc_util.hpp"
+#include "epoch.h"
+
 
 #define ID_START 1
 
@@ -33,7 +35,6 @@ void query::NewOrder::generate([[maybe_unused]]uint16_t w_id0, query::Option &op
   c_id = non_uniform_random<1023>(ID_START, opt.cust_per_dist);
   rbk = random_int(1, 100);
   ol_cnt = random_int(5, 15);
-  o_entry_d = 2013;
 
   for (unsigned int i = 0; i < ol_cnt; ++i) {
 #if 0 // ol_i_id is no need to be unique.
@@ -103,8 +104,8 @@ void query::Payment::generate([[maybe_unused]]std::uint16_t w_id0, query::Option
 }
 
 void query::NewOrder::print() {
-  printf("nod: w_id=%" PRIu16 " d_id=%" PRIu8 " c_id=%" PRIu32 " rbk=%" PRIu8 " remote=%s ol_cnt=%" PRIu8 " o_entry_d=%lu\n",
-         w_id, d_id, c_id, rbk, remote ? "t" : "f", ol_cnt, (ulong) o_entry_d);
+  printf("nod: w_id=%" PRIu16 " d_id=%" PRIu8 " c_id=%" PRIu32 " rbk=%" PRIu8 " remote=%s ol_cnt=%" PRIu8 "\n",
+         w_id, d_id, c_id, rbk, remote ? "t" : "f", ol_cnt);
   for (unsigned int i = 0; i < ol_cnt; ++i) {
     printf(" [%d]: ol_i_id=%" PRIu32 " ol_supply_w_id=%" PRIu16 " c_quantity=%" PRIu8 "\n", i,
            items[i].ol_i_id, items[i].ol_supply_w_id, items[i].ol_quantity);
