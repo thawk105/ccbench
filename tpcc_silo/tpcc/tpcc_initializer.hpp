@@ -18,6 +18,12 @@
 #include <thread>
 #include <vector>
 
+
+#if 0
+#include "debug.hpp" // QQQQQ
+#endif
+
+
 using namespace ccbench;
 
 namespace TPCC::Initializer {
@@ -32,110 +38,32 @@ void db_insert(const Storage st, const std::string_view key, const std::string_v
   }
 }
 
-std::string random_string(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd) {
-  static const char alphanum[] =
-          "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  std::size_t len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
-  std::string s(len, 'a');
-  for (std::size_t i = 0; i < len; ++i) {
-    size_t rn = rnd.next();
-    size_t idx = rn % (sizeof(alphanum) - 1);
-    try {
-      s.at(i) = alphanum[idx];
-    } catch (std::out_of_range &) {
-      std::cout << __FILE__ << " : " << __LINE__ << " : " << "out of range" << std::endl;
-      std::abort();
-    }
-  }
-  return s;
+uint64_t random_int(uint64_t min, uint64_t max)
+{
+  return random_number(min, max);
 }
 
-std::string MakeNumberString(const std::uint64_t minLen, const std::uint64_t maxLen, Xoroshiro128Plus &rnd) {
-  static const char Numbers[] = "0123456789";
-  std::size_t len = (rnd.next() % (maxLen - minLen + 1)) + minLen;
-  std::string s(len, '1');
-  for (std::size_t i = 0; i < len; ++i) {
-    std::size_t rn = rnd.next();
-    std::size_t idx = rn % (sizeof(Numbers) - 1);
-    try {
-      s.at(i) = Numbers[idx];
-    } catch (std::out_of_range &) {
-      std::cout << __FILE__ << " : " << __LINE__ << " : " << "out of range" << std::endl;
-      std::abort();
-    }
-  }
-  return s;
-}
 
-template<typename T>
-T random_value(const T &minv, const T &maxv) {
-  static thread_local std::mt19937 generator; // NOLINT
-  if constexpr(std::is_integral<T>{}) {
-    std::uniform_int_distribution<T> distribution(minv, maxv);
-    return distribution(generator);
-  } else {
-    std::uniform_real_distribution<T> distribution(minv, maxv);
-    return distribution(generator);
-  }
-}
-
-std::string gen_zipcode(Xoroshiro128Plus &rnd) {
-  std::string s(9, 'a');
-  for (int i = 0; i < 9; i++) {
-    if (i > 3)s[i] = '1';
-    else s[i] = '0' + (rnd.next() % 10);
-  }
-  return s;
-}
-
-//TPC-C Reference 2.1.6 for detail specification.
-/*
-A is a constant chosen according to the size of range [x..y].
-C is a run-time constant randomly chosen within [0..A]
-*/
-inline unsigned int NURand(unsigned int A, const unsigned int x, const unsigned int y) {
-  const unsigned int C = random_value(static_cast<unsigned int >(0), A);
-  assert(x <= y);
-  return (((random_value(static_cast<unsigned int>(0), A) | random_value(x, y)) + C) % (y - x + 1)) + x;
-}
-
-static std::string createC_LAST(const std::size_t rndval) {
-  const char *LAST_NAMES[10] = {"BAR", "OUGHT", "ABLE", "PRI", "PRES", "ESE", "ANTI", "CALLY", "ATION", "EING"};
-  std::string s;
-  s.reserve(16);
-  for (int i = 2; i >= 0; i--) {
-    const size_t digit = (rndval / (int) (std::pow(10, i)) % 10);
-    s += LAST_NAMES[digit];
-  }
-  return s;
+double random_double(uint64_t min, uint64_t max, size_t divider)
+{
+  return random_number(min, max) / (double)divider;
 }
 
 
 //CREATE Item
 void load_item() {
+
   struct S {
-    static void work(std::size_t start, std::size_t end) {
-      Xoroshiro128Plus rnd{};
-      rnd.init();
-      for (size_t i = start; i <= end; ++i) {
+    static void work(uint32_t i_id_start, uint32_t i_id_end, const IsOriginal& is_original) {
+      for (uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
+        assert(i_id != 0); // 1-origin
         TPCC::Item ite{};
-        ite.I_ID = i;
-        ite.I_IM_ID = random_value(1, 10000);
-        strcpy(ite.I_NAME, random_string(14, 24, rnd).c_str());
-        ite.I_PRICE = random_value(1.00, 100.00);
-        size_t dataLen = random_value(26, 50);
-        strcpy(ite.I_DATA, random_string(dataLen, dataLen, rnd).c_str());
-        if (random_value<int>(1, 100) <= 10) {
-          std::uint64_t pos = random_value(0, (int) (dataLen - 8));
-          ite.I_DATA[pos] = 'O';
-          ite.I_DATA[pos + 1] = 'R';
-          ite.I_DATA[pos + 2] = 'I';
-          ite.I_DATA[pos + 3] = 'G';
-          ite.I_DATA[pos + 4] = 'I';
-          ite.I_DATA[pos + 5] = 'N';
-          ite.I_DATA[pos + 6] = 'A';
-          ite.I_DATA[pos + 7] = 'L';
-        }
+        ite.I_ID = i_id;
+        ite.I_IM_ID = random_int(1, 10000);
+        random_alpha_string(14, 24, ite.I_NAME);
+        ite.I_PRICE = random_double(100, 10000, 100);
+        size_t dataLen = random_alpha_string(26, 50, ite.I_DATA);
+        if (is_original[i_id - 1]) make_original(ite.I_DATA, dataLen);
 #ifdef DEBUG
         if(i<3)std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
 #endif
@@ -146,17 +74,18 @@ void load_item() {
     }
   };
 
+  IsOriginal is_original(MAX_ITEMS, MAX_ITEMS / 10);
 #if 0
   std::vector<std::thread> thv;
   /**
    * precondition : para_num > 3
    */
   constexpr std::size_t para_num{10};
-  thv.emplace_back(S::work, 1, MAX_ITEMS / para_num);
+  thv.emplace_back(S::work, 1, MAX_ITEMS / para_num, std::ref(is_original));
   for (std::size_t i = 1; i < para_num - 1; ++i) {
-    thv.emplace_back(S::work, (MAX_ITEMS / para_num) * i + 1, (MAX_ITEMS / para_num) * (i + 1));
+    thv.emplace_back(S::work, (MAX_ITEMS / para_num) * i + 1, (MAX_ITEMS / para_num) * (i + 1), , std::ref(is_original));
   }
-  thv.emplace_back(S::work, (MAX_ITEMS / para_num) * (para_num - 1) + 1, MAX_ITEMS);
+  thv.emplace_back(S::work, (MAX_ITEMS / para_num) * (para_num - 1) + 1, MAX_ITEMS, , std::ref(is_original));
 
   for (auto &&th : thv) {
     th.join();
@@ -164,24 +93,23 @@ void load_item() {
 #else
   // single threaded.
   //::printf("load item...\n");
-  S::work(1, MAX_ITEMS);
+  S::work(1, MAX_ITEMS, is_original);
   //::printf("load item done\n");
 #endif
 }
 
 //CREATE Warehouses
-void load_warehouse(const std::size_t w) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
+void load_warehouse(uint16_t w_id) {
+  assert(w_id != 0); // 1-origin
   TPCC::Warehouse ware{};
-  ware.W_ID = w;
-  strcpy(ware.W_NAME, random_string(6, 10, rnd).c_str());
-  strcpy(ware.W_STREET_1, random_string(10, 20, rnd).c_str());
-  strcpy(ware.W_STREET_2, random_string(10, 20, rnd).c_str());
-  strcpy(ware.W_CITY, random_string(10, 20, rnd).c_str());
-  strcpy(ware.W_STATE, random_string(2, 2, rnd).c_str());
-  strcpy(ware.W_ZIP, gen_zipcode(rnd).c_str());
-  ware.W_TAX = random_value(0.0, 0.20);
+  ware.W_ID = w_id;
+  random_alpha_string(6, 10, ware.W_NAME);
+  make_address(ware.W_STREET_1,
+               ware.W_STREET_2,
+               ware.W_CITY,
+               ware.W_STATE,
+               ware.W_ZIP);
+  ware.W_TAX = random_double(0, 2000, 10000);
   ware.W_YTD = 300000;
 
 #ifdef DEBUG
@@ -193,42 +121,27 @@ void load_warehouse(const std::size_t w) {
 }
 
 //CREATE Stock
-void load_stock(const std::size_t w) {
+void load_stock(uint16_t w_id) {
+
   struct S {
-    static void work(const std::size_t start, const std::size_t end, const std::size_t w) {
-      Xoroshiro128Plus rnd{};
-      rnd.init();
-      for (std::size_t s = start; s <= end; ++s) {
+    static void work(uint32_t i_id_start, uint32_t i_id_end, uint16_t w_id, const IsOriginal& is_original) {
+      for (uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
+        assert(i_id != 0); // 1-origin
         TPCC::Stock st{};
-        st.S_I_ID = s;
-        st.S_W_ID = w;
-        st.S_QUANTITY = random_value(10.0, 100.0);
-        strcpy(st.S_DIST_01, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_02, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_03, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_04, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_05, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_06, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_07, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_08, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_09, random_string(24, 24, rnd).c_str());
-        strcpy(st.S_DIST_10, random_string(24, 24, rnd).c_str());
+        st.S_I_ID = i_id;
+        st.S_W_ID = w_id;
+        st.S_QUANTITY = random_int(10, 100);
+        for (char* out : {
+            st.S_DIST_01, st.S_DIST_02, st.S_DIST_03, st.S_DIST_04, st.S_DIST_05,
+            st.S_DIST_06, st.S_DIST_07, st.S_DIST_08, st.S_DIST_09, st.S_DIST_10}) {
+          random_alpha_string(24, 24, out);
+        }
         st.S_YTD = 0;
         st.S_ORDER_CNT = 0;
         st.S_REMOTE_CNT = 0;
-        size_t dataLen = random_value(26, 50);
-        strcpy(st.S_DATA, random_string(dataLen, dataLen, rnd).c_str());
-        if (random_value<int>(1, 100) <= 10) {
-          std::uint64_t pos = random_value(0, (int) (dataLen - 8));
-          st.S_DATA[pos] = 'O';
-          st.S_DATA[pos + 1] = 'R';
-          st.S_DATA[pos + 2] = 'I';
-          st.S_DATA[pos + 3] = 'G';
-          st.S_DATA[pos + 4] = 'I';
-          st.S_DATA[pos + 5] = 'N';
-          st.S_DATA[pos + 6] = 'A';
-          st.S_DATA[pos + 7] = 'L';
-        }
+        size_t dataLen = random_alpha_string(26, 50, st.S_DATA);
+        if (is_original[i_id - 1]) make_original(st.S_DATA, dataLen);
+
         SimpleKey<8> st_key{};
         st.createKey(st_key.ptr());
         db_insert(Storage::STOCK, st_key.view(), st.view(), alignof(TPCC::Stock));
@@ -236,53 +149,51 @@ void load_stock(const std::size_t w) {
     }
   };
   const std::size_t stock_num{MAX_ITEMS};
+  IsOriginal is_original(stock_num, stock_num / 10);
+
 #if 0
   constexpr std::size_t stock_num_per_thread{5000};
   const std::size_t para_num{stock_num / stock_num_per_thread};
   std::vector<std::thread> thv;
-  thv.emplace_back(S::work, 1, stock_num_per_thread, w);
+  thv.emplace_back(S::work, 1, stock_num_per_thread, w_id, std::ref(is_original));
   for (std::size_t i = 1; i < para_num - 1; ++i) {
-    thv.emplace_back(S::work, i * stock_num_per_thread + 1, (i + 1) * stock_num_per_thread, w);
+    thv.emplace_back(S::work, i * stock_num_per_thread + 1, (i + 1) * stock_num_per_thread, w_id, , std::ref(is_original));
   }
-  thv.emplace_back(S::work, (para_num - 1) * stock_num_per_thread + 1, stock_num, w);
+  thv.emplace_back(S::work, (para_num - 1) * stock_num_per_thread + 1, stock_num, w_id, , std::ref(is_original));
 
   for (auto &&th : thv) {
     th.join();
   }
 #else
   // single-threaded
-  S::work(1, stock_num, w);
+  S::work(1, stock_num, w_id, is_original);
 #endif
 }
 
 //CREATE History
-void load_history(const std::size_t w, const std::size_t d, const std::size_t c, std::string_view key) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
+void load_history(uint16_t w_id, uint8_t d_id, uint32_t c_id, std::string_view key) {
   std::time_t now = std::time(nullptr);
   TPCC::History history{};
-  history.H_C_ID = c;
-  history.H_C_D_ID = history.H_D_ID = d;
-  history.H_C_W_ID = history.H_W_ID = w;
+  history.H_C_ID = c_id;
+  history.H_C_D_ID = history.H_D_ID = d_id;
+  history.H_C_W_ID = history.H_W_ID = w_id;
   history.H_DATE = now;
   history.H_AMOUNT = 10.00;
-  strcpy(history.H_DATA, random_string(12, 24, rnd).c_str());
+  random_alpha_string(12, 24, history.H_DATA);
 
   db_insert(Storage::HISTORY, key, history.view(), alignof(TPCC::History));
 }
 
 //CREATE Orderline
-void load_orderline(const std::size_t w, const std::size_t d, const std::size_t c, const std::size_t ol) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
+void load_orderline(uint16_t w_id, uint16_t d_id, uint32_t o_id, uint8_t ol_num) {
   std::time_t now = std::time(nullptr);
   TPCC::OrderLine order_line{};
-  order_line.OL_O_ID = c;
-  order_line.OL_D_ID = d;
-  order_line.OL_W_ID = w;
-  order_line.OL_NUMBER = ol;
-  order_line.OL_I_ID = random_value(1, 100000);
-  order_line.OL_SUPPLY_W_ID = w;
+  order_line.OL_O_ID = o_id;
+  order_line.OL_D_ID = d_id;
+  order_line.OL_W_ID = w_id;
+  order_line.OL_NUMBER = ol_num;
+  order_line.OL_I_ID = random_int(1, 100000);
+  order_line.OL_SUPPLY_W_ID = w_id;
   if (order_line.OL_O_ID < 2101) {
     order_line.OL_DELIVERY_D = now;
   } else {
@@ -292,10 +203,9 @@ void load_orderline(const std::size_t w, const std::size_t d, const std::size_t 
   if (order_line.OL_O_ID < 2101) {
     order_line.OL_AMOUNT = 0.00;
   } else {
-    order_line.OL_AMOUNT = random_value(0.01, 99999.99);
+    order_line.OL_AMOUNT = random_double(1, 999999, 100);
   }
-  order_line.OL_AMOUNT = 0.0;
-  strcpy(order_line.OL_DIST_INFO, random_string(24, 24, rnd).c_str());
+  random_alpha_string(24, 24, order_line.OL_DIST_INFO);
 
   SimpleKey<8> key{};
   order_line.createKey(key.ptr());
@@ -303,22 +213,20 @@ void load_orderline(const std::size_t w, const std::size_t d, const std::size_t 
 }
 
 //CREATE Order
-void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
-  Xoroshiro128Plus rnd{};
-  rnd.init();
+void load_order(uint16_t w_id, uint8_t d_id, uint32_t o_id, uint32_t c_id) {
   std::time_t now = std::time(nullptr);
   TPCC::Order order{};
-  order.O_ID = c;
-  order.O_C_ID = c; //selected sequentially from a random permutation of [1 .. 3,000]
-  order.O_D_ID = d;
-  order.O_W_ID = w;
+  order.O_ID = o_id;
+  order.O_C_ID = c_id;
+  order.O_D_ID = d_id;
+  order.O_W_ID = w_id;
   order.O_ENTRY_D = now;
   if (order.O_ID < 2101) {
-    order.O_CARRIER_ID = random_value(1, 10);
+    order.O_CARRIER_ID = random_int(1, 10);
   } else {
     order.O_CARRIER_ID = 0;
   }
-  order.O_OL_CNT = random_value(5, 15);
+  order.O_OL_CNT = random_int(5, 15);
   order.O_ALL_LOCAL = 1;
 
   {
@@ -327,16 +235,16 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
     db_insert(Storage::ORDER, key.view(), order.view(), alignof(TPCC::Order));
   }
   //O_OL_CNT orderlines per order.
-  for (size_t ol = 1; ol < order.O_OL_CNT + 1; ol++) {
-    load_orderline(w, d, c, ol);
+  for (uint8_t ol_num = 1; ol_num <= order.O_OL_CNT + 1; ol_num++) {
+    load_orderline(w_id, d_id, o_id, ol_num);
   }
 
   //CREATE NewOrder 900 rows
-  if (2100 < c) {
+  if (2100 < c_id) {
     TPCC::NewOrder new_order{};
-    new_order.NO_O_ID = c;
-    new_order.NO_D_ID = d;
-    new_order.NO_W_ID = w;
+    new_order.NO_O_ID = o_id;
+    new_order.NO_D_ID = d_id;
+    new_order.NO_W_ID = w_id;
     {
       SimpleKey<8> key{};
       new_order.createKey(key.ptr());
@@ -345,64 +253,73 @@ void load_order(const std::size_t w, const std::size_t d, const std::size_t c) {
   }
 }
 
+
 //CREATE Customer
-void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
+void load_customer(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
   struct S {
     static void
-    work(const std::size_t start, const std::size_t end, TPCC::HistoryKeyGenerator &hkg,
-         const std::size_t d, const std::size_t w) {
-      Xoroshiro128Plus rnd{};
-      rnd.init();
-      for (size_t c = start; c <= end; ++c) {
+    work(uint32_t c_id_start, uint32_t c_id_end, TPCC::HistoryKeyGenerator &hkg,
+         uint8_t d_id, uint16_t w_id, const Permutation& perm) {
+      for (uint32_t c_id = c_id_start; c_id <= c_id_end; ++c_id) {
+        assert(c_id != 0); // 1-origin.
         std::time_t now = std::time(nullptr);
         TPCC::Customer customer{};
-        customer.C_ID = c;
-        customer.C_D_ID = d;
-        customer.C_W_ID = w;
-        if (c < 1000) {
-          //for the first 1,000 customers, and generating a non -uniform random number using the function NURand(255,0,999)
-          strcpy(customer.C_LAST, createC_LAST(NURand(255, 0, 999)).c_str());
+        customer.C_ID = c_id;
+        customer.C_D_ID = d_id;
+        customer.C_W_ID = w_id;
+        if (c_id <= 1000) {
+          // for all c_last patterns [0, 999] to be exist.
+          make_c_last(c_id - 1, customer.C_LAST);
 #ifdef DEBUG
           std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
 #endif
         } else {
-          strcpy(customer.C_LAST, createC_LAST(random_value<int>(0, 999)).c_str());
+          make_c_last(non_uniform_random<255, true>(0, 999), customer.C_LAST);
         }
-        strcpy(customer.C_MIDDLE, "OE");
-        strcpy(customer.C_FIRST, random_string(8, 16, rnd).c_str());
-        strcpy(customer.C_STREET_1, random_string(10, 20, rnd).c_str());
-        strcpy(customer.C_STREET_2, random_string(10, 20, rnd).c_str());
-        strcpy(customer.C_CITY, random_string(10, 20, rnd).c_str());
-        strcpy(customer.C_STATE, random_string(2, 2, rnd).c_str());
-        strcpy(customer.C_ZIP, gen_zipcode(rnd).c_str());
-        //C_PHONE
-        strcpy(customer.C_PHONE, MakeNumberString(16, 16, rnd).c_str());
+        copy_cstr(customer.C_MIDDLE, "OE", sizeof(customer.C_MIDDLE));
+        random_alpha_string(8, 16, customer.C_FIRST);
+        make_address(customer.C_STREET_1,
+                     customer.C_STREET_2,
+                     customer.C_CITY,
+                     customer.C_STATE,
+                     customer.C_ZIP);
+        random_number_string(16, 16, customer.C_PHONE);
+
 #ifdef DEBUG
         if(c==start&& w==1&& d==2)std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
 #endif
         customer.C_SINCE = now;
         //90% GC 10% BC
-        if (random_value(0, 99) >= 90) {
-          strcpy(customer.C_CREDIT, "BC");
+        if (random_int(0, 99) < 10) {
+          copy_cstr(customer.C_CREDIT, "BC", 3);
         } else {
-          strcpy(customer.C_CREDIT, "GC");
+          copy_cstr(customer.C_CREDIT, "GC", 3);
         }
         customer.C_CREDIT_LIM = 50000.00;
-        customer.C_DISCOUNT = random_value(0.0000, 0.50000);
+        customer.C_DISCOUNT = random_double(0, 5000, 10000);
         customer.C_BALANCE = -10.00;
         customer.C_YTD_PAYMENT = 10.00;
         customer.C_PAYMENT_CNT = 1;
         customer.C_DELIVERY_CNT = 0;
-        strcpy(customer.C_DATA, random_string(300, 500, rnd).c_str());
+        random_alpha_string(300, 500, customer.C_DATA);
 
         SimpleKey<8> pkey{};
         customer.createKey(pkey.ptr());
         db_insert(Storage::CUSTOMER, pkey.view(), customer.view(), alignof(TPCC::Customer));
         // void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, pkey.view());
 
-        char c_last_key_buf[Customer::maxLenOfSecondaryKey()];
+        char c_last_key_buf[Customer::CLastKey::required_size()];
         std::string_view c_last_key = customer.createSecondaryKey(&c_last_key_buf[0]);
         // ::printf("c_last_key %s\n", str_view_hex(c_last_key).c_str());
+
+#if 0 // debug
+        {
+          DebugClastMap::Map::iterator it = debug_clast_map_.try_insert(c_last_key);
+          it->second.push_back(pkey);
+          // QQQQQ
+        }
+#endif
+
         std::vector<SimpleKey<8>> *ctn_ptr;
         void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
         if (ret_ptr != nullptr) {
@@ -435,22 +352,26 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
         std::sort(ctn_ptr->begin(), ctn_ptr->end(), S::less);
         //1 histories per customer.
         SimpleKey<8> his_key = hkg.get_as_simple_key();
-        load_history(w, d, c, his_key.view());
+        load_history(w_id, d_id, c_id, his_key.view());
         //1 order per customer.
-        load_order(w, d, c);
+        uint32_t o_id = c_id;
+        load_order(w_id, d_id, o_id, perm[c_id - 1]);
       }
     }
   };
-  S::work(1, CUST_PER_DIST, hkg, d, w);
+
+  Permutation perm(1, CUST_PER_DIST);
+  S::work(1, CUST_PER_DIST, hkg, d_id, w_id, perm);
+
 #if 0
   constexpr std::size_t cust_num_per_th{500};
   constexpr std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
   std::vector<std::thread> thv;
-  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), d, w);
+  thv.emplace_back(S::work, 1, cust_num_per_th, std::ref(hkg), d, w, std::ref(perm));
   for (std::size_t i = 1; i < para_num - 1; ++i) {
-    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), d, w);
+    thv.emplace_back(S::work, i * cust_num_per_th + 1, (i + 1) * cust_num_per_th, std::ref(hkg), d, w, , std::ref(perm));
   }
-  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, CUST_PER_DIST, std::ref(hkg), d, w);
+  thv.emplace_back(S::work, (para_num - 1) * cust_num_per_th + 1, CUST_PER_DIST, std::ref(hkg), d, w, , std::ref(perm));
 
   for (auto &&th : thv) {
     th.join();
@@ -458,21 +379,20 @@ void load_customer(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGen
 #endif
 }
 
-void load_district(const std::size_t w) {
+void load_district(uint16_t w_id) {
   struct S {
-    static void work(const std::size_t d, const std::size_t w, TPCC::HistoryKeyGenerator &hkg) {
-      Xoroshiro128Plus rnd{};
-      rnd.init();
+    static void work(uint8_t d_id, uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
+      assert(d_id != 0); // 1-origin.
       TPCC::District district{};
-      district.D_ID = d;
-      district.D_W_ID = w;
-      strcpy(district.D_NAME, random_string(6, 10, rnd).c_str());
-      strcpy(district.D_STREET_1, random_string(10, 20, rnd).c_str());
-      strcpy(district.D_STREET_2, random_string(10, 20, rnd).c_str());
-      strcpy(district.D_CITY, random_string(10, 20, rnd).c_str());
-      strcpy(district.D_STATE, random_string(2, 2, rnd).c_str());
-      strcpy(district.D_ZIP, gen_zipcode(rnd).c_str());
-      district.D_TAX = random_value(0.0000, 2.0000);
+      district.D_ID = d_id;
+      district.D_W_ID = w_id;
+      random_alpha_string(6, 10, district.D_NAME);
+      make_address(district.D_STREET_1,
+                   district.D_STREET_2,
+                   district.D_CITY,
+                   district.D_STATE,
+                   district.D_ZIP);
+      district.D_TAX = random_double(0, 2000, 10000);
       district.D_YTD = 30000.00;
       district.D_NEXT_O_ID = 3001;
 
@@ -484,12 +404,12 @@ void load_district(const std::size_t w) {
       db_insert(Storage::DISTRICT, key.view(), district.view(), alignof(TPCC::District));
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
-      load_customer(d, w, hkg);
+      load_customer(d_id, w_id, hkg);
     }
   };
   TPCC::HistoryKeyGenerator hkg{};
-  assert(w != 0);
-  hkg.init(w - 1, false);
+  assert(w_id != 0); // 1-origin.
+  hkg.init(w_id - 1, false);
 
 #if 0
   std::vector<std::thread> thv;
@@ -501,8 +421,8 @@ void load_district(const std::size_t w) {
   }
 #else
   // single-threaded.
-  for (uint8_t d = 1; d <= DIST_PER_WARE; ++d) {
-    S::work(d, w, hkg);
+  for (uint8_t d_id = 1; d_id <= DIST_PER_WARE; ++d_id) {
+    S::work(d_id, w_id, hkg);
   }
 #endif
 
