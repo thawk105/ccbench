@@ -19,10 +19,6 @@
 #include <vector>
 
 
-#if 0
-#include "debug.hpp" // QQQQQ
-#endif
-
 
 using namespace ccbench;
 
@@ -36,17 +32,6 @@ void db_insert(const Storage st, const std::string_view key, const std::string_v
     std::cout << "st : " << static_cast<int>(st) << ", key : " << key << ", val : " << val << std::endl;
     std::abort();
   }
-}
-
-std::uint64_t random_int(std::uint64_t min, std::uint64_t max)
-{
-  return random_number(min, max);
-}
-
-
-double random_double(std::uint64_t min, std::uint64_t max, std::size_t divider)
-{
-  return random_number(min, max) / (double)divider;
 }
 
 
@@ -311,14 +296,6 @@ void load_customer(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &
         char c_last_key_buf[Customer::CLastKey::required_size()];
         std::string_view c_last_key = customer.createSecondaryKey(&c_last_key_buf[0]);
         // ::printf("c_last_key %s\n", str_view_hex(c_last_key).c_str());
-
-#if 0 // debug
-        {
-          DebugClastMap::Map::iterator it = debug_clast_map_.try_insert(c_last_key);
-          it->second.push_back(pkey);
-          // QQQQQ
-        }
-#endif
 
         std::vector<SimpleKey<8>> *ctn_ptr;
         void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);

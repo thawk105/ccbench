@@ -81,7 +81,7 @@ public:
   std::uint8_t ol_cnt;
   std::time_t o_entry_d;
 
-  void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, Option &opt);
+  void generate(uint16_t w_id0, Option &opt);
 
   void print();
 };
@@ -98,7 +98,7 @@ public:
   double h_amount;
   bool by_last_name;
 
-  void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, Option &opt);
+  void generate(uint16_t w_id0, Option &opt);
 
   void print();
 };
@@ -125,7 +125,7 @@ public:
     query::StockLevel stock_level;
   };
 
-  void generate(uint16_t w_id0, Xoroshiro128Plus &rnd, query::Option &opt);
+  void generate(uint16_t w_id0, query::Option &opt);
 
   void print();
 };

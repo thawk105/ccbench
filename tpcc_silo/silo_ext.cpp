@@ -29,8 +29,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
 
   std::uint64_t lcl_cmt_cnt{0};
   std::uint64_t lcl_abt_cnt{0};
-  Xoroshiro128Plus rnd{};
-  rnd.init();
 
   TPCC::Query query;
   Token token{};
@@ -58,7 +56,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
 
-    query.generate(w_id, rnd, query_opt);
+    query.generate(w_id, query_opt);
 
     // TODO : add backoff work.
 
