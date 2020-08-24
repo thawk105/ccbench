@@ -30,41 +30,45 @@
 #include "tid.h"
 
 #include "scheme_global.h"
+#include "garbage_collection.h"
 
 namespace ccbench {
 
 class session_info {
 public:
+  using RecPtrContainer = garbage_collection::RecPtrContainer;
+  using ObjEpochContainer = garbage_collection::ObjEpochContainer;
+  using ObjEpochInfo = garbage_collection::ObjEpochInfo;
+  using ObjInfo = garbage_collection::ObjInfo;
+
   class gc_handler {
   public:
     std::size_t get_container_index() const {  // NOLINT
       return container_index_;
     }
 
-    std::vector<Record *> *get_record_container() const {  // NOLINT
-      return record_container_;
+    RecPtrContainer& get_record_container() const {  // NOLINT
+      return *record_container_;
     }
 
-    [[nodiscard]] std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *
-    get_value_container() const {  // NOLINT
-      return value_container_;
+    [[nodiscard]] ObjEpochContainer& get_value_container() const {  // NOLINT
+      return *value_container_;
     }
 
     void set_container_index(std::size_t index) { container_index_ = index; }
 
-    void set_record_container(std::vector<Record *> *cont) {
+    void set_record_container(RecPtrContainer *cont) {
       record_container_ = cont;
     }
 
-    void set_value_container(
-            std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *cont) {
+    void set_value_container(ObjEpochContainer *cont) {
       value_container_ = cont;
     }
 
   private:
     std::size_t container_index_{};  // common to record and value;
-    std::vector<Record *> *record_container_{};
-    std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *value_container_{};
+    RecPtrContainer *record_container_{};
+    ObjEpochContainer *value_container_{};
   };
 
   class scan_handler {
@@ -172,12 +176,11 @@ public:
     return gc_handle_.get_container_index();
   }
 
-  std::vector<Record *> *get_gc_record_container() {  // NOLINT
+  RecPtrContainer& get_gc_record_container() {  // NOLINT
     return gc_handle_.get_record_container();
   }
 
-  std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *
-  get_gc_value_container() {  // NOLINT
+  ObjEpochContainer& get_gc_value_container() {  // NOLINT
     return gc_handle_.get_value_container();
   }
 
@@ -308,12 +311,11 @@ public:
     gc_handle_.set_container_index(new_index);
   }
 
-  void set_gc_record_container(std::vector<Record *> *cont) {  // NOLINT
+  void set_gc_record_container(RecPtrContainer *cont) {  // NOLINT
     gc_handle_.set_record_container(cont);
   }
 
-  void set_gc_value_container(  // NOLINT
-          std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> *cont) {
+  void set_gc_value_container(ObjEpochContainer *cont) {  // NOLINT
     gc_handle_.set_value_container(cont);
   }
 

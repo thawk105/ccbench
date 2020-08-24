@@ -87,41 +87,29 @@ Status session_info::check_delete_after_write(std::string_view key) {  // NOLINT
 }
 
 void session_info::gc_records_and_values() const {
+
+  const epoch::epoch_t r_epoch = epoch::get_reclamation_epoch();
+
   // for records
   {
-    auto erase_begin_itr = this->gc_handle_.get_record_container()->begin();
-    auto erase_end_itr = this->gc_handle_.get_record_container()->end();
-    for (auto itr = erase_begin_itr; itr != this->gc_handle_.get_record_container()->end(); ++itr) {
-      if ((*itr)->get_tidw().get_epoch() <= epoch::get_reclamation_epoch()) {
-        erase_end_itr = itr;
-        delete *itr;  // NOLINT
-      } else {
-        break;
-      }
-    }
-    if (erase_end_itr != this->gc_handle_.get_record_container()->end()) {
-      // note : erase func [begin, end)
-      this->gc_handle_.get_record_container()->erase(erase_begin_itr, (erase_end_itr + 1));
+    RecPtrContainer& q = gc_handle_.get_record_container();
+    while (!q.empty()) {
+      Record* rec = q.front();
+      if (rec->get_tidw().get_epoch() > r_epoch) break;
+      delete rec;
+      q.pop_front();
     }
   }
   // for values
   {
-    auto erase_begin_itr = this->gc_handle_.get_value_container()->begin();
-    auto erase_end_itr = this->gc_handle_.get_value_container()->end();
-    for (auto itr = erase_begin_itr; itr != this->gc_handle_.get_value_container()->end(); ++itr) {
-
-      if (itr->second <= epoch::get_reclamation_epoch()) {
-        erase_end_itr = itr;
-        ::operator delete(std::get<garbage_collection::ptr_index>(itr->first),
-                          std::get<garbage_collection::size_index>(itr->first),
-                          std::get<garbage_collection::align_index>(itr->first));  // NOLINT
-      } else {
-        break;
-      }
-    }
-    if (erase_end_itr != this->gc_handle_.get_value_container()->end()) {
-      // note : erase func [begin, end)
-      this->gc_handle_.get_value_container()->erase(erase_begin_itr, (erase_end_itr + 1));
+    ObjEpochContainer& q = gc_handle_.get_value_container();
+    while (!q.empty()) {
+      ObjEpochInfo& oeinfo = q.front();
+      ObjInfo& oinfo = oeinfo.first;
+      epoch::epoch_t epoch = oeinfo.second;
+      if (epoch > r_epoch) break;
+      garbage_collection::delete_object(oinfo);
+      q.pop_front();
     }
   }
 }
@@ -137,7 +125,7 @@ void session_info::remove_inserted_records_of_write_set_from_masstree() {
       /**
        * create information for garbage collection.
        */
-      gc_handle_.get_record_container()->emplace_back(itr.get_rec_ptr());
+      gc_handle_.get_record_container().push_back(itr.get_rec_ptr());
       tid_word deletetid;
       deletetid.set_lock(false);
       deletetid.set_latest(false);

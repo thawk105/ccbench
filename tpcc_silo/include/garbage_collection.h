@@ -9,7 +9,7 @@
 #include <mutex>
 #include <string>
 #include <utility>
-#include <vector>
+#include <deque>
 
 #include "cpu.h"
 #include "epoch.h"
@@ -17,18 +17,33 @@
 
 namespace ccbench::garbage_collection {
 
-alignas(CACHE_LINE_SIZE) inline std::array<  // NOLINT
-        std::vector<Record *>,
-        KVS_NUMBER_OF_LOGICAL_CORES> kGarbageRecords;  // NOLINT
+using RecPtrContainer = std::deque<Record *>;
+
+using ObjInfo = std::tuple<void *, std::size_t, std::align_val_t>;
 constexpr std::size_t ptr_index = 0;
 constexpr std::size_t size_index = 1;
 constexpr std::size_t align_index = 2;
-alignas(CACHE_LINE_SIZE) inline std::array<                         // NOLINT
-        std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>>,
-        KVS_NUMBER_OF_LOGICAL_CORES> kGarbageValues;                   // NOLINT
+
+
+inline void delete_object(ObjInfo oinfo)
+{
+    ::operator delete(std::get<ptr_index>(oinfo),
+                      std::get<size_index>(oinfo),
+                      std::get<align_index>(oinfo));
+}
+
+
+using ObjEpochInfo = std::pair<ObjInfo, epoch::epoch_t>;
+using ObjEpochContainer = std::deque<ObjEpochInfo>;
+
+
+alignas(CACHE_LINE_SIZE) inline std::array< // NOLINT
+    RecPtrContainer, KVS_NUMBER_OF_LOGICAL_CORES> kGarbageRecords; // NOLINT
+alignas(CACHE_LINE_SIZE) inline std::array< // NOLINT
+    ObjEpochContainer, KVS_NUMBER_OF_LOGICAL_CORES> kGarbageValues; // NOLINT
 
 /**
- * @brief Delete std::vector<Record*> kGarbageRecords at
+ * @brief Delete RecPtrContainer kGarbageRecords at
  * ../gcollection.cc
  * @pre This function should be called at terminating db.
  * @return void
@@ -36,20 +51,18 @@ alignas(CACHE_LINE_SIZE) inline std::array<                         // NOLINT
 extern void delete_all_garbage_records();
 
 /**
- * @brief Delete first of std::pair<std::string*, epoch_t>> kGarbageValues at
+ * @brief Delete first of ObjEpochContainer kGarbageValues at
  * ../gcollection.cc
  * @pre This function should be called at terminating db.
  * @return void
  */
 extern void delete_all_garbage_values();
 
-[[maybe_unused]] static std::vector<Record *> &get_garbage_records_at(  // NOLINT
-        std::size_t index) {
+[[maybe_unused]] static RecPtrContainer &get_garbage_records_at(std::size_t index) {  // NOLINT
   return kGarbageRecords.at(index);
 }
 
-[[maybe_unused]] static std::vector<std::pair<std::tuple<void *, std::size_t, std::align_val_t>, epoch::epoch_t>> &
-get_garbage_values_at(std::size_t index) {  // NOLINT
+[[maybe_unused]] static ObjEpochContainer &get_garbage_values_at(std::size_t index) {  // NOLINT
   return kGarbageValues.at(index);
 }
 
