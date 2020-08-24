@@ -27,7 +27,7 @@ Status delete_record(Token token, Storage st, std::string_view key) {
   if (!ti->get_txbegan()) tx_begin(token);
   Status check = ti->check_delete_after_write(key);
 
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   Record *rec_ptr{
           static_cast<Record *>(kohler_masstree::get_mtdb(st).get_value(key))};
   if (rec_ptr == nullptr) {

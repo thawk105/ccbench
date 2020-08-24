@@ -40,7 +40,7 @@ Status open_scan(Token token, Storage storage,  // NOLINT
   if (!ti->get_txbegan()) tx_begin(token);
 
   std::vector<const Record *> scan_buf;
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   kohler_masstree::get_mtdb(storage).scan(
           left_key.empty() ? nullptr : left_key.data(), left_key.size(),
           l_exclusive, right_key.empty() ? nullptr : right_key.data(),
@@ -102,7 +102,7 @@ Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **t
   if (scan_buf.size() == scan_index) {
     const Tuple *tupleptr(&(scan_buf.back())->get_tuple());
     std::vector<const Record *> new_scan_buf;
-    masstree_wrapper<Record>::thread_init(sched_getcpu());
+    masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
     kohler_masstree::get_mtdb(storage).scan(
             tupleptr->get_key().empty() ? nullptr : tupleptr->get_key().data(),
             tupleptr->get_key().size(), true,
@@ -173,7 +173,7 @@ Status scan_key(Token token, Storage storage,  // NOLINT
   auto rset_init_size = ti->get_read_set().size();
 
   std::vector<const Record *> scan_res;
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   kohler_masstree::get_mtdb(storage).scan(
           left_key.empty() ? nullptr : left_key.data(), left_key.size(),
           l_exclusive, right_key.empty() ? nullptr : right_key.data(),
@@ -228,7 +228,7 @@ Status scan_key(Token token, Storage storage,  // NOLINT
         Token token,                                     // NOLINT
         [[maybe_unused]] Storage storage, ScanHandle &handle, std::size_t &size) {
   auto *ti = static_cast<session_info *>(token);
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
 
   if (ti->get_scan_cache().find(handle) == ti->get_scan_cache().end()) {
     /**

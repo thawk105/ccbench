@@ -10,7 +10,7 @@ Status search_key(Token token, Storage storage,  // NOLINT
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
 
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   write_set_obj *inws{ti->search_write_set(key)};
   if (inws != nullptr) {
     if (inws->get_op() == OP_TYPE::DELETE) {

@@ -121,7 +121,7 @@ Status read_record(Record &res, const Record* dest) {  // NOLINT
 
 void write_phase(session_info *ti, const tid_word &max_r_set,
                  const tid_word &max_w_set) {
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
 
   /*
    * It calculates the smallest number that is

@@ -36,7 +36,7 @@ Status insert_detail(Token token, Storage st, KeyFunc&& key_func, TupleFunc&& tu
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
   }
 
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   if (kohler_masstree::find_record(st, key_func()) != nullptr) {
     return Status::WARN_ALREADY_EXISTS;
   }
@@ -90,7 +90,7 @@ Status update_detail(Token token, Storage st, KeyFunc&& key_func, TupleFunc&& tu
   }
 
   Record* rec_ptr;
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   rec_ptr = kohler_masstree::get_mtdb(st).get_value(key_func());
   if (rec_ptr == nullptr) {
     return Status::WARN_NOT_FOUND;
@@ -139,7 +139,7 @@ Status upsert_detail(Token token, Storage st, KeyFunc&& key_func, TupleFunc&& tu
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
   }
 
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   Record *rec_ptr{static_cast<Record *>(kohler_masstree::kohler_masstree::find_record(st, key_func()))};
   if (rec_ptr == nullptr) {
     rec_ptr = new Record(tuple_func());

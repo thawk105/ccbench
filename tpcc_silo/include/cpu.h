@@ -72,6 +72,14 @@ namespace ccbench {
   return result;
 }
 
+
+inline int cached_sched_getcpu()
+{
+    thread_local int value = ::sched_getcpu();
+    return value;
+}
+
+
 #endif  // CCBENCH_LINUX
 
 }  // namespace ccbench
