@@ -70,7 +70,7 @@ public:
   size_t size() const { return size_; }
   std::align_val_t align() const { return align_; }
 
-  void allocate(size_t size, std::align_val_t align) {
+  void allocate(size_t size, std::align_val_t align = std::align_val_t(sizeof(uint8_t))) {
     reset();
     data_ = ::operator new(size, align);
     size_ = size;

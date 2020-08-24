@@ -20,7 +20,10 @@ public:
 TEST_F(unit_test, direct_db_access) { // NOLINT
   std::string a{"a"};
   std::string b{"b"};
-  auto *record_ptr = new Record{a, b, static_cast<std::align_val_t>(alignof(std::string))}; // NOLINT
+  HeapObject obj;
+  obj.allocate(b.size());
+  ::memcpy(obj.data(), &b[0], b.size());
+  auto *record_ptr = new Record{Tuple(a, std::move(obj))}; // NOLINT
   /**
    * If Status::OK is returned, the ownership of the memory moves to kohler_masstree,
    * so there is no responsibility for releasing it. If not, you are responsible for doing a delete record_ptr.
