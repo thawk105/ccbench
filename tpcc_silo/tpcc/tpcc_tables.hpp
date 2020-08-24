@@ -46,7 +46,7 @@ struct SimpleKey {
 namespace TPCC {
 
 struct Warehouse {
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint16_t W_ID; //2*W unique IDs
   char W_NAME[11];
   char W_STREET_1[21];
@@ -70,7 +70,7 @@ struct Warehouse {
 };
 
 struct District {
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint8_t D_ID; //20 unique IDs
   std::uint16_t D_W_ID; //2*W unique IDs D_W_ID Foreign Key, references W_ID
   char D_NAME[11];
@@ -98,7 +98,7 @@ struct District {
 
 struct Customer {
   //(C_W_ID, C_D_ID) Foreign Key, references (D_W_ID, D_ID)
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t C_ID; //96,000 unique IDs
   std::uint8_t C_D_ID; //20 unique IDs
   std::uint16_t C_W_ID; //2*W unique IDs
@@ -214,7 +214,7 @@ struct History {
   // (H_C_W_ID, H_C_D_ID, H_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
   // (H_W_ID, H_D_ID) Foreign Key, references (D_W_ID, D_ID)
 
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t H_C_ID; //96,000 unique IDs
   std::uint8_t H_C_D_ID;// 20 unique IDs
   std::uint16_t H_C_W_ID; // 2*W unique IDs
@@ -231,7 +231,7 @@ struct History {
 class HistoryKeyGenerator {
 public:
   union {
-    alignas(ccbench::CACHE_LINE_SIZE)
+    alignas(CACHE_LINE_SIZE)
     std::uint64_t key_;
     struct {
       std::uint64_t counter_: 47;
@@ -261,7 +261,7 @@ public:
 
 struct NewOrder {
   //(NO_W_ID, NO_D_ID, NO_O_ID) Foreign Key, references (O_W_ID, O_D_ID, O_ID)
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t NO_O_ID; //10,000,000 unique IDs
   std::uint8_t NO_D_ID; //20 unique IDs
   std::uint16_t NO_W_ID; //2*W unique IDs
@@ -282,7 +282,7 @@ struct NewOrder {
 
 struct Order {
   //(O_W_ID, O_D_ID, O_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t O_ID; //10,000,000 unique IDs
   std::uint8_t O_D_ID; // 20 unique IDs
   std::uint16_t O_W_ID; // 2*W unique IDs
@@ -309,7 +309,7 @@ struct Order {
 struct OrderLine {
   //(OL_W_ID, OL_D_ID, OL_O_ID) Foreign Key, references (O_W_ID, O_D_ID, O_ID)
   //(OL_SUPPLY_W_ID, OL_I_ID) Foreign Key, references (S_W_ID, S_I_ID)
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t OL_O_ID;// 10,000,000 unique IDs
   std::uint8_t OL_D_ID;// 20 unique IDs
   std::uint16_t OL_W_ID;// 2*W unique IDs
@@ -336,7 +336,7 @@ struct OrderLine {
 };
 
 struct Item {
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t I_ID; //200,000 unique IDs 100,000 items are populated
   std::uint32_t I_IM_ID; //200,000 unique IDs Image ID associated to Item
   char I_NAME[25]; //variable text, size 24
@@ -358,7 +358,7 @@ struct Item {
 struct Stock {
   //S_W_ID Foreign Key, references W_ID
   //S_I_ID Foreign Key, references I_ID
-  alignas(ccbench::CACHE_LINE_SIZE)
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
   std::uint16_t S_W_ID; //2*W unique IDs
   int16_t S_QUANTITY; //signed numeric(4)
