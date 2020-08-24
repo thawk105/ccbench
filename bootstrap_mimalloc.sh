@@ -2,7 +2,7 @@
 cd third_party/mimalloc
 mkdir -p out/release
 cd out/release
-cmake ../..
+cmake -DCMAKE_BUILD_TYPE=Release ../..
 make clean all -j
 
 cd ../
