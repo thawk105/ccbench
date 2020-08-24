@@ -86,7 +86,7 @@ void tx_begin(Token token) {
   ti->set_epoch(epoch::load_acquire_global_epoch());
 }
 
-Status read_record(Record &res, const Record *const dest) {  // NOLINT
+Status read_record(Record &res, const Record* dest) {  // NOLINT
   tid_word f_check;
   tid_word s_check;  // first_check, second_check for occ
 
@@ -106,10 +106,7 @@ Status read_record(Record &res, const Record *const dest) {  // NOLINT
     Tuple& sc_tup = res.get_tuple();
     const Tuple& dest_tup = dest->get_tuple();
     sc_tup.set_key(dest_tup.get_key());
-    sc_tup.set_val_ptr(dest_tup.get_val_ptr());
-    sc_tup.set_val_size(dest_tup.get_val_size());
-    sc_tup.set_val_align(dest_tup.get_val_align());
-
+    sc_tup.set_value_shallow(dest_tup);
 
     s_check.set_obj(loadAcquire(dest->get_tidw().get_obj()));
     if (f_check == s_check) {
@@ -165,16 +162,22 @@ void write_phase(session_info *ti, const tid_word &max_r_set,
   ti->wal(max_tid.get_obj());
 #endif
 
-  for (auto iws = ti->get_write_set().begin(); iws != ti->get_write_set().end();
-       ++iws) {
+  const epoch::epoch_t epoch = ti->get_epoch();
+
+  for (auto iws = ti->get_write_set().begin(); iws != ti->get_write_set().end(); ++iws) {
     Record *rec_ptr = iws->get_rec_ptr();
     switch (iws->get_op()) {
       case OP_TYPE::UPDATE: {
-        std::string_view new_value_view = iws->get_tuple(iws->get_op()).get_val();
-        auto old_val = rec_ptr->get_tuple().set_value_get_old_val(new_value_view, iws->get_tuple().get_val_align());
+        Tuple tuple = std::move(iws->get_tuple(iws->get_op()));
+        assert(tuple.is_value_owned());
+        rec_ptr->get_tuple().swap_value(tuple);
+        // 'tuple' now contains the old value.
+        assert(tuple.is_value_owned());
         storeRelease(rec_ptr->get_tidw().get_obj(), max_tid.get_obj());
-        if (std::get<garbage_collection::ptr_index>(old_val) != nullptr) {
-          ti->get_gc_value_container().push_back(std::make_pair(old_val, ti->get_epoch()));
+        if (tuple.get_value().is_owned()) {
+          HeapObject old_obj;
+          tuple.swap_value(old_obj);
+          ti->get_gc_value_container().emplace_back(std::move(old_obj), epoch);
         }
         break;
       }

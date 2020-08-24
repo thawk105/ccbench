@@ -42,12 +42,18 @@ public:
   // for insert/delete operation
   write_set_obj(OP_TYPE op, Storage st, Record *rec_ptr) : op_(op), st_(st), rec_ptr_(rec_ptr) {}
 
-  // for update/
+#if 0 // QQQ
+  // for update/upsert
   write_set_obj(std::string_view key, std::string_view val, std::align_val_t val_align, const OP_TYPE op, Storage st,
-                Record *const rec_ptr)
+                Record* rec_ptr)
           : op_(op), st_(st),
             rec_ptr_(rec_ptr),
             tuple_(key, val, val_align) {}
+#endif
+  // for update/upsert
+  write_set_obj(OP_TYPE op, Storage st, Record* rec_ptr, Tuple&& tuple)
+    : op_(op), st_(st), rec_ptr_(rec_ptr), tuple_(std::move(tuple)) {
+  }
 
   write_set_obj(const write_set_obj &right) = delete;
 
@@ -136,14 +142,16 @@ public:
     return st_;
   }
 
-  void reset_tuple_value(std::string_view val, std::align_val_t val_align);
+  void reset_tuple_value(HeapObject&& obj) {
+    get_tuple().set_value(std::move(obj));
+  }
 
 private:
   /**
    * for update : ptr to existing record.
    * for insert : ptr to new existing record.
    */
-  alignas(64)
+  alignas(CACHE_LINE_SIZE)
   OP_TYPE op_;
   Storage st_;
   Record *rec_ptr_;  // ptr to database
@@ -191,7 +199,7 @@ public:
   }
 
 private:
-  alignas(64)
+  alignas(CACHE_LINE_SIZE)
   Record rec_read{};
   const Record *rec_ptr{};  // ptr to database
   bool is_scan{false};      // NOLINT

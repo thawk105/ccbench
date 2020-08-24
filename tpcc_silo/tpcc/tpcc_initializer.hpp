@@ -24,15 +24,21 @@
 using namespace ccbench;
 
 namespace TPCC::Initializer {
-void db_insert(const Storage st, const std::string_view key, const std::string_view val, std::size_t val_align) {
-  auto *record_ptr = new Record{key, val, static_cast<std::align_val_t>(val_align)};
-  record_ptr->get_tidw().set_absent(false);
-  record_ptr->get_tidw().set_lock(false);
-  if (Status::OK != kohler_masstree::insert_record(st, key, record_ptr)) {
-    std::cout << __FILE__ << " : " << __LINE__ << " : " << "fatal error. unique key restriction." << std::endl;
-    std::cout << "st : " << static_cast<int>(st) << ", key : " << key << ", val : " << val << std::endl;
-    std::abort();
-  }
+
+
+void db_insert_raw(Storage st, std::string_view key, HeapObject&& val)
+{
+    Record* rec = new Record(Tuple(key, std::move(val)));
+    rec->set_for_load();
+    Status sta = kohler_masstree::insert_record(st, key, rec);
+    if (sta != Status::OK) {
+        std::cout << __FILE__ << " : " << __LINE__ << " : "
+                  << "fatal error. unique key restriction." << std::endl;
+        std::cout << "st : " << static_cast<int>(st)
+                  << ", key : " << str_view_hex(key)
+                  << ", val : " << str_view_hex(rec->get_tuple().get_val()) << std::endl;
+        std::abort();
+    }
 }
 
 
@@ -43,7 +49,9 @@ void load_item() {
     static void work(std::uint32_t i_id_start, std::uint32_t i_id_end, const IsOriginal& is_original) {
       for (std::uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
         assert(i_id != 0); // 1-origin
-        TPCC::Item ite{};
+        HeapObject obj;
+        obj.allocate<TPCC::Item>();
+        TPCC::Item& ite = obj.ref();
         ite.I_ID = i_id;
         ite.I_IM_ID = random_int(1, 10000);
         random_alpha_string(14, 24, ite.I_NAME);
@@ -55,7 +63,7 @@ void load_item() {
 #endif
         SimpleKey<8> key{};
         ite.createKey(key.ptr());
-        db_insert(Storage::ITEM, key.view(), ite.view(), alignof(TPCC::Item));
+        db_insert_raw(Storage::ITEM, key.view(), std::move(obj));
       }
     }
   };
@@ -87,7 +95,9 @@ void load_item() {
 //CREATE Warehouses
 void load_warehouse(std::uint16_t w_id) {
   assert(w_id != 0); // 1-origin
-  TPCC::Warehouse ware{};
+  HeapObject obj;
+  obj.allocate<TPCC::Warehouse>();
+  TPCC::Warehouse& ware = obj.ref();
   ware.W_ID = w_id;
   random_alpha_string(6, 10, ware.W_NAME);
   make_address(ware.W_STREET_1,
@@ -103,7 +113,7 @@ void load_warehouse(std::uint16_t w_id) {
 #endif
   SimpleKey<8> wh_key{};
   ware.createKey(wh_key.ptr());
-  db_insert(Storage::WAREHOUSE, wh_key.view(), ware.view(), alignof(TPCC::Warehouse));
+  db_insert_raw(Storage::WAREHOUSE, wh_key.view(), std::move(obj));
 }
 
 //CREATE Stock
@@ -113,7 +123,9 @@ void load_stock(std::uint16_t w_id) {
     static void work(std::uint32_t i_id_start, std::uint32_t i_id_end, std::uint16_t w_id, const IsOriginal& is_original) {
       for (std::uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
         assert(i_id != 0); // 1-origin
-        TPCC::Stock st{};
+        HeapObject obj;
+        obj.allocate<TPCC::Stock>();
+        TPCC::Stock& st = obj.ref();
         st.S_I_ID = i_id;
         st.S_W_ID = w_id;
         st.S_QUANTITY = random_int(10, 100);
@@ -130,7 +142,7 @@ void load_stock(std::uint16_t w_id) {
 
         SimpleKey<8> st_key{};
         st.createKey(st_key.ptr());
-        db_insert(Storage::STOCK, st_key.view(), st.view(), alignof(TPCC::Stock));
+        db_insert_raw(Storage::STOCK, st_key.view(), std::move(obj));
       }
     }
   };
@@ -159,7 +171,9 @@ void load_stock(std::uint16_t w_id) {
 //CREATE History
 void load_history(std::uint16_t w_id, uint8_t d_id, std::uint32_t c_id, std::string_view key) {
   std::time_t now = ccbench::epoch::get_lightweight_timestamp();
-  TPCC::History history{};
+  HeapObject obj;
+  obj.allocate<TPCC::History>();
+  TPCC::History& history = obj.ref();
   history.H_C_ID = c_id;
   history.H_C_D_ID = history.H_D_ID = d_id;
   history.H_C_W_ID = history.H_W_ID = w_id;
@@ -167,13 +181,15 @@ void load_history(std::uint16_t w_id, uint8_t d_id, std::uint32_t c_id, std::str
   history.H_AMOUNT = 10.00;
   random_alpha_string(12, 24, history.H_DATA);
 
-  db_insert(Storage::HISTORY, key, history.view(), alignof(TPCC::History));
+  db_insert_raw(Storage::HISTORY, key, std::move(obj));
 }
 
 //CREATE Orderline
 void load_orderline(std::uint16_t w_id, std::uint16_t d_id, std::uint32_t o_id, uint8_t ol_num) {
   std::time_t now = ccbench::epoch::get_lightweight_timestamp();
-  TPCC::OrderLine order_line{};
+  HeapObject obj;
+  obj.allocate<TPCC::OrderLine>();
+  TPCC::OrderLine& order_line = obj.ref();
   order_line.OL_O_ID = o_id;
   order_line.OL_D_ID = d_id;
   order_line.OL_W_ID = w_id;
@@ -195,13 +211,15 @@ void load_orderline(std::uint16_t w_id, std::uint16_t d_id, std::uint32_t o_id, 
 
   SimpleKey<8> key{};
   order_line.createKey(key.ptr());
-  db_insert(Storage::ORDERLINE, key.view(), order_line.view(), alignof(TPCC::OrderLine));
+  db_insert_raw(Storage::ORDERLINE, key.view(), std::move(obj));
 }
 
 //CREATE Order
 void load_order(std::uint16_t w_id, uint8_t d_id, std::uint32_t o_id, std::uint32_t c_id) {
   std::time_t now = ccbench::epoch::get_lightweight_timestamp();
-  TPCC::Order order{};
+  HeapObject obj;
+  obj.allocate<TPCC::Order>();
+  TPCC::Order& order = obj.ref();
   order.O_ID = o_id;
   order.O_C_ID = c_id;
   order.O_D_ID = d_id;
@@ -218,7 +236,7 @@ void load_order(std::uint16_t w_id, uint8_t d_id, std::uint32_t o_id, std::uint3
   {
     SimpleKey<8> key{};
     order.createKey(key.ptr());
-    db_insert(Storage::ORDER, key.view(), order.view(), alignof(TPCC::Order));
+    db_insert_raw(Storage::ORDER, key.view(), std::move(obj));
   }
   //O_OL_CNT orderlines per order.
   for (uint8_t ol_num = 1; ol_num <= order.O_OL_CNT + 1; ol_num++) {
@@ -227,14 +245,16 @@ void load_order(std::uint16_t w_id, uint8_t d_id, std::uint32_t o_id, std::uint3
 
   //CREATE NewOrder 900 rows
   if (2100 < c_id) {
-    TPCC::NewOrder new_order{};
+    HeapObject obj;
+    obj.allocate<TPCC::NewOrder>();
+    TPCC::NewOrder& new_order = obj.ref();
     new_order.NO_O_ID = o_id;
     new_order.NO_D_ID = d_id;
     new_order.NO_W_ID = w_id;
     {
       SimpleKey<8> key{};
       new_order.createKey(key.ptr());
-      db_insert(Storage::NEWORDER, key.view(), new_order.view(), alignof(TPCC::NewOrder));
+      db_insert_raw(Storage::NEWORDER, key.view(), std::move(obj));
     }
   }
 }
@@ -249,7 +269,9 @@ void load_customer(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &
       for (std::uint32_t c_id = c_id_start; c_id <= c_id_end; ++c_id) {
         assert(c_id != 0); // 1-origin.
         std::time_t now = ccbench::epoch::get_lightweight_timestamp();
-        TPCC::Customer customer{};
+        HeapObject obj;
+        obj.allocate<TPCC::Customer>();
+        TPCC::Customer& customer = obj.ref();
         customer.C_ID = c_id;
         customer.C_D_ID = d_id;
         customer.C_W_ID = w_id;
@@ -291,19 +313,17 @@ void load_customer(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &
 
         SimpleKey<8> pkey{};
         customer.createKey(pkey.ptr());
-        db_insert(Storage::CUSTOMER, pkey.view(), customer.view(), alignof(TPCC::Customer));
-        // void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, pkey.view());
-
         char c_last_key_buf[Customer::CLastKey::required_size()];
         std::string_view c_last_key = customer.createSecondaryKey(&c_last_key_buf[0]);
         // ::printf("c_last_key %s\n", str_view_hex(c_last_key).c_str());
 
+        db_insert_raw(Storage::CUSTOMER, pkey.view(), std::move(obj));
+        // void *rec_ptr = kohler_masstree::find_record(Storage::CUSTOMER, pkey.view());
+
         std::vector<SimpleKey<8>> *ctn_ptr;
-        void *ret_ptr = kohler_masstree::find_record(Storage::SECONDARY, c_last_key);
-        if (ret_ptr != nullptr) {
-          memcpy(&ctn_ptr,
-                 reinterpret_cast<void *>(const_cast<char *>(reinterpret_cast<Record *>(ret_ptr)->get_tuple().get_val().data())),
-                 sizeof(uintptr_t));
+        Record *rec_ptr = reinterpret_cast<Record*>(kohler_masstree::find_record(Storage::SECONDARY, c_last_key));
+        if (rec_ptr != nullptr) {
+          memcpy(&ctn_ptr, rec_ptr->get_tuple().get_val().data(), sizeof(uintptr_t));
           //::printf("found %p\n", ctn_ptr);
           ctn_ptr->push_back(pkey);
         } else {
@@ -311,7 +331,11 @@ void load_customer(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &
           ctn_ptr->reserve(8); // 8 * 8 = 64 bytes.
           //::printf("new   %p\n", ctn_ptr);
           ctn_ptr->push_back(pkey);
-          db_insert(Storage::SECONDARY, c_last_key, str_view(ctn_ptr), sizeof(uintptr_t));
+          HeapObject obj;
+          obj.allocate<uintptr_t>();
+          uintptr_t& p = obj.ref();
+          p = uintptr_t(ctn_ptr);
+          db_insert_raw(Storage::SECONDARY, c_last_key, std::move(obj));
         }
 
         struct S {
@@ -361,7 +385,9 @@ void load_district(std::uint16_t w_id) {
   struct S {
     static void work(uint8_t d_id, std::uint16_t w_id, TPCC::HistoryKeyGenerator &hkg) {
       assert(d_id != 0); // 1-origin.
-      TPCC::District district{};
+      HeapObject obj;
+      obj.allocate<TPCC::District>();
+      TPCC::District& district = obj.ref();
       district.D_ID = d_id;
       district.D_W_ID = w_id;
       random_alpha_string(6, 10, district.D_NAME);
@@ -379,7 +405,7 @@ void load_district(std::uint16_t w_id) {
 #endif
       SimpleKey<8> key{};
       district.createKey(key.ptr());
-      db_insert(Storage::DISTRICT, key.view(), district.view(), alignof(TPCC::District));
+      db_insert_raw(Storage::DISTRICT, key.view(), std::move(obj));
 
       // CREATE Customer History Order Orderline. 3000 customers per a district.
       load_customer(d_id, w_id, hkg);

@@ -11,9 +11,6 @@
 namespace ccbench {
 
 void session_info::clean_up_ops_set() {
-  for (auto &&elem : read_set) {
-    elem.get_rec_read().get_tuple().set_val_ptr(nullptr);
-  }
   read_set.clear();
   write_set.clear();
 }
@@ -105,11 +102,9 @@ void session_info::gc_records_and_values() const {
     ObjEpochContainer& q = gc_handle_.get_value_container();
     while (!q.empty()) {
       ObjEpochInfo& oeinfo = q.front();
-      ObjInfo& oinfo = oeinfo.first;
       epoch::epoch_t epoch = oeinfo.second;
       if (epoch > r_epoch) break;
-      garbage_collection::delete_object(oinfo);
-      q.pop_front();
+      q.pop_front(); // oeinfo.first is HeapObject and it will dealocate its resources.
     }
   }
 }

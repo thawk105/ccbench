@@ -39,7 +39,6 @@ public:
   using RecPtrContainer = garbage_collection::RecPtrContainer;
   using ObjEpochContainer = garbage_collection::ObjEpochContainer;
   using ObjEpochInfo = garbage_collection::ObjEpochInfo;
-  using ObjInfo = garbage_collection::ObjInfo;
 
   class gc_handler {
   public:
