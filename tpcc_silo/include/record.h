@@ -39,8 +39,9 @@ public:
   void set_tidw(tid_word tidw) &{ tidw_.set_obj(tidw.get_obj()); }
 
 private:
-  tid_word tidw_;
+  alignas(64)
   Tuple tuple_;
+  tid_word tidw_;
 };
 
 }  // namespace ccbench

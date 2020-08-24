@@ -143,6 +143,7 @@ private:
    * for update : ptr to existing record.
    * for insert : ptr to new existing record.
    */
+  alignas(64)
   OP_TYPE op_;
   Storage st_;
   Record *rec_ptr_;  // ptr to database
@@ -190,6 +191,7 @@ public:
   }
 
 private:
+  alignas(64)
   Record rec_read{};
   const Record *rec_ptr{};  // ptr to database
   bool is_scan{false};      // NOLINT
