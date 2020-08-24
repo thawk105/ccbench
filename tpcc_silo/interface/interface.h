@@ -24,7 +24,7 @@ namespace ccbench {
  * transaction.
  * @return Status::OK success.
  */
-extern Status abort(Token token);  // NOLINT
+Status abort(Token token);  // NOLINT
 
 /**
  * @brief close the specified scan_cache
@@ -35,7 +35,7 @@ extern Status abort(Token token);  // NOLINT
  * @return Status::OK It succeeded.
  * @return Status::WARN_INVALID_HANDLE The @a handle is invalid.
  */
-extern Status close_scan(Token token, Storage storage,  // NOLINT
+Status close_scan(Token token, Storage storage,  // NOLINT
                          ScanHandle handle);
 
 /**
@@ -53,7 +53,7 @@ extern Status close_scan(Token token, Storage storage,  // NOLINT
  * called abort.
  * @return Status::OK success.
  */
-extern Status commit(Token token);  // NOLINT
+Status commit(Token token);  // NOLINT
 
 /**
  * @brief Delete the all records.
@@ -70,7 +70,7 @@ extern Status commit(Token token);  // NOLINT
  * you can retry delete_all_records meaning to resume this
  * function.
  */
-[[maybe_unused]] extern Status delete_all_records();  // NOLINT
+[[maybe_unused]] Status delete_all_records();  // NOLINT
 
 /**
  * @brief delete the record for the given key
@@ -86,7 +86,7 @@ extern Status commit(Token token);  // NOLINT
  * @return Status::WARN_CANCEL_PREVIOUS_OPERATION it canceled an update/insert
  * operation before this fucntion and did delete operation.
  */
-extern Status delete_record(Token token, Storage st, std::string_view key);
+Status delete_record(Token token, Storage st, std::string_view key);
 
 /**
  * @brief delete existing storage and records under the storage.
@@ -96,7 +96,7 @@ extern Status delete_record(Token token, Storage st, std::string_view key);
  * @return Status::ERR_NOT_FOUND If the storage is not registered with the given
  * name
  */
-[[maybe_unused]] extern Status delete_storage(Storage storage);  // NOLINT
+[[maybe_unused]] Status delete_storage(Storage storage);  // NOLINT
 
 /**
  * @brief enter session
@@ -107,7 +107,7 @@ extern Status delete_record(Token token, Storage st, std::string_view key);
  * @return Status::OK
  * @return Status::ERR_SESSION_LIMIT There are no capacity of session.
  */
-extern Status enter(Token &token);  // NOLINT
+Status enter(Token &token);  // NOLINT
 
 /**
  * @brief do delete operations for all records, join core threads and delete the
@@ -119,7 +119,7 @@ extern Status enter(Token &token);  // NOLINT
  * Then, it delete the remaining garbage (heap) object by using private
  * interface.
  */
-extern void fin();
+void fin();
 
 /**
  * @brief get existing storage handle
@@ -130,7 +130,7 @@ extern void fin();
  * @return Status::ERR_NOT_FOUND If the storage is not registered with the given
  * name
  */
-[[maybe_unused]] extern Status get_storage(std::string_view name,  // NOLINT
+[[maybe_unused]] Status get_storage(std::string_view name,  // NOLINT
                                            Storage &storage);
 
 /**
@@ -142,7 +142,7 @@ extern void fin();
  * Some files which has the same path exist.
  * @return Status::OK
  */
-extern Status init(                                                // NOLINT
+Status init(                                                // NOLINT
         std::string_view log_directory_path = MAC2STR(PROJECT_ROOT));  // NOLINT
 
 /**
@@ -158,7 +158,8 @@ extern Status init(                                                // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE it already executed
  * update/insert/upsert, so it update the local write set object.
  */
-extern Status insert(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align);
+Status insert(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align);
+Status insert(Token token, Storage st, Tuple&& tuple);
 
 /**
  * @brief leave session
@@ -168,7 +169,7 @@ extern Status insert(Token token, Storage st, std::string_view key, std::string_
  * @return Status::OK if successful
  * @return Status::WARN_NOT_IN_A_SESSION If the session is already ended.
  */
-extern Status leave(Token token);  // NOLINT
+Status leave(Token token);  // NOLINT
 
 /**
  * @brief This function preserve the specified range of masstree
@@ -186,7 +187,7 @@ extern Status leave(Token token);  // NOLINT
  * @return Status::WARN_NOT_FOUND The scan couldn't find any records.
  * @return Status::OK the some records was scanned.
  */
-extern Status open_scan(Token token, Storage storage,  // NOLINT
+Status open_scan(Token token, Storage storage,  // NOLINT
                         std::string_view left_key, bool l_exclusive,
                         std::string_view right_key, bool r_exclusive,
                         ScanHandle &handle);
@@ -210,7 +211,7 @@ extern Status open_scan(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_SCAN_LIMIT It have read all records in the scan_cache.
  * @return Status::OK It succeeded.
  */
-extern Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **result); // NOLINT
+Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **result); // NOLINT
 
 /**
  * @brief register new storage, which is used to separate the KVS's key space,
@@ -221,7 +222,7 @@ extern Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tu
  * that is used for the subsequent calls related with the storage.
  * @return Status::OK if successful
  */
-[[maybe_unused]] extern Status register_storage(char const *name,  // NOLINT
+[[maybe_unused]] Status register_storage(char const *name,  // NOLINT
                                                 std::size_t len_name,
                                                 Storage &storage);
 
@@ -246,7 +247,7 @@ extern Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tu
  * @return Status::WARN_CONCURRENT_DELETE The read targets was deleted by delete
  * operation.
  */
-extern Status scan_key(Token token, Storage storage,  // NOLINT
+Status scan_key(Token token, Storage storage,  // NOLINT
                        std::string_view left_key, bool l_exclusive,
                        std::string_view right_key, bool r_exclusive,
                        std::vector<const Tuple *> &result);
@@ -263,7 +264,7 @@ extern Status scan_key(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_INVALID_HANDLE The @a handle is invalid.
  * @return Status::OK success.
  */
-[[maybe_unused]] extern Status scannable_total_index_size(  // NOLINT
+[[maybe_unused]] Status scannable_total_index_size(  // NOLINT
         Token token,                                            // NOLINT
         Storage storage, ScanHandle &handle, std::size_t &size);
 
@@ -285,7 +286,7 @@ extern Status scan_key(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_CONCURRENT_DELETE The read targets was deleted by delete
  * operation of concurrent transaction.
  */
-extern Status search_key(Token token, Storage storage,  // NOLINT
+Status search_key(Token token, Storage storage,  // NOLINT
                          std::string_view key, Tuple **tuple);
 
 /**
@@ -294,7 +295,7 @@ extern Status search_key(Token token, Storage storage,  // NOLINT
  * @pre It must decide correct wal directory name decided by
  * change_wal_directory function before it executes recovery.
  */
-[[maybe_unused]] extern void single_recovery_from_log();
+[[maybe_unused]] void single_recovery_from_log();
 
 /**
  * @brief update the record for the given key
@@ -309,7 +310,8 @@ extern Status search_key(Token token, Storage storage,  // NOLINT
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE It already executed update/insert,
  * so it update the value which is going to be updated.
  */
-extern Status update(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align);
+Status update(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align);
+Status update(Token token, Storage st, Tuple&& tuple);
 
 /**
  * @brief update the record for the given key, or insert the key/value if the
@@ -323,6 +325,7 @@ extern Status update(Token token, Storage st, std::string_view key, std::string_
  * @return Status::WARN_WRITE_TO_LOCAL_WRITE It already did
  * insert/update/upsert, so it overwrite its local write set.
  */
-extern Status upsert(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align);
+Status upsert(Token token, Storage st, std::string_view key, std::string_view val, std::align_val_t val_align);
+Status upsert(Token token, Storage st, Tuple&& tuple);
 
 }  // namespace ccbench

@@ -116,7 +116,6 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     EXEC SQL UPDATE district SET d_next_o_id = :d_next_o_id + 1
     WHERE d_id = :d_id AND d_w_id = :w_id ;
     +===================================================*/
-  TPCC::District dist{};
   SimpleKey<8> dist_key;
   TPCC::District::CreateKey(w_id, d_id, dist_key.ptr());
   stat = search_key(token, Storage::DISTRICT, dist_key.view(), &ret_tuple_ptr);
@@ -124,15 +123,17 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     abort(token);
     return false;
   }
-  memcpy(&dist, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::District));
+  HeapObject dist_obj;
+  dist_obj.allocate<TPCC::District>();
+  TPCC::District& dist = dist_obj.ref();
+  memcpy(&dist, ret_tuple_ptr->get_val().data(), sizeof(dist));
 
   [[maybe_unused]] double d_tax = dist.D_TAX;
   std::uint32_t o_id = dist.D_NEXT_O_ID;
   o_id++;
   dist.D_NEXT_O_ID = o_id;
   // o_id = dist.D_NEXT_O_ID; /* no need to execute */
-  stat = update(token, Storage::DISTRICT, dist_key.view(), dist.view(),
-                static_cast<std::align_val_t>(alignof(TPCC::District)));
+  stat = update(token, Storage::DISTRICT, Tuple(dist_key.view(), std::move(dist_obj)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -160,7 +161,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     EXEC SQL INSERT INTO ORDERS (o_id, o_d_id, o_w_id, o_c_id, o_entry_d, o_ol_cnt, o_all_local)
     VALUES (:o_id, :d_id, :w_id, :c_id, :datetime, :o_ol_cnt, :o_all_local);
     +========================================================================================*/
-  TPCC::Order order{};
+  HeapObject order_obj;
+  order_obj.allocate<TPCC::Order>();
+  TPCC::Order& order = order_obj.ref();
 
   order.O_ID = o_id;
   order.O_D_ID = d_id;
@@ -171,8 +174,7 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
   order.O_ALL_LOCAL = (remote ? 0 : 1);
   SimpleKey<8> order_key;
   TPCC::Order::CreateKey(order.O_W_ID, order.O_D_ID, order.O_ID, order_key.ptr());
-  stat = insert(token, Storage::ORDER, order_key.view(), order.view(),
-                static_cast<std::align_val_t>(alignof(TPCC::Order)));
+  stat = insert(token, Storage::ORDER, Tuple(order_key.view(), std::move(order_obj)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -198,14 +200,15 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     VALUES (:o_id, :d_id, :w_id);
     +=======================================================*/
 
-  TPCC::NewOrder neworder{};
+  HeapObject no_obj;
+  no_obj.allocate<TPCC::NewOrder>();
+  TPCC::NewOrder& neworder = no_obj.ref();
   neworder.NO_O_ID = o_id;
   neworder.NO_D_ID = d_id;
   neworder.NO_W_ID = w_id;
   SimpleKey<8> no_key;
   TPCC::NewOrder::CreateKey(neworder.NO_W_ID, neworder.NO_D_ID, neworder.NO_O_ID, no_key.ptr());
-  stat = insert(token, Storage::NEWORDER, no_key.view(), neworder.view(),
-                static_cast<std::align_val_t>(alignof(TPCC::NewOrder)));
+  stat = insert(token, Storage::NEWORDER, Tuple(no_key.view(), std::move(no_obj)));
   if (stat == Status::WARN_NOT_FOUND) {
     abort(token);
     return false;
@@ -287,7 +290,6 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
       AND s_w_id = :ol_supply_w_id;
       +===============================================*/
 
-    TPCC::Stock stock{};
     SimpleKey<8> stock_key;
     TPCC::Stock::CreateKey(ol_supply_w_id, ol_i_id, stock_key.ptr());
     stat = search_key(token, Storage::STOCK, stock_key.view(), &ret_tuple_ptr);
@@ -295,7 +297,13 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
       abort(token);
       return false;
     }
-    memcpy(&stock, reinterpret_cast<void *>(const_cast<char *>(ret_tuple_ptr->get_val().data())), sizeof(TPCC::Stock));
+
+    HeapObject s_obj;
+    s_obj.allocate<TPCC::Stock>();
+    TPCC::Stock& stock = s_obj.ref();
+    const TPCC::Stock& stock_old =
+        *reinterpret_cast<const TPCC::Stock*>(ret_tuple_ptr->get_val().data());
+    memcpy(&stock, &stock_old, sizeof(stock));
     uint64_t s_quantity = (int64_t) stock.S_QUANTITY;
     /**
      * These data are for application side.
@@ -335,8 +343,7 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
       quantity = s_quantity - ol_quantity + 91;
     }
     stock.S_QUANTITY = (double) quantity;
-    stat = update(token, Storage::STOCK, stock_key.view(), stock.view(),
-                  static_cast<std::align_val_t>(alignof(TPCC::Stock)));
+    stat = update(token, Storage::STOCK, Tuple(stock_key.view(), std::move(s_obj)));
     if (stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
@@ -397,7 +404,9 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     //total += ol_amount;
     double ol_amount = ol_quantity * i_price * (1.0 + w_tax + d_tax) * (1.0 - c_discount);
 
-    TPCC::OrderLine orderline{};
+    HeapObject ol_obj;
+    ol_obj.allocate<TPCC::OrderLine>();
+    TPCC::OrderLine& orderline = ol_obj.ref();
     orderline.OL_O_ID = o_id;
     orderline.OL_D_ID = d_id;
     orderline.OL_W_ID = w_id;
@@ -406,7 +415,26 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     orderline.OL_SUPPLY_W_ID = ol_supply_w_id;
     orderline.OL_QUANTITY = ol_quantity;
     orderline.OL_AMOUNT = ol_amount;
+#if 0
     strcpy(orderline.OL_DIST_INFO, "OL_DIST_INFO"); /* This is not implemented in DBx1000 */
+#else
+    auto pick_sdist = [&]() -> const char* {
+        switch (d_id) {
+        case 1: return stock_old.S_DIST_01;
+        case 2: return stock_old.S_DIST_02;
+        case 3: return stock_old.S_DIST_03;
+        case 4: return stock_old.S_DIST_04;
+        case 5: return stock_old.S_DIST_05;
+        case 6: return stock_old.S_DIST_06;
+        case 7: return stock_old.S_DIST_07;
+        case 8: return stock_old.S_DIST_08;
+        case 9: return stock_old.S_DIST_09;
+        case 10: return stock_old.S_DIST_10;
+        default: return nullptr; // BUG
+        }
+    };
+    copy_cstr(orderline.OL_DIST_INFO, pick_sdist(), sizeof(orderline.OL_DIST_INFO));
+#endif
 
 #if !TPCC_SMALL
     // distinfo?
@@ -415,8 +443,7 @@ run_new_order(TPCC::query::NewOrder *query, Token &token) {
     SimpleKey<8> ol_key;
     TPCC::OrderLine::CreateKey(orderline.OL_W_ID, orderline.OL_D_ID, orderline.OL_O_ID,
                                orderline.OL_NUMBER, ol_key.ptr());
-    stat = insert(token, Storage::ORDERLINE, ol_key.view(), orderline.view(),
-                  static_cast<std::align_val_t>(alignof(TPCC::OrderLine)));
+    stat = insert(token, Storage::ORDERLINE, Tuple(ol_key.view(), std::move(ol_obj)));
     if (stat == Status::WARN_NOT_FOUND) {
       abort(token);
       return false;
