@@ -28,9 +28,9 @@ void Result::displayCommitCounts() {
   cout << "commit_counts_:\t" << total_commit_counts_ << endl;
 }
 
-void Result::displayTps(size_t extime) {
+void Result::displayTps(size_t extime, size_t thread_num) {
   uint64_t result = total_commit_counts_ / extime;
-  cout << "latency[ns]:\t" << powl(10.0, 9.0) / result << endl;
+  cout << "latency[ns]:\t" << powl(10.0, 9.0) / result * thread_num << endl;
   cout << "throughput[tps]:\t" << result << endl;
 }
 
@@ -462,7 +462,7 @@ void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
   displayCommitCounts();
   displayRusageRUMaxrss();
   displayAbortRate();
-  displayTps(extime);
+  displayTps(extime, thread_num);
 }
 
 void Result::addLocalAllResult(const Result &other) {

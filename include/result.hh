@@ -82,7 +82,7 @@ public:
 
   void displayCommitCounts();
 
-  void displayTps(size_t extime);
+  void displayTps(size_t extime, size_t thread_num);
 
   void displayAllResult(size_t clocks_per_us, size_t extime, size_t thread_num);
 
