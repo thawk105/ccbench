@@ -113,7 +113,7 @@ public:
 
   void reset() noexcept {
     if (owner_) {
-      assert(data_!= nullptr); assert(size_ > 0); assert(align_ > 0);
+      assert(data_!= nullptr); assert(size_ > 0); assert(static_cast<std::size_t>(align_) > 0);
       ::operator delete(data_, size_, align_);
     }
     data_ = nullptr;
