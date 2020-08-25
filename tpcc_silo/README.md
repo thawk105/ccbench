@@ -79,7 +79,5 @@ We have identified and fixed two of them [2,3].
 
 ## Reference
 [1] Masstree code. https://github.com/kohler/masstree-beta.<br>
-[2] Debug around string slice.hh. https://github.com/thawk105/masstree-beta/commit/
-77ef355f868a6db4eac7b44669c508d8db053502.<br>
-[3] Debug Masstree about Cast Issue. https://github.com/thawk105/masstree-beta/commit/
-d4bcf7711dc027818b1719a5a4c29aee547c58f6<br>
+[2] Debug around string slice.hh. https://github.com/thawk105/masstree-beta/commit/77ef355f868a6db4eac7b44669c508d8db053502.<br>
+[3] Debug Masstree about Cast Issue. https://github.com/thawk105/masstree-beta/commit/d4bcf7711dc027818b1719a5a4c29aee547c58f6<br>
