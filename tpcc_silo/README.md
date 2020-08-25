@@ -75,7 +75,7 @@ We thank Kohler.
 ## Future work
 CCBench plans to adopt a parallel tree different from [1] in the future.
 Because there are bugs in [1].
-Some of those have fixed two of them [2,3].
+We have identified and fixed two of them [2,3].
 
 ## Reference
 [1] Masstree code. https://github.com/kohler/masstree-beta.
