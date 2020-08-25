@@ -138,7 +138,7 @@ public:
 
   [[nodiscard]] const OP_TYPE &get_op() const { return op_; }  // NOLINT
 
-  Storage get_st() {
+  Storage get_st() const {
     return st_;
   }
 
@@ -160,11 +160,11 @@ private:
 
 class read_set_obj {  // NOLINT
 public:
-  read_set_obj() { this->rec_ptr = nullptr; }
+  read_set_obj() : rec_ptr(nullptr), is_scan(), st_() {
+  }
 
-  explicit read_set_obj(const Record *rec_ptr, bool scan = false)  // NOLINT
-          : is_scan{scan} {
-    this->rec_ptr = rec_ptr;
+  explicit read_set_obj(Storage st, const Record *rec_ptr, bool scan = false)  // NOLINT
+    : rec_ptr(rec_ptr), is_scan{scan}, st_(st) {
   }
 
   read_set_obj(const read_set_obj &right) = delete;
@@ -174,12 +174,15 @@ public:
   read_set_obj(read_set_obj &&right, bool scan) : is_scan{scan} {  // NOLINT
     rec_read = std::move(right.rec_read);
     rec_ptr = right.rec_ptr;
+    st_ = right.st_;
   }
 
   read_set_obj &operator=(const read_set_obj &right) = delete;  // NOLINT
   read_set_obj &operator=(read_set_obj &&right) {               // NOLINT
     rec_read = std::move(right.rec_read);
     rec_ptr = right.rec_ptr;
+    is_scan = right.is_scan; // required?
+    st_ = right.st_;
 
     return *this;
   }
@@ -198,11 +201,14 @@ public:
     return rec_ptr;
   }
 
+  Storage get_st() const { return st_; }
+
 private:
   alignas(CACHE_LINE_SIZE)
   Record rec_read{};
   const Record *rec_ptr{};  // ptr to database
   bool is_scan{false};      // NOLINT
+  Storage st_;
 };
 
 // Operations for retry by abort

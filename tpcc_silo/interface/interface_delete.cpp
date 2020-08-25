@@ -25,7 +25,7 @@ namespace ccbench {
 Status delete_record(Token token, Storage st, std::string_view key) {
   auto *ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
-  Status check = ti->check_delete_after_write(key);
+  Status check = ti->check_delete_after_write(st, key);
 
   masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   Record *rec_ptr{

@@ -163,7 +163,7 @@ public:
    * @return Status::WARN_CANCEL_PREVIOUS_OPERATION it canceled an update/insert
    * operation before this delete_record operation.
    */
-  Status check_delete_after_write(std::string_view key);  // NOLINT
+  Status check_delete_after_write(Storage st, std::string_view key);  // NOLINT
 
   void gc_records_and_values() const;
 
@@ -250,7 +250,7 @@ public:
    * @param[in] key the key of record.
    * @return the pointer of element. If it is nullptr, it is not found.
    */
-  read_set_obj *search_read_set(std::string_view key);  // NOLINT
+  read_set_obj *search_read_set(Storage storage, std::string_view key);  // NOLINT
 
   /**
    * @brief check whether it already executed search operation.
@@ -264,7 +264,7 @@ public:
    * @param [in] key the key of record.
    * @return the pointer of element. If it is nullptr, it is not found.
    */
-  write_set_obj *search_write_set(std::string_view key);  // NOLINT
+  write_set_obj *search_write_set(Storage storage, std::string_view key);  // NOLINT
 
   /**
    * @brief check whether it already executed update/insert operation.

@@ -15,11 +15,11 @@ namespace ccbench {
 namespace interface {
 
 
-write_set_obj* prepare_insert_or_update_or_upsert(Token token, std::string_view key, session_info*& ti)
+write_set_obj* prepare_insert_or_update_or_upsert(Token token, Storage storage, std::string_view key, session_info*& ti)
 {
   ti = static_cast<session_info *>(token);
   if (!ti->get_txbegan()) tx_begin(token);
-  return ti->search_write_set(key);
+  return ti->search_write_set(storage, key);
 }
 
 
@@ -30,7 +30,7 @@ template <typename KeyFunc, typename TupleFunc, typename ObjFunc>
 Status insert_detail(Token token, Storage st, KeyFunc&& key_func, TupleFunc&& tuple_func, ObjFunc&& obj_func)
 {
   session_info *ti;
-  write_set_obj* inws = interface::prepare_insert_or_update_or_upsert(token, key_func(), ti);
+  write_set_obj* inws = interface::prepare_insert_or_update_or_upsert(token, st, key_func(), ti);
   if (inws != nullptr) {
     inws->reset_tuple_value(obj_func());
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
@@ -83,7 +83,7 @@ template <typename KeyFunc, typename TupleFunc, typename ObjFunc>
 Status update_detail(Token token, Storage st, KeyFunc&& key_func, TupleFunc&& tuple_func, ObjFunc&& obj_func)
 {
   session_info *ti;
-  write_set_obj* inws = interface::prepare_insert_or_update_or_upsert(token, key_func(), ti);
+  write_set_obj* inws = interface::prepare_insert_or_update_or_upsert(token, st, key_func(), ti);
   if (inws != nullptr) {
     inws->reset_tuple_value(obj_func());
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
@@ -133,7 +133,7 @@ template <typename KeyFunc, typename TupleFunc, typename ObjFunc>
 Status upsert_detail(Token token, Storage st, KeyFunc&& key_func, TupleFunc&& tuple_func, ObjFunc&& obj_func)
 {
   session_info *ti;
-  write_set_obj* inws = interface::prepare_insert_or_update_or_upsert(token, key_func(), ti);
+  write_set_obj* inws = interface::prepare_insert_or_update_or_upsert(token, st, key_func(), ti);
   if (inws != nullptr) {
     inws->reset_tuple_value(obj_func());
     return Status::WARN_WRITE_TO_LOCAL_WRITE;
