@@ -40,11 +40,11 @@ public:
   public:
     explicit TmpRefObj(HeapObject* ptr0) : ptr(ptr0) {}
     template <typename T> operator T&() {
-      ptr->is_compatible<T>();
+      assert(ptr->is_compatible<T>());
       return *reinterpret_cast<T*>(ptr->data());
     }
     template <typename T> operator const T&() {
-      ptr->is_compatible<T>();
+      assert(ptr->is_compatible<T>());
       return *reinterpret_cast<const T*>(ptr->data());
     }
   };
@@ -53,13 +53,21 @@ public:
   public:
     explicit ConstTmpRefObj(const HeapObject* ptr0) : ptr(ptr0) {}
     template <typename T> operator const T&() {
-      ptr->is_compatible<T>();
+      assert(ptr->is_compatible<T>());
       return *reinterpret_cast<const T*>(ptr->data());
     }
   };
   TmpRefObj ref() { TmpRefObj obj(this); return obj; }
   ConstTmpRefObj ref() const { ConstTmpRefObj obj(this); return obj; }
 
+  template <typename T> T& cast_to() {
+    assert(is_compatible<T>());
+    return *reinterpret_cast<T*>(data());
+  }
+  template <typename T> const T& cast_to() const {
+    assert(is_compatible<T>());
+    return *reinterpret_cast<const T*>(data());
+  }
 
   std::string_view view() const {
     assert(data_ != nullptr);

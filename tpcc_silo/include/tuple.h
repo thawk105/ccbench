@@ -79,6 +79,7 @@ public:
   void swap_value(HeapObject& val) noexcept { val_.swap(val); }
   void swap_value(Tuple& rhs) noexcept { swap_value(rhs.val_); }
   HeapObject& get_value() { return val_; }
+  const HeapObject& get_value() const { return val_; }
 
   void set_value_shallow(const Tuple& rhs) {
     val_.shallow_copy_from(rhs.val_);

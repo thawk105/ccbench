@@ -8,7 +8,6 @@
 #include "../include/random.hh"
 #include "../include/result.hh"
 
-#define TPCC_SMALL  false
 #define LASTNAME_LEN  16
 
 namespace TPCC {
