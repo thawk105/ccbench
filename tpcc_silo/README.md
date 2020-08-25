@@ -78,6 +78,28 @@ Because there are bugs in [1].
 We have identified and fixed two of them [2,3].
 
 ## Reference
-[1] Masstree code. https://github.com/kohler/masstree-beta.<br>
-[2] Debug around string slice.hh. https://github.com/thawk105/masstree-beta/commit/77ef355f868a6db4eac7b44669c508d8db053502.<br>
-[3] Debug Masstree about Cast Issue. https://github.com/thawk105/masstree-beta/commit/d4bcf7711dc027818b1719a5a4c29aee547c58f6<br>
+[1] Masstree code. https://github.com/kohler/masstree-beta. <br>
+[2] Debug around string slice.hh. https://github.com/thawk105/masstree-beta/commit/77ef355f868a6db4eac7b44669c508d8db053502. <br>
+[3] Debug Masstree about Cast Issue. https://github.com/thawk105/masstree-beta/commit/d4bcf7711dc027818b1719a5a4c29aee547c58f6 <br>
+[P1] Tu, Stephen, et al. "Speedy transactions in multicore in-memory databases." Proceedings of the Twenty-Fourth ACM Symposium on Operating Systems Principles. 2013. <br>
+[P2] Yu, Xiangyao, et al. "Tictoc: Time traveling optimistic concurrency control." Proceedings of the 2016 International Conference on Management of Data. 2016. <br>
+[P3] Kimura, Hideaki. "FOEDUS: OLTP Engine for a Thousand Cores and NVRAM." Proceedings of the 2015 ACM SIGMOD International Conference on Management of Data. 2015. <br>
+[P4] Wang, Tianzheng, and Hideaki Kimura. "Mostly-optimistic concurrency control for highly contended dynamic workloads on a thousand cores." Proceedings of the VLDB Endowment 10.2 (2016): 49-60. <br>
+[P5] Lim, Hyeontaek, Michael Kaminsky, and David G. Andersen. "Cicada: Dependably fast multi-core in-memory transactions." Proceedings of the 2017 ACM International Conference on Management of Data. 2017. <br>
+[P6] Wang, Tianzheng, et al. "Efficiently making (almost) any concurrency control mechanism serializable." The VLDB Journal 26.4 (2017): 537-562. <br>
+[P7] Huang, Yihe, et al. "Opportunities for optimism in contended main-memory multicore transactions." Proceedings of the VLDB Endowment 13.5 (2020): 629-642. <br>
+[P8] Tang, Dixin, Hao Jiang, and Aaron J. Elmore. "Adaptive Concurrency Control: Despite the Looking Glass, One Concurrency Control Does Not Fit All." CIDR. Vol. 2. 2017. <br>
+[P9] Guo, Jinwei, et al. "Adaptive optimistic concurrency control for heterogeneous workloads." Proceedings of the VLDB Endowment 12.5 (2019): 584-596. <br>
+[P10] Ding, Bailu, Lucja Kot, and Johannes Gehrke. "Improving optimistic concurrency control through transaction batching and operation reordering." Proceedings of the VLDB Endowment 12.2 (2018): 169-182. <br>
+[P11] Wang, Zhaoguo, et al. "Scaling multicore databases via constrained parallel execution." Proceedings of the 2016 International Conference on Management of Data. 2016. <br>
+[P12] Yu, Xiangyao, et al. "Staring into the abyss: An evaluation of concurrency control with one thousand cores." (2014). <br>
+[P13] Wu, Yingjun, et al. "An empirical evaluation of in-memory multi-version concurrency control." Proceedings of the VLDB Endowment 10.7 (2017): 781-792. <br>
+[P14] Appuswamy, Raja, et al. "Analyzing the impact of system architecture on the scalability of OLTP engines for high-contention workloads." Proceedings of the VLDB Endowment 11.2 (2017): 121-134. <br>
+[S1] https://github.com/stephentu/silo <br>
+[S2] https://github.com/yxymit/DBx1000 <br>
+[S3] https://github.com/HewlettPackard/foedus_code <br>
+[S4] https://github.com/sfu-dis/ermia <br>
+[S5] https://github.com/readablesystems/sto <br>
+[S6] https://github.com/efficient/cicada-engine <br>
+[S7] https://github.com/cmu-db/peloton <br>
+
