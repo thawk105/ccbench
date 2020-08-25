@@ -6,22 +6,6 @@ using namespace ccbench;
 
 namespace TPCC {
 
-//#define DIST_PER_WARE (10)
-
-// Helper Functions
-uint64_t distKey(uint64_t d_id, uint64_t d_w_id) {
-  return d_w_id * DIST_PER_WARE + d_id;
-}
-
-uint64_t custKey(uint64_t c_id, uint64_t c_d_id, uint64_t c_w_id) {
-  return (distKey(c_d_id, c_w_id) * g_cust_per_dist + c_id);
-}
-
-uint64_t stockKey(uint64_t s_i_id, uint64_t s_w_id) {
-  return s_w_id * g_max_items + s_i_id;
-}
-#endif
-
 bool
 run_new_order(TPCC::query::NewOrder *query, Token &token) {
   //itemid_t * item;
