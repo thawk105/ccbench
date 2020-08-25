@@ -58,6 +58,7 @@ void displayParameter() {
   cout << "#FLAGS_perc_order_status:\t" << FLAGS_perc_order_status << endl;
   cout << "#FLAGS_perc_delivery:\t\t" << FLAGS_perc_delivery << endl;
   cout << "#FLAGS_perc_stock_level:\t" << FLAGS_perc_stock_level << endl;
+  cout << "#FLAGS_insert_exe:\t" << FLAGS_insert_exe << endl;
 }
 
 void genLogFile([[maybe_unused]] std::string &logpath, [[maybe_unused]]const int thid) {
