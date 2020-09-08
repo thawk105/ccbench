@@ -8,6 +8,8 @@
 ![tictoc_build](https://github.com/thawk105/ccbench/workflows/tictoc_build/badge.svg)
 ![tpcc_silo_build_and_ctest](https://github.com/thawk105/ccbench/workflows/tpcc_silo_build_and_ctest/badge.svg)
 
+This platform is undergoing rewrite in the repository below.<br>
+https://github.com/thawk105/ccbench_v2 <br>
 ---
 
 ## Installing a binary distribution package
