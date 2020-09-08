@@ -157,7 +157,8 @@ struct Customer {
   struct CLastKey {
     uint16_t c_w_id;
     uint8_t c_d_id;
-    char* c_last;
+    const char* c_last;
+    char* c_last_out;
 
     constexpr static size_t required_size() { return sizeof(C_W_ID) + sizeof(C_D_ID) + sizeof(C_LAST); }
 
@@ -167,7 +168,7 @@ struct Customer {
     size_t parse(const char* in) {
       parse_bigendian(&in[0], c_w_id);
       parse_bigendian(&in[2], c_d_id);
-      size_t len = copy_cstr(c_last, &in[3], sizeof(C_LAST));
+      size_t len = copy_cstr(c_last_out, &in[3], sizeof(C_LAST));
       return sizeof(c_w_id) + sizeof(c_d_id) + len;
     }
     // out buffer size must no less than sizeof(CLastKey).
@@ -198,8 +199,8 @@ struct Customer {
   //Secondary Key: (C_W_ID, C_D_ID, C_LAST)
   //key length is variable. (maximum length is maxLenOfSecondaryKey()).
   //out buffer will not be null-terminated.
-  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char* c_last, char* out) {
-    CLastKey key{w_id, d_id, c_last};
+  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, const char* c_last, char* out) {
+    CLastKey key{w_id, d_id, c_last, nullptr};
     size_t len = key.create(out);
     return std::string_view(out, len);
   }
