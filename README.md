@@ -19,10 +19,8 @@ $ sudo apt-get install -y libgflags-dev libgoogle-glog-dev cmake cmake-curses-gu
 
 ## Prepare using
 ```
-$ git clone this_repository
+$ git clone --recurse-submodules this_repository
 $ cd ccbench
-$ git submodule init
-$ git submodule update
 $ "run some (bootstrap*.sh) files"
 ```
 - Processing of bootstrap.sh :<br>
