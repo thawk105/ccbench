@@ -14,17 +14,9 @@
 #include <cstdint>
 #include <iostream>
 
-namespace ccbench {
+#include "../../include/cache_line_size.hh"
 
-#ifndef CACHE_LINE_SIZE
-/**
- * @brief cache line size is 64 bytes.
- */
-static constexpr std::size_t CACHE_LINE_SIZE{64};  // NOLINT
-#else
-#undef CACHE_LINE_SIZE
-static constexpr std::size_t CACHE_LINE_SIZE{64};  // NOLINT
-#endif
+namespace ccbench {
 
 #ifdef CCBENCH_LINUX
 
@@ -79,6 +71,14 @@ static constexpr std::size_t CACHE_LINE_SIZE{64};  // NOLINT
 
   return result;
 }
+
+
+inline int cached_sched_getcpu()
+{
+    thread_local int value = ::sched_getcpu();
+    return value;
+}
+
 
 #endif  // CCBENCH_LINUX
 

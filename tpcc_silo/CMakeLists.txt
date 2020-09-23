@@ -43,11 +43,11 @@ file(GLOB SILO_SOURCES
         "index/masstree_beta/masstree_beta_wrapper.cpp"
         )
 
-add_executable(silo_ext.exe ${SILO_SOURCES} silo_ext.cpp result.cpp util.cpp tpcc/tpcc_query.cpp tpcc/neworder.cpp tpcc/payment.cpp ../common/util.cc ../common/result.cc)
+add_executable(silo.exe ${SILO_SOURCES} silo.cpp result.cpp util.cpp tpcc/tpcc_query.cpp tpcc/neworder.cpp tpcc/payment.cpp ../common/util.cc ../common/result.cc)
 
-set_compile_options(silo_ext.exe)
+set_compile_options(silo.exe)
 
-target_include_directories(silo_ext.exe
+target_include_directories(silo.exe
         PRIVATE ${PROJECT_SOURCE_DIR}
         PRIVATE ${PROJECT_SOURCE_DIR}/../third_party
         PRIVATE ${PROJECT_SOURCE_DIR}/include
@@ -56,7 +56,7 @@ target_include_directories(silo_ext.exe
         PRIVATE ${PROJECT_SOURCE_DIR}/tpcc
         )
 
-target_link_libraries(silo_ext.exe
+target_link_libraries(silo.exe
         Boost::filesystem
         gflags::gflags
         ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a

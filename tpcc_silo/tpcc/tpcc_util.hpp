@@ -120,6 +120,24 @@ inline double random_double(std::uint64_t min, std::uint64_t max, std::size_t di
 }
 
 
+inline void fill_random(void* out, size_t size)
+{
+  char* p = reinterpret_cast<char*>(out);
+
+  uint64_t buf;
+  while (size >= sizeof(uint64_t)) {
+    buf = random_64bits();
+    ::memcpy(p, &buf, sizeof(uint64_t));
+    p += sizeof(uint64_t);
+    size -= sizeof(uint64_t);
+  }
+  if (size > 0) {
+    buf = random_64bits();
+    ::memcpy(p, &buf, size);
+  }
+}
+
+
 constexpr std::uint64_t get_constant_for_non_uniform_random(std::uint64_t A, bool is_load) {
   /*
    * From section 2.1.6 of TPC-C specifiation v5.11.0:
@@ -186,9 +204,16 @@ std::size_t random_string_detail(std::size_t min_len, std::size_t max_len, char 
   const std::size_t max_idx = is_number_only ? 9 : (sizeof(c) - 1);
 
   std::size_t len = random_int(min_len, max_len);
+#if 0
   for (std::size_t i = 0; i < len; i++) {
     out[i] = c[random_int(0, max_idx)];
   }
+#else
+  fill_random(out, len);
+  for (size_t i = 0; i < len; i++) {
+    out[i] = c[out[i] % max_idx];
+  }
+#endif
   out[len] = '\0';
   return len;
 }

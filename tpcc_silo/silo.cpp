@@ -35,17 +35,20 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) try {
   enter(token);
   TPCC::query::Option query_opt;
 
-  const uint16_t w_id = (thid % FLAGS_num_wh) + 1;
+  const uint16_t w_id = (thid % FLAGS_num_wh) + 1; // home warehouse.
 #if 1
   // Load per warehouse if necessary.
   // thid in [0, num_th - 1].
   // w_id in [1, FLAGS_num_wh].
   // The worker thread of thid in [0, FLAGS_num_wh - 1]
   // should load data for the warehouse with w_id = thid + 1.
-  if (thid < FLAGS_num_wh) {
-    //::printf("load for warehouse %u ...\n", w_id);
-    TPCC::Initializer::load_per_warehouse(w_id);
-    //::printf("load for warehouse %u done.\n", w_id);
+
+  size_t id = thid + 1;
+  while (id <= FLAGS_num_wh) {
+    //::printf("load for warehouse %u ...\n", id);
+    TPCC::Initializer::load_per_warehouse(id);
+    //::printf("load for warehouse %u done.\n", id);
+    id += FLAGS_thread_num;
   }
 #endif
 

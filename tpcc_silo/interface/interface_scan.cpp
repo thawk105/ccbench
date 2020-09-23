@@ -40,7 +40,7 @@ Status open_scan(Token token, Storage storage,  // NOLINT
   if (!ti->get_txbegan()) tx_begin(token);
 
   std::vector<const Record *> scan_buf;
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   kohler_masstree::get_mtdb(storage).scan(
           left_key.empty() ? nullptr : left_key.data(), left_key.size(),
           l_exclusive, right_key.empty() ? nullptr : right_key.data(),
@@ -102,7 +102,7 @@ Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **t
   if (scan_buf.size() == scan_index) {
     const Tuple *tupleptr(&(scan_buf.back())->get_tuple());
     std::vector<const Record *> new_scan_buf;
-    masstree_wrapper<Record>::thread_init(sched_getcpu());
+    masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
     kohler_masstree::get_mtdb(storage).scan(
             tupleptr->get_key().empty() ? nullptr : tupleptr->get_key().data(),
             tupleptr->get_key().size(), true,
@@ -127,7 +127,7 @@ Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **t
 
   auto itr = scan_buf.begin() + scan_index;
   std::string_view key_view = (*itr)->get_tuple().get_key();
-  const write_set_obj *inws = ti->search_write_set(key_view);
+  const write_set_obj *inws = ti->search_write_set(storage, key_view);
   if (inws != nullptr) {
     if (inws->get_op() == OP_TYPE::DELETE) {
       ++scan_index;
@@ -143,14 +143,14 @@ Status read_from_scan(Token token, Storage storage, ScanHandle handle, Tuple **t
     return Status::WARN_READ_FROM_OWN_OPERATION;
   }
 
-  const read_set_obj *inrs = ti->search_read_set(key_view);
+  const read_set_obj *inrs = ti->search_read_set(storage, key_view);
   if (inrs != nullptr) {
     *tuple = const_cast<Tuple *>(&inrs->get_rec_read().get_tuple());
     ++scan_index;
     return Status::WARN_READ_FROM_OWN_OPERATION;
   }
 
-  read_set_obj rsob(*itr, true);
+  read_set_obj rsob(storage, *itr, true);
   Status rr = read_record(rsob.get_rec_read(), *itr);
   if (rr != Status::OK) {
     return rr;
@@ -173,14 +173,14 @@ Status scan_key(Token token, Storage storage,  // NOLINT
   auto rset_init_size = ti->get_read_set().size();
 
   std::vector<const Record *> scan_res;
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
   kohler_masstree::get_mtdb(storage).scan(
           left_key.empty() ? nullptr : left_key.data(), left_key.size(),
           l_exclusive, right_key.empty() ? nullptr : right_key.data(),
           right_key.size(), r_exclusive, &scan_res, false);
 
   for (auto &&itr : scan_res) {
-    write_set_obj *inws = ti->search_write_set(itr->get_tuple().get_key());
+    write_set_obj *inws = ti->search_write_set(storage, itr->get_tuple().get_key());
     if (inws != nullptr) {
       if (inws->get_op() == OP_TYPE::DELETE) {
         return Status::WARN_ALREADY_DELETE;
@@ -206,7 +206,7 @@ Status scan_key(Token token, Storage storage,  // NOLINT
     // Because in herbrand semantics, the read reads last update even if the
     // update is own.
 
-    ti->get_read_set().emplace_back(const_cast<Record *>(itr), true);
+    ti->get_read_set().emplace_back(storage, const_cast<Record *>(itr), true);
     Status rr = read_record(ti->get_read_set().back().get_rec_read(),
                             const_cast<Record *>(itr));
     if (rr != Status::OK) {
@@ -228,7 +228,7 @@ Status scan_key(Token token, Storage storage,  // NOLINT
         Token token,                                     // NOLINT
         [[maybe_unused]] Storage storage, ScanHandle &handle, std::size_t &size) {
   auto *ti = static_cast<session_info *>(token);
-  masstree_wrapper<Record>::thread_init(sched_getcpu());
+  masstree_wrapper<Record>::thread_init(cached_sched_getcpu());
 
   if (ti->get_scan_cache().find(handle) == ti->get_scan_cache().end()) {
     /**

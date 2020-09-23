@@ -14,28 +14,15 @@
 #include "cpu.h"
 #include "epoch.h"
 #include "record.h"
+#include "heap_object.hpp"
+
 
 namespace ccbench::garbage_collection {
 
 using RecPtrContainer = std::deque<Record *>;
 
-using ObjInfo = std::tuple<void *, std::size_t, std::align_val_t>;
-constexpr std::size_t ptr_index = 0;
-constexpr std::size_t size_index = 1;
-constexpr std::size_t align_index = 2;
-
-
-inline void delete_object(ObjInfo oinfo)
-{
-    ::operator delete(std::get<ptr_index>(oinfo),
-                      std::get<size_index>(oinfo),
-                      std::get<align_index>(oinfo));
-}
-
-
-using ObjEpochInfo = std::pair<ObjInfo, epoch::epoch_t>;
+using ObjEpochInfo = std::pair<HeapObject, epoch::epoch_t>;
 using ObjEpochContainer = std::deque<ObjEpochInfo>;
-
 
 alignas(CACHE_LINE_SIZE) inline std::array< // NOLINT
     RecPtrContainer, KVS_NUMBER_OF_LOGICAL_CORES> kGarbageRecords; // NOLINT

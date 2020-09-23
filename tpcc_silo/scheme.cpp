@@ -9,37 +9,13 @@
 namespace ccbench {
 
 bool write_set_obj::operator<(const write_set_obj &right) const {  // NOLINT
-  const Tuple &this_tuple = this->get_tuple(this->get_op());
-  const Tuple &right_tuple = right.get_tuple(right.get_op());
+  Storage lhs_st = get_st();
+  Storage rhs_st = right.get_st();
+  if (lhs_st != rhs_st) return lhs_st < rhs_st;
 
-  const char *this_key_ptr(this_tuple.get_key().data());
-  const char *right_key_ptr(right_tuple.get_key().data());
-  std::size_t this_key_size(this_tuple.get_key().size());
-  std::size_t right_key_size(right_tuple.get_key().size());
-
-  if (this_key_size < right_key_size) {
-    return memcmp(this_key_ptr, right_key_ptr, this_key_size) <= 0;
-  }
-
-  if (this_key_size > right_key_size) {
-    return memcmp(this_key_ptr, right_key_ptr, right_key_size) < 0;
-  }
-  int ret = memcmp(this_key_ptr, right_key_ptr, this_key_size);
-  if (ret < 0) {
-    return true;
-  }
-  if (ret > 0) {
-    return false;
-  }
-  std::cout << __FILE__ << " : " << __LINE__
-            << " : Unique key is not allowed now." << std::endl;
-  std::abort();
-}
-
-void write_set_obj::reset_tuple_value(std::string_view val, std::align_val_t val_align) {
-  (this->get_op() == OP_TYPE::UPDATE ? this->get_tuple_to_local()
-                                     : this->get_tuple_to_db())
-          .set_value(val, val_align);
+  std::string_view lhs_key = get_tuple().get_key();
+  std::string_view rhs_key = right.get_tuple().get_key();
+  return lhs_key < rhs_key;
 }
 
 }  // namespace ccbench

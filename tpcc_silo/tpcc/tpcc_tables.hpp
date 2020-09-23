@@ -15,6 +15,7 @@
 #include <cassert>
 #include <sstream>
 #include "atomic_wrapper.h"
+#include "cpu.h"
 #include "tpcc_util.hpp"
 
 
@@ -45,7 +46,7 @@ struct SimpleKey {
 namespace TPCC {
 
 struct Warehouse {
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint16_t W_ID; //2*W unique IDs
   char W_NAME[11];
   char W_STREET_1[21];
@@ -69,7 +70,7 @@ struct Warehouse {
 };
 
 struct District {
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint8_t D_ID; //20 unique IDs
   std::uint16_t D_W_ID; //2*W unique IDs D_W_ID Foreign Key, references W_ID
   char D_NAME[11];
@@ -97,7 +98,7 @@ struct District {
 
 struct Customer {
   //(C_W_ID, C_D_ID) Foreign Key, references (D_W_ID, D_ID)
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t C_ID; //96,000 unique IDs
   std::uint8_t C_D_ID; //20 unique IDs
   std::uint16_t C_W_ID; //2*W unique IDs
@@ -156,7 +157,8 @@ struct Customer {
   struct CLastKey {
     uint16_t c_w_id;
     uint8_t c_d_id;
-    char* c_last;
+    const char* c_last;
+    char* c_last_out;
 
     constexpr static size_t required_size() { return sizeof(C_W_ID) + sizeof(C_D_ID) + sizeof(C_LAST); }
 
@@ -166,7 +168,7 @@ struct Customer {
     size_t parse(const char* in) {
       parse_bigendian(&in[0], c_w_id);
       parse_bigendian(&in[2], c_d_id);
-      size_t len = copy_cstr(c_last, &in[3], sizeof(C_LAST));
+      size_t len = copy_cstr(c_last_out, &in[3], sizeof(C_LAST));
       return sizeof(c_w_id) + sizeof(c_d_id) + len;
     }
     // out buffer size must no less than sizeof(CLastKey).
@@ -197,8 +199,8 @@ struct Customer {
   //Secondary Key: (C_W_ID, C_D_ID, C_LAST)
   //key length is variable. (maximum length is maxLenOfSecondaryKey()).
   //out buffer will not be null-terminated.
-  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, char* c_last, char* out) {
-    CLastKey key{w_id, d_id, c_last};
+  static std::string_view CreateSecondaryKey(uint16_t w_id, uint8_t d_id, const char* c_last, char* out) {
+    CLastKey key{w_id, d_id, c_last, nullptr};
     size_t len = key.create(out);
     return std::string_view(out, len);
   }
@@ -213,7 +215,7 @@ struct History {
   // (H_C_W_ID, H_C_D_ID, H_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
   // (H_W_ID, H_D_ID) Foreign Key, references (D_W_ID, D_ID)
 
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t H_C_ID; //96,000 unique IDs
   std::uint8_t H_C_D_ID;// 20 unique IDs
   std::uint16_t H_C_W_ID; // 2*W unique IDs
@@ -229,8 +231,8 @@ struct History {
 
 class HistoryKeyGenerator {
 public:
-  alignas(64);
   union {
+    alignas(CACHE_LINE_SIZE)
     std::uint64_t key_;
     struct {
       std::uint64_t counter_: 47;
@@ -260,7 +262,7 @@ public:
 
 struct NewOrder {
   //(NO_W_ID, NO_D_ID, NO_O_ID) Foreign Key, references (O_W_ID, O_D_ID, O_ID)
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t NO_O_ID; //10,000,000 unique IDs
   std::uint8_t NO_D_ID; //20 unique IDs
   std::uint16_t NO_W_ID; //2*W unique IDs
@@ -281,7 +283,7 @@ struct NewOrder {
 
 struct Order {
   //(O_W_ID, O_D_ID, O_C_ID) Foreign Key, references (C_W_ID, C_D_ID, C_ID)
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t O_ID; //10,000,000 unique IDs
   std::uint8_t O_D_ID; // 20 unique IDs
   std::uint16_t O_W_ID; // 2*W unique IDs
@@ -308,7 +310,7 @@ struct Order {
 struct OrderLine {
   //(OL_W_ID, OL_D_ID, OL_O_ID) Foreign Key, references (O_W_ID, O_D_ID, O_ID)
   //(OL_SUPPLY_W_ID, OL_I_ID) Foreign Key, references (S_W_ID, S_I_ID)
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t OL_O_ID;// 10,000,000 unique IDs
   std::uint8_t OL_D_ID;// 20 unique IDs
   std::uint16_t OL_W_ID;// 2*W unique IDs
@@ -335,7 +337,7 @@ struct OrderLine {
 };
 
 struct Item {
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t I_ID; //200,000 unique IDs 100,000 items are populated
   std::uint32_t I_IM_ID; //200,000 unique IDs Image ID associated to Item
   char I_NAME[25]; //variable text, size 24
@@ -357,7 +359,7 @@ struct Item {
 struct Stock {
   //S_W_ID Foreign Key, references W_ID
   //S_I_ID Foreign Key, references I_ID
-  alignas(64);
+  alignas(CACHE_LINE_SIZE)
   std::uint32_t S_I_ID; //200,000 unique IDs 100,000 populated per warehouse
   std::uint16_t S_W_ID; //2*W unique IDs
   int16_t S_QUANTITY; //signed numeric(4)

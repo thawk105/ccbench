@@ -11,9 +11,6 @@
 namespace ccbench {
 
 void session_info::clean_up_ops_set() {
-  for (auto &&elem : read_set) {
-    elem.get_rec_read().get_tuple().set_val_ptr(nullptr);
-  }
   read_set.clear();
   write_set.clear();
 }
@@ -72,17 +69,16 @@ void session_info::clean_up_scan_caches() {
   std::cout << "==========" << std::endl;
 }
 
-Status session_info::check_delete_after_write(std::string_view key) {  // NOLINT
+Status session_info::check_delete_after_write(Storage st, std::string_view key) {  // NOLINT
   for (auto itr = write_set.begin(); itr != write_set.end(); ++itr) {
-    // It can't use lange-based for because it use write_set.erase.
+    if (itr->get_st() != st) continue;
     std::string_view key_view = itr->get_rec_ptr()->get_tuple().get_key();
-    if (key_view.size() == key.size() &&
-        memcmp(key_view.data(), key.data(), key.size()) == 0) {
-      write_set.erase(itr);
+    if (key == key_view) {
+      // It can't use range-based for because it use write_set.erase.
+      write_set.erase(itr); // erase operation at a midpoint of std::vector is slow...
       return Status::WARN_CANCEL_PREVIOUS_OPERATION;
     }
   }
-
   return Status::OK;
 }
 
@@ -105,11 +101,9 @@ void session_info::gc_records_and_values() const {
     ObjEpochContainer& q = gc_handle_.get_value_container();
     while (!q.empty()) {
       ObjEpochInfo& oeinfo = q.front();
-      ObjInfo& oinfo = oeinfo.first;
       epoch::epoch_t epoch = oeinfo.second;
       if (epoch > r_epoch) break;
-      garbage_collection::delete_object(oinfo);
-      q.pop_front();
+      q.pop_front(); // oeinfo.first is HeapObject and it will dealocate its resources.
     }
   }
 }
@@ -136,50 +130,38 @@ void session_info::remove_inserted_records_of_write_set_from_masstree() {
   }
 }
 
-read_set_obj *session_info::search_read_set(std::string_view key) {  // NOLINT
-  for (auto &&itr : read_set) {
-    const std::string_view key_view = itr.get_rec_ptr()->get_tuple().get_key();
-    if (key_view.size() == key.size() &&
-        memcmp(key_view.data(), key.data(), key.size()) == 0) {
-      return &itr;
-    }
+read_set_obj *session_info::search_read_set(Storage st, std::string_view key) {  // NOLINT
+  for (read_set_obj &rso : read_set) {
+    if (st != rso.get_st()) continue;
+    if (key == rso.get_rec_ptr()->get_tuple().get_key()) return &rso;
   }
   return nullptr;
 }
 
 read_set_obj *session_info::search_read_set(  // NOLINT
-        const Record *const rec_ptr) {
-  for (auto &&itr : read_set) {
-    if (itr.get_rec_ptr() == rec_ptr) return &itr;
+        const Record *const rec_ptr)
+{
+  for (read_set_obj &rso : read_set) {
+    if (rso.get_rec_ptr() == rec_ptr) return &rso;
   }
-
   return nullptr;
 }
 
-write_set_obj *session_info::search_write_set(std::string_view key) {
-  for (auto &&itr : write_set) {
-    const Tuple *tuple;  // NOLINT
-    if (itr.get_op() == OP_TYPE::UPDATE) {
-      tuple = &itr.get_tuple_to_local();
-    } else {
-      // insert/delete
-      tuple = &itr.get_tuple_to_db();
-    }
-    std::string_view key_view = tuple->get_key();
-    if (key_view.size() == key.size() &&
-        memcmp(key_view.data(), key.data(), key.size()) == 0) {
-      return &itr;
-    }
+write_set_obj *session_info::search_write_set(Storage st, std::string_view key)
+{
+  for (write_set_obj &wso : write_set) {
+    if (wso.get_st() != st) continue;
+    if (key == wso.get_tuple().get_key()) return &wso;
   }
   return nullptr;
 }
 
 const write_set_obj *session_info::search_write_set(  // NOLINT
-        const Record *rec_ptr) {
-  for (auto &itr : write_set) {
-    if (itr.get_rec_ptr() == rec_ptr) return &itr;
+        const Record *rec_ptr)
+{
+  for (write_set_obj &wso : write_set) {
+    if (wso.get_rec_ptr() == rec_ptr) return &wso;
   }
-
   return nullptr;
 }
 

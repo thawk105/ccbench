@@ -42,12 +42,18 @@ public:
   // for insert/delete operation
   write_set_obj(OP_TYPE op, Storage st, Record *rec_ptr) : op_(op), st_(st), rec_ptr_(rec_ptr) {}
 
-  // for update/
+#if 0 // QQQ
+  // for update/upsert
   write_set_obj(std::string_view key, std::string_view val, std::align_val_t val_align, const OP_TYPE op, Storage st,
-                Record *const rec_ptr)
+                Record* rec_ptr)
           : op_(op), st_(st),
             rec_ptr_(rec_ptr),
             tuple_(key, val, val_align) {}
+#endif
+  // for update/upsert
+  write_set_obj(OP_TYPE op, Storage st, Record* rec_ptr, Tuple&& tuple)
+    : op_(op), st_(st), rec_ptr_(rec_ptr), tuple_(std::move(tuple)) {
+  }
 
   write_set_obj(const write_set_obj &right) = delete;
 
@@ -132,18 +138,20 @@ public:
 
   [[nodiscard]] const OP_TYPE &get_op() const { return op_; }  // NOLINT
 
-  Storage get_st() {
+  Storage get_st() const {
     return st_;
   }
 
-  void reset_tuple_value(std::string_view val, std::align_val_t val_align);
+  void reset_tuple_value(HeapObject&& obj) {
+    get_tuple().set_value(std::move(obj));
+  }
 
 private:
   /**
    * for update : ptr to existing record.
    * for insert : ptr to new existing record.
    */
-  alignas(64)
+  alignas(CACHE_LINE_SIZE)
   OP_TYPE op_;
   Storage st_;
   Record *rec_ptr_;  // ptr to database
@@ -152,11 +160,11 @@ private:
 
 class read_set_obj {  // NOLINT
 public:
-  read_set_obj() { this->rec_ptr = nullptr; }
+  read_set_obj() : rec_ptr(nullptr), is_scan(), st_() {
+  }
 
-  explicit read_set_obj(const Record *rec_ptr, bool scan = false)  // NOLINT
-          : is_scan{scan} {
-    this->rec_ptr = rec_ptr;
+  explicit read_set_obj(Storage st, const Record *rec_ptr, bool scan = false)  // NOLINT
+    : rec_ptr(rec_ptr), is_scan{scan}, st_(st) {
   }
 
   read_set_obj(const read_set_obj &right) = delete;
@@ -166,12 +174,15 @@ public:
   read_set_obj(read_set_obj &&right, bool scan) : is_scan{scan} {  // NOLINT
     rec_read = std::move(right.rec_read);
     rec_ptr = right.rec_ptr;
+    st_ = right.st_;
   }
 
   read_set_obj &operator=(const read_set_obj &right) = delete;  // NOLINT
   read_set_obj &operator=(read_set_obj &&right) {               // NOLINT
     rec_read = std::move(right.rec_read);
     rec_ptr = right.rec_ptr;
+    is_scan = right.is_scan; // required?
+    st_ = right.st_;
 
     return *this;
   }
@@ -190,11 +201,14 @@ public:
     return rec_ptr;
   }
 
+  Storage get_st() const { return st_; }
+
 private:
-  alignas(64)
+  alignas(CACHE_LINE_SIZE)
   Record rec_read{};
   const Record *rec_ptr{};  // ptr to database
   bool is_scan{false};      // NOLINT
+  Storage st_;
 };
 
 // Operations for retry by abort

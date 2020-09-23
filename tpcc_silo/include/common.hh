@@ -40,6 +40,7 @@ DEFINE_uint64(perc_payment, 50, "The percentage of Payment transactions"); // 43
 DEFINE_uint64(perc_order_status, 0, "The percentage of Order-Status transactions"); // 4.1 for full
 DEFINE_uint64(perc_delivery, 0, "The percentage of Delivery transactions"); // 4.2 for full
 DEFINE_uint64(perc_stock_level, 0, "The percentage of Stock-Level transactions"); // 4.1 for full
+DEFINE_bool(insert_exe, true, "Insert records according to the specification"); // TPC-C-NP (our) regulation choice.
 
 #else
 DECLARE_uint64(thread_num);
@@ -52,6 +53,7 @@ DECLARE_uint64(perc_payment);
 DECLARE_uint64(perc_order_status);
 DECLARE_uint64(perc_delivery);
 DECLARE_uint64(perc_stock_level);
+DECLARE_bool(insert_exe);
 #endif
 
 constexpr std::size_t DIST_PER_WARE{10};

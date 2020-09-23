@@ -57,12 +57,7 @@ void delete_all_garbage_records() {
 void delete_all_garbage_values() {
   for (auto i = 0; i < KVS_NUMBER_OF_LOGICAL_CORES; ++i) {
     ObjEpochContainer& q = get_garbage_values_at(i);
-    while (!q.empty()) {
-      ObjEpochInfo& oeinfo = q.front();
-      ObjInfo& oinfo = oeinfo.first;
-      delete_object(oinfo);
-      q.pop_front();
-    }
+    q.clear(); // HeapObject instances are automatically deallocated.
   }
 }
 
