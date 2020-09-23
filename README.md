@@ -15,15 +15,15 @@ https://github.com/thawk105/ccbench_v2 <br>
 ## Installing a binary distribution package
 On Debian/Ubuntu Linux, execute below statement or bootstrap_apt.sh.
 ```
-$ sudo apt update -y
-$ sudo apt-get install -y libgflags-dev libgoogle-glog-dev cmake cmake-curses-gui libboost-filesystem-dev
+$ git clone --recurse-submodules this_repository
+$ cd ccbench
+$ sudo apt update -y && sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ```
 
 ## Prepare using
 ```
-$ git clone --recurse-submodules this_repository
 $ cd ccbench
-$ "run some (bootstrap*.sh) files"
+$ "run some build_tools/(bootstrap*.sh) files"
 ```
 - Processing of bootstrap.sh :<br>
 Build third_party/masstree.
