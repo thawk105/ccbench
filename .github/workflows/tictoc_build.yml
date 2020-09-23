@@ -36,7 +36,7 @@ jobs:
       - id: Build_third_party_mimalloc
         name: Build_third_party_mimalloc
         run: |
-            ./build_tools/bootstra_mimalloc.sh
+            ./build_tools/bootstrap_mimalloc.sh
 
       - id: Build_third_party_googletest
         name: Build_third_party_googletest
