@@ -61,4 +61,4 @@ jobs:
         run: |
           cd tpcc_silo
           cd build
-          ctest --verbose --timeout 100
+          ctest --verbose --timeout 100 -j 100
