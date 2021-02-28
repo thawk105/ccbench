@@ -6,11 +6,13 @@ on:
       - '.github/workflows/cicada_build.yml'
       - 'cicada/**'
       - 'common/**'
+      - 'include/**'
   pull_request:
     paths:
       - '.github/workflows/cicada_build.yml'
       - 'cicada/**'
       - 'common/**'
+      - 'include/**'
 
 jobs:
   Build:
