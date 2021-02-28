@@ -1,6 +1,5 @@
 name: cicada_build
 
-on: [push, pull_request]
 on:
   push:
     paths:
