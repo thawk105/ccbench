@@ -3,10 +3,12 @@ name: cicada_build
 on:
   push:
     paths:
+      - '.github/workflows/cicada_build.yml'
       - 'cicada/**'
       - 'common/**'
   pull_request:
     paths:
+      - '.github/workflows/cicada_build.yml'
       - 'cicada/**'
       - 'common/**'
 
