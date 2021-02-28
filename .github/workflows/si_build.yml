@@ -3,12 +3,14 @@ name: si_build
 on:
   push:
     paths:
-      - 'si/**'
+      - '.github/workflows/si_build.yml'
       - 'common/**'
+      - 'si/**'
   pull_request:
     paths:
-      - 'si/**'
+      - '.github/workflows/si_build.yml'
       - 'common/**'
+      - 'si/**'
 
 jobs:
   Build:

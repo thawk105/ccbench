@@ -3,11 +3,13 @@ name: mocc_build
 on:
   push:
     paths:
-      - 'mocc/**'
+      - '.github/workflows/mocc_build.yml'
       - 'common/**'
+      - 'mocc/**'
     pull_request:
-      - 'mocc/**'
+      - '.github/workflows/mocc_build.yml'
       - 'common/**'
+      - 'mocc/**'
 
 jobs:
   Build:

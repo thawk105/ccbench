@@ -3,12 +3,14 @@ name: silo_build
 on:
   push:
     paths:
-      - 'silo/**'
+      - '.github/workflows/silo_build.yml'
       - 'common/**'
+      - 'silo/**'
   pull_request:
     paths:
-      - 'silo/**'
+      - '.github/workflows/silo_build.yml'
       - 'common/**'
+      - 'silo/**'
 
 jobs:
   Build:

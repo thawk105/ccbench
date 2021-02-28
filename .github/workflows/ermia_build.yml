@@ -3,12 +3,14 @@ name: ermia_build
 on:
   push:
     paths:
-      - 'ermia/**'
+      - '.github/workflows/ermia_build.yml'
       - 'common/**'
+      - 'ermia/**'
   pull_request:
     paths:
-      - 'ermia/**'
+      - '.github/workflows/ermia_build.yml'
       - 'common/**'
+      - 'ermia/**'
 
 jobs:
   Build:
