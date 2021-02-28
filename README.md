@@ -10,6 +10,8 @@
 
 This platform is undergoing rewrite in the repository below.<br>
 https://github.com/thawk105/ccbench_v2 <br>
+Analysis paper using CCBench is below.<br>
+http://www.vldb.org/pvldb/vol13/p3531-tanabe.pdf <br>
 ---
 
 ## Installing a binary distribution package
@@ -21,6 +23,7 @@ $ sudo apt update -y && sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ```
 
 ## Prepare using
+note : Make install should be done by specifying a user-local path at the time of configure.
 ```
 $ cd ccbench
 $ "run some build_tools/(bootstrap*.sh) files"
