@@ -57,8 +57,7 @@ jobs:
         name: Build_cicada
         run: |
           cd cicada
-          mkdir -p build
+          mkdir build
           cd build
-          rm CMakeCache.txt
           cmake -DCMAKE_BUILD_TYPE=Debug ..
           cmake --build . --target all --clean-first -- -j
