@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'tictoc/**'
+      - 'common/**'
   pull_request:
     paths:
       - 'tictoc/**'
+      - 'common/**'
 
 jobs:
   Build:

@@ -1,30 +1,22 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/time.h>
-#include <sys/types.h>  // syscall(SYS_gettid),
-#include <unistd.h>     // syscall(SYS_gettid),
+
 #include <atomic>
 #include <bitset>
 #include <cstdint>
-#include <iomanip>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
-#include <limits>
 
-#include "../include/backoff.hh"
-#include "../include/cache_line_size.hh"
-#include "../include/config.hh"
-#include "../include/debug.hh"
-#include "../include/masstree_wrapper.hh"
-#include "../include/random.hh"
-#include "../include/util.hh"
-#include "../include/zipf.hh"
+// ccbench/cicada/include
 #include "include/common.hh"
 #include "include/time_stamp.hh"
 #include "include/transaction.hh"
-#include "include/tuple.hh"
 #include "include/util.hh"
+
+// ccbench/include/
+#include "backoff.hh"
+#include "config.hh"
+#include "logger.h"
+#include "masstree_wrapper.hh"
 
 using std::cout, std::endl;
 
@@ -32,17 +24,17 @@ void chkArg() {
   displayParameter();
 
   if (FLAGS_rratio > 100) {
-    cout << "rratio [%%] must be 0 ~ 100)" << endl;
+    SPDLOG_INFO("rratio [%%] must be 0 ~ 100)");
     ERR;
   }
 
   if (FLAGS_zipf_skew >= 1) {
-    cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
+    SPDLOG_INFO("FLAGS_zipf_skew must be 0 ~ 0.999...");
     ERR;
   }
 
   if (FLAGS_clocks_per_us < 100) {
-    printf("CPU_MHZ is less than 100. are you really?\n");
+    SPDLOG_INFO("CPU_MHZ is less than 100. are you really?\n");
     exit(0);
   }
 
@@ -87,7 +79,7 @@ void chkArg() {
   }
 }
 
-void displayDB() {
+[[maybe_unused]] void displayDB() {
   Tuple *tuple;
   Version *version;
 
@@ -97,7 +89,7 @@ void displayDB() {
     cout << "key: " << i << endl;
 
     version = tuple->latest_;
-    while (version != NULL) {
+    while (version != nullptr) {
       cout << "val: " << version->val_ << endl;
 
       switch (version->status_) {
@@ -134,9 +126,9 @@ void displayDB() {
   }
 }
 
-void displayMinRts() { cout << "MinRts:  " << MinRts << endl << endl; }
+[[maybe_unused]] void displayMinRts() { cout << "MinRts:  " << MinRts << endl << endl; }
 
-void displayMinWts() { cout << "MinWts:  " << MinWts << endl << endl; }
+[[maybe_unused]] void displayMinWts() { cout << "MinWts:  " << MinWts << endl << endl; }
 
 void displayParameter() {
   cout << "#FLAGS_clocks_per_us:\t\t\t" << FLAGS_clocks_per_us << endl;
@@ -157,7 +149,7 @@ void displayParameter() {
   cout << "#FLAGS_zipf_skew:\t\t\t" << FLAGS_zipf_skew << endl;
 }
 
-void displaySLogSet() {
+[[maybe_unused]] void displaySLogSet() {
   if (!FLAGS_group_commit) {
   } else {
     if (FLAGS_s_wal) {
@@ -173,7 +165,7 @@ void displaySLogSet() {
   }
 }
 
-void displayThreadWtsArray() {
+[[maybe_unused]] void displayThreadWtsArray() {
   cout << "ThreadWtsArray:" << endl;
   for (unsigned int i = 0; i < FLAGS_thread_num; i++) {
     cout << "thid " << i << ": " << ThreadWtsArray[i].obj_ << endl;
@@ -181,7 +173,7 @@ void displayThreadWtsArray() {
   cout << endl << endl;
 }
 
-void displayThreadRtsArray() {
+[[maybe_unused]] void displayThreadRtsArray() {
   cout << "ThreadRtsArray:" << endl;
   for (unsigned int i = 0; i < FLAGS_thread_num; i++) {
     cout << "thid " << i << ": " << ThreadRtsArray[i].obj_ << endl;

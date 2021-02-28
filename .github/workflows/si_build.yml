@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'si/**'
+      - 'common/**'
   pull_request:
     paths:
       - 'si/**'
+      - 'common/**'
 
 jobs:
   Build:

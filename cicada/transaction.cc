@@ -23,9 +23,9 @@
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 
-extern void displaySLogSet();
+[[maybe_unused]] extern void displaySLogSet();
 
-extern void displayDB();
+[[maybe_unused]] extern void displayDB();
 
 using namespace std;
 

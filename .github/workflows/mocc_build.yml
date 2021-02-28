@@ -4,8 +4,10 @@ on:
   push:
     paths:
       - 'mocc/**'
+      - 'common/**'
     pull_request:
       - 'mocc/**'
+      - 'common/**'
 
 jobs:
   Build:

@@ -8,19 +8,19 @@ extern void chkArg();
 
 extern void deleteDB();
 
-extern void displayDB();
+[[maybe_unused]] extern void displayDB();
 
-extern void displayMinRts();
+[[maybe_unused]] extern void displayMinRts();
 
-extern void displayMinWts();
+[[maybe_unused]] extern void displayMinWts();
 
 extern void displayParameter();
 
-extern void displaySLogSet();
+[[maybe_unused]] extern void displaySLogSet();
 
-extern void displayThreadWtsArray();
+[[maybe_unused]] extern void displayThreadWtsArray();
 
-extern void displayThreadRtsArray();
+[[maybe_unused]] extern void displayThreadRtsArray();
 
 extern void leaderWork([[maybe_unused]] Backoff &backoff);
 

@@ -41,6 +41,11 @@ target_link_libraries(cicada.exe
         Threads::Threads
         )
 
+target_include_directories(cicada.exe
+        PRIVATE ${PROJECT_SOURCE_DIR}/../include
+        PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/spdlog/include
+        )
+
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

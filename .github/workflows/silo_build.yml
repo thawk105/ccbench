@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'silo/**'
+      - 'common/**'
   pull_request:
     paths:
       - 'silo/**'
+      - 'common/**'
 
 jobs:
   Build:

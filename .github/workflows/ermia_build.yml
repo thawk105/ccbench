@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'ermia/**'
+      - 'common/**'
   pull_request:
     paths:
       - 'ermia/**'
+      - 'common/**'
 
 jobs:
   Build:

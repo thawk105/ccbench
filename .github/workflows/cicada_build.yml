@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'cicada/**'
+      - 'common/**'
   pull_request:
     paths:
       - 'cicada/**'
+      - 'common/**'
 
 jobs:
   Build:

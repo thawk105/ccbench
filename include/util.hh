@@ -59,7 +59,7 @@ public:
 };
 
 // function
-extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
+[[maybe_unused]] extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
 
 extern size_t decideParallelBuildNumber(size_t tuple_num);
 
