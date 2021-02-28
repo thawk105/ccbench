@@ -1,6 +1,11 @@
 name: mocc_build
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'mocc/**'
+    pull_request:
+      - 'mocc/**'
 
 jobs:
   Build:

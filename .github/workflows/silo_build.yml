@@ -1,6 +1,12 @@
 name: silo_build
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'silo/**'
+  pull_request:
+    paths:
+      - 'silo/**'
 
 jobs:
   Build:

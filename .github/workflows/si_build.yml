@@ -1,6 +1,12 @@
 name: si_build
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'si/**'
+  pull_request:
+    paths:
+      - 'si/**'
 
 jobs:
   Build:

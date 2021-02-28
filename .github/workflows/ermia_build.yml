@@ -1,6 +1,12 @@
 name: ermia_build
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'ermia/**'
+  pull_request:
+    paths:
+      - 'ermia/**'
 
 jobs:
   Build:

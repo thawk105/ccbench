@@ -1,6 +1,12 @@
 name: tictoc_build
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'tictoc/**'
+  pull_request:
+    paths:
+      - 'tictoc/**'
 
 jobs:
   Build:

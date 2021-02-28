@@ -1,6 +1,12 @@
 name: tpcc_silo_build_and_ctest
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'tpcc_silo/**'
+  pull_request:
+    paths:
+      - 'tpcc_silo/**'
 
 jobs:
   Build:
@@ -52,6 +58,11 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug ..
           make -j
 
+  Tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
       - id: Ctest_tpcc_silo
         name: Ctest_tpcc_silo
         continue-on-error: false
