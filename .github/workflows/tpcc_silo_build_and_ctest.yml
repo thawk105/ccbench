@@ -7,6 +7,7 @@ on:
       - 'common/**'
       - 'index/masstree_beta/masstree_beta_wrapper.cpp'
       - 'tpcc_silo/**'
+      - 'third_party/**'
   pull_request:
     paths:
       - '.github/workflows/tpcc_silo_build_and_ctest.yml'

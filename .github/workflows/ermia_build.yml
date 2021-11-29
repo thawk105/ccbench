@@ -6,6 +6,7 @@ on:
       - '.github/workflows/ermia_build.yml'
       - 'common/**'
       - 'ermia/**'
+      - 'third_party/**'
   pull_request:
     paths:
       - '.github/workflows/ermia_build.yml'

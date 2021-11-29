@@ -6,6 +6,7 @@ on:
       - '.github/workflows/tictoc_build.yml'
       - 'common/**'
       - 'tictoc/**'
+      - 'third_party/**'
   pull_request:
     paths:
       - '.github/workflows/tictoc_build.yml'

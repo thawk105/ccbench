@@ -6,6 +6,7 @@ on:
       - '.github/workflows/mocc_build.yml'
       - 'common/**'
       - 'mocc/**'
+      - 'third_party/**'
     pull_request:
       - '.github/workflows/mocc_build.yml'
       - 'common/**'

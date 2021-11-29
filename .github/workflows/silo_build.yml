@@ -6,6 +6,7 @@ on:
       - '.github/workflows/silo_build.yml'
       - 'common/**'
       - 'silo/**'
+      - 'third_party/**'
   pull_request:
     paths:
       - '.github/workflows/silo_build.yml'

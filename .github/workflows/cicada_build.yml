@@ -7,6 +7,7 @@ on:
       - 'cicada/**'
       - 'common/**'
       - 'include/**'
+      - 'third_party/**'
   pull_request:
     paths:
       - '.github/workflows/cicada_build.yml'

@@ -6,6 +6,7 @@ on:
       - '.github/workflows/si_build.yml'
       - 'common/**'
       - 'si/**'
+      - 'third_party/**'
   pull_request:
     paths:
       - '.github/workflows/si_build.yml'
