@@ -37,10 +37,7 @@ Build third_party/tbb<br>
 
 Export LD_LIBRARY_PATH to appropriate paths.<br>
 Each protocols has own Makefile(or CMakeLists.txt), so you should build each.<br>
-Prepare glog for command line options.
-```
-./autogen.sh && ./configure && make -j && make install
-```
+
 ---
 
 ## Data Structure
