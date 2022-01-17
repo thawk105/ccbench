@@ -1,9 +1,6 @@
 [submodule "third_party/masstree"]
 	path = third_party/masstree
 	url = https://github.com/thawk105/masstree-beta.git
-[submodule "third_party/tbb"]
-	path = third_party/tbb
-	url = https://github.com/thawk105/tbb.git
 [submodule "third_party/googletest"]
 	path = third_party/googletest
 	url = https://github.com/google/googletest.git
