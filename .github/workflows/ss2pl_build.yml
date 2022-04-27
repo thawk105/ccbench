@@ -62,3 +62,9 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=Debug ..
           make -j
+
+      - id: Test_ss2pl
+        name: Test_ss2pl
+        run: |
+          cd ss2pl/build
+          ctest --verbose --timeout 20 -j 100

@@ -22,6 +22,9 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
+enable_testing()
+add_subdirectory(test)
+
 file(GLOB SS2PL_SOURCES
         "../common/result.cc"
         "../common/util.cc"
