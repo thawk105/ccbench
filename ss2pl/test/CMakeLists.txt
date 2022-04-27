@@ -54,6 +54,10 @@ foreach(src IN LISTS TEST_SOURCES)
 
     add_executable(${test_name} ${src} ${SS2PL_SOURCES})
 
+    target_include_directories(${test_name}
+            PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
+    )
+
     target_link_libraries(${test_name}
             Boost::filesystem
             gflags::gflags
