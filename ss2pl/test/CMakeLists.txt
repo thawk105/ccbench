@@ -57,6 +57,7 @@ foreach(src IN LISTS TEST_SOURCES)
     target_link_libraries(${test_name}
             Boost::filesystem
             gflags::gflags
+            glog::glog
             ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
             ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
             Threads::Threads
