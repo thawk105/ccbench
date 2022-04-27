@@ -22,7 +22,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-file(GLOB ERMIA_SOURCES
+file(GLOB SS2PL_SOURCES
         "../common/result.cc"
         "../common/util.cc"
         "ss2pl.cc"
@@ -31,7 +31,7 @@ file(GLOB ERMIA_SOURCES
         "util.cc"
         )
 
-add_executable(ss2pl.exe ${ERMIA_SOURCES})
+add_executable(ss2pl.exe ${SS2PL_SOURCES})
 
 target_link_libraries(ss2pl.exe
         Boost::filesystem
