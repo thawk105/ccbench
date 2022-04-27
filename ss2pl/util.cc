@@ -70,7 +70,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
   for (auto i = start; i <= end; ++i) {
     Table[i].val_[0] = 'a';
     Table[i].val_[1] = '\0';
-
+    Table[i].lock_.init();
 #if MASSTREE_USE
     MT.insert_value(i, &Table[i]);
 #endif
