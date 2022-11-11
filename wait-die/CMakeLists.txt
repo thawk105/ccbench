@@ -56,8 +56,6 @@ else ()
     add_definitions(-DBACK_OFF=0)
 endif ()
 
-add_definitions(-DDLR1)
-
 if (DEFINED KEY_SIZE)
     add_definitions(-DKEY_SIZE=${KEY_SIZE})
 else ()
