@@ -1,0 +1,8 @@
+# ninja log v5
+0	445	1668087329801362193	CMakeFiles/tictoc.exe.dir/home/tngngn/ccbench/common/result.cc.o	43b4c771a03ac530
+1	711	1668087330065353515	CMakeFiles/tictoc.exe.dir/home/tngngn/ccbench/common/util.cc.o	256a9acb33c22082
+1	839	1668087330193349307	CMakeFiles/tictoc.exe.dir/result.cc.o	92561fb93c55f28d
+1	1426	1668087330781329978	CMakeFiles/tictoc.exe.dir/tictoc.cc.o	a3a206848fd0b4a1
+2	1437	1668087330789329716	CMakeFiles/tictoc.exe.dir/transaction.cc.o	67de39d100444d62
+2	1450	1668087330805329190	CMakeFiles/tictoc.exe.dir/util.cc.o	2a11247fe7affd08
+1450	1527	1668087330881326692	tictoc.exe	b157a3edf0b62953

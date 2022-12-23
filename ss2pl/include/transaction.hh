@@ -21,6 +21,7 @@ extern void writeValGenerator(char *writeVal, size_t val_size, size_t thid);
 class TxExecutor {
 public:
   alignas(CACHE_LINE_SIZE) int thid_;
+  int txid_;
   std::vector<RWLock *> r_lock_list_;
   std::vector<RWLock *> w_lock_list_;
   TransactionStatus status_ = TransactionStatus::inFlight;

@@ -1,0 +1,3 @@
+/home/tngngn/ccbench/tictoc/build/CMakeFiles/rebuild_cache.dir
+/home/tngngn/ccbench/tictoc/build/CMakeFiles/edit_cache.dir
+/home/tngngn/ccbench/tictoc/build/CMakeFiles/tictoc.exe.dir
