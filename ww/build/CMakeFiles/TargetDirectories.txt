@@ -1,0 +1,3 @@
+/home/tngngn/ccbench/ww/build/CMakeFiles/rebuild_cache.dir
+/home/tngngn/ccbench/ww/build/CMakeFiles/edit_cache.dir
+/home/tngngn/ccbench/ww/build/CMakeFiles/ss2pl.exe.dir

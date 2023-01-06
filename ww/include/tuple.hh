@@ -13,13 +13,13 @@ class Tuple {
 public:
   alignas(CACHE_LINE_SIZE) RWLock lock_;
   char val_[VAL_SIZE];
-  int curr_writer = 0;
-  //int readers[224] = {0};
-  //int writers[224] = {0};
-  std::vector<std::pair<int, int>> waitRd;
-  std::vector<std::pair<int, int>> waitWr;
+  int writer = 0;
+  int readers[224] = {0};
+  int writers[224] = {0};
+  std::vector<int> waitRd;
+  std::vector<int> waitWR;
   Tuple() {
     waitRd.reserve(224);
-    waitWr.reserve(224);
+    waitWR.reserve(224);
   }
 };
