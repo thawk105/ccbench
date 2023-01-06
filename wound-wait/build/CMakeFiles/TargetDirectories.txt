@@ -1,0 +1,3 @@
+/home/tngngn/ccbench/wound-wait/build/CMakeFiles/rebuild_cache.dir
+/home/tngngn/ccbench/wound-wait/build/CMakeFiles/edit_cache.dir
+/home/tngngn/ccbench/wound-wait/build/CMakeFiles/ss2pl.exe.dir

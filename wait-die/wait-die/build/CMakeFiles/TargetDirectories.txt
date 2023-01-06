@@ -1,3 +1,0 @@
-/home/tngngn/tccbench/wait-die/build/CMakeFiles/rebuild_cache.dir
-/home/tngngn/tccbench/wait-die/build/CMakeFiles/edit_cache.dir
-/home/tngngn/tccbench/wait-die/build/CMakeFiles/waitdie.exe.dir

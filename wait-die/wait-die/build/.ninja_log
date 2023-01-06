@@ -1,8 +1,0 @@
-# ninja log v5
-0	435	1667890126032560612	CMakeFiles/waitdie.exe.dir/home/tngngn/tccbench/common/result.cc.o	a4969a28ef342314
-1	736	1667890126332550723	CMakeFiles/waitdie.exe.dir/home/tngngn/tccbench/common/util.cc.o	a2b03b08ded837a9
-1	851	1667890126448546898	CMakeFiles/waitdie.exe.dir/result.cc.o	206e8808f0593d1e
-1	1375	1667890126972529625	CMakeFiles/waitdie.exe.dir/transaction.cc.o	d37eda0c14491975
-2	1387	1667890126984529229	CMakeFiles/waitdie.exe.dir/util.cc.o	6fbac2a28c1619e1
-2	1456	1667890127052526987	CMakeFiles/waitdie.exe.dir/waitdie.cc.o	c68471af02eb3dd3
-1456	1533	1667890127128524482	waitdie.exe	67ea41fcdbdb8811
