@@ -94,6 +94,22 @@ void TxExecutor::commit() {
    * Phase 1: detect read-write conflicts
    */
 
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    tuple = (*itr).rcdptr_;
+    //tuple->waitRd.emplace_back(excl_sig);
+    for (int i=0; i<tuple->waitRd.size(); i++) {
+      if (thread_timestamp[this-thid_] < thread_timestamp[tuple->waitRd[i].first]) {
+        thread_stats[tuple->waitRd[i].first] = 1;
+      } else {
+        /*
+        while (1) {
+          if (thread_stats[thid_] == 1) goto FINISH_WRITE;
+        }
+        */
+      }
+    }
+  }
+
   /**
    * Phase 2: release read locks
    */
@@ -108,6 +124,7 @@ void TxExecutor::commit() {
    */
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    tuple = (*itr).rcdptr_;
     // update payload.
     memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
     unlockWrite(this->thid_, tuple);
@@ -115,7 +132,7 @@ void TxExecutor::commit() {
   }
 
   //Release locks.
-  unlockList();
+  //unlockList();
 
   /**
    * Clean-up local read/write set.
@@ -219,26 +236,24 @@ void TxExecutor::write(uint64_t key) {
 #else
   tuple = get_tuple(Table, key);
 #endif
-  
+  /*
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
     if ((*rItr).key_ == key) {  // hit
       while (1) {
-	if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
-	  for (int i = 0; i < FLAGS_thread_num; i++) {
-	    if ((tuple->readers[i] > 0 || tuple->writers[i] > 0) && thread_timestamp[i] > thread_timestamp[this->thid_]) {
-	      thread_stats[i] = 1;
-	    }
-	  }
-	  if (thread_stats[thid_] == 1) goto FINISH_WRITE;
-	} else {
-	  break;
-	}
+        if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
+          if (tuple->curr_writer > 0 && thread_timestamp[this-thid_] < thread_timestamp[tuple->curr_writer]) {
+            thread_stats[tuple->curr_writer] = 1;
+          }
+          if (thread_stats[thid_] == 1) goto FINISH_WRITE;
+        } else {
+          break;
+        }
       }
 
       // upgrade success
       // remove old element of read lock list.
-      tuple->readers[this->thid_] = 0;
-      tuple->writers[this->thid_] = 1;
+      //tuple->readers[this->thid_] = 0;
+      //tuple->writers[this->thid_] = 1;
       for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
            ++lItr) {
         if (*lItr == &((*rItr).rcdptr_->lock_)) {
@@ -253,6 +268,7 @@ void TxExecutor::write(uint64_t key) {
       goto FINISH_WRITE;
     }
   }
+  */
 
   /** PLOR */
   lockWrite();
@@ -309,25 +325,26 @@ void TxExecutor::readWrite(uint64_t key) {
 #else
   tuple = get_tuple(Table, key);
 #endif
+/*
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
     if ((*rItr).key_ == key) {  // hit
+      
       while (1) {
         if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
-          for (int i = 0; i < FLAGS_thread_num; i++) {
-            if ((tuple->readers[i] > 0 || tuple->writers[i] > 0) && thread_timestamp[i] > thread_timestamp[this->thid_]) {
-              thread_stats[i] = 1;
-            }
+          if (tuple->curr_writer > 0 && thread_timestamp[this-thid_] < thread_timestamp[tuple->curr_writer]) {
+            thread_stats[tuple->curr_writer] = 1;
           }
           if (thread_stats[thid_] == 1) goto FINISH_WRITE;
         } else {
           break;
         }
       }
+      
 
       // upgrade success
       // remove old element of read set.
-      tuple->readers[this->thid_] = 0;
-      tuple->writers[this->thid_] = 1;
+      //tuple->readers[this->thid_] = 0;
+      //tuple->writers[this->thid_] = 1;
       for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
            ++lItr) {
         if (*lItr == &((*rItr).rcdptr_->lock_)) {
@@ -342,6 +359,7 @@ void TxExecutor::readWrite(uint64_t key) {
       goto FINISH_WRITE;
     }
   }
+  */
 
   /** PLOR */
   lockWrite();
@@ -385,8 +403,13 @@ void TxExecutor::lockRead() {
   read_set_.emplace_back(key, tuple, tuple->val_);
   tuple->waitRd.emplace_back(thid_, thread_timestamp[this->thid_]);
 
-  // pure wound-wait, no commit priority yet
-  
+  // pure, no commit priority yet
+  while (1) {
+    if (tuple->curr_writer > 0 && thread_timestamp[this-thid_] < thread_timestamp[tuple->curr_writer]) {
+      thread_stats[tuple->curr_writer] = 1;
+    }
+    if (thread_stats[thid_] == 1) goto FINISH_READ;
+  }
 
   /** Wound-Wait 
    *
@@ -397,8 +420,6 @@ void TxExecutor::lockRead() {
         }
   }
   */
-
-  if (thread_stats[thid_] == 1) goto FINISH_READ;
 }
 
 void TxExecutor::lockWrite() {
@@ -410,17 +431,14 @@ void TxExecutor::lockWrite() {
     }
   }); // sort by ts
 
-  // @task: CAS for curr_writer @then: wound-wait 
-  // trying to be the owner
-  int owner, expected, desired;
-  owner = tuple->curr_writer;
-  desired = this->thid_;
-  for (;;) {
-    expected = 0;
-    if (!owner.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire)) {
-      while (curr_writer != this->thid_) {
-        if (thread_timestamp[curr_writer] > thread_timestamp[this->thid_]) {
-          thread_stats[curr_writer] = 1;
+  // @task: need to use CAS for this 
+  while (1) {
+    if (tuple->curr_writer == 0) {
+      tuple->curr_writer == this->thid_;
+    } else {
+      while (tuple->writer != this->thid_) {
+        if (thread_timestamp[this-thid_] < thread_timestamp[tuple->curr_writer]) {
+          thread_stats[tuple->curr_writer] = 1;
         }
         if (thread_stats[thid_] == 1) goto FINISH_WRITE;
       }
@@ -430,7 +448,7 @@ void TxExecutor::lockWrite() {
 
 void TxExecutor::unlockRead(int thid, Tuple *tuple) {
   int j;
-  for ( int i=0; i<tuple->waitRd.size(); i++) {
+  for (int i=0; i<tuple->waitRd.size(); i++) {
     if (tuple->waitRd[i].first == thid) {
       j = i;
       break;
@@ -447,7 +465,7 @@ void TxExecutor::unlockWrite(int thid, Tuple *tuple) {
    * turn the lock to the oldest waiter(writer) 
    */
   int j;
-  for ( int i=0; i<tuple->waitWr.size(); i++) {
+  for (int i=0; i<tuple->waitWr.size(); i++) {
     if (tuple->waitWr[i].first == thid_) {
       j = i;
       break;
