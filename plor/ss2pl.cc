@@ -75,15 +75,23 @@ RETRY:
       } else {
         ERR;
       }
-
+      /*
       if (thread_stats[thid] == 1) {
         trans.status_ = TransactionStatus::aborted;
         trans.abort();
         goto RETRY;
       }
+      */
     }
-
+    
     trans.commit();
+    
+    if (thread_stats[thid] == 1) {
+        trans.status_ = TransactionStatus::aborted;
+        trans.abort();
+        goto RETRY;
+      }
+
     /**
      * local_commit_counts is used at ../include/backoff.hh to calcurate about
      * backoff.

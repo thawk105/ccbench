@@ -60,6 +60,12 @@ public:
 
   void unlockList();
 
+  void unlockRead(int thid, Tuple *tuple);
+
+  void unlockWrite(int thid, Tuple *tuple);
+
+  
+
   // inline
   Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };

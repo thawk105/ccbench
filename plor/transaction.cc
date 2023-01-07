@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <utility>
 #include <vector>
 #include <algorithm> 
 
@@ -98,14 +99,14 @@ void TxExecutor::commit() {
     tuple = (*itr).rcdptr_;
     //tuple->waitRd.emplace_back(excl_sig);
     for (int i=0; i<tuple->waitRd.size(); i++) {
-      if (thread_timestamp[this-thid_] < thread_timestamp[tuple->waitRd[i].first]) {
-        thread_stats[tuple->waitRd[i].first] = 1;
+      if (thread_timestamp[this->thid_] < thread_timestamp[tuple->waitRd[i].second]) {
+        thread_stats[tuple->waitRd[i].second] = 1;
       } else {
-        /*
+        
         while (1) {
-          if (thread_stats[thid_] == 1) goto FINISH_WRITE;
+          if (thread_stats[thid_] == 1) goto FINISH_COMMIT;
         }
-        */
+        
       }
     }
   }
@@ -139,6 +140,10 @@ void TxExecutor::commit() {
    */
   read_set_.clear();
   write_set_.clear();
+
+  FINISH_COMMIT:
+
+  return;
 }
 
 /**
@@ -180,7 +185,16 @@ void TxExecutor::read(uint64_t key) {
    */
 
   /** PLOR */
-  lockRead();
+  read_set_.emplace_back(key, tuple, tuple->val_);
+  tuple->waitRd.emplace_back(thread_timestamp[this->thid_], this->thid_);
+
+  // pure, no commit priority yet
+  while (1) {
+    if (tuple->curr_writer > 0 && thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
+      thread_stats[tuple->curr_writer] = 1;
+    }
+    if (thread_stats[thid_] == 1) goto FINISH_READ;
+  }
 
   /** Wound-Wait 
    *
@@ -271,7 +285,23 @@ void TxExecutor::write(uint64_t key) {
   */
 
   /** PLOR */
-  lockWrite();
+  write_set_.emplace_back(key, tuple);
+  tuple->waitWr.emplace_back(thread_timestamp[this->thid_],this->thid_);
+  sort(tuple->waitWr.begin(), tuple->waitWr.end());
+
+  // @task: need to use CAS for this 
+  while (1) {
+    if (tuple->curr_writer == 0) {
+      tuple->curr_writer == this->thid_;
+    } else {
+      while (tuple->curr_writer != this->thid_) {
+        if (thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
+          thread_stats[tuple->curr_writer] = 1;
+        }
+        if (thread_stats[thid_] == 1) goto FINISH_WRITE;
+      }
+    }
+  }
 
   /** Wound-Wait 
    *
@@ -362,7 +392,23 @@ void TxExecutor::readWrite(uint64_t key) {
   */
 
   /** PLOR */
-  lockWrite();
+  write_set_.emplace_back(key, tuple);
+  tuple->waitWr.emplace_back(thread_timestamp[this->thid_], this->thid_);
+  sort(tuple->waitWr.begin(), tuple->waitWr.end());
+
+  // @task: need to use CAS for this 
+  while (1) {
+    if (tuple->curr_writer == 0) {
+      tuple->curr_writer == this->thid_;
+    } else {
+      while (tuple->curr_writer != this->thid_) {
+        if (thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
+          thread_stats[tuple->curr_writer] = 1;
+        }
+        if (thread_stats[thid_] == 1) goto FINISH_WRITE;
+      }
+    }
+  }
 
   /** Wound-Wait 
    *
@@ -397,59 +443,10 @@ FINISH_WRITE:
   return;
 }
 
-void TxExecutor::lockRead() {
-  /** PLOR */
-  // @task: need to add exclusive signifier for commiting writer
-  read_set_.emplace_back(key, tuple, tuple->val_);
-  tuple->waitRd.emplace_back(thid_, thread_timestamp[this->thid_]);
-
-  // pure, no commit priority yet
-  while (1) {
-    if (tuple->curr_writer > 0 && thread_timestamp[this-thid_] < thread_timestamp[tuple->curr_writer]) {
-      thread_stats[tuple->curr_writer] = 1;
-    }
-    if (thread_stats[thid_] == 1) goto FINISH_READ;
-  }
-
-  /** Wound-Wait 
-   *
-  tuple->readers[thid_] = 1;
-  for (int i = 0; i < FLAGS_thread_num; i++) {
-    if (tuple->writers[i] > 0 && thread_timestamp[i] > thread_timestamp[this->thid_]) {
-          thread_stats[i] = 1;
-        }
-  }
-  */
-}
-
-void TxExecutor::lockWrite() {
-  write_set_.emplace_back(key, tuple);
-  tuple->waitWr.emplace_back(thid_, thread_timestamp[this->thid_]);
-  sort(tuple->waitWr.begin(), tuple->waitWr.end(),[](const pair &x, const pair &y) {
-    if (x.second != y.second) {
-      return x.second < y.second;
-    }
-  }); // sort by ts
-
-  // @task: need to use CAS for this 
-  while (1) {
-    if (tuple->curr_writer == 0) {
-      tuple->curr_writer == this->thid_;
-    } else {
-      while (tuple->writer != this->thid_) {
-        if (thread_timestamp[this-thid_] < thread_timestamp[tuple->curr_writer]) {
-          thread_stats[tuple->curr_writer] = 1;
-        }
-        if (thread_stats[thid_] == 1) goto FINISH_WRITE;
-      }
-    }
-  }
-}
-
 void TxExecutor::unlockRead(int thid, Tuple *tuple) {
   int j;
   for (int i=0; i<tuple->waitRd.size(); i++) {
-    if (tuple->waitRd[i].first == thid) {
+    if (tuple->waitRd[i].second == thid) {
       j = i;
       break;
     }
@@ -466,16 +463,16 @@ void TxExecutor::unlockWrite(int thid, Tuple *tuple) {
    */
   int j;
   for (int i=0; i<tuple->waitWr.size(); i++) {
-    if (tuple->waitWr[i].first == thid_) {
+    if (tuple->waitWr[i].second == thid) {
       j = i;
       break;
     }
   }
   tuple->waitWr.erase(tuple->waitWr.begin()+j);
   
-  if (curr_writer == thid_) {
+  if (tuple->curr_writer == thid) {
     // remove exclusive signifier in read set
-    tuple->curr_writer = tuple->waitWr[0].first;
+    tuple->curr_writer = tuple->waitWr[0].second;
   }
 }
 
