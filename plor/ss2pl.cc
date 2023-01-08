@@ -75,13 +75,13 @@ RETRY:
       } else {
         ERR;
       }
-      /*
+      
       if (thread_stats[thid] == 1) {
         trans.status_ = TransactionStatus::aborted;
         trans.abort();
         goto RETRY;
       }
-      */
+      
     }
     
     trans.commit();
