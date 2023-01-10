@@ -97,12 +97,13 @@ void TxExecutor::commit() {
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     tuple = (*itr).rcdptr_;
-    //tuple->waitRd.emplace_back(excl_sig);
+    tuple->waitRd.emplace_back(-1,-1);
     for (int i=0; i<tuple->waitRd.size(); i++) {
       if (thread_timestamp[this->thid_] < thread_timestamp[tuple->waitRd[i].second]) {
         thread_stats[tuple->waitRd[i].second] = 1;
       } else {
-        while (1) {
+        // checkRd
+        while (checkRd(tuple->waitRd[i].second, tuple)) {
           if (thread_stats[this->thid_] == 1) goto FINISH_COMMIT;
         }
       }
@@ -186,7 +187,8 @@ void TxExecutor::read(uint64_t key) {
   tuple->waitRd.emplace_back(thread_timestamp[this->thid_], this->thid_);
 
   // pure, no commit priority yet
-  while (1) {
+  // need checkRd
+  while (checkRd(-1, tuple)) {
     if (tuple->curr_writer > 0 && thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
       thread_stats[tuple->curr_writer] = 1;
     }
@@ -347,6 +349,13 @@ void TxExecutor::unlockWrite(int thid, Tuple *tuple) {
   }
 }
 
-
+bool TxExecutor::checkRd(int thid, Tuple *tuple) {
+  for (int i = 0; i<tuple->waitRd.size(); i++) {
+		if (tuple->waitRd[i].second == thid) {
+			return true;
+		}
+	}
+	return false;
+}
 
 

@@ -64,6 +64,8 @@ public:
 
   void unlockWrite(int thid, Tuple *tuple);
 
+  bool checkRd(int thid, Tuple *tuple);
+
   
 
   // inline
