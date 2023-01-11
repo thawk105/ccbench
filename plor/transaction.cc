@@ -6,6 +6,7 @@
 #include <algorithm> 
 
 #include <atomic>
+#include <mutex>
 
 #include "../include/backoff.hh"
 #include "../include/debug.hh"
@@ -110,6 +111,8 @@ void TxExecutor::commit() {
     }
   }
 
+  this->status_ = TransactionStatus::committed;
+
   /**
    * Phase 2: release read locks
    */
@@ -133,13 +136,7 @@ void TxExecutor::commit() {
 
   //Release locks.
   //unlockList();
-
-  FINISH_COMMIT:
-  /**
-   * Clean-up local read/write set.
-   */
-  read_set_.clear();
-  write_set_.clear();
+FINISH_COMMIT:
 
   return;
 }
@@ -234,18 +231,17 @@ void TxExecutor::write(uint64_t key) {
   sort(tuple->waitWr.begin(), tuple->waitWr.end());
 
   // @task: need to use CAS for this 
-  while (1) {
-    if (tuple->curr_writer == 0) {
-      tuple->curr_writer == this->thid_;
-    } else {
-      while (tuple->curr_writer != this->thid_) {
-        if (thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
-          thread_stats[tuple->curr_writer] = 1;
-        }
-        if (thread_stats[this->thid_] == 1) goto FINISH_WRITE;
+  int expected, desired;
+  expected = 0;
+  desired = this->thid_;
+  if (!tuple->curr_writer.compare_exchange_weak(expected,desired)) {
+    while (tuple->curr_writer != this->thid_) {
+      if (thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
+        thread_stats[tuple->curr_writer] = 1;
       }
+      if (thread_stats[this->thid_] == 1) goto FINISH_WRITE;
     }
-  }
+  }  
 
   memcpy(tuple->val_, write_val_, VAL_SIZE);
 
@@ -288,16 +284,15 @@ void TxExecutor::readWrite(uint64_t key) {
   sort(tuple->waitWr.begin(), tuple->waitWr.end());
 
   // @task: need to use CAS for this 
-  while (1) {
-    if (tuple->curr_writer == 0) {
-      tuple->curr_writer == this->thid_;
-    } else {
-      while (tuple->curr_writer != this->thid_) {
-        if (thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
-          thread_stats[tuple->curr_writer] = 1;
-        }
-        if (thread_stats[this->thid_] == 1) goto FINISH_WRITE;
+  int expected, desired;
+  expected = 0;
+  desired = this->thid_;
+  if (!tuple->curr_writer.compare_exchange_weak(expected,desired)) {
+    while (tuple->curr_writer != this->thid_) {
+      if (thread_timestamp[this->thid_] < thread_timestamp[tuple->curr_writer]) {
+        thread_stats[tuple->curr_writer] = 1;
       }
+      if (thread_stats[this->thid_] == 1) goto FINISH_WRITE;
     }
   }
 
@@ -358,4 +353,11 @@ bool TxExecutor::checkRd(int thid, Tuple *tuple) {
 	return false;
 }
 
+void TxExecutor::mtx_get() {
+  mtx.lock();
+}
+    
+void TxExecutor::mtx_release() {
+  mtx.unlock();
+}
 

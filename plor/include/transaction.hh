@@ -32,6 +32,8 @@ public:
   char write_val_[VAL_SIZE];
   char return_val_[VAL_SIZE];
 
+  std::mutex mtx;
+
   TxExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
     read_set_.reserve(FLAGS_max_ope);
     write_set_.reserve(FLAGS_max_ope);
@@ -65,6 +67,10 @@ public:
   void unlockWrite(int thid, Tuple *tuple);
 
   bool checkRd(int thid, Tuple *tuple);
+
+  void mtx_get();
+
+  void mtx_release();
 
   
 
