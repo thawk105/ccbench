@@ -12,7 +12,7 @@
 
 # =============================================================================
 # Project: ccbench_ss2pl
-# Configurations: Release
+# Configurations: Debug
 # =============================================================================
 
 #############################################
@@ -24,7 +24,7 @@ ninja_required_version = 1.5
 #############################################
 # Set configuration variable for custom commands.
 
-CONFIGURATION = Release
+CONFIGURATION = Debug
 # =============================================================================
 # Include auxiliary files.
 
@@ -64,57 +64,57 @@ build edit_cache: phony CMakeFiles/edit_cache.util
 #############################################
 # Order-only phony target for ss2pl.exe
 
-build cmake_object_order_depends_target_ss2pl.exe_Release: phony || CMakeFiles/ss2pl.exe.dir
+build cmake_object_order_depends_target_ss2pl.exe_Debug: phony || CMakeFiles/ss2pl.exe.dir
 
-build CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o: CXX_COMPILER__ss2pl.2eexe_Release /home/tngngn/ccbench/common/result.cc || cmake_object_order_depends_target_ss2pl.exe_Release
+build CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o: CXX_COMPILER__ss2pl.2eexe_Debug /home/tngngn/ccbench/common/result.cc || cmake_object_order_depends_target_ss2pl.exe_Debug
   DEFINES = -DADD_ANALYSIS=0 -DBACK_OFF=0 -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DDLR1 -DKEY_SIZE=8 -DKEY_SORT=0 -DMASSTREE_USE=1 -DVAL_SIZE=4
   DEP_FILE = CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o.d
-  FLAGS = -O3 -DNDEBUG   -std=c++17
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address   -std=c++17
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   OBJECT_FILE_DIR = CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common
   TARGET_COMPILE_PDB = CMakeFiles/ss2pl.exe.dir/
   TARGET_PDB = ss2pl.exe.pdb
 
-build CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o: CXX_COMPILER__ss2pl.2eexe_Release /home/tngngn/ccbench/common/util.cc || cmake_object_order_depends_target_ss2pl.exe_Release
+build CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o: CXX_COMPILER__ss2pl.2eexe_Debug /home/tngngn/ccbench/common/util.cc || cmake_object_order_depends_target_ss2pl.exe_Debug
   DEFINES = -DADD_ANALYSIS=0 -DBACK_OFF=0 -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DDLR1 -DKEY_SIZE=8 -DKEY_SORT=0 -DMASSTREE_USE=1 -DVAL_SIZE=4
   DEP_FILE = CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o.d
-  FLAGS = -O3 -DNDEBUG   -std=c++17
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address   -std=c++17
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   OBJECT_FILE_DIR = CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common
   TARGET_COMPILE_PDB = CMakeFiles/ss2pl.exe.dir/
   TARGET_PDB = ss2pl.exe.pdb
 
-build CMakeFiles/ss2pl.exe.dir/result.cc.o: CXX_COMPILER__ss2pl.2eexe_Release ../result.cc || cmake_object_order_depends_target_ss2pl.exe_Release
+build CMakeFiles/ss2pl.exe.dir/result.cc.o: CXX_COMPILER__ss2pl.2eexe_Debug ../result.cc || cmake_object_order_depends_target_ss2pl.exe_Debug
   DEFINES = -DADD_ANALYSIS=0 -DBACK_OFF=0 -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DDLR1 -DKEY_SIZE=8 -DKEY_SORT=0 -DMASSTREE_USE=1 -DVAL_SIZE=4
   DEP_FILE = CMakeFiles/ss2pl.exe.dir/result.cc.o.d
-  FLAGS = -O3 -DNDEBUG   -std=c++17
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address   -std=c++17
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   OBJECT_FILE_DIR = CMakeFiles/ss2pl.exe.dir
   TARGET_COMPILE_PDB = CMakeFiles/ss2pl.exe.dir/
   TARGET_PDB = ss2pl.exe.pdb
 
-build CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o: CXX_COMPILER__ss2pl.2eexe_Release ../ss2pl.cc || cmake_object_order_depends_target_ss2pl.exe_Release
+build CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o: CXX_COMPILER__ss2pl.2eexe_Debug ../ss2pl.cc || cmake_object_order_depends_target_ss2pl.exe_Debug
   DEFINES = -DADD_ANALYSIS=0 -DBACK_OFF=0 -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DDLR1 -DKEY_SIZE=8 -DKEY_SORT=0 -DMASSTREE_USE=1 -DVAL_SIZE=4
   DEP_FILE = CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o.d
-  FLAGS = -O3 -DNDEBUG   -std=c++17
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address   -std=c++17
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   OBJECT_FILE_DIR = CMakeFiles/ss2pl.exe.dir
   TARGET_COMPILE_PDB = CMakeFiles/ss2pl.exe.dir/
   TARGET_PDB = ss2pl.exe.pdb
 
-build CMakeFiles/ss2pl.exe.dir/transaction.cc.o: CXX_COMPILER__ss2pl.2eexe_Release ../transaction.cc || cmake_object_order_depends_target_ss2pl.exe_Release
+build CMakeFiles/ss2pl.exe.dir/transaction.cc.o: CXX_COMPILER__ss2pl.2eexe_Debug ../transaction.cc || cmake_object_order_depends_target_ss2pl.exe_Debug
   DEFINES = -DADD_ANALYSIS=0 -DBACK_OFF=0 -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DDLR1 -DKEY_SIZE=8 -DKEY_SORT=0 -DMASSTREE_USE=1 -DVAL_SIZE=4
   DEP_FILE = CMakeFiles/ss2pl.exe.dir/transaction.cc.o.d
-  FLAGS = -O3 -DNDEBUG   -std=c++17
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address   -std=c++17
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   OBJECT_FILE_DIR = CMakeFiles/ss2pl.exe.dir
   TARGET_COMPILE_PDB = CMakeFiles/ss2pl.exe.dir/
   TARGET_PDB = ss2pl.exe.pdb
 
-build CMakeFiles/ss2pl.exe.dir/util.cc.o: CXX_COMPILER__ss2pl.2eexe_Release ../util.cc || cmake_object_order_depends_target_ss2pl.exe_Release
+build CMakeFiles/ss2pl.exe.dir/util.cc.o: CXX_COMPILER__ss2pl.2eexe_Debug ../util.cc || cmake_object_order_depends_target_ss2pl.exe_Debug
   DEFINES = -DADD_ANALYSIS=0 -DBACK_OFF=0 -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DDLR1 -DKEY_SIZE=8 -DKEY_SORT=0 -DMASSTREE_USE=1 -DVAL_SIZE=4
   DEP_FILE = CMakeFiles/ss2pl.exe.dir/util.cc.o.d
-  FLAGS = -O3 -DNDEBUG   -std=c++17
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address   -std=c++17
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   OBJECT_FILE_DIR = CMakeFiles/ss2pl.exe.dir
   TARGET_COMPILE_PDB = CMakeFiles/ss2pl.exe.dir/
@@ -128,8 +128,8 @@ build CMakeFiles/ss2pl.exe.dir/util.cc.o: CXX_COMPILER__ss2pl.2eexe_Release ../u
 #############################################
 # Link the executable ss2pl.exe
 
-build ss2pl.exe: CXX_EXECUTABLE_LINKER__ss2pl.2eexe_Release CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o CMakeFiles/ss2pl.exe.dir/result.cc.o CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o CMakeFiles/ss2pl.exe.dir/transaction.cc.o CMakeFiles/ss2pl.exe.dir/util.cc.o | /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /usr/lib/x86_64-linux-gnu/libgflags.so ../../third_party/mimalloc/out/release/libmimalloc.a ../../third_party/masstree/libkohler_masstree_json.a
-  FLAGS = -O3 -DNDEBUG
+build ss2pl.exe: CXX_EXECUTABLE_LINKER__ss2pl.2eexe_Debug CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o CMakeFiles/ss2pl.exe.dir/result.cc.o CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o CMakeFiles/ss2pl.exe.dir/transaction.cc.o CMakeFiles/ss2pl.exe.dir/util.cc.o | /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /usr/lib/x86_64-linux-gnu/libgflags.so ../../third_party/mimalloc/out/release/libmimalloc.a ../../third_party/masstree/libkohler_masstree_json.a
+  FLAGS = -g -fno-omit-frame-pointer -fsanitize=address -fno-sanitize=alignment -fno-sanitize-recover=address
   LINK_LIBRARIES = /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0  /usr/lib/x86_64-linux-gnu/libgflags.so  ../../third_party/mimalloc/out/release/libmimalloc.a  ../../third_party/masstree/libkohler_masstree_json.a  -lpthread
   OBJECT_DIR = CMakeFiles/ss2pl.exe.dir
   POST_BUILD = :

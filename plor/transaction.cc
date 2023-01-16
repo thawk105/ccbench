@@ -89,13 +89,18 @@ void TxExecutor::abort() {
  * @brief success termination of transaction.
  * @return void
  */
-void TxExecutor::commit() {
 
+// change to validate
+bool TxExecutor::validationPhase() {
   Tuple *tuple;
+#if ADD_ANALYSIS
+  std::uint64_t start = rdtscp();
+#endif
+
   /**
    * Phase 1: detect read-write conflicts
    */
-
+  NNN;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     tuple = (*itr).rcdptr_;
     tuple->waitRd.emplace_back(-1,-1);
@@ -105,17 +110,30 @@ void TxExecutor::commit() {
       } else {
         // checkRd
         while (checkRd(tuple->waitRd[i].second, tuple)) {
-          if (thread_stats[this->thid_] == 1) goto FINISH_COMMIT;
+          if (thread_stats[this->thid_] == 1) {
+            this->status_ = TransactionStatus::aborted;
+            return false;
+          }
         }
       }
     }
   }
 
+  NNN;
+  // goto Phase 3
+#if ADD_ANALYSIS
+  sres_->local_vali_latency_ += rdtscp() - start;
+#endif
   this->status_ = TransactionStatus::committed;
+  return true;
+}
 
+void TxExecutor::commit() {
+  Tuple *tuple;
   /**
    * Phase 2: release read locks
    */
+  NNN;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     tuple = (*itr).rcdptr_;
     unlockRead(this->thid_, tuple);
@@ -125,7 +143,7 @@ void TxExecutor::commit() {
   /**
    * Phase 3: commit and release write locks
    */
-
+  NNN;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     tuple = (*itr).rcdptr_;
     // update payload.
@@ -133,12 +151,6 @@ void TxExecutor::commit() {
     unlockWrite(this->thid_, tuple);
     //(*itr).rcdptr_->writers[this->thid_] = -1;
   }
-
-  //Release locks.
-  //unlockList();
-FINISH_COMMIT:
-
-  return;
 }
 
 /**
@@ -360,5 +372,3 @@ void TxExecutor::mtx_get() {
 void TxExecutor::mtx_release() {
   mtx.unlock();
 }
- 
-// check git push

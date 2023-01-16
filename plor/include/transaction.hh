@@ -56,6 +56,8 @@ public:
 
   void readWrite(uint64_t key);
 
+  bool validationPhase();
+
   void commit();
 
   void abort();

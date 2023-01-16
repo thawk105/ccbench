@@ -63,41 +63,48 @@ RETRY:
     if (loadAcquire(quit)) break;
     if (thid == 0) leaderBackoffWork(backoff, SS2PLResult);
 
+    NNN;
     trans.begin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
          ++itr) {
+      NNN;
       if ((*itr).ope_ == Ope::READ) {
+        NNN;
         trans.read((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
+        NNN;
         trans.write((*itr).key_);
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
+        NNN;
         trans.readWrite((*itr).key_);
       } else {
         ERR;
       }
+      NNN;
       
       if (thread_stats[thid] == 1) {
         trans.status_ = TransactionStatus::aborted;
         trans.abort();
         goto RETRY;
       }
-      
     }
-    
-    trans.commit();
-    
-    if (thread_stats[thid] == 1) {
-        trans.status_ = TransactionStatus::aborted;
-        trans.abort();
-        goto RETRY;
-      }
 
-    /**
-     * local_commit_counts is used at ../include/backoff.hh to calcurate about
-     * backoff.
-     */
-    storeRelease(myres.local_commit_counts_,
-                 loadAcquire(myres.local_commit_counts_) + 1);
+    NNN;
+    if (trans.validationPhase()) {
+      NNN;
+      trans.commit();
+      /**
+       * local_commit_counts is used at ../include/backoff.hh to calcurate about
+       * backoff.
+       */
+      storeRelease(myres.local_commit_counts_,
+                   loadAcquire(myres.local_commit_counts_) + 1);
+    } else {
+      NNN;
+      trans.abort();
+      ++myres.local_abort_counts_;
+      goto RETRY;
+    }
   }
 
   return;

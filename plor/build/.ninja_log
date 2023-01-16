@@ -1,8 +1,8 @@
 # ninja log v5
-0	489	1673436750790505259	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o	cb094bc7f3f6c775
-0	710	1673436751010502587	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o	f95633baccc8a3ed
-1	896	1673436751194500353	CMakeFiles/ss2pl.exe.dir/result.cc.o	851e6c2fa850bcf5
-2	1381	1673436751682494426	CMakeFiles/ss2pl.exe.dir/util.cc.o	c9c2e62e88d9d2c6
-1	1460	1673436751758493503	CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o	788a57bce6d40cdd
-2	1481	1673436751782493211	CMakeFiles/ss2pl.exe.dir/transaction.cc.o	57b8653ac41a1255
-1481	1559	1673436751858492288	ss2pl.exe	eee19cd8572392e1
+1	468	1673882449751526471	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o	9fbf35805e4ff104
+1	801	1673882450083522443	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o	ea91cc4076eebbc0
+1	977	1673882450259520308	CMakeFiles/ss2pl.exe.dir/result.cc.o	85396cc23d600c0
+2	1422	1673882450703514921	CMakeFiles/ss2pl.exe.dir/util.cc.o	49806984b2de2094
+2	1594	1673882450875512835	CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o	368bb879e9c807e0
+3	1449	1673883038556382864	CMakeFiles/ss2pl.exe.dir/transaction.cc.o	42829a35c2d509ed
+1450	1546	1673883038656381651	ss2pl.exe	778c60f2ac8f7589
