@@ -101,6 +101,7 @@ RETRY:
                    loadAcquire(myres.local_commit_counts_) + 1);
     } else {
       NNN;
+      trans.status_ = TransactionStatus::aborted;
       trans.abort();
       ++myres.local_abort_counts_;
       goto RETRY;

@@ -92,33 +92,35 @@ void TxExecutor::abort() {
 
 // change to validate
 bool TxExecutor::validationPhase() {
-  Tuple *tuple;
 #if ADD_ANALYSIS
   std::uint64_t start = rdtscp();
 #endif
-
+  
+  NNN;
+  if (thread_stats[this->thid_] == 1) {
+    return false;
+  }
   /**
    * Phase 1: detect read-write conflicts
    */
+  
   NNN;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    tuple = (*itr).rcdptr_;
-    tuple->waitRd.emplace_back(-1,-1);
-    for (int i=0; i<tuple->waitRd.size(); i++) {
-      if (thread_timestamp[this->thid_] < thread_timestamp[tuple->waitRd[i].second]) {
-        thread_stats[tuple->waitRd[i].second] = 1;
+    (*itr).rcdptr_->waitRd.emplace_back(-1,-1);
+    for (int i=0; i<(*itr).rcdptr_->waitRd.size(); i++) {
+      if (thread_timestamp[this->thid_] < (*itr).rcdptr_->waitRd[i].first) {
+        thread_stats[(*itr).rcdptr_->waitRd[i].second] = 1;
       } else {
         // checkRd
-        while (checkRd(tuple->waitRd[i].second, tuple)) {
+        while (checkRd((*itr).rcdptr_->waitRd[i].second, (*itr).rcdptr_)) {
           if (thread_stats[this->thid_] == 1) {
-            this->status_ = TransactionStatus::aborted;
             return false;
           }
         }
       }
     }
   }
-
+  
   NNN;
   // goto Phase 3
 #if ADD_ANALYSIS
@@ -129,14 +131,12 @@ bool TxExecutor::validationPhase() {
 }
 
 void TxExecutor::commit() {
-  Tuple *tuple;
   /**
    * Phase 2: release read locks
    */
   NNN;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    tuple = (*itr).rcdptr_;
-    unlockRead(this->thid_, tuple);
+    unlockRead(this->thid_, (*itr).rcdptr_);
     //(*itr).rcdptr_->readers[this->thid_] = -1;
   } 
 
@@ -145,12 +145,15 @@ void TxExecutor::commit() {
    */
   NNN;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    tuple = (*itr).rcdptr_;
     // update payload.
     memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
-    unlockWrite(this->thid_, tuple);
+    unlockWrite(this->thid_, (*itr).rcdptr_);
     //(*itr).rcdptr_->writers[this->thid_] = -1;
   }
+
+  NNN;
+  read_set_.clear();
+  write_set_.clear();
 }
 
 /**
@@ -192,7 +195,7 @@ void TxExecutor::read(uint64_t key) {
    */
 
   /** PLOR */
-  read_set_.emplace_back(key, tuple, tuple->val_);
+  
   tuple->waitRd.emplace_back(thread_timestamp[this->thid_], this->thid_);
 
   // pure, no commit priority yet
@@ -203,6 +206,7 @@ void TxExecutor::read(uint64_t key) {
     }
     if (thread_stats[this->thid_] == 1) goto FINISH_READ;
   }
+  read_set_.emplace_back(key, tuple, tuple->val_);
 
 FINISH_READ:
 
@@ -238,7 +242,7 @@ void TxExecutor::write(uint64_t key) {
 #endif
 
   /** PLOR */
-  write_set_.emplace_back(key, tuple);
+  
   tuple->waitWr.emplace_back(thread_timestamp[this->thid_],this->thid_);
   sort(tuple->waitWr.begin(), tuple->waitWr.end());
 
@@ -291,7 +295,7 @@ void TxExecutor::readWrite(uint64_t key) {
 #endif
 
   /** PLOR */
-  write_set_.emplace_back(key, tuple);
+  
   tuple->waitWr.emplace_back(thread_timestamp[this->thid_], this->thid_);
   sort(tuple->waitWr.begin(), tuple->waitWr.end());
 
