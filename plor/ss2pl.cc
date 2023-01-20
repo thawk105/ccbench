@@ -34,6 +34,7 @@
 long long int central_timestamp = 0; 
 
 void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+  
   Result &myres = std::ref(SS2PLResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
