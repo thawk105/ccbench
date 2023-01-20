@@ -1,0 +1,15 @@
+# ninja log v5
+0	430	1668098510613793716	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o	81bcf81436dd096f
+3	468	1668098510649792532	test/CMakeFiles/make_db_test.dir/home/tngngn/ccbench/common/result.cc.o	4cf8fab3b4f2f11a
+1	699	1668098510881784905	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o	f58abb2ca12f4c9e
+3	734	1668098510917783722	test/CMakeFiles/make_db_test.dir/home/tngngn/ccbench/common/util.cc.o	37a5f19502ad199e
+1	827	1668098511009780697	CMakeFiles/ss2pl.exe.dir/result.cc.o	86b6f03aa5214036
+3	874	1668098511057779119	test/CMakeFiles/make_db_test.dir/__/result.cc.o	9cf7615618add105
+2	1386	1668098511569762286	CMakeFiles/ss2pl.exe.dir/transaction.cc.o	cc2bb08c9330f52a
+2	1408	1668098511589761629	CMakeFiles/ss2pl.exe.dir/util.cc.o	44945d250f157858
+1	1410	1668098511593761498	CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o	cc110ea1f9a389f0
+4	1424	1668098511605761103	test/CMakeFiles/make_db_test.dir/__/transaction.cc.o	fb228e060b621dd3
+4	1452	1668098511633760183	test/CMakeFiles/make_db_test.dir/__/util.cc.o	4f02c7f15a443159
+1410	1483	1668098511665759131	ss2pl.exe	eee19cd8572392e1
+2	1603	1668098511785755186	test/CMakeFiles/make_db_test.dir/make_db_test.cpp.o	5101962424ae4d8b
+1603	1722	1668098511905751241	test/make_db_test	f51cc9023ab865e1

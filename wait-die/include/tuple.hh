@@ -8,7 +8,6 @@
 #include "../../include/rwlock.hh"
 
 using namespace std;
-
 #define UNLOCKED INT32_MAX
 
 class Tuple {
@@ -18,4 +17,3 @@ public:
   int writer_;
   int reader_;
 };
-

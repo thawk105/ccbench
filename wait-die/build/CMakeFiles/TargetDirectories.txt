@@ -1,0 +1,8 @@
+/home/tngngn/ccbench/wait-die/build/CMakeFiles/rebuild_cache.dir
+/home/tngngn/ccbench/wait-die/build/CMakeFiles/edit_cache.dir
+/home/tngngn/ccbench/wait-die/build/CMakeFiles/test.dir
+/home/tngngn/ccbench/wait-die/build/CMakeFiles/ss2pl.exe.dir
+/home/tngngn/ccbench/wait-die/build/test/CMakeFiles/rebuild_cache.dir
+/home/tngngn/ccbench/wait-die/build/test/CMakeFiles/edit_cache.dir
+/home/tngngn/ccbench/wait-die/build/test/CMakeFiles/test.dir
+/home/tngngn/ccbench/wait-die/build/test/CMakeFiles/make_db_test.dir

@@ -1,0 +1,8 @@
+# ninja log v5
+0	480	1674198434910686697	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/result.cc.o	9fbf35805e4ff104
+0	795	1674198435222682920	CMakeFiles/ss2pl.exe.dir/home/tngngn/ccbench/common/util.cc.o	ea91cc4076eebbc0
+1	954	1674198435382680983	CMakeFiles/ss2pl.exe.dir/result.cc.o	85396cc23d600c0
+2	1368	1674198435794675994	CMakeFiles/ss2pl.exe.dir/util.cc.o	49806984b2de2094
+1	1590	1674198436018673282	CMakeFiles/ss2pl.exe.dir/ss2pl.cc.o	368bb879e9c807e0
+2	1692	1674198436118672071	CMakeFiles/ss2pl.exe.dir/transaction.cc.o	42829a35c2d509ed
+1693	1802	1674198436230670715	ss2pl.exe	778c60f2ac8f7589

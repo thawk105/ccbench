@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <string.h>
 
@@ -86,6 +85,7 @@ void TxExecutor::abort() {
  * @return void
  */
 void TxExecutor::commit() {
+  //printf("tx%d commit\n", thid_);
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     /**
      * update payload.
@@ -103,6 +103,7 @@ void TxExecutor::commit() {
    */
   read_set_.clear();
   write_set_.clear();
+
 }
 
 /**
@@ -138,26 +139,34 @@ void TxExecutor::read(uint64_t key) {
 #else
   tuple = get_tuple(Table, key);
 #endif
-
-#ifdef DLR0
-  /**
-   * Acquire lock with wait.
-   */
-  tuple->lock_.r_lock();
-  r_lock_list_.emplace_back(&tuple->lock_);
-  read_set_.emplace_back(key, tuple, tuple->val_);
-#elif defined(DLR1)
-  if (tuple->lock_.r_trylock()) {
-    r_lock_list_.emplace_back(&tuple->lock_);
-    read_set_.emplace_back(key, tuple, tuple->val_);
-  } else {
-    /**
-     * No-wait and abort.
-     */
-    this->status_ = TransactionStatus::aborted;
-    goto FINISH_READ;
+  while(1) {
+      if(!tuple->latch_.w_trylock()) {
+        usleep(1);
+        continue;
+      }
+      if(tuple->writeflag_) {
+          if(thid_ > tuple->writer_) {
+              tuple->latch_.w_unlock();
+              status_ = TransactionStatus::aborted;
+              goto FINISH_READ; 
+          }
+          tuple->latch_.w_unlock();
+          usleep(1);
+          continue;
+      }
+      else {
+          while(1) {
+              if(tuple->lock_.r_trylock()) {
+                if(thid_ < tuple->reader_)
+                  tuple->reader_ = txid_;
+                tuple->latch_.w_unlock();
+                read_set_.emplace_back(key, tuple, tuple->val_);
+                goto FINISH_READ;
+              }
+              usleep(1);
+          }
+      }
   }
-#endif
 
 FINISH_READ:
 
@@ -179,35 +188,6 @@ void TxExecutor::write(uint64_t key) {
 
   // if it already wrote the key object once.
   if (searchWriteSet(key)) goto FINISH_WRITE;
-
-  for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
-    if ((*rItr).key_ == key) {  // hit
-#if DLR0
-      (*rItr).rcdptr_->lock_.upgrade();
-#elif defined(DLR1)
-      if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
-        this->status_ = TransactionStatus::aborted;
-        goto FINISH_WRITE;
-      }
-#endif
-
-      // upgrade success
-      // remove old element of read lock list.
-      for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
-           ++lItr) {
-        if (*lItr == &((*rItr).rcdptr_->lock_)) {
-          write_set_.emplace_back(key, (*rItr).rcdptr_);
-          w_lock_list_.emplace_back(&(*rItr).rcdptr_->lock_);
-          r_lock_list_.erase(lItr);
-          break;
-        }
-      }
-
-      read_set_.erase(rItr);
-      goto FINISH_WRITE;
-    }
-  }
-
   /**
    * Search tuple from data structure.
    */
@@ -220,27 +200,90 @@ void TxExecutor::write(uint64_t key) {
 #else
   tuple = get_tuple(Table, key);
 #endif
-
-#if DLR0
-  /**
-   * Lock with wait.
-   */
-  tuple->lock_.w_lock();
-#elif defined(DLR1)
-  if (!tuple->lock_.w_trylock()) {
-    /**
-     * No-wait and abort.
-     */
-    this->status_ = TransactionStatus::aborted;
-    goto FINISH_WRITE;
+ 
+  for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
+    if ((*rItr).key_ == key) {  // hit
+      while(1) {
+        if(!tuple->latch_.w_trylock()) {
+          usleep(1);
+          continue;
+        }
+        if(tuple->writeflag_) {
+          if(thid_ > tuple->writer_) {
+            tuple->latch_.w_unlock();
+            status_ = TransactionStatus::aborted;
+            goto FINISH_WRITE;
+          }
+          tuple->latch_.w_unlock();
+          usleep(1);
+          continue;
+        }
+        tuple->writeflag_ = true; // the fact that i am holding the lock suggests that there is no need to spinwait writeflag
+        tuple->writer_ = thid_;
+        if(thid_ > tuple->reader_) {
+          tuple->writeflag_ = false;
+          tuple->latch_.w_unlock();
+          status_ = TransactionStatus::aborted;
+          goto FINISH_WRITE;
+        }
+        tuple->latch_.w_unlock();
+        while(1) { 
+          if(tuple->lock_.tryupgrade()) {
+            tuple->reader_ = UNLOCKED;
+            tuple->writer_ = thid_;
+            write_set_.emplace_back(key, (*rItr).rcdptr_);
+            read_set_.erase(rItr);
+            goto FINISH_WRITE;
+          }
+          if(thid_ > tuple->reader_) {
+            tuple->writeflag_ = false;
+            status_ = TransactionStatus::aborted;
+            goto FINISH_WRITE;
+          }
+          usleep(1);
+        }
+      }
+    }
   }
-#endif
 
-  /**
-   * Register the contents to write lock list and write set.
-   */
-  w_lock_list_.emplace_back(&tuple->lock_);
-  write_set_.emplace_back(key, tuple);
+  while (1) {
+    if(!tuple->latch_.w_trylock()) {
+      usleep(1);
+      continue;
+    }
+    if(tuple->writeflag_) {
+      if(thid_ > tuple->writer_) {
+        tuple->latch_.w_unlock();
+        status_ = TransactionStatus::aborted;
+        goto FINISH_WRITE;
+      }
+      tuple->latch_.w_unlock();
+      usleep(1);
+      continue;
+    }
+    tuple->writeflag_ = true;
+    tuple->writer_ = thid_;
+    if(txid_ > tuple->reader_) {
+        tuple->writeflag_ = false;
+        tuple->latch_.w_unlock();
+        status_ = TransactionStatus::aborted;
+        goto FINISH_WRITE;
+    }
+    tuple->latch_.w_unlock();
+    while(1){
+        if(tuple->lock_.w_trylock()) {
+          tuple->writer_ = thid_;
+          write_set_.emplace_back(key, tuple);
+          goto FINISH_WRITE;
+        }
+        if(thid_ > tuple->reader_) {
+          tuple->writeflag_ = false;
+            status_ = TransactionStatus::aborted;
+            goto FINISH_WRITE;
+        }
+        usleep(1);
+    }
+  }
 
 FINISH_WRITE:
 #if ADD_ANALYSIS
@@ -255,75 +298,77 @@ FINISH_WRITE:
 void TxExecutor::readWrite(uint64_t key) {
   // if it already wrote the key object once.
   if (searchWriteSet(key)) goto FINISH_WRITE;
-
+  Tuple *tuple;
+  tuple = get_tuple(Table, key);
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
     if ((*rItr).key_ == key) {  // hit
-#if DLR0
-      (*rItr).rcdptr_->lock_.upgrade();
-#elif defined(DLR1)
-      if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
-        /**
-         * No-wait and abort.
-         */
-        this->status_ = TransactionStatus::aborted;
+      tuple->latch_.w_lock();
+      if(thid_ > tuple->reader_) {
+        tuple->latch_.w_unlock();
+        status_ = TransactionStatus::aborted;
         goto FINISH_WRITE;
       }
-#endif
-
-      // upgrade success
-      // remove old element of read set.
-      for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
-           ++lItr) {
-        if (*lItr == &((*rItr).rcdptr_->lock_)) {
-          write_set_.emplace_back(key, (*rItr).rcdptr_);
-          w_lock_list_.emplace_back(&(*rItr).rcdptr_->lock_);
-          r_lock_list_.erase(lItr);
-          break;
+      else {
+        tuple->writeflag_ = true; // the fact that i am holding the lock suggests that there is no need to spinwait writeflag
+        tuple->latch_.w_unlock();
+        while(1) { 
+          if(tuple->lock_.tryupgrade()) {
+            tuple->reader_ = UNLOCKED;
+            tuple->writer_ = thid_;
+            for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
+                ++lItr) {
+              if (*lItr == &((*rItr).rcdptr_->lock_)) {
+                write_set_.emplace_back(key, (*rItr).rcdptr_);
+                w_lock_list_.emplace_back(&(*rItr).rcdptr_->lock_);
+                r_lock_list_.erase(lItr);
+                break;
+              }
+            }
+            read_set_.erase(rItr);
+            goto FINISH_WRITE;
+          }
+          usleep(1);
         }
       }
-
-      read_set_.erase(rItr);
-      goto FINISH_WRITE;
     }
   }
 
-  /**
-   * Search tuple from data structure.
-   */
-  Tuple *tuple;
-#if MASSTREE_USE
-  tuple = MT.get_value(key);
-#if ADD_ANALYSIS
-  ++sres_->local_tree_traversal_;
-#endif
-#else
-  tuple = get_tuple(Table, key);
-#endif
-
-#if DLR0
-  /**
-   * Lock with wait.
-   */
-  tuple->lock_.w_lock();
-#elif defined(DLR1)
-  if (!tuple->lock_.w_trylock()) {
-    /**
-     * Nowait and abort.
-     */
-    this->status_ = TransactionStatus::aborted;
-    goto FINISH_WRITE;
+  while (1) {
+    tuple->latch_.w_lock();
+    if(tuple->writeflag_) {
+      if(thid_ > tuple->writer_) {
+        status_ = TransactionStatus::aborted;
+        tuple->latch_.w_unlock();
+        goto FINISH_WRITE;
+      }
+      tuple->latch_.w_unlock();
+      usleep(1);
+      continue;
+    }
+    tuple->writeflag_ = true;
+    if(thid_ > tuple->reader_) {
+        tuple->writeflag_ = false;
+        tuple->latch_.w_unlock();
+        status_ = TransactionStatus::aborted;
+        goto FINISH_WRITE;
+    }
+    tuple->latch_.w_unlock();
+    while(1){
+        if(tuple->lock_.w_trylock()) {
+          tuple->latch_.w_unlock();
+          tuple->writer_ = thid_;
+          memcpy(this->return_val_, tuple->val_, VAL_SIZE);
+          w_lock_list_.emplace_back(&tuple->lock_);
+          write_set_.emplace_back(key, tuple);
+          goto FINISH_WRITE;
+        }
+        if(thid_ > tuple->reader_) {
+            status_ = TransactionStatus::aborted;
+            goto FINISH_WRITE;
+        }
+        usleep(1);
+    }
   }
-#endif
-
-  // read payload
-  memcpy(this->return_val_, tuple->val_, VAL_SIZE);
-  // finish read.
-
-  /**
-   * Register the contents to write lock list and write set.
-   */
-  w_lock_list_.emplace_back(&tuple->lock_);
-  write_set_.emplace_back(key, tuple);
 
 FINISH_WRITE:
   return;
@@ -334,11 +379,20 @@ FINISH_WRITE:
  * @return void
  */
 void TxExecutor::unlockList() {
-  for (auto itr = r_lock_list_.begin(); itr != r_lock_list_.end(); ++itr)
-    (*itr)->r_unlock();
 
-  for (auto itr = w_lock_list_.begin(); itr != w_lock_list_.end(); ++itr)
-    (*itr)->w_unlock();
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+    (*itr).rcdptr_->latch_.w_lock();
+    int reader = (*itr).rcdptr_->lock_.counter.load(memory_order_acquire);
+    if(reader == 1) (*itr).rcdptr_->reader_ = UNLOCKED;
+    (*itr).rcdptr_->lock_.r_unlock();
+    (*itr).rcdptr_->latch_.w_unlock();
+  }
+
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    (*itr).rcdptr_->writeflag_ = false;
+    (*itr).rcdptr_->writer_ = UNLOCKED;
+    (*itr).rcdptr_->lock_.w_unlock();
+  }
 
   /**
    * Clean-up local lock set.
