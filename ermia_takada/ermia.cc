@@ -16,7 +16,7 @@
 #define extime 1           //Execution time[sec].
 #define max_ope 100        //Total number of operations per single transaction."
 #define rratio 50          //read ratio of single transaction.
-#define thread_num 10      //Total number of worker threads.
+#define thread_num 1       //Total number of worker threads.
 #define tuple_num 10       //"Total number of records."
 
 
@@ -66,7 +66,7 @@ std::vector<Result> ErmiaResult;
 void initResult() { ErmiaResult.resize(thread_num); }
 
 
-std::atomic<uint64_t> timestampcounter(0); //timestampを割り当てる
+std::atomic<uint64_t> timestampcounter(1); //timestampを割り当てる
 
 enum class VersionStatus : uint8_t {
     inFlight,
@@ -207,10 +207,6 @@ public:
             ver = ver->prev_;
 
         if (ver->sstamp_ == (UINT32_MAX)) { //// no overwrite yet
-            /*Operation tmp;
-            tmp.key_ = key;
-            tmp.ver_ = ver;
-            read_set_.emplace_back(tmp);*/
             read_set_.emplace_back(key, ver);
         } else {
             // update pi with r:w edge
@@ -219,7 +215,7 @@ public:
 
         verify_exclusion_or_abort();
         if (this->status_ == TransactionStatus::aborted) {
-            //cout << "abort" << endl;
+            //cout << "abort by tread" << endl;
             goto FINISH_TREAD;
         }
     FINISH_TREAD:
@@ -239,19 +235,19 @@ public:
         Version *expected, *desired;
         desired = new Version();
         desired->cstamp_ = this->txid_;
-        //desired->val_ = write_val;
         desired->status_ = VersionStatus::inFlight;
         desired->pstamp_ = 0;
         desired->sstamp_ = UINT32_MAX;
 
         Version* vertmp;
         expected = tuple->latest_;
+        uint64_t sstampforabort;
         for (;;) {
             // w-w conflict : first updater wins rule
             if (expected->status_ == VersionStatus::inFlight) {
                 if (this->txid_ <= expected->cstamp_) {
                     this->status_ = TransactionStatus::aborted;
-                    //cout << "abort1" << endl;
+                    //cout << "abort by ww1" << endl;
                     goto FINISH_TWRITE;
                 }
             }
@@ -266,16 +262,14 @@ public:
                 // w-w conflict, first-updater-wins rule.
                 // Writers must abort if they would overwirte a version created after their snapshot.
                 this->status_ = TransactionStatus::aborted;
-                //cout << "abort2" << endl;
+                //cout << "abort by ww2" << endl;
                 goto FINISH_TWRITE;
             }
 
             desired->prev_ = expected;
-            //tuple->latest_ = expected;
-            //tuple->latest_ = desired;
-            //if (tuple->latest_.compare_exchange_strong(expected, desired,memory_order_acq_rel,memory_order_acquire))
             if (tuple->latest_ == expected) {
                 tuple->latest_ = desired;
+                sstampforabort = desired->prev_->sstamp_;
                 break;
             }
         }
@@ -283,20 +277,20 @@ public:
         //Insert my tid for ver->prev_->sstamp_
         desired->prev_->sstamp_ = this->txid_;
 
-        this->pstamp_ = max(this->pstamp_,
-                            desired->prev_->pstamp_); //Update eta with w:r edge
+        //Update eta with w:r edge
+        this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_);
 
+        verify_exclusion_or_abort();
+        if (this->status_ == TransactionStatus::aborted) {
+            desired->prev_->sstamp_ = sstampforabort;
+            tuple->latest_ = expected;
+            //cout << "abort by window" << endl;
+            goto FINISH_TWRITE;
+        }
         write_set_.emplace_back(key, desired); //t.writes.add(V)
 
-        //これのせいでsegmentation faultになることがある(error)...
-        //verify_exclusion_or_abort();
-
     FINISH_TWRITE:
-        if (this->status_ == TransactionStatus::aborted) {
-            delete desired;
-            //tuple->latest_ = desired;
-            //cout << "abort" << endl;
-        }
+        if (this->status_ == TransactionStatus::aborted) { delete desired; }
         return;
     }
 
@@ -352,7 +346,6 @@ public:
         return;
     }
 
-
     void abort() {
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
             Version* next_committed = (*itr).ver_->prev_;
@@ -367,6 +360,7 @@ public:
         //notify that this transaction finishes reading the version now.
         read_set_.clear();
         ++eres_->local_abort_counts_;
+        //cout << txid_ << endl;
     }
 
     void verify_exclusion_or_abort() {
@@ -435,7 +429,6 @@ void makeDB() {
         verTmp->sstamp_ = UINT32_MAX;
         verTmp->prev_ = nullptr;
         verTmp->status_ = VersionStatus::committed;
-        //verTmp->readers_ = 0;
         verTmp->val_ = 0;
         Table[i].latest_ = verTmp;
     }
@@ -482,9 +475,6 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
         trans.ssn_commit();
         if (trans.status_ == TransactionStatus::committed) {
             myres.local_commit_counts_++;
-            //cout << "commit ok" << trans.txid_ << endl;
-            //std::cout << "txid_" << trans.txid_ << endl;
-            //std::cout << "cstamp_" << trans.cstamp_ << endl;
         } else if (trans.status_ == TransactionStatus::aborted) {
             trans.abort();
             //cout << "normal abort" << thid << endl;
@@ -498,7 +488,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 int main(int argc, char* argv[]) {
     displayParameter();
     makeDB();
-    cout << "make DB ok" << endl;
+    //cout << "make DB ok" << endl;
 
     //displayDB();
 
@@ -519,7 +509,7 @@ int main(int argc, char* argv[]) {
 
     for (auto& th : thv) { th.join(); }
 
-    cout << "thread join" << endl;
+    //cout << "thread join" << endl;
 
     for (unsigned int i = 0; i < thread_num; ++i) {
         ErmiaResult[0].addLocalAllResult(ErmiaResult[i]);
