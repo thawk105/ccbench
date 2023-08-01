@@ -236,7 +236,8 @@ public:
         tuple = get_tuple(key);
         Version *ver;
         ver = tuple->latest_;
-        while (ver->status_ != VersionStatus::committed || txid_ < ver->cstamp_)
+        // while (ver->status_ != VersionStatus::committed || txid_ < ver->cstamp_)
+        while (ver->status_ != VersionStatus::committed && txid_ < ver->cstamp_)
             ver = ver->prev_;
 
         // update eta(t) with w:r edges(更新点)
@@ -373,7 +374,7 @@ public:
         else
         {
             status_ = TransactionStatus::aborted;
-            cout << "abort in commit phase" << endl;
+            // cout << "abort in commit phase" << endl;
             SsnLock.unlock();
             return;
         }
