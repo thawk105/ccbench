@@ -12,12 +12,14 @@
 #define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
-#define clocks_per_us 2100 //"CPU_MHz. Use this info for measuring time."
-#define extime 1           // Execution time[sec].
-#define max_ope 10         // Total number of operations per single transaction."
-#define rratio 50          // read ratio of single transaction.
-#define thread_num 3       // Total number of worker threads.
-#define tuple_num 10000    //"Total number of records."
+#define clocks_per_us 2100  //"CPU_MHz. Use this info for measuring time."
+#define extime 1            // Execution time[sec].
+#define max_ope 10          // Total number of operations per single transaction."
+#define max_ope_readonly 10 // read only transactionの長さ
+#define ronly_ratio 50      // read-only transaction rate
+#define rratio 10           // read ratio of single transaction.
+#define thread_num 10       // Total number of worker threads.
+#define tuple_num 10000     //"Total number of records."
 
 using namespace std;
 
@@ -28,11 +30,26 @@ public:
     uint64_t local_commit_counts_ = 0;
     uint64_t total_abort_counts_ = 0;
     uint64_t total_commit_counts_ = 0;
+    // uint64_t local_uselock_counts_ = 0;
+    // uint64_t total_uselock_counts_ = 0;
+    uint64_t local_readphase_counts_ = 0;
+    uint64_t local_writephase_counts_ = 0;
+    uint64_t local_commitphase_counts_ = 0;
+    uint64_t local_wwconflict_counts_ = 0;
+    uint64_t total_readphase_counts_ = 0;
+    uint64_t total_writephase_counts_ = 0;
+    uint64_t total_commitphase_counts_ = 0;
+    uint64_t total_wwconflict_counts_ = 0;
 
     void displayAllResult()
     {
         cout << "abort_counts_:\t" << total_abort_counts_ << endl;
         cout << "commit_counts_:\t" << total_commit_counts_ << endl;
+        // cout << "uselock_counts_:\t" << total_uselock_counts_ << endl;
+        cout << "read SSNcheck abort:\t" << total_readphase_counts_ << endl;
+        cout << "write SSNcheck abort:\t" << total_writephase_counts_ << endl;
+        cout << "commit SSNcheck abort:\t" << total_commitphase_counts_ << endl;
+        cout << "ww conflict abort:\t" << total_wwconflict_counts_ << endl;
         // displayAbortRate
         long double ave_rate =
             (double)total_abort_counts_ /
@@ -49,6 +66,11 @@ public:
     {
         total_abort_counts_ += other.local_abort_counts_;
         total_commit_counts_ += other.local_commit_counts_;
+        // total_uselock_counts_ += other.local_uselock_counts_;
+        total_readphase_counts_ += other.local_readphase_counts_;
+        total_writephase_counts_ += other.local_writephase_counts_;
+        total_commitphase_counts_ += other.local_commitphase_counts_;
+        total_wwconflict_counts_ += other.local_wwconflict_counts_;
     }
 };
 
@@ -143,22 +165,51 @@ public:
         : ope_(ope), key_(key), write_val_(write_val) {}
 };
 
-void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
+void viewtask(vector<Task> &tasks)
 {
-    tasks.clear();
-    for (size_t i = 0; i < max_ope; ++i)
+    for (auto itr = tasks.begin(); itr != tasks.end(); itr++)
     {
-        uint64_t tmpkey;
-        // decide access destination key.
-        tmpkey = zipf() % tuple_num;
-        // decide operation type.
-        if ((rnd.next() % 100) < rratio)
+        if (itr->ope_ == Ope::READ)
         {
-            tasks.emplace_back(Ope::READ, tmpkey);
+            cout << "R" << itr->key_ << " ";
         }
         else
         {
-            tasks.emplace_back(Ope::WRITE, tmpkey, zipf());
+            cout << "W" << itr->key_ << " ";
+        }
+    }
+    cout << endl;
+}
+
+void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
+{
+    tasks.clear();
+    if ((zipf() % 100) < ronly_ratio)
+    {
+        for (size_t i = 0; i < max_ope_readonly; ++i)
+        {
+            uint64_t tmpkey;
+            // decide access destination key.
+            tmpkey = zipf() % tuple_num;
+            tasks.emplace_back(Ope::READ, tmpkey);
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < max_ope; ++i)
+        {
+            uint64_t tmpkey;
+            // decide access destination key.
+            tmpkey = zipf() % tuple_num;
+            // decide operation type.
+            if ((rnd.next() % 100) < rratio)
+            {
+                tasks.emplace_back(Ope::READ, tmpkey);
+            }
+            else
+            {
+                tasks.emplace_back(Ope::WRITE, tmpkey, zipf());
+            }
         }
     }
 }
@@ -211,14 +262,15 @@ public:
 
     void tbegin()
     {
-        if (this->status_ == TransactionStatus::aborted)
+        /*if (this->status_ == TransactionStatus::aborted)
         {
             this->txid_ = this->cstamp_;
         }
         else
         {
             this->txid_ = atomic_fetch_add(&timestampcounter, 1);
-        }
+        }*/
+        this->txid_ = atomic_fetch_add(&timestampcounter, 1);
         this->cstamp_ = 0;
         pstamp_ = 0;
         sstamp_ = UINT32_MAX;
@@ -257,6 +309,7 @@ public:
         if (this->status_ == TransactionStatus::aborted)
         {
             // cout << "abort by tread" << endl;
+            ++eres_->local_readphase_counts_;
             goto FINISH_TREAD;
         }
     FINISH_TREAD:
@@ -285,43 +338,39 @@ public:
         Version *vertmp;
         expected = tuple->latest_;
         uint64_t sstampforabort;
-        for (;;)
+
+        //   w-w conflict : first updater wins rule
+        if (expected->status_ == VersionStatus::inFlight)
         {
-            //  w-w conflict : first updater wins rule
-            if (expected->status_ == VersionStatus::inFlight)
+            if (this->txid_ <= expected->cstamp_)
             {
-                if (this->txid_ <= expected->cstamp_)
-                {
-                    this->status_ = TransactionStatus::aborted;
-                    // cout << "abort by ww1" << endl;
-                    goto FINISH_TWRITE;
-                }
-            }
-
-            // if latest version is not comitted, vertmp is latest committed version.
-            vertmp = expected;
-            while (vertmp->status_ != VersionStatus::committed)
-            {
-                vertmp = vertmp->prev_;
-            }
-
-            if (txid_ < vertmp->cstamp_)
-            {
-                // w-w conflict, first-updater-wins rule.
-                // Writers must abort if they would overwirte a version created after their snapshot.
                 this->status_ = TransactionStatus::aborted;
-                // cout << "abort by ww2" << endl;
+                // cout << "abort by ww1" << endl;
+                ++eres_->local_wwconflict_counts_;
                 goto FINISH_TWRITE;
             }
-
-            tmp->prev_ = expected;
-            if (tuple->latest_ == expected)
-            {
-                tuple->latest_ = tmp;
-                sstampforabort = tmp->prev_->sstamp_;
-                break;
-            }
         }
+
+        // if latest version is not comitted, vertmp is latest committed version.
+        vertmp = expected;
+        while (vertmp->status_ != VersionStatus::committed)
+        {
+            vertmp = vertmp->prev_;
+        }
+
+        if (txid_ < vertmp->cstamp_)
+        {
+            // w-w conflict, first-updater-wins rule.
+            // Writers must abort if they would overwirte a version created after their snapshot.
+            this->status_ = TransactionStatus::aborted;
+            // cout << "abort by ww2" << endl;
+            ++eres_->local_wwconflict_counts_;
+            goto FINISH_TWRITE;
+        }
+
+        tmp->prev_ = expected;
+        tuple->latest_ = tmp;
+        sstampforabort = tmp->prev_->sstamp_;
 
         // Insert my tid for ver->prev_->sstamp_
         tmp->prev_->sstamp_ = this->txid_;
@@ -335,6 +384,7 @@ public:
             tmp->prev_->sstamp_ = sstampforabort;
             tuple->latest_ = expected;
             // cout << "abort by window" << endl;
+            ++eres_->local_writephase_counts_;
             goto FINISH_TWRITE;
         }
         write_set_.emplace_back(key, tmp); // t.writes.add(V)
@@ -375,6 +425,7 @@ public:
         {
             status_ = TransactionStatus::aborted;
             // cout << "abort in commit phase" << endl;
+            ++eres_->local_commitphase_counts_;
             SsnLock.unlock();
             return;
         }
@@ -526,6 +577,8 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
     {
         makeTask(trans.task_set_, rnd, zipf);
         // cout << "task ok" << endl;
+
+        // viewtask(trans.task_set_);
 
     RETRY:
         if (quit == true)
