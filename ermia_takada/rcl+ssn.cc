@@ -12,15 +12,15 @@
 #define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
-#define clocks_per_us 2100  //"CPU_MHz. Use this info for measuring time."
-#define extime 1            // Execution time[sec].
-#define max_ope 10          // Total number of operations per single transaction."
-#define max_ope_readonly 10 // read only transactionの長さ
-#define ronly_ratio 50      // read-only transaction rate
-#define rratio 50           // read ratio of single transaction.
-#define thread_num 10       // Total number of worker threads.
-#define tuple_num 10000     //"Total number of records."
-#define use_lock 0          // 0 = dont use lock, 1 = use lock
+#define clocks_per_us 2100   //"CPU_MHz. Use this info for measuring time."
+#define extime 3             // Execution time[sec].
+#define max_ope 10           // Total number of operations per single transaction.
+#define max_ope_readonly 100 // read only transactionの長さ
+#define ronly_ratio 50       // read-only transaction rate
+#define rratio 50            // read ratio of single transaction.
+#define thread_num 10        // Total number of worker threads.
+#define tuple_num 100        //"Total number of records."
+#define use_lock 0           // 0 = dont use lock, 1 = use lock
 
 using namespace std;
 
@@ -123,30 +123,43 @@ class RWLock
 {
 public:
     uint64_t counter = 0;
-    uint32_t sstamp_ = UINT32_MAX;
+    // uint32_t sstamp_ = UINT32_MAX;
+    vector<uint32_t> pstamp_table_;
     RWLock() {}
 
-    bool r_trylock()
+    void r_getlock(uint32_t pstamp)
     {
         if (counter >= 0)
         {
             counter++;
-            // sstamp_=sstamp;
-            return true;
+            pstamp_table_.emplace_back(pstamp);
+            return;
         }
         else
         {
-            return false;
+            r_getlock(pstamp);
+            // return false;
         }
     }
 
-    void r_unlock()
+    void r_unlock(uint32_t pstamp)
     {
         if (counter > 0)
         {
             counter--;
+            for (auto itr = pstamp_table_.begin(); itr != pstamp_table_.end();)
+            {
+                if (*itr == pstamp)
+                {
+                    itr = pstamp_table_.erase(itr);
+                    cout << "ok" << endl;
+                }
+                else
+                {
+                    itr++;
+                }
+            }
         }
-        // sstamp_ = UINT32_MAX;
     }
 
     bool w_trylock()
@@ -162,15 +175,38 @@ public:
         }
     }
 
-    void w_getlock()
+    bool upgrade_lock(uint64_t pstamp)
+    {
+        for (int i = 0; i < pstamp_table_.size(); i++)
+        {
+            if (pstamp_table_.at(i) <= pstamp) // この条件が間違っていると思われる
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void w_getlock(uint64_t sstamp)
     {
         if (counter == 0)
         {
             counter--;
         }
+        else if (counter < 0)
+        {
+            w_getlock(sstamp);
+        }
         else
         {
-            w_getlock();
+            if (upgrade_lock(sstamp) == true)
+            {
+                counter = -1;
+            }
+            else
+            {
+                w_getlock(sstamp);
+            }
         }
     }
 
@@ -355,10 +391,9 @@ public:
         Version *ver;
         ver = tuple->latest_;
         while (ver->status_ != VersionStatus::committed || txid_ < ver->cstamp_)
-            // while (ver->status_ != VersionStatus::committed && txid_ < ver->cstamp_)
             ver = ver->prev_;
 
-        // update eta(t) with w:r edges(更新点)
+        // update eta(t) with w:r edges
         this->pstamp_ = max(this->pstamp_, ver->cstamp_);
 
         if (ver->sstamp_ == (UINT32_MAX))
@@ -389,17 +424,6 @@ public:
 
         Tuple *tuple;
         tuple = get_tuple(key);
-
-        // -------------------------------------------------------------------------------------
-        if (use_lock == 1)
-        {
-            while (tuple->lock_.counter > 0 && tuple->lock_.sstamp_ >= this->pstamp_)
-            {
-                // cout << "やばし" << endl;
-                ssn_twrite(key);
-            }
-        }
-        // -------------------------------------------------------------------------------------
 
         // If v not in t.writes:
         Version *expected, *tmp;
@@ -436,27 +460,27 @@ public:
                 else
                 {
                     // lockが取れるまで待つ
-                    tuple->lock_.w_getlock();
+                    tuple->lock_.w_getlock(this->sstamp_);
                 }
-            }
-        }
-        else
-        {
-            vertmp = tuple->latest_;
-            while (vertmp->status_ != VersionStatus::committed)
-            {
-                vertmp = vertmp->prev_;
-            }
-            if (txid_ < vertmp->cstamp_)
-            {
-                this->status_ = TransactionStatus::aborted;
-                ++eres_->local_wwconflict_counts_;
-                goto FINISH_TWRITE;
             }
             else
             {
-                // lockが取れるまで待つ
-                tuple->lock_.w_getlock();
+                vertmp = tuple->latest_;
+                while (vertmp->status_ != VersionStatus::committed)
+                {
+                    vertmp = vertmp->prev_;
+                }
+                if (txid_ < vertmp->cstamp_)
+                {
+                    this->status_ = TransactionStatus::aborted;
+                    ++eres_->local_wwconflict_counts_;
+                    goto FINISH_TWRITE;
+                }
+                else
+                {
+                    // abortしてlockを解放していない or read lockのせいでlockが取得できない
+                    tuple->lock_.w_getlock(this->sstamp_);
+                }
             }
         }
 
@@ -490,18 +514,18 @@ public:
         // pointer処理
         tmp->prev_ = expected;
         tuple->latest_ = tmp;
-        sstampforabort = tmp->prev_->sstamp_;
+        // sstampforabort = tmp->prev_->sstamp_;
 
         // Insert my tid for ver->prev_->sstamp_
-        tmp->prev_->sstamp_ = this->txid_;
+        // tmp->prev_->sstamp_ = this->txid_;
 
         // Update eta with w:r edge
         this->pstamp_ = max(this->pstamp_, tmp->prev_->pstamp_);
 
-        verify_exclusion_or_abort();
+        // verify_exclusion_or_abort();
         if (this->status_ == TransactionStatus::aborted)
         {
-            tmp->prev_->sstamp_ = sstampforabort;
+            // tmp->prev_->sstamp_ = sstampforabort;
             tuple->latest_ = expected;
             ++eres_->local_writephase_counts_;
             goto FINISH_TWRITE;
@@ -563,7 +587,7 @@ public:
             (*itr).ver_->cstamp_ = (*itr).ver_->pstamp_ = this->cstamp_;
         }
 
-        // status, inFlight -> committed
+        // status, inFlight -> committed ,w-unlock
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
         {
             (*itr).ver_->val_ = this->write_val_;
@@ -577,7 +601,7 @@ public:
         // -------------------------------------------------------------------------------------
         if (use_lock == 1)
         {
-            if (this->lock_flag == true)
+            if (this->lock_flag == true) // r-unlock
             {
                 this->lock_flag = false;
                 for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
@@ -585,9 +609,9 @@ public:
                     if (itr->ope_ == Ope::READ)
                     {
                         Tuple *tmp = get_tuple(itr->key_);
-                        tmp->lock_.r_unlock();
+                        // tmp->lock_.r_unlock(this->sstamp_);
+                        tmp->lock_.w_unlock();
                     }
-                    // cout << "unlock" << endl;
                 }
             }
         }
@@ -616,16 +640,9 @@ public:
         ++eres_->local_abort_counts_;
 
         // -------------------------------------------------------------------------------------
-        if (use_lock == 1)
+        if (use_lock == 1 && isreadonly() == true)
         {
             // 提案手法: read only transactionのlock
-            for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
-            {
-                if (itr->ope_ == Ope::WRITE)
-                {
-                    return;
-                }
-            }
             // cout << "all read but abort" << endl;
             for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
             {
@@ -634,9 +651,8 @@ public:
                     Tuple *tmp = get_tuple(itr->key_);
                     while (tmp->lock_.counter != 1)
                     {
-                        tmp->lock_.r_trylock();
+                        tmp->lock_.w_getlock(this->pstamp_);
                     }
-                    tmp->lock_.sstamp_ = min(tmp->lock_.sstamp_, this->sstamp_);
                 }
             }
             this->lock_flag = true;
@@ -654,9 +670,21 @@ public:
         }
     }
 
-    static Tuple *get_tuple(/*Tuple* table,*/ uint64_t key)
+    static Tuple *get_tuple(uint64_t key)
     {
         return (&Table[key]);
+    }
+
+    bool isreadonly()
+    {
+        for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
+        {
+            if (itr->ope_ == Ope::WRITE)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 };
 
