@@ -17,7 +17,7 @@
 #define max_ope 10          // Total number of operations per single transaction."
 #define max_ope_readonly 10 // read only transactionの長さ
 #define ronly_ratio 50      // read-only transaction rate
-#define rratio 10           // read ratio of single transaction.
+#define rratio 50           // read ratio of single transaction.
 #define thread_num 10       // Total number of worker threads.
 #define tuple_num 10000     //"Total number of records."
 
@@ -30,8 +30,6 @@ public:
     uint64_t local_commit_counts_ = 0;
     uint64_t total_abort_counts_ = 0;
     uint64_t total_commit_counts_ = 0;
-    // uint64_t local_uselock_counts_ = 0;
-    // uint64_t total_uselock_counts_ = 0;
     uint64_t local_readphase_counts_ = 0;
     uint64_t local_writephase_counts_ = 0;
     uint64_t local_commitphase_counts_ = 0;
@@ -45,7 +43,6 @@ public:
     {
         cout << "abort_counts_:\t" << total_abort_counts_ << endl;
         cout << "commit_counts_:\t" << total_commit_counts_ << endl;
-        // cout << "uselock_counts_:\t" << total_uselock_counts_ << endl;
         cout << "read SSNcheck abort:\t" << total_readphase_counts_ << endl;
         cout << "write SSNcheck abort:\t" << total_writephase_counts_ << endl;
         cout << "commit SSNcheck abort:\t" << total_commitphase_counts_ << endl;
@@ -66,7 +63,6 @@ public:
     {
         total_abort_counts_ += other.local_abort_counts_;
         total_commit_counts_ += other.local_commit_counts_;
-        // total_uselock_counts_ += other.local_uselock_counts_;
         total_readphase_counts_ += other.local_readphase_counts_;
         total_writephase_counts_ += other.local_writephase_counts_;
         total_commitphase_counts_ += other.local_commitphase_counts_;
@@ -262,14 +258,6 @@ public:
 
     void tbegin()
     {
-        /*if (this->status_ == TransactionStatus::aborted)
-        {
-            this->txid_ = this->cstamp_;
-        }
-        else
-        {
-            this->txid_ = atomic_fetch_add(&timestampcounter, 1);
-        }*/
         this->txid_ = atomic_fetch_add(&timestampcounter, 1);
         this->cstamp_ = 0;
         pstamp_ = 0;
@@ -289,10 +277,9 @@ public:
         Version *ver;
         ver = tuple->latest_;
         while (ver->status_ != VersionStatus::committed || txid_ < ver->cstamp_)
-            // while (ver->status_ != VersionStatus::committed && txid_ < ver->cstamp_)
             ver = ver->prev_;
 
-        // update eta(t) with w:r edges(更新点)
+        // update eta(t) with w:r edges
         this->pstamp_ = max(this->pstamp_, ver->cstamp_);
 
         if (ver->sstamp_ == (UINT32_MAX))
@@ -308,7 +295,6 @@ public:
         verify_exclusion_or_abort();
         if (this->status_ == TransactionStatus::aborted)
         {
-            // cout << "abort by tread" << endl;
             ++eres_->local_readphase_counts_;
             goto FINISH_TREAD;
         }
@@ -326,8 +312,6 @@ public:
         tuple = get_tuple(key);
 
         // If v not in t.writes:
-        // first-updater-wins rule
-        // Forbid a transaction to update a record that has a committed version later than its begin timestamp.
         Version *expected, *tmp;
         tmp = new Version();
         tmp->cstamp_ = this->txid_;
@@ -339,13 +323,13 @@ public:
         expected = tuple->latest_;
         uint64_t sstampforabort;
 
-        //   w-w conflict : first updater wins rule
+        // first updater wins
+        //  Forbid a transaction to update a record that has a committed version later than its begin timestamp.
         if (expected->status_ == VersionStatus::inFlight)
         {
             if (this->txid_ <= expected->cstamp_)
             {
                 this->status_ = TransactionStatus::aborted;
-                // cout << "abort by ww1" << endl;
                 ++eres_->local_wwconflict_counts_;
                 goto FINISH_TWRITE;
             }
@@ -360,14 +344,13 @@ public:
 
         if (txid_ < vertmp->cstamp_)
         {
-            // w-w conflict, first-updater-wins rule.
             // Writers must abort if they would overwirte a version created after their snapshot.
             this->status_ = TransactionStatus::aborted;
-            // cout << "abort by ww2" << endl;
             ++eres_->local_wwconflict_counts_;
             goto FINISH_TWRITE;
         }
 
+        // pointer処理
         tmp->prev_ = expected;
         tuple->latest_ = tmp;
         sstampforabort = tmp->prev_->sstamp_;
@@ -383,7 +366,6 @@ public:
         {
             tmp->prev_->sstamp_ = sstampforabort;
             tuple->latest_ = expected;
-            // cout << "abort by window" << endl;
             ++eres_->local_writephase_counts_;
             goto FINISH_TWRITE;
         }
@@ -424,7 +406,6 @@ public:
         else
         {
             status_ = TransactionStatus::aborted;
-            // cout << "abort in commit phase" << endl;
             ++eres_->local_commitphase_counts_;
             SsnLock.unlock();
             return;
@@ -474,7 +455,6 @@ public:
         // notify that this transaction finishes reading the version now.
         read_set_.clear();
         ++eres_->local_abort_counts_;
-        // cout << txid_ << endl;
     }
 
     void verify_exclusion_or_abort()
@@ -485,7 +465,7 @@ public:
         }
     }
 
-    static Tuple *get_tuple(/*Tuple* table,*/ uint64_t key)
+    static Tuple *get_tuple(uint64_t key)
     {
         return (&Table[key]);
     }
@@ -505,12 +485,10 @@ void displayDB()
 
     for (int i = 0; i < tuple_num; ++i)
     {
-        // for (auto itr = Table->begin(); itr != Table->end(); itr++) {
         tuple = &Table[i];
         cout << "------------------------------" << endl; // - 30
         cout << "key: " << i << endl;
 
-        // version = tuple->latest_;
         version = tuple->latest_;
 
         while (version != NULL)
@@ -529,12 +507,9 @@ void displayDB()
                 cout << " status:  committed/";
                 break;
             }
-            // cout << endl;
-
             cout << " /cstamp:  " << version->cstamp_;
             cout << " /pstamp:  " << version->pstamp_;
             cout << " /sstamp:  " << version->sstamp_ << endl;
-            // cout << endl;
 
             version = version->prev_;
         }
@@ -576,8 +551,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
     while (quit == false)
     {
         makeTask(trans.task_set_, rnd, zipf);
-        // cout << "task ok" << endl;
-
         // viewtask(trans.task_set_);
 
     RETRY:
@@ -590,18 +563,15 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
         {
             if ((*itr).ope_ == Ope::READ)
             {
-                // cout << "readしてる" << endl;
                 trans.ssn_tread((*itr).key_);
             }
             else if ((*itr).ope_ == Ope::WRITE)
             {
-                // cout << "writeしてる" << endl;
                 trans.ssn_twrite((*itr).key_);
             }
             // early abort.
             if (trans.status_ == TransactionStatus::aborted)
             {
-                // cout << "early abort" << thid << endl;
                 trans.abort();
 
                 goto RETRY;
@@ -615,7 +585,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
         else if (trans.status_ == TransactionStatus::aborted)
         {
             trans.abort();
-            // cout << "normal abort" << thid << endl;
             goto RETRY;
         }
     }
@@ -626,9 +595,6 @@ int main(int argc, char *argv[])
 {
     displayParameter();
     makeDB();
-    // cout << "make DB ok" << endl;
-
-    // displayDB();
 
     bool start = false;
     bool quit = false;
@@ -650,8 +616,6 @@ int main(int argc, char *argv[])
     {
         th.join();
     }
-
-    // cout << "thread join" << endl;
 
     for (unsigned int i = 0; i < thread_num; ++i)
     {
