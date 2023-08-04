@@ -12,14 +12,14 @@
 #define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
-#define clocks_per_us 2100  //"CPU_MHz. Use this info for measuring time."
-#define extime 1            // Execution time[sec].
-#define max_ope 10          // Total number of operations per single transaction."
-#define max_ope_readonly 10 // read only transactionの長さ
-#define ronly_ratio 50      // read-only transaction rate
-#define rratio 50           // read ratio of single transaction.
-#define thread_num 10       // Total number of worker threads.
-#define tuple_num 10000     //"Total number of records."
+#define clocks_per_us 2100   //"CPU_MHz. Use this info for measuring time."
+#define extime 3             // Execution time[sec].
+#define max_ope 10           // Total number of operations per single transaction."
+#define max_ope_readonly 100 // read only transactionの長さ
+#define ronly_ratio 40       // read-only transaction rate
+#define rratio 50            // read ratio of single transaction.
+#define thread_num 10        // Total number of worker threads.
+#define tuple_num 100        //"Total number of records."
 
 using namespace std;
 
@@ -154,11 +154,9 @@ class Task
 public:
     Ope ope_;
     uint64_t key_;
-    uint64_t write_val_;
+    // uint64_t write_val_;
 
     Task(Ope ope, uint64_t key) : ope_(ope), key_(key) {}
-    Task(Ope ope, uint64_t key, uint64_t write_val)
-        : ope_(ope), key_(key), write_val_(write_val) {}
 };
 
 void viewtask(vector<Task> &tasks)
@@ -204,7 +202,7 @@ void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
             }
             else
             {
-                tasks.emplace_back(Ope::WRITE, tmpkey, zipf());
+                tasks.emplace_back(Ope::WRITE, tmpkey);
             }
         }
     }
@@ -231,9 +229,9 @@ public:
 
     Transaction(uint8_t thid, Result *eres) : thid_(thid), eres_(eres)
     {
-        read_set_.reserve(max_ope);
+        read_set_.reserve(max_ope_readonly);
         write_set_.reserve(max_ope);
-        task_set_.reserve(max_ope);
+        task_set_.reserve(max_ope_readonly);
     }
 
     bool searchReadSet(unsigned int key)
@@ -291,7 +289,6 @@ public:
             // update pi with r:w edge
             this->sstamp_ = min(this->sstamp_, ver->sstamp_);
         }
-
         verify_exclusion_or_abort();
         if (this->status_ == TransactionStatus::aborted)
         {
@@ -350,26 +347,21 @@ public:
             goto FINISH_TWRITE;
         }
 
-        // pointer処理
-        tmp->prev_ = expected;
-        tuple->latest_ = tmp;
-        sstampforabort = tmp->prev_->sstamp_;
-
-        // Insert my tid for ver->prev_->sstamp_
-        tmp->prev_->sstamp_ = this->txid_;
-
         // Update eta with w:r edge
         this->pstamp_ = max(this->pstamp_, tmp->prev_->pstamp_);
 
         verify_exclusion_or_abort();
         if (this->status_ == TransactionStatus::aborted)
         {
-            tmp->prev_->sstamp_ = sstampforabort;
             tuple->latest_ = expected;
             ++eres_->local_writephase_counts_;
             goto FINISH_TWRITE;
         }
-        write_set_.emplace_back(key, tmp); // t.writes.add(V)
+        // pointer処理
+        tmp->prev_ = expected;
+        tuple->latest_ = tmp;
+        // t.writes.add(V)
+        write_set_.emplace_back(key, tmp);
 
     FINISH_TWRITE:
         if (this->status_ == TransactionStatus::aborted)
@@ -432,7 +424,7 @@ public:
             (*itr).ver_->status_ = VersionStatus::committed;
         }
 
-        this->status_ = TransactionStatus::committed;
+        // this->status_ = TransactionStatus::committed;
         SsnLock.unlock();
         read_set_.clear();
         write_set_.clear();
