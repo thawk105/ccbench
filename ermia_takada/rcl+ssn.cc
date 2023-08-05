@@ -5,22 +5,24 @@
 #include <queue>
 #include <thread>
 #include <vector>
+#include <array>
 #include <xmmintrin.h>
+#include <chrono>
 
 #include "../include/zipf.hh"
 
 #define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
-#define clocks_per_us 2100   //"CPU_MHz. Use this info for measuring time."
-#define extime 3             // Execution time[sec].
-#define max_ope 10           // Total number of operations per single transaction.
-#define max_ope_readonly 100 // read only transactionの長さ
-#define ronly_ratio 40       // read-only transaction rate
-#define rratio 50            // read ratio of single transaction.
-#define thread_num 10        // Total number of worker threads.
-#define tuple_num 100        //"Total number of records."
-#define use_lock 1           // 0 = dont use read-only lock, 1 = use read-only lock
+#define clocks_per_us 2100  // CPU_MHz. Use this info for measuring time.
+#define extime 3            // Execution time[sec].
+#define max_ope 10          // Total number of operations per single transaction.
+#define max_ope_readonly 10 // read only transactionの長さ
+#define ronly_ratio 30      // read-only transaction rate
+#define rratio 50           // read ratio of single transaction.
+#define thread_num 10       // Total number of worker threads.
+#define tuple_num 1000      // Total number of records.
+#define USE_LOCK 0          // 0 = dont use read-only lock, 1 = use read-only lock
 
 using namespace std;
 
@@ -56,11 +58,6 @@ public:
             (double)total_abort_counts_ /
             (double)(total_commit_counts_ + total_abort_counts_);
         cout << fixed << setprecision(4) << "abort_rate:\t\t\t" << ave_rate << endl;
-        // displayTps
-        uint64_t result = total_commit_counts_ / extime;
-        cout << "latency[ns]:\t\t\t" << powl(10.0, 9.0) / result * thread_num
-             << endl;
-        cout << "throughput[tps]:\t\t" << result << endl;
     }
 
     void addLocalAllResult(const Result &other)
@@ -99,7 +96,7 @@ void initResult() { ErmiaResult.resize(thread_num); }
 
 std::atomic<uint64_t> timestampcounter(1); // timestampを割り当てる
 
-enum class VersionStatus : uint8_t
+enum class Status : uint8_t
 {
     inFlight,
     committed,
@@ -109,129 +106,89 @@ enum class VersionStatus : uint8_t
 class Version
 {
 public:
-    uint32_t pstamp_; // Version access stamp, eta(V),
-    uint32_t sstamp_; // Version successor stamp, pi(V)
-    Version *prev_;   // Pointer to overwritten version
-    uint32_t cstamp_; // Version creation stamp, c(V)
-    VersionStatus status_;
+    Version *prev_; // Pointer to overwritten version
     uint64_t val_;
+    std::atomic<uint32_t> pstamp_; // Version access stamp, eta(V)
+    std::atomic<uint32_t> sstamp_; // Version successor stamp, pi(V)
+    std::atomic<uint32_t> cstamp_; // Version creation stamp, c(V)
+    std::atomic<Status> status_;
 
-    Version() {}
+    Version() { init(); }
+
+    void init()
+    {
+        pstamp_.store(0, std::memory_order_release);
+        sstamp_.store(UINT32_MAX, std::memory_order_release);
+        cstamp_.store(0, std::memory_order_release);
+        status_.store(Status::inFlight, std::memory_order_release);
+        this->prev_ = nullptr;
+    }
 };
 
-class RWLock
+class Lock
 {
 public:
-    uint64_t counter = 0;
-    // uint32_t sstamp_ = UINT32_MAX;
-    vector<uint32_t> pstamp_table_;
-    RWLock() {}
+    std::atomic<int> counter;
 
-    void r_getlock(uint32_t pstamp)
-    {
-        if (counter >= 0)
-        {
-            counter++;
-            pstamp_table_.emplace_back(pstamp);
-            return;
-        }
-        else
-        {
-            r_getlock(pstamp);
-            // return false;
-        }
-    }
+    Lock() { counter.store(0, std::memory_order_release); }
 
-    void r_unlock(uint32_t pstamp)
+    bool trylock()
     {
-        if (counter > 0)
+        int expected, desired(-1);
+        expected = counter.load(std::memory_order_acquire);
+        for (;;)
         {
-            counter--;
-            for (auto itr = pstamp_table_.begin(); itr != pstamp_table_.end();)
-            {
-                if (*itr == pstamp)
-                {
-                    itr = pstamp_table_.erase(itr);
-                    cout << "ok" << endl;
-                }
-                else
-                {
-                    itr++;
-                }
-            }
-        }
-    }
-
-    bool w_trylock()
-    {
-        if (counter == 0)
-        {
-            counter--;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    bool upgrade_lock(uint64_t pstamp)
-    {
-        for (int i = 0; i < pstamp_table_.size(); i++)
-        {
-            if (pstamp_table_.at(i) <= pstamp) // この条件が間違っていると思われる
+            if (expected != 0)
             {
                 return false;
             }
+            if (counter.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
+                return true;
         }
-        return true;
     }
 
-    void w_getlock(uint64_t sstamp)
+    void getlock()
     {
-        if (counter == 0)
+        int expected, desired(-1);
+        // expected = counter.load(memory_order_acquire);
+        for (;;)
         {
-            counter--;
+            expected = counter.load(memory_order_acquire);
+        RETRY_W_LOCK:
+            if (expected != 0)
+                continue;
+            if (counter.compare_exchange_weak(expected, -1, memory_order_acq_rel, memory_order_acquire))
+                break;
+            else
+                goto RETRY_W_LOCK;
         }
-        else if (counter < 0)
+    }
+
+    void unlock()
+    {
+        if (counter.load(memory_order_acquire) == -1)
         {
-            w_getlock(sstamp);
+            counter.store(0, memory_order_release);
         }
         else
         {
-            if (upgrade_lock(sstamp) == true)
-            {
-                counter = -1;
-            }
-            else
-            {
-                w_getlock(sstamp);
-            }
+            cout << "unlock error" << endl;
         }
-    }
-
-    void w_unlock()
-    {
-        counter++;
     }
 };
 
 class Tuple
 {
 public:
-    Version *latest_;
     uint64_t key;
-    RWLock lock_; // 提案手法用
+    std::atomic<Version *> latest_;
+    Lock lock_;
 
-    Tuple() {}
-};
-
-enum class TransactionStatus : uint8_t
-{
-    inFlight,
-    committing,
-    committed,
-    aborted,
+    Tuple()
+    {
+        latest_.store(nullptr);
+        Lock();
+    }
 };
 
 Tuple *Table;       // databaseのtable
@@ -247,8 +204,10 @@ class Operation
 {
 public:
     uint64_t key_;
+    uint64_t value_; // read value
     Version *ver_;
 
+    Operation(uint64_t key, Version *ver, uint64_t value) : key_(key), ver_(ver), value_(value) {}
     Operation(uint64_t key, Version *ver) : key_(key), ver_(ver) {}
 };
 
@@ -315,24 +274,23 @@ void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
 class Transaction
 {
 public:
-    uint64_t write_val_;
     uint8_t thid_;                 // thread ID
     uint32_t cstamp_ = 0;          // Transaction end time, c(T)
     uint32_t pstamp_ = 0;          // Predecessor high-water mark, η (T)
     uint32_t sstamp_ = UINT32_MAX; // Successor low-water mark, pi (T)
     uint32_t txid_;                // TID and begin timestamp
-    TransactionStatus status_ = TransactionStatus::inFlight;
-    bool lock_flag = false; // lockを持っているか判定
+    bool lock_flag = false;
+    Status status_ = Status::inFlight;
 
     vector<Operation> read_set_;  // write set
     vector<Operation> write_set_; // read set
     vector<Task> task_set_;       // 生成されたtransaction
 
-    Result *eres_;
+    Result *res_;
 
     Transaction() {}
 
-    Transaction(uint8_t thid, Result *eres) : thid_(thid), eres_(eres)
+    Transaction(uint8_t thid, Result *res) : thid_(thid), res_(res)
     {
         read_set_.reserve(max_ope_readonly);
         write_set_.reserve(max_ope);
@@ -362,20 +320,20 @@ public:
     void tbegin()
     {
         // -------------------------------------------------------------------------------------
-        if (this->status_ == TransactionStatus::aborted && this->lock_flag == true)
+        /*if (this->status_ == Status::aborted && this->lock_flag == true)
         {
             this->txid_ = this->cstamp_;
         }
         else
         {
             this->txid_ = atomic_fetch_add(&timestampcounter, 1);
-        }
+        }*/
         // -------------------------------------------------------------------------------------
-        // this->txid_ = atomic_fetch_add(&timestampcounter, 1);
+        this->txid_ = atomic_fetch_add(&timestampcounter, 1);
         this->cstamp_ = 0;
         pstamp_ = 0;
         sstamp_ = UINT32_MAX;
-        status_ = TransactionStatus::inFlight;
+        status_ = Status::inFlight;
     }
 
     void ssn_tread(uint64_t key)
@@ -388,34 +346,33 @@ public:
         Tuple *tuple;
         tuple = get_tuple(key);
         Version *ver;
-        ver = tuple->latest_;
-        while (ver->status_ != VersionStatus::committed || txid_ < ver->cstamp_)
+        ver = tuple->latest_.load(memory_order_acquire);
+        while (ver->status_.load(memory_order_acquire) != Status::committed || txid_ < ver->cstamp_.load(memory_order_acquire))
             ver = ver->prev_;
 
         // update eta(t) with w:r edges
-        this->pstamp_ = max(this->pstamp_, ver->cstamp_);
+        this->pstamp_ = max(this->pstamp_, ver->cstamp_.load(memory_order_acquire));
 
-        if (ver->sstamp_ == (UINT32_MAX))
+        if (ver->sstamp_.load(memory_order_acquire) == (UINT32_MAX))
         { //// no overwrite yet
-            read_set_.emplace_back(key, ver);
+            read_set_.emplace_back(key, ver, ver->val_);
         }
         else
         {
             // update pi with r:w edge
-            this->sstamp_ = min(this->sstamp_, ver->sstamp_);
+            this->sstamp_ = min(this->sstamp_, ver->sstamp_.load(memory_order_acquire));
         }
-        // if (use_lock == 0)
         verify_exclusion_or_abort();
-        if (this->status_ == TransactionStatus::aborted)
+        if (this->status_ == Status::aborted)
         {
-            ++eres_->local_readphase_counts_;
+            ++res_->local_readphase_counts_;
             goto FINISH_TREAD;
         }
     FINISH_TREAD:
         return;
     }
 
-    void ssn_twrite(uint64_t key)
+    void ssn_twrite(uint64_t key, uint64_t write_val)
     {
         // update local write set
         if (searchWriteSet(key) == true)
@@ -425,118 +382,96 @@ public:
         tuple = get_tuple(key);
 
         // If v not in t.writes:
-        Version *expected, *tmp;
-        tmp = new Version();
-        tmp->cstamp_ = this->txid_;
-        tmp->status_ = VersionStatus::inFlight;
-        tmp->pstamp_ = 0;
-        tmp->sstamp_ = UINT32_MAX;
+        Version *expected, *desired;
+        desired = new Version();
+        desired->cstamp_.store(this->txid_, memory_order_release);
+        desired->val_ = write_val;
 
         Version *vertmp;
-        expected = tuple->latest_;
-        uint64_t sstampforabort;
+        expected = tuple->latest_.load(memory_order_acquire);
 
+        // -------------------------------------------------------------------------------------
         // no wait
-        /*if (tuple->lock_.w_trylock() == false)
+        /*if (tuple->lock_.trylock() == false)
         {
-            this->status_ = TransactionStatus::aborted;
-            // cout << "abort by ww1" << endl;
-            ++eres_->local_wwconflict_counts_;
+            this->status_ = Status::aborted;
+            ++res_->local_wwconflict_counts_;
             goto FINISH_TWRITE;
         }*/
 
+        // -------------------------------------------------------------------------------------
         // wait  die
-        if (tuple->lock_.w_trylock() == false)
+        if (tuple->lock_.trylock() == false)
         {
-            if (tuple->latest_->status_ == VersionStatus::inFlight)
+            if (expected->status_.load(memory_order_acquire) == Status::inFlight)
             {
-                if (this->txid_ <= tuple->latest_->cstamp_)
+                if (this->txid_ >= expected->cstamp_.load(memory_order_acquire))
                 {
-                    this->status_ = TransactionStatus::aborted;
-                    ++eres_->local_wwconflict_counts_;
+                    this->status_ = Status::aborted;
+                    ++res_->local_wwconflict_counts_;
                     goto FINISH_TWRITE;
                 }
-                else
-                {
-                    // lockが取れるまで待つ
-                    tuple->lock_.w_getlock(this->sstamp_);
-                }
+                expected = tuple->latest_.load(memory_order_acquire);
             }
-            else
+            vertmp = expected;
+            while (vertmp->status_.load(memory_order_acquire) != Status::committed)
             {
-                vertmp = tuple->latest_;
-                while (vertmp->status_ != VersionStatus::committed)
-                {
-                    vertmp = vertmp->prev_;
-                }
-                if (txid_ < vertmp->cstamp_)
-                {
-                    this->status_ = TransactionStatus::aborted;
-                    ++eres_->local_wwconflict_counts_;
-                    goto FINISH_TWRITE;
-                }
-                else
-                {
-                    // abortしてlockを解放していない or read lockのせいでlockが取得できない
-                    tuple->lock_.w_getlock(this->sstamp_);
-                }
+                vertmp = vertmp->prev_;
             }
-        }
 
-        // first updater wins
-        // Forbid a transaction to update a record that has a committed version later than its begin timestamp.
-        /*if (expected->status_ == VersionStatus::inFlight)
-        {
-            if (this->txid_ <= expected->cstamp_)
+            if (txid_ >= vertmp->cstamp_.load(memory_order_acquire))
             {
-                this->status_ = TransactionStatus::aborted;
-                ++eres_->local_wwconflict_counts_;
+                this->status_ = Status::aborted;
+                ++res_->local_wwconflict_counts_;
                 goto FINISH_TWRITE;
             }
+            // abortしてlockを解放していない or read lockのせいでlockが取得できない
+            tuple->lock_.getlock();
         }
 
-        // if latest version is not comitted, vertmp is latest committed version.
-        vertmp = expected;
-        while (vertmp->status_ != VersionStatus::committed)
-        {
-            vertmp = vertmp->prev_;
-        }
+        // -------------------------------------------------------------------------------------
+        desired->prev_ = expected;
+        tuple->latest_.compare_exchange_strong(
+            expected, desired, memory_order_acq_rel, memory_order_acquire);
 
-        if (txid_ < vertmp->cstamp_)
-        {
-            // Writers must abort if they would overwirte a version created after their snapshot.
-            this->status_ = TransactionStatus::aborted;
-            ++eres_->local_wwconflict_counts_;
-            goto FINISH_TWRITE;
-        }*/
+        // これがないとUpdate etaができない
+        uint64_t tmpTID;
+        tmpTID = thid_;
+        tmpTID = tmpTID << 1;
+        tmpTID |= 1;
+        desired->prev_->pstamp_.store(tmpTID, memory_order_release);
 
         // Update eta with w:r edge
-        this->pstamp_ = max(this->pstamp_, tmp->prev_->pstamp_);
+        this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
+        //   t.writes.add(V)
+
+        // t.reads.discard(v)
+        for (auto itr = read_set_.begin(); itr != read_set_.end();)
+        {
+            if (itr->key_ == key)
+                itr = read_set_.erase(itr);
+            else
+                ++itr;
+        }
 
         verify_exclusion_or_abort();
-        if (this->status_ == TransactionStatus::aborted)
+        if (this->status_ == Status::aborted)
         {
-            tuple->latest_ = expected;
-            ++eres_->local_writephase_counts_;
+            ++res_->local_writephase_counts_;
             goto FINISH_TWRITE;
         }
-        // pointer処理
-        tmp->prev_ = expected;
-        tuple->latest_ = tmp;
-        write_set_.emplace_back(key, tmp); // t.writes.add(V)
+        write_set_.emplace_back(key, desired);
 
     FINISH_TWRITE:
-        if (this->status_ == TransactionStatus::aborted)
+        if (this->status_ == Status::aborted)
         {
-            delete tmp;
+            delete desired;
         }
         return;
     }
 
-    void
-    ssn_commit()
+    void ssn_commit()
     {
-        this->status_ = TransactionStatus::committing;
         this->cstamp_ = atomic_fetch_add(&timestampcounter, 1);
 
         // begin pre-commit
@@ -546,22 +481,22 @@ public:
         this->sstamp_ = min(this->sstamp_, this->cstamp_);
         for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
         {
-            this->sstamp_ = min(this->sstamp_, (*itr).ver_->sstamp_);
+            this->sstamp_ = min(this->sstamp_, (*itr).ver_->sstamp_.load(memory_order_acquire));
         }
 
         // finalize eta(T)
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
         {
-            this->pstamp_ = max(this->pstamp_, (*itr).ver_->prev_->pstamp_);
+            this->pstamp_ = max(this->pstamp_, (*itr).ver_->prev_->pstamp_.load(memory_order_acquire));
         }
 
         // ssn_check_exclusion
         if (pstamp_ < sstamp_)
-            this->status_ = TransactionStatus::committed;
+            this->status_ = Status::committed;
         else
         {
-            status_ = TransactionStatus::aborted;
-            ++eres_->local_commitphase_counts_;
+            status_ = Status::aborted;
+            ++res_->local_commitphase_counts_;
             SsnLock.unlock();
             return;
         }
@@ -569,46 +504,41 @@ public:
         // update eta(V)
         for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
         {
-            (*itr).ver_->pstamp_ = (max((*itr).ver_->pstamp_, this->cstamp_));
+            (*itr).ver_->pstamp_.store((max((*itr).ver_->pstamp_.load(memory_order_acquire), this->cstamp_)), memory_order_release);
         }
 
         // update pi
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
         {
-            (*itr).ver_->prev_->sstamp_ = this->sstamp_;
+            (*itr).ver_->prev_->sstamp_.store(this->sstamp_, memory_order_release);
             // initialize new version
-            (*itr).ver_->cstamp_ = (*itr).ver_->pstamp_ = this->cstamp_;
+            (*itr).ver_->pstamp_.store(this->cstamp_, memory_order_release);
+            (*itr).ver_->cstamp_.store((*itr).ver_->pstamp_, memory_order_release);
         }
 
-        // status, inFlight -> committed ,w-unlock
+        // status, inFlight -> committed
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
         {
-            (*itr).ver_->val_ = this->write_val_;
-            (*itr).ver_->status_ = VersionStatus::committed;
+            (*itr).ver_->status_.store(Status::committed, memory_order_release);
             Tuple *tmp = get_tuple(itr->key_);
-            tmp->lock_.w_unlock();
+            tmp->lock_.unlock();
         }
 
-        this->status_ = TransactionStatus::committed;
-
         // -------------------------------------------------------------------------------------
-        if (use_lock == 1)
+        if (USE_LOCK == 1) // r-unlock
         {
-            if (this->lock_flag == true) // r-unlock
+            if (this->lock_flag == true)
             {
                 this->lock_flag = false;
-                for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
+                for (auto itr = read_set_.begin(); itr != read_set_.end(); itr++)
                 {
-                    if (itr->ope_ == Ope::READ)
-                    {
-                        Tuple *tmp = get_tuple(itr->key_);
-                        // tmp->lock_.r_unlock(this->sstamp_);
-                        tmp->lock_.w_unlock();
-                    }
+                    Tuple *tmp = get_tuple(itr->key_);
+                    tmp->lock_.unlock();
                 }
             }
         }
         // -------------------------------------------------------------------------------------
+        this->status_ = Status::committed;
         SsnLock.unlock();
         read_set_.clear();
         write_set_.clear();
@@ -620,23 +550,25 @@ public:
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
         {
             Version *next_committed = (*itr).ver_->prev_;
-            while (next_committed->status_ != VersionStatus::committed)
+            while (next_committed->status_.load(memory_order_acquire) != Status::committed)
                 next_committed = next_committed->prev_;
             // cancel successor mark(sstamp).
-            next_committed->sstamp_ = UINT32_MAX;
-            (*itr).ver_->status_ = VersionStatus::aborted;
+            next_committed->sstamp_.store(UINT32_MAX, memory_order_release);
+            (*itr).ver_->status_.store(Status::aborted, memory_order_release);
+            Tuple *tuple;
+            tuple = get_tuple(itr->key_);
+            tuple->lock_.unlock();
         }
         write_set_.clear();
 
         // notify that this transaction finishes reading the version now.
         read_set_.clear();
-        ++eres_->local_abort_counts_;
+        ++res_->local_abort_counts_;
 
         // -------------------------------------------------------------------------------------
-        if (use_lock == 1 && isreadonly() == true)
+        if (USE_LOCK == 1 && isreadonly() == true)
         {
             // 提案手法: read only transactionのlock
-            // cout << "all read but abort" << endl;
             for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
             {
                 if (itr->ope_ == Ope::READ)
@@ -644,12 +576,12 @@ public:
                     Tuple *tmp = get_tuple(itr->key_);
                     while (tmp->lock_.counter != 1)
                     {
-                        tmp->lock_.w_getlock(this->pstamp_);
+                        tmp->lock_.getlock();
                     }
                 }
             }
             this->lock_flag = true;
-            ++eres_->local_uselock_counts_;
+            ++res_->local_uselock_counts_;
             return;
         }
         // -------------------------------------------------------------------------------------
@@ -659,7 +591,7 @@ public:
     {
         if (this->pstamp_ >= this->sstamp_)
         {
-            this->status_ = TransactionStatus::aborted;
+            this->status_ = Status::aborted;
         }
     }
 
@@ -688,63 +620,16 @@ void displayParameter()
     cout << "thread_num:\t\t\t" << thread_num << endl;
 }
 
-void displayDB()
-{
-    Tuple *tuple;
-    Version *version;
-
-    for (int i = 0; i < tuple_num; ++i)
-    {
-        // for (auto itr = Table->begin(); itr != Table->end(); itr++) {
-        tuple = &Table[i];
-        cout << "------------------------------" << endl; // - 30
-        cout << "key: " << i << endl;
-
-        // version = tuple->latest_;
-        version = tuple->latest_;
-
-        while (version != NULL)
-        {
-            cout << "val: " << version->val_;
-
-            switch (version->status_)
-            {
-            case VersionStatus::inFlight:
-                cout << " status:  inFlight/";
-                break;
-            case VersionStatus::aborted:
-                cout << " status:  aborted/";
-                break;
-            case VersionStatus::committed:
-                cout << " status:  committed/";
-                break;
-            }
-            // cout << endl;
-
-            cout << " /cstamp:  " << version->cstamp_;
-            cout << " /pstamp:  " << version->pstamp_;
-            cout << " /sstamp:  " << version->sstamp_ << endl;
-            // cout << endl;
-
-            version = version->prev_;
-        }
-    }
-}
-
 void makeDB()
 {
     posix_memalign((void **)&Table, PAGE_SIZE, (tuple_num) * sizeof(Tuple));
     for (int i = 0; i < tuple_num; i++)
     {
         Table[i].key = 0;
-        Version *verTmp = new Version;
-        verTmp->cstamp_ = 0;
-        verTmp->pstamp_ = 0;
-        verTmp->sstamp_ = UINT32_MAX;
-        verTmp->prev_ = nullptr;
-        verTmp->status_ = VersionStatus::committed;
+        Version *verTmp = new Version();
+        verTmp->status_.store(Status::committed, memory_order_release);
         verTmp->val_ = 0;
-        Table[i].latest_ = verTmp;
+        Table[i].latest_.store(verTmp, memory_order_release);
     }
 }
 
@@ -782,10 +667,10 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
             }
             else if ((*itr).ope_ == Ope::WRITE)
             {
-                trans.ssn_twrite((*itr).key_);
+                trans.ssn_twrite((*itr).key_, (*itr).write_val_);
             }
             // early abort.
-            if (trans.status_ == TransactionStatus::aborted)
+            if (trans.status_ == Status::aborted)
             {
                 trans.abort();
 
@@ -793,11 +678,11 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
             }
         }
         trans.ssn_commit();
-        if (trans.status_ == TransactionStatus::committed)
+        if (trans.status_ == Status::committed)
         {
             myres.local_commit_counts_++;
         }
-        else if (trans.status_ == TransactionStatus::aborted)
+        else if (trans.status_ == Status::aborted)
         {
             trans.abort();
             goto RETRY;
@@ -810,6 +695,7 @@ int main(int argc, char *argv[])
 {
     displayParameter();
     makeDB();
+    chrono::system_clock::time_point starttime, endtime;
 
     bool start = false;
     bool quit = false;
@@ -823,6 +709,8 @@ int main(int argc, char *argv[])
                          std::ref(quit));
     }
     waitForReady(readys);
+
+    starttime = chrono::system_clock::now();
     start = true;
     this_thread::sleep_for(std::chrono::milliseconds(1000 * extime));
     quit = true;
@@ -831,6 +719,10 @@ int main(int argc, char *argv[])
     {
         th.join();
     }
+    endtime = chrono::system_clock::now();
+
+    double time = static_cast<double>(chrono::duration_cast<chrono::microseconds>(endtime - starttime).count() / 1000.0);
+    // printf("time %lf[ms]\n", time);
 
     for (unsigned int i = 0; i < thread_num; ++i)
     {
@@ -838,7 +730,10 @@ int main(int argc, char *argv[])
     }
     ErmiaResult[0].displayAllResult();
 
-    // displayDB();
+    uint64_t result = (ErmiaResult[0].total_commit_counts_ * 1000) / time;
+    cout << "latency[ns]:\t\t\t" << powl(10.0, 9.0) / result * thread_num
+         << endl;
+    cout << "throughput[tps]:\t\t" << result << endl;
 
     return 0;
 }
