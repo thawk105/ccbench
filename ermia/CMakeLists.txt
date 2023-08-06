@@ -38,7 +38,7 @@ target_link_libraries(ermia.exe
         Boost::filesystem
         gflags::gflags
         ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        #${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
 
@@ -69,7 +69,7 @@ endif ()
 if (DEFINED MASSTREE_USE)
     add_definitions(-DMASSTREE_USE=${MASSTREE_USE})
 else ()
-    add_definitions(-DMASSTREE_USE=1)
+    add_definitions(-DMASSTREE_USE=0)
 endif ()
 
 if (DEFINED VAL_SIZE)
