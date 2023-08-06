@@ -11,17 +11,17 @@
 
 #include "../include/zipf.hh"
 
-#define TIDFLAG 1
+/*#define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
-#define clocks_per_us 2100  //"CPU_MHz. Use this info for measuring time."
-#define extime 3            // Execution time[sec].
-#define max_ope 10          // Total number of operations per single transaction."
-#define max_ope_readonly 10 // read only transactionの長さ
-#define ronly_ratio 30      // read-only transaction rate
-#define rratio 50           // read ratio of single transaction.
-#define thread_num 10       // Total number of worker threads.
-#define tuple_num 1000      //"Total number of records."
+#define clocks_per_us 2100
+#define extime 3
+#define max_ope 10
+#define max_ope_readonly 10
+#define ronly_ratio 30
+#define rratio 50
+#define thread_num 10
+#define tuple_num 1000      */
 
 using namespace std;
 

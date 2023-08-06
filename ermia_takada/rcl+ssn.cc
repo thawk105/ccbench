@@ -14,15 +14,15 @@
 #define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
-#define clocks_per_us 2100  // CPU_MHz. Use this info for measuring time.
-#define extime 3            // Execution time[sec].
-#define max_ope 10          // Total number of operations per single transaction.
-#define max_ope_readonly 10 // read only transactionの長さ
-#define ronly_ratio 30      // read-only transaction rate
-#define rratio 50           // read ratio of single transaction.
-#define thread_num 10       // Total number of worker threads.
-#define tuple_num 1000      // Total number of records.
-#define USE_LOCK 0          // 0 = dont use read-only lock, 1 = use read-only lock
+#define clocks_per_us 2100
+#define extime 3
+#define max_ope 10
+#define max_ope_readonly 10
+#define ronly_ratio 30
+#define rratio 50
+#define thread_num 10
+#define tuple_num 1000
+#define USE_LOCK 1
 
 using namespace std;
 
@@ -150,7 +150,6 @@ public:
     void getlock()
     {
         int expected, desired(-1);
-        // expected = counter.load(memory_order_acquire);
         for (;;)
         {
             expected = counter.load(memory_order_acquire);
@@ -158,6 +157,22 @@ public:
             if (expected != 0)
                 continue;
             if (counter.compare_exchange_weak(expected, -1, memory_order_acq_rel, memory_order_acquire))
+                break;
+            else
+                goto RETRY_W_LOCK;
+        }
+    }
+
+    void getlock_strong()
+    {
+        int expected, desired(-1);
+        for (;;)
+        {
+            expected = counter.load(memory_order_acquire);
+        RETRY_W_LOCK:
+            if (expected != 0)
+                continue;
+            if (counter.compare_exchange_strong(expected, -1, memory_order_acq_rel, memory_order_acquire))
                 break;
             else
                 goto RETRY_W_LOCK;
@@ -221,22 +236,6 @@ public:
     Task(Ope ope, uint64_t key) : ope_(ope), key_(key) {}
     Task(Ope ope, uint64_t key, uint64_t write_val) : ope_(ope), key_(key), write_val_(write_val) {}
 };
-
-void viewtask(vector<Task> &tasks)
-{
-    for (auto itr = tasks.begin(); itr != tasks.end(); itr++)
-    {
-        if (itr->ope_ == Ope::READ)
-        {
-            cout << "R" << itr->key_ << " ";
-        }
-        else
-        {
-            cout << "W" << itr->key_ << " ";
-        }
-    }
-    cout << endl;
-}
 
 void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
 {
@@ -398,7 +397,6 @@ public:
             ++res_->local_wwconflict_counts_;
             goto FINISH_TWRITE;
         }*/
-
         // -------------------------------------------------------------------------------------
         // wait  die
         if (tuple->lock_.trylock() == false)
@@ -428,12 +426,11 @@ public:
             // abortしてlockを解放していない or read lockのせいでlockが取得できない
             tuple->lock_.getlock();
         }
-
         // -------------------------------------------------------------------------------------
+
         desired->prev_ = expected;
         tuple->latest_.compare_exchange_strong(
             expected, desired, memory_order_acq_rel, memory_order_acquire);
-
         // これがないとUpdate etaができない
         uint64_t tmpTID;
         tmpTID = thid_;
@@ -530,10 +527,18 @@ public:
             if (this->lock_flag == true)
             {
                 this->lock_flag = false;
-                for (auto itr = read_set_.begin(); itr != read_set_.end(); itr++)
+                /*for (auto itr = read_set_.begin(); itr != read_set_.end(); itr++)
                 {
                     Tuple *tmp = get_tuple(itr->key_);
                     tmp->lock_.unlock();
+                }*/
+                for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
+                {
+                    if (itr->ope_ == Ope::READ)
+                    {
+                        Tuple *tmp = get_tuple(itr->key_);
+                        tmp->lock_.unlock();
+                    }
                 }
             }
         }
@@ -564,6 +569,10 @@ public:
         // notify that this transaction finishes reading the version now.
         read_set_.clear();
         ++res_->local_abort_counts_;
+        if (lock_flag == true)
+        {
+            cout << "error" << endl;
+        }
 
         // -------------------------------------------------------------------------------------
         if (USE_LOCK == 1 && isreadonly() == true)
@@ -574,12 +583,10 @@ public:
                 if (itr->ope_ == Ope::READ)
                 {
                     Tuple *tmp = get_tuple(itr->key_);
-                    while (tmp->lock_.counter != 1)
-                    {
-                        tmp->lock_.getlock();
-                    }
+                    tmp->lock_.getlock_strong();
                 }
             }
+            // cout << "ok" << endl;
             this->lock_flag = true;
             ++res_->local_uselock_counts_;
             return;
@@ -651,7 +658,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
     while (quit == false)
     {
         makeTask(trans.task_set_, rnd, zipf);
-        // viewtask(trans.task_set_);
 
     RETRY:
         if (quit == true)
