@@ -1,1 +1,1 @@
-/usr/bin/c++     CMakeFiles/ermia.exe.dir/ermia.cc.o  -o ermia.exe  /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /usr/lib/x86_64-linux-gnu/libgflags.so ../../third_party/mimalloc/out/release/libmimalloc.a ../../third_party/masstree/libkohler_masstree_json.a -lpthread 
+/usr/bin/c++     CMakeFiles/ermia.exe.dir/ermia.cc.o  -o ermia.exe  /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /usr/lib/x86_64-linux-gnu/libgflags.so ../../third_party/mimalloc/out/release/libmimalloc.a -lpthread 

@@ -1,21 +1,21 @@
 Performing C++ SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
 Change Dir: /home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):/usr/bin/make cmTC_706af/fast && /usr/bin/make -f CMakeFiles/cmTC_706af.dir/build.make CMakeFiles/cmTC_706af.dir/build
+Run Build Command(s):/usr/bin/make cmTC_17a28/fast && /usr/bin/make -f CMakeFiles/cmTC_17a28.dir/build.make CMakeFiles/cmTC_17a28.dir/build
 make[1]: Entering directory '/home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp'
-Building CXX object CMakeFiles/cmTC_706af.dir/src.cxx.o
-/usr/bin/c++    -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_706af.dir/src.cxx.o -c /home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp/src.cxx
-Linking CXX executable cmTC_706af
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_706af.dir/link.txt --verbose=1
-/usr/bin/c++   -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_706af.dir/src.cxx.o  -o cmTC_706af 
-/usr/bin/ld: CMakeFiles/cmTC_706af.dir/src.cxx.o: in function `main':
+Building CXX object CMakeFiles/cmTC_17a28.dir/src.cxx.o
+/usr/bin/c++    -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_17a28.dir/src.cxx.o -c /home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_17a28
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_17a28.dir/link.txt --verbose=1
+/usr/bin/c++   -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_17a28.dir/src.cxx.o  -o cmTC_17a28 
+/usr/bin/ld: CMakeFiles/cmTC_17a28.dir/src.cxx.o: in function `main':
 src.cxx:(.text+0x46): undefined reference to `pthread_create'
 /usr/bin/ld: src.cxx:(.text+0x52): undefined reference to `pthread_detach'
 /usr/bin/ld: src.cxx:(.text+0x63): undefined reference to `pthread_join'
 collect2: error: ld returned 1 exit status
-make[1]: *** [CMakeFiles/cmTC_706af.dir/build.make:87: cmTC_706af] Error 1
+make[1]: *** [CMakeFiles/cmTC_17a28.dir/build.make:87: cmTC_17a28] Error 1
 make[1]: Leaving directory '/home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp'
-make: *** [Makefile:121: cmTC_706af/fast] Error 2
+make: *** [Makefile:121: cmTC_17a28/fast] Error 2
 
 
 Source file was:
@@ -41,18 +41,18 @@ int main(void)
 Determining if the function pthread_create exists in the pthreads failed with the following output:
 Change Dir: /home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):/usr/bin/make cmTC_9f4a2/fast && /usr/bin/make -f CMakeFiles/cmTC_9f4a2.dir/build.make CMakeFiles/cmTC_9f4a2.dir/build
+Run Build Command(s):/usr/bin/make cmTC_40c96/fast && /usr/bin/make -f CMakeFiles/cmTC_40c96.dir/build.make CMakeFiles/cmTC_40c96.dir/build
 make[1]: Entering directory '/home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp'
-Building CXX object CMakeFiles/cmTC_9f4a2.dir/CheckFunctionExists.cxx.o
-/usr/bin/c++    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_9f4a2.dir/CheckFunctionExists.cxx.o -c /home/ccbench/ermia_takada/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
-Linking CXX executable cmTC_9f4a2
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9f4a2.dir/link.txt --verbose=1
-/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_9f4a2.dir/CheckFunctionExists.cxx.o  -o cmTC_9f4a2  -lpthreads 
+Building CXX object CMakeFiles/cmTC_40c96.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_40c96.dir/CheckFunctionExists.cxx.o -c /home/ccbench/ermia_takada/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_40c96
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_40c96.dir/link.txt --verbose=1
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_40c96.dir/CheckFunctionExists.cxx.o  -o cmTC_40c96  -lpthreads 
 /usr/bin/ld: cannot find -lpthreads
 collect2: error: ld returned 1 exit status
-make[1]: *** [CMakeFiles/cmTC_9f4a2.dir/build.make:87: cmTC_9f4a2] Error 1
+make[1]: *** [CMakeFiles/cmTC_40c96.dir/build.make:87: cmTC_40c96] Error 1
 make[1]: Leaving directory '/home/ccbench/ermia_takada/build/CMakeFiles/CMakeTmp'
-make: *** [Makefile:121: cmTC_9f4a2/fast] Error 2
+make: *** [Makefile:121: cmTC_40c96/fast] Error 2
 
 
 
