@@ -11,7 +11,7 @@
 
 #include "../include/zipf.hh"
 
-#define TIDFLAG 1
+/*#define TIDFLAG 1
 #define CACHE_LINE_SIZE 64
 #define PAGE_SIZE 4096
 #define clocks_per_us 2100
@@ -21,8 +21,8 @@
 #define ronly_ratio 30
 #define rratio 50
 #define thread_num 10
-#define tuple_num 1000
-#define USE_LOCK 1
+#define tuple_num 10000
+#define USE_LOCK 1*/
 
 using namespace std;
 
@@ -43,6 +43,8 @@ public:
     uint64_t total_wwconflict_counts_ = 0;
     uint64_t local_uselock_counts_ = 0;
     uint64_t total_uselock_counts_ = 0;
+    uint64_t local_traversal_counts_ = 0;
+    uint64_t total_traversal_counts_ = 0;
 
     void displayAllResult()
     {
@@ -58,6 +60,7 @@ public:
             (double)total_abort_counts_ /
             (double)(total_commit_counts_ + total_abort_counts_);
         cout << fixed << setprecision(4) << "abort_rate:\t\t\t" << ave_rate << endl;
+        cout << "traversal counts:\t\t" << total_traversal_counts_ << endl;
     }
 
     void addLocalAllResult(const Result &other)
@@ -69,6 +72,7 @@ public:
         total_writephase_counts_ += other.local_writephase_counts_;
         total_commitphase_counts_ += other.local_commitphase_counts_;
         total_wwconflict_counts_ += other.local_wwconflict_counts_;
+        total_traversal_counts_ += other.local_traversal_counts_;
     }
 };
 
@@ -163,32 +167,31 @@ public:
         }
     }
 
-    void getlock_strong()
+    void lock_upgrade()
     {
-        int expected, desired(-1);
-        for (;;)
+        if (trylock() == false)
         {
+            int expected, desired;
             expected = counter.load(memory_order_acquire);
-        RETRY_W_LOCK:
-            if (expected != 0)
-                continue;
-            if (counter.compare_exchange_strong(expected, -1, memory_order_acq_rel, memory_order_acquire))
-                break;
-            else
-                goto RETRY_W_LOCK;
+            desired -= expected;
+            if (counter.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire) == false)
+            {
+                cout << "error" << endl;
+            }
         }
     }
 
     void unlock()
     {
-        if (counter.load(memory_order_acquire) == -1)
+        /*if (counter.load(memory_order_acquire) == -1)
         {
             counter.store(0, memory_order_release);
         }
         else
         {
             cout << "unlock error" << endl;
-        }
+        }*/
+        counter++;
     }
 };
 
@@ -318,17 +321,11 @@ public:
 
     void tbegin()
     {
-        // -------------------------------------------------------------------------------------
-        /*if (this->status_ == Status::aborted && this->lock_flag == true)
-        {
-            this->txid_ = this->cstamp_;
-        }
-        else
+        // new transaction->get timestamp
+        if (this->status_ == Status::committed)
         {
             this->txid_ = atomic_fetch_add(&timestampcounter, 1);
-        }*/
-        // -------------------------------------------------------------------------------------
-        this->txid_ = atomic_fetch_add(&timestampcounter, 1);
+        }
         this->cstamp_ = 0;
         pstamp_ = 0;
         sstamp_ = UINT32_MAX;
@@ -347,7 +344,10 @@ public:
         Version *ver;
         ver = tuple->latest_.load(memory_order_acquire);
         while (ver->status_.load(memory_order_acquire) != Status::committed || txid_ < ver->cstamp_.load(memory_order_acquire))
+        {
             ver = ver->prev_;
+            ++res_->local_traversal_counts_;
+        }
 
         // update eta(t) with w:r edges
         this->pstamp_ = max(this->pstamp_, ver->cstamp_.load(memory_order_acquire));
@@ -427,10 +427,9 @@ public:
             tuple->lock_.getlock();
         }
         // -------------------------------------------------------------------------------------
-
         desired->prev_ = expected;
-        tuple->latest_.compare_exchange_strong(
-            expected, desired, memory_order_acq_rel, memory_order_acquire);
+        tuple->latest_.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire);
+
         // これがないとUpdate etaができない
         uint64_t tmpTID;
         tmpTID = thid_;
@@ -440,7 +439,9 @@ public:
 
         // Update eta with w:r edge
         this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
-        //   t.writes.add(V)
+
+        //     t.writes.add(V)
+        write_set_.emplace_back(key, desired);
 
         // t.reads.discard(v)
         for (auto itr = read_set_.begin(); itr != read_set_.end();)
@@ -457,7 +458,6 @@ public:
             ++res_->local_writephase_counts_;
             goto FINISH_TWRITE;
         }
-        write_set_.emplace_back(key, desired);
 
     FINISH_TWRITE:
         if (this->status_ == Status::aborted)
@@ -467,7 +467,8 @@ public:
         return;
     }
 
-    void ssn_commit()
+    void
+    ssn_commit()
     {
         this->cstamp_ = atomic_fetch_add(&timestampcounter, 1);
 
@@ -571,7 +572,7 @@ public:
         ++res_->local_abort_counts_;
         if (lock_flag == true)
         {
-            cout << "error" << endl;
+            // cout << "error" << endl;
         }
 
         // -------------------------------------------------------------------------------------
@@ -583,7 +584,7 @@ public:
                 if (itr->ope_ == Ope::READ)
                 {
                     Tuple *tmp = get_tuple(itr->key_);
-                    tmp->lock_.getlock_strong();
+                    tmp->lock_.lock_upgrade();
                 }
             }
             // cout << "ok" << endl;

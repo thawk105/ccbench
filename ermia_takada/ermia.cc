@@ -40,6 +40,8 @@ public:
     uint64_t total_writephase_counts_ = 0;
     uint64_t total_commitphase_counts_ = 0;
     uint64_t total_wwconflict_counts_ = 0;
+    uint64_t local_traversal_counts_ = 0;
+    uint64_t total_traversal_counts_ = 0;
 
     void displayAllResult()
     {
@@ -54,6 +56,7 @@ public:
             (double)total_abort_counts_ /
             (double)(total_commit_counts_ + total_abort_counts_);
         cout << fixed << setprecision(4) << "abort_rate:\t\t\t" << ave_rate << endl;
+        cout << "traversal counts:\t\t" << total_traversal_counts_ << endl;
     }
 
     void addLocalAllResult(const Result &other)
@@ -64,6 +67,7 @@ public:
         total_writephase_counts_ += other.local_writephase_counts_;
         total_commitphase_counts_ += other.local_commitphase_counts_;
         total_wwconflict_counts_ += other.local_wwconflict_counts_;
+        total_traversal_counts_ += other.local_traversal_counts_;
     }
 };
 
@@ -275,7 +279,10 @@ public:
         Version *ver;
         ver = tuple->latest_.load(memory_order_acquire);
         while (ver->status_.load(memory_order_acquire) != Status::committed || txid_ < ver->cstamp_.load(memory_order_acquire))
+        {
             ver = ver->prev_;
+            ++res_->local_traversal_counts_;
+        }
 
         // update eta(t) with w:r edges
         this->pstamp_ = max(this->pstamp_, ver->cstamp_.load(memory_order_acquire));
