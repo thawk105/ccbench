@@ -8,6 +8,7 @@
 #include <array>
 #include <xmmintrin.h>
 #include <chrono>
+#include <algorithm>
 
 #include "../include/zipf.hh"
 
@@ -18,7 +19,7 @@
 #define extime 3
 #define max_ope 10
 #define max_ope_readonly 10
-#define ronly_ratio 30
+#define ronly_ratio 60
 #define rratio 50
 #define thread_num 10
 #define tuple_num 10000
@@ -142,6 +143,7 @@ public:
         expected = counter.load(std::memory_order_acquire);
         for (;;)
         {
+
             if (expected != 0)
             {
                 return false;
@@ -157,41 +159,22 @@ public:
         for (;;)
         {
             expected = counter.load(memory_order_acquire);
-        RETRY_W_LOCK:
             if (expected != 0)
                 continue;
             if (counter.compare_exchange_weak(expected, -1, memory_order_acq_rel, memory_order_acquire))
                 break;
-            else
-                goto RETRY_W_LOCK;
-        }
-    }
-
-    void lock_upgrade()
-    {
-        if (trylock() == false)
-        {
-            int expected, desired;
-            expected = counter.load(memory_order_acquire);
-            desired -= expected;
-            if (counter.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire) == false)
-            {
-                cout << "error" << endl;
-            }
         }
     }
 
     void unlock()
     {
-        /*if (counter.load(memory_order_acquire) == -1)
+        int expected, desired(0);
+        expected = counter.load(memory_order_acquire);
+        if (counter.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire) == false)
         {
-            counter.store(0, memory_order_release);
+            cout << "error unlock" << endl;
         }
-        else
-        {
-            cout << "unlock error" << endl;
-        }*/
-        counter++;
+        // counter++;
     }
 };
 
@@ -255,7 +238,7 @@ void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
     }
     else
     {
-        for (size_t i = 0; i < max_ope; ++i)
+        for (size_t i = 0; i < (/*zipf() %*/ max_ope); ++i)
         {
             uint64_t tmpkey;
             // decide access destination key.
@@ -282,6 +265,7 @@ public:
     uint32_t sstamp_ = UINT32_MAX; // Successor low-water mark, pi (T)
     uint32_t txid_;                // TID and begin timestamp
     bool lock_flag = false;
+    bool deadlock_flag = false;
     Status status_ = Status::inFlight;
 
     vector<Operation> read_set_;  // write set
@@ -322,10 +306,7 @@ public:
     void tbegin()
     {
         // new transaction->get timestamp
-        if (this->status_ == Status::committed)
-        {
-            this->txid_ = atomic_fetch_add(&timestampcounter, 1);
-        }
+        this->txid_ = atomic_fetch_add(&timestampcounter, 1);
         this->cstamp_ = 0;
         pstamp_ = 0;
         sstamp_ = UINT32_MAX;
@@ -380,67 +361,31 @@ public:
         Tuple *tuple;
         tuple = get_tuple(key);
 
+        // -------------------------------------------------------------------------------------
+        // no wait
+        if (tuple->lock_.trylock() == false)
+        {
+            this->status_ = Status::aborted;
+            ++res_->local_wwconflict_counts_;
+            return;
+        }
+        // -------------------------------------------------------------------------------------
+
         // If v not in t.writes:
         Version *expected, *desired;
         desired = new Version();
-        desired->cstamp_.store(this->txid_, memory_order_release);
+        desired->cstamp_ = this->txid_;
         desired->val_ = write_val;
 
         Version *vertmp;
         expected = tuple->latest_.load(memory_order_acquire);
-
-        // -------------------------------------------------------------------------------------
-        // no wait
-        /*if (tuple->lock_.trylock() == false)
-        {
-            this->status_ = Status::aborted;
-            ++res_->local_wwconflict_counts_;
-            goto FINISH_TWRITE;
-        }*/
-        // -------------------------------------------------------------------------------------
-        // wait  die
-        if (tuple->lock_.trylock() == false)
-        {
-            if (expected->status_.load(memory_order_acquire) == Status::inFlight)
-            {
-                if (this->txid_ >= expected->cstamp_.load(memory_order_acquire))
-                {
-                    this->status_ = Status::aborted;
-                    ++res_->local_wwconflict_counts_;
-                    goto FINISH_TWRITE;
-                }
-                expected = tuple->latest_.load(memory_order_acquire);
-            }
-            vertmp = expected;
-            while (vertmp->status_.load(memory_order_acquire) != Status::committed)
-            {
-                vertmp = vertmp->prev_;
-            }
-
-            if (txid_ >= vertmp->cstamp_.load(memory_order_acquire))
-            {
-                this->status_ = Status::aborted;
-                ++res_->local_wwconflict_counts_;
-                goto FINISH_TWRITE;
-            }
-            // abortしてlockを解放していない or read lockのせいでlockが取得できない
-            tuple->lock_.getlock();
-        }
-        // -------------------------------------------------------------------------------------
         desired->prev_ = expected;
-        tuple->latest_.compare_exchange_strong(expected, desired, memory_order_acq_rel, memory_order_acquire);
-
-        // これがないとUpdate etaができない
-        uint64_t tmpTID;
-        tmpTID = thid_;
-        tmpTID = tmpTID << 1;
-        tmpTID |= 1;
-        desired->prev_->pstamp_.store(tmpTID, memory_order_release);
+        tuple->latest_.store(desired, memory_order_release);
 
         // Update eta with w:r edge
         this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
 
-        //     t.writes.add(V)
+        // t.writes.add(V)
         write_set_.emplace_back(key, desired);
 
         // t.reads.discard(v)
@@ -528,23 +473,16 @@ public:
             if (this->lock_flag == true)
             {
                 this->lock_flag = false;
-                /*for (auto itr = read_set_.begin(); itr != read_set_.end(); itr++)
+                for (auto itr = read_set_.begin(); itr != read_set_.end(); itr++)
                 {
                     Tuple *tmp = get_tuple(itr->key_);
                     tmp->lock_.unlock();
-                }*/
-                for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
-                {
-                    if (itr->ope_ == Ope::READ)
-                    {
-                        Tuple *tmp = get_tuple(itr->key_);
-                        tmp->lock_.unlock();
-                    }
                 }
             }
         }
         // -------------------------------------------------------------------------------------
         this->status_ = Status::committed;
+        this->deadlock_flag = false;
         SsnLock.unlock();
         read_set_.clear();
         write_set_.clear();
@@ -558,7 +496,7 @@ public:
             Version *next_committed = (*itr).ver_->prev_;
             while (next_committed->status_.load(memory_order_acquire) != Status::committed)
                 next_committed = next_committed->prev_;
-            // cancel successor mark(sstamp).
+            //    cancel successor mark(sstamp)
             next_committed->sstamp_.store(UINT32_MAX, memory_order_release);
             (*itr).ver_->status_.store(Status::aborted, memory_order_release);
             Tuple *tuple;
@@ -572,22 +510,28 @@ public:
         ++res_->local_abort_counts_;
         if (lock_flag == true)
         {
-            // cout << "error" << endl;
+            cout << "error" << endl;
         }
 
         // -------------------------------------------------------------------------------------
         if (USE_LOCK == 1 && isreadonly() == true)
         {
             // 提案手法: read only transactionのlock
-            for (auto itr = task_set_.begin(); itr != task_set_.end(); itr++)
+            // dead lock(between read locks) prevention
+            vector<int> tmp(task_set_.size());
+            for (int i = 0; i < task_set_.size(); i++)
             {
-                if (itr->ope_ == Ope::READ)
-                {
-                    Tuple *tmp = get_tuple(itr->key_);
-                    tmp->lock_.lock_upgrade();
-                }
+                tmp.at(i) = task_set_.at(i).key_;
             }
-            // cout << "ok" << endl;
+            std::sort(tmp.begin(), tmp.end());
+            tmp.erase(std::unique(tmp.begin(), tmp.end()), tmp.end());
+            for (auto itr = tmp.begin(); itr != tmp.end(); itr++)
+            {
+                Tuple *tmptuple = get_tuple(*itr);
+                // tmptuple->lock_.lock_upgrade();
+                tmptuple->lock_.getlock();
+            }
+            this->txid_ = this->cstamp_;
             this->lock_flag = true;
             ++res_->local_uselock_counts_;
             return;
