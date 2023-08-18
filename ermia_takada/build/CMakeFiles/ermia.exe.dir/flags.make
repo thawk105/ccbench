@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_FLAGS =   -std=c++17
 
-CXX_DEFINES = -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DCACHE_LINE_SIZE=64 -DPAGE_SIZE=4096 -DTIDFLAG=1 -DUSE_LOCK=0 -Dclocks_per_us=2100 -Dextime=3 -Dmax_ope=10 -Dmax_ope_readonly=10 -Dronly_ratio=30 -Drratio=50 -Dthread_num=10 -Dtuple_num=1000
+CXX_DEFINES = -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DCACHE_LINE_SIZE=64 -DPAGE_SIZE=4096 -DTIDFLAG=1 -DUSE_LOCK=0 -Dclocks_per_us=2100 -Dextime=3 -Dmax_ope=10 -Dmax_ope_readonly=100 -Dronly_ratio=50 -Drratio=10 -Dskew=0.99 -Dthread_num=4 -Dtuple_num=10000
 
 CXX_INCLUDES = 
 

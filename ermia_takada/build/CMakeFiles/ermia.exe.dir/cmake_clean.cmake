@@ -1,5 +1,7 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/ermia.exe.dir/ermia.cc.o"
+  "CMakeFiles/ermia.exe.dir/frame.cc.o"
+  "CMakeFiles/ermia.exe.dir/si.cc.o"
+  "CMakeFiles/ermia.exe.dir/ssn.cc.o"
   "ermia.exe"
   "ermia.exe.pdb"
 )

@@ -19,11 +19,11 @@
 #define extime 3
 #define max_ope 10
 #define max_ope_readonly 10
-#define ronly_ratio 60
+#define ronly_ratio 30
 #define rratio 50
 #define thread_num 10
-#define tuple_num 10000
-#define USE_LOCK 1*/
+#define tuple_num 1000
+#define skew 0      */
 
 using namespace std;
 
@@ -42,38 +42,52 @@ public:
     uint64_t total_writephase_counts_ = 0;
     uint64_t total_commitphase_counts_ = 0;
     uint64_t total_wwconflict_counts_ = 0;
-    uint64_t local_uselock_counts_ = 0;
-    uint64_t total_uselock_counts_ = 0;
     uint64_t local_traversal_counts_ = 0;
     uint64_t total_traversal_counts_ = 0;
+    uint64_t local_readonly_abort_counts_ = 0;
+    uint64_t total_readonly_abort_counts_ = 0;
+    vector<int> local_additionalabort;
+    vector<int> total_additionalabort;
 
     void displayAllResult()
     {
         cout << "abort_counts_:\t\t\t" << total_abort_counts_ << endl;
         cout << "commit_counts_:\t\t\t" << total_commit_counts_ << endl;
-        cout << "uselock_counts_:\t\t" << total_uselock_counts_ << endl;
         cout << "read SSNcheck abort:\t\t" << total_readphase_counts_ << endl;
         cout << "write SSNcheck abort:\t\t" << total_writephase_counts_ << endl;
         cout << "commit SSNcheck abort:\t\t" << total_commitphase_counts_ << endl;
         cout << "ww conflict abort:\t\t" << total_wwconflict_counts_ << endl;
+        cout << "total_readonly_abort:\t\t" << total_readonly_abort_counts_ << endl;
         // displayAbortRate
         long double ave_rate =
             (double)total_abort_counts_ /
             (double)(total_commit_counts_ + total_abort_counts_);
         cout << fixed << setprecision(4) << "abort_rate:\t\t\t" << ave_rate << endl;
-        cout << "traversal counts:\t\t" << total_traversal_counts_ << endl;
+        // cout << "traversal counts:\t\t" << total_traversal_counts_ << endl;
+
+        // count the number of recursing abort
+        vector<int> tmp;
+        tmp = total_additionalabort;
+        std::sort(tmp.begin(), tmp.end());
+        tmp.erase(std::unique(tmp.begin(), tmp.end()), tmp.end());
+        for (auto itr = tmp.begin(); itr != tmp.end(); itr++)
+        {
+            size_t count = std::count(total_additionalabort.begin(), total_additionalabort.end(), *itr);
+            cout << *itr << " " << count << endl;
+        }
     }
 
     void addLocalAllResult(const Result &other)
     {
         total_abort_counts_ += other.local_abort_counts_;
         total_commit_counts_ += other.local_commit_counts_;
-        total_uselock_counts_ += other.local_uselock_counts_;
         total_readphase_counts_ += other.local_readphase_counts_;
         total_writephase_counts_ += other.local_writephase_counts_;
         total_commitphase_counts_ += other.local_commitphase_counts_;
         total_wwconflict_counts_ += other.local_wwconflict_counts_;
         total_traversal_counts_ += other.local_traversal_counts_;
+        total_readonly_abort_counts_ += other.local_readonly_abort_counts_;
+        total_additionalabort.insert(total_additionalabort.end(), other.local_additionalabort.begin(), other.local_additionalabort.end());
     }
 };
 
@@ -95,7 +109,8 @@ void waitForReady(const std::vector<char> &readys)
     }
 }
 
-std::vector<Result> ErmiaResult;
+std::vector<Result>
+    ErmiaResult;
 
 void initResult() { ErmiaResult.resize(thread_num); }
 
@@ -130,66 +145,13 @@ public:
     }
 };
 
-class Lock
-{
-public:
-    std::atomic<int> counter;
-
-    Lock() { counter.store(0, std::memory_order_release); }
-
-    bool trylock()
-    {
-        int expected, desired(-1);
-        expected = counter.load(std::memory_order_acquire);
-        for (;;)
-        {
-
-            if (expected != 0)
-            {
-                return false;
-            }
-            if (counter.compare_exchange_weak(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
-                return true;
-        }
-    }
-
-    void getlock()
-    {
-        int expected, desired(-1);
-        for (;;)
-        {
-            expected = counter.load(memory_order_acquire);
-            if (expected != 0)
-                continue;
-            if (counter.compare_exchange_weak(expected, -1, memory_order_acq_rel, memory_order_acquire))
-                break;
-        }
-    }
-
-    void unlock()
-    {
-        int expected, desired(0);
-        expected = counter.load(memory_order_acquire);
-        if (counter.compare_exchange_weak(expected, desired, memory_order_acq_rel, memory_order_acquire) == false)
-        {
-            cout << "error unlock" << endl;
-        }
-        // counter++;
-    }
-};
-
 class Tuple
 {
 public:
     uint64_t key;
     std::atomic<Version *> latest_;
-    Lock lock_;
 
-    Tuple()
-    {
-        latest_.store(nullptr);
-        Lock();
-    }
+    Tuple() { latest_.store(nullptr); }
 };
 
 Tuple *Table;       // databaseのtable
@@ -223,10 +185,26 @@ public:
     Task(Ope ope, uint64_t key, uint64_t write_val) : ope_(ope), key_(key), write_val_(write_val) {}
 };
 
+void viewtask(vector<Task> &tasks)
+{
+    for (auto itr = tasks.begin(); itr != tasks.end(); itr++)
+    {
+        if (itr->ope_ == Ope::READ)
+        {
+            cout << "R" << itr->key_ << " ";
+        }
+        else
+        {
+            cout << "W" << itr->key_ << " ";
+        }
+    }
+    cout << endl;
+}
+
 void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
 {
     tasks.clear();
-    if ((zipf() % 100) < ronly_ratio)
+    if ((rnd.next() % 100) < ronly_ratio)
     {
         for (size_t i = 0; i < max_ope_readonly; ++i)
         {
@@ -238,7 +216,7 @@ void makeTask(std::vector<Task> &tasks, Xoroshiro128Plus &rnd, FastZipf &zipf)
     }
     else
     {
-        for (size_t i = 0; i < (/*zipf() %*/ max_ope); ++i)
+        for (size_t i = 0; i < max_ope; ++i)
         {
             uint64_t tmpkey;
             // decide access destination key.
@@ -264,9 +242,8 @@ public:
     uint32_t pstamp_ = 0;          // Predecessor high-water mark, η (T)
     uint32_t sstamp_ = UINT32_MAX; // Successor low-water mark, pi (T)
     uint32_t txid_;                // TID and begin timestamp
-    bool lock_flag = false;
-    bool deadlock_flag = false;
     Status status_ = Status::inFlight;
+    int abortcount_ = 0;
 
     vector<Operation> read_set_;  // write set
     vector<Operation> write_set_; // read set
@@ -305,7 +282,6 @@ public:
 
     void tbegin()
     {
-        // new transaction->get timestamp
         this->txid_ = atomic_fetch_add(&timestampcounter, 1);
         this->cstamp_ = 0;
         pstamp_ = 0;
@@ -313,7 +289,21 @@ public:
         status_ = Status::inFlight;
     }
 
-    void ssn_tread(uint64_t key)
+    void ssn_tread(Version *ver, uint64_t key)
+    {
+        // update eta(t) with w:r edges
+        this->pstamp_ = max(this->pstamp_, ver->cstamp_.load(memory_order_acquire));
+
+        if (ver->sstamp_.load(memory_order_acquire) == (UINT32_MAX))
+            //// no overwrite yet
+            read_set_.emplace_back(key, ver, ver->val_);
+        else
+            // update pi with r:w edge
+            this->sstamp_ = min(this->sstamp_, ver->sstamp_.load(memory_order_acquire));
+        verify_exclusion_or_abort();
+    }
+
+    void tread(uint64_t key)
     {
         // read-own-writes, re-read from previous read in the same tx.
         if (searchWriteSet(key) == true || searchReadSet(key) == true)
@@ -330,19 +320,8 @@ public:
             ++res_->local_traversal_counts_;
         }
 
-        // update eta(t) with w:r edges
-        this->pstamp_ = max(this->pstamp_, ver->cstamp_.load(memory_order_acquire));
+        ssn_tread(ver, key);
 
-        if (ver->sstamp_.load(memory_order_acquire) == (UINT32_MAX))
-        { //// no overwrite yet
-            read_set_.emplace_back(key, ver, ver->val_);
-        }
-        else
-        {
-            // update pi with r:w edge
-            this->sstamp_ = min(this->sstamp_, ver->sstamp_.load(memory_order_acquire));
-        }
-        verify_exclusion_or_abort();
         if (this->status_ == Status::aborted)
         {
             ++res_->local_readphase_counts_;
@@ -352,7 +331,28 @@ public:
         return;
     }
 
-    void ssn_twrite(uint64_t key, uint64_t write_val)
+    void ssn_twrite(Version *desired, uint64_t key)
+    {
+        // Insert my tid for ver->prev_->sstamp_
+        desired->prev_->pstamp_.store(this->txid_, memory_order_release);
+
+        // Update eta with w:r edge
+        this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
+
+        verify_exclusion_or_abort();
+
+        // t.reads.discard(v)
+        for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
+        {
+            if ((*itr).key_ == key)
+            {
+                read_set_.erase(itr);
+                break;
+            }
+        }
+    }
+
+    void twrite(uint64_t key, uint64_t write_val)
     {
         // update local write set
         if (searchWriteSet(key) == true)
@@ -361,65 +361,65 @@ public:
         Tuple *tuple;
         tuple = get_tuple(key);
 
-        // -------------------------------------------------------------------------------------
-        // no wait
-        if (tuple->lock_.trylock() == false)
-        {
-            this->status_ = Status::aborted;
-            ++res_->local_wwconflict_counts_;
-            return;
-        }
-        // -------------------------------------------------------------------------------------
-
         // If v not in t.writes:
         Version *expected, *desired;
         desired = new Version();
-        desired->cstamp_ = this->txid_;
+        desired->cstamp_.store(this->txid_, memory_order_release);
         desired->val_ = write_val;
 
         Version *vertmp;
         expected = tuple->latest_.load(memory_order_acquire);
-        desired->prev_ = expected;
-        tuple->latest_.store(desired, memory_order_release);
 
-        // Update eta with w:r edge
-        this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
+        for (;;)
+        {
+            // first committer wins
+            //  Forbid a transaction to update a record that has a committed version later than its begin timestamp.
+            if (expected->status_.load(memory_order_acquire) == Status::inFlight)
+            {
+                if (this->txid_ <= expected->cstamp_.load(memory_order_acquire))
+                {
+                    this->status_ = Status::aborted;
+                    ++res_->local_wwconflict_counts_;
+                    goto FINISH_TWRITE;
+                }
+                expected = tuple->latest_.load(memory_order_acquire);
+                continue;
+            }
 
-        // t.writes.add(V)
+            // if latest version is not comitted, vertmp is latest committed version.
+            vertmp = expected;
+            while (vertmp->status_.load(memory_order_acquire) != Status::committed)
+            {
+                vertmp = vertmp->prev_;
+            }
+
+            if (txid_ < vertmp->cstamp_.load(memory_order_acquire))
+            {
+                // Writers must abort if they would overwirte a version created after their snapshot.
+                this->status_ = Status::aborted;
+                ++res_->local_wwconflict_counts_;
+                goto FINISH_TWRITE;
+            }
+            desired->prev_ = expected;
+            if (tuple->latest_.compare_exchange_strong(
+                    expected, desired, memory_order_acq_rel, memory_order_acquire))
+                break;
+        }
+
+        ssn_twrite(desired, key);
+
+        //   t.writes.add(V)
         write_set_.emplace_back(key, desired);
 
-        // t.reads.discard(v)
-        for (auto itr = read_set_.begin(); itr != read_set_.end();)
-        {
-            if (itr->key_ == key)
-                itr = read_set_.erase(itr);
-            else
-                ++itr;
-        }
-
-        verify_exclusion_or_abort();
         if (this->status_ == Status::aborted)
-        {
             ++res_->local_writephase_counts_;
-            goto FINISH_TWRITE;
-        }
 
     FINISH_TWRITE:
-        if (this->status_ == Status::aborted)
-        {
-            delete desired;
-        }
         return;
     }
 
-    void
-    ssn_commit()
+    void ssn_commit()
     {
-        this->cstamp_ = atomic_fetch_add(&timestampcounter, 1);
-
-        // begin pre-commit
-        SsnLock.lock();
-
         // finalize pi(T)
         this->sstamp_ = min(this->sstamp_, this->cstamp_);
         for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
@@ -440,7 +440,6 @@ public:
         {
             status_ = Status::aborted;
             ++res_->local_commitphase_counts_;
-            SsnLock.unlock();
             return;
         }
 
@@ -456,87 +455,74 @@ public:
             (*itr).ver_->prev_->sstamp_.store(this->sstamp_, memory_order_release);
             // initialize new version
             (*itr).ver_->pstamp_.store(this->cstamp_, memory_order_release);
-            (*itr).ver_->cstamp_.store((*itr).ver_->pstamp_, memory_order_release);
         }
+    }
 
-        // status, inFlight -> committed
-        for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
-        {
-            (*itr).ver_->status_.store(Status::committed, memory_order_release);
-            Tuple *tmp = get_tuple(itr->key_);
-            tmp->lock_.unlock();
-        }
+    void commit()
+    {
+        this->cstamp_ = atomic_fetch_add(&timestampcounter, 1);
 
-        // -------------------------------------------------------------------------------------
-        if (USE_LOCK == 1) // r-unlock
+        // begin pre-commit
+        SsnLock.lock();
+
+        ssn_commit();
+
+        if (this->status_ == Status::committed)
         {
-            if (this->lock_flag == true)
+            // これはSIでも必要
+            for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
             {
-                this->lock_flag = false;
-                for (auto itr = read_set_.begin(); itr != read_set_.end(); itr++)
-                {
-                    Tuple *tmp = get_tuple(itr->key_);
-                    tmp->lock_.unlock();
-                }
+                (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
+                (*itr).ver_->status_.store(Status::committed, memory_order_release);
             }
+            SsnLock.unlock();
         }
-        // -------------------------------------------------------------------------------------
-        this->status_ = Status::committed;
-        this->deadlock_flag = false;
-        SsnLock.unlock();
+        else
+        {
+            if (this->status_ == Status::inFlight)
+                cout << "commit error" << endl;
+            SsnLock.unlock();
+            return;
+        }
         read_set_.clear();
         write_set_.clear();
+
+        if (this->abortcount_ != 0)
+            res_->local_additionalabort.push_back(this->abortcount_);
+        this->abortcount_ = 0;
         return;
     }
 
-    void abort()
+    void ssn_abort()
     {
         for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
         {
             Version *next_committed = (*itr).ver_->prev_;
             while (next_committed->status_.load(memory_order_acquire) != Status::committed)
                 next_committed = next_committed->prev_;
-            //    cancel successor mark(sstamp)
+            // cancel successor mark(sstamp)
             next_committed->sstamp_.store(UINT32_MAX, memory_order_release);
+        }
+    }
+
+    void abort()
+    {
+        ssn_abort();
+
+        for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
+        {
             (*itr).ver_->status_.store(Status::aborted, memory_order_release);
-            Tuple *tuple;
-            tuple = get_tuple(itr->key_);
-            tuple->lock_.unlock();
         }
         write_set_.clear();
 
         // notify that this transaction finishes reading the version now.
         read_set_.clear();
         ++res_->local_abort_counts_;
-        if (lock_flag == true)
+        if (isreadonly())
         {
-            cout << "error" << endl;
+            ++res_->local_readonly_abort_counts_;
+            ++this->abortcount_;
         }
-
-        // -------------------------------------------------------------------------------------
-        if (USE_LOCK == 1 && isreadonly() == true)
-        {
-            // 提案手法: read only transactionのlock
-            // dead lock(between read locks) prevention
-            vector<int> tmp(task_set_.size());
-            for (int i = 0; i < task_set_.size(); i++)
-            {
-                tmp.at(i) = task_set_.at(i).key_;
-            }
-            std::sort(tmp.begin(), tmp.end());
-            tmp.erase(std::unique(tmp.begin(), tmp.end()), tmp.end());
-            for (auto itr = tmp.begin(); itr != tmp.end(); itr++)
-            {
-                Tuple *tmptuple = get_tuple(*itr);
-                // tmptuple->lock_.lock_upgrade();
-                tmptuple->lock_.getlock();
-            }
-            this->txid_ = this->cstamp_;
-            this->lock_flag = true;
-            ++res_->local_uselock_counts_;
-            return;
-        }
-        // -------------------------------------------------------------------------------------
     }
 
     void verify_exclusion_or_abort()
@@ -590,7 +576,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
     Xoroshiro128Plus rnd;
     rnd.init();
     Result &myres = std::ref(ErmiaResult[thid]);
-    FastZipf zipf(&rnd, 0, tuple_num);
+    FastZipf zipf(&rnd, skew, tuple_num);
 
     Transaction trans(thid, (Result *)&ErmiaResult[thid]);
 
@@ -603,6 +589,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
     while (quit == false)
     {
         makeTask(trans.task_set_, rnd, zipf);
+        // viewtask(trans.task_set_);
 
     RETRY:
         if (quit == true)
@@ -614,11 +601,11 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
         {
             if ((*itr).ope_ == Ope::READ)
             {
-                trans.ssn_tread((*itr).key_);
+                trans.tread((*itr).key_);
             }
             else if ((*itr).ope_ == Ope::WRITE)
             {
-                trans.ssn_twrite((*itr).key_, (*itr).write_val_);
+                trans.twrite((*itr).key_, (*itr).write_val_);
             }
             // early abort.
             if (trans.status_ == Status::aborted)
@@ -628,7 +615,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
                 goto RETRY;
             }
         }
-        trans.ssn_commit();
+        trans.commit();
         if (trans.status_ == Status::committed)
         {
             myres.local_commit_counts_++;
@@ -644,7 +631,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit)
 
 int main(int argc, char *argv[])
 {
-    displayParameter();
+    // displayParameter();
     makeDB();
     chrono::system_clock::time_point starttime, endtime;
 
@@ -685,6 +672,8 @@ int main(int argc, char *argv[])
     cout << "latency[ns]:\t\t\t" << powl(10.0, 9.0) / result * thread_num
          << endl;
     cout << "throughput[tps]:\t\t" << result << endl;
+
+    std::quick_exit(0);
 
     return 0;
 }

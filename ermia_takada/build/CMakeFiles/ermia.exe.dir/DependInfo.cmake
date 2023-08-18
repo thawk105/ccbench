@@ -4,7 +4,9 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/ccbench/ermia_takada/ermia.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/ermia.cc.o"
+  "/home/ccbench/ermia_takada/frame.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/frame.cc.o"
+  "/home/ccbench/ermia_takada/si.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/si.cc.o"
+  "/home/ccbench/ermia_takada/ssn.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/ssn.cc.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
@@ -19,11 +21,12 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
   "clocks_per_us=2100"
   "extime=3"
   "max_ope=10"
-  "max_ope_readonly=10"
-  "ronly_ratio=30"
-  "rratio=50"
-  "thread_num=10"
-  "tuple_num=1000"
+  "max_ope_readonly=100"
+  "ronly_ratio=50"
+  "rratio=10"
+  "skew=0.99"
+  "thread_num=4"
+  "tuple_num=10000"
   )
 
 # The include file search paths:

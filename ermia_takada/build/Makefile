@@ -123,32 +123,86 @@ ermia.exe/fast:
 	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/build
 .PHONY : ermia.exe/fast
 
-ermia.o: ermia.cc.o
+frame.o: frame.cc.o
 
-.PHONY : ermia.o
+.PHONY : frame.o
 
 # target to build an object file
-ermia.cc.o:
-	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/ermia.cc.o
-.PHONY : ermia.cc.o
+frame.cc.o:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/frame.cc.o
+.PHONY : frame.cc.o
 
-ermia.i: ermia.cc.i
+frame.i: frame.cc.i
 
-.PHONY : ermia.i
+.PHONY : frame.i
 
 # target to preprocess a source file
-ermia.cc.i:
-	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/ermia.cc.i
-.PHONY : ermia.cc.i
+frame.cc.i:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/frame.cc.i
+.PHONY : frame.cc.i
 
-ermia.s: ermia.cc.s
+frame.s: frame.cc.s
 
-.PHONY : ermia.s
+.PHONY : frame.s
 
 # target to generate assembly for a file
-ermia.cc.s:
-	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/ermia.cc.s
-.PHONY : ermia.cc.s
+frame.cc.s:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/frame.cc.s
+.PHONY : frame.cc.s
+
+si.o: si.cc.o
+
+.PHONY : si.o
+
+# target to build an object file
+si.cc.o:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/si.cc.o
+.PHONY : si.cc.o
+
+si.i: si.cc.i
+
+.PHONY : si.i
+
+# target to preprocess a source file
+si.cc.i:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/si.cc.i
+.PHONY : si.cc.i
+
+si.s: si.cc.s
+
+.PHONY : si.s
+
+# target to generate assembly for a file
+si.cc.s:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/si.cc.s
+.PHONY : si.cc.s
+
+ssn.o: ssn.cc.o
+
+.PHONY : ssn.o
+
+# target to build an object file
+ssn.cc.o:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/ssn.cc.o
+.PHONY : ssn.cc.o
+
+ssn.i: ssn.cc.i
+
+.PHONY : ssn.i
+
+# target to preprocess a source file
+ssn.cc.i:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/ssn.cc.i
+.PHONY : ssn.cc.i
+
+ssn.s: ssn.cc.s
+
+.PHONY : ssn.s
+
+# target to generate assembly for a file
+ssn.cc.s:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/ssn.cc.s
+.PHONY : ssn.cc.s
 
 # Help Target
 help:
@@ -159,9 +213,15 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... ermia.exe"
-	@echo "... ermia.o"
-	@echo "... ermia.i"
-	@echo "... ermia.s"
+	@echo "... frame.o"
+	@echo "... frame.i"
+	@echo "... frame.s"
+	@echo "... si.o"
+	@echo "... si.i"
+	@echo "... si.s"
+	@echo "... ssn.o"
+	@echo "... ssn.i"
+	@echo "... ssn.s"
 .PHONY : help
 
 

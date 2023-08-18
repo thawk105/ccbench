@@ -1,1 +1,1 @@
-/usr/bin/c++     CMakeFiles/ermia.exe.dir/ermia.cc.o  -o ermia.exe  /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /usr/lib/x86_64-linux-gnu/libgflags.so ../../third_party/mimalloc/out/release/libmimalloc.a -lpthread 
+/usr/bin/c++     CMakeFiles/ermia.exe.dir/frame.cc.o CMakeFiles/ermia.exe.dir/si.cc.o CMakeFiles/ermia.exe.dir/ssn.cc.o  -o ermia.exe  /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 /usr/lib/x86_64-linux-gnu/libgflags.so ../../third_party/mimalloc/out/release/libmimalloc.a -lpthread 

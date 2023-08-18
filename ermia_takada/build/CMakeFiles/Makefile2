@@ -74,12 +74,12 @@ clean: CMakeFiles/ermia.exe.dir/clean
 CMakeFiles/ermia.exe.dir/all:
 	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/depend
 	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ccbench/ermia_takada/build/CMakeFiles --progress-num=1,2 "Built target ermia.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/ccbench/ermia_takada/build/CMakeFiles --progress-num=1,2,3,4 "Built target ermia.exe"
 .PHONY : CMakeFiles/ermia.exe.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/ermia.exe.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/ccbench/ermia_takada/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/ccbench/ermia_takada/build/CMakeFiles 4
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/ermia.exe.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/ccbench/ermia_takada/build/CMakeFiles 0
 .PHONY : CMakeFiles/ermia.exe.dir/rule
