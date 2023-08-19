@@ -58,11 +58,43 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
     desired = new Version();
     desired->cstamp_.store(this->txid_, memory_order_release);
     desired->val_ = write_val;
+    desired->mt_.lock();
 
-    Version *vertmp;
     expected = tuple->latest_.load(memory_order_acquire);
 
-    expected->mt_.lock();
+    //----------------------------------------------------------------
+    // deadlock prevention(no-wait)
+    /*if (!expected->mt_.try_lock())
+    {
+        this->status_ = Status::aborted;
+        ++res_->local_wwconflict_counts_;
+        goto FINISH_TWRITE;
+    }*/
+
+    //----------------------------------------------------------------
+    // deadlock prevention(wait-die)
+    for (;;)
+    {
+        if (!expected->mt_.try_lock())
+        {
+            // prevent dirty write
+            if (expected->status_.load(memory_order_acquire) == Status::inFlight)
+            {
+                if (this->txid_ > expected->cstamp_.load(memory_order_acquire))
+                {
+                    this->status_ = Status::aborted;
+                    ++res_->local_wwconflict_counts_;
+                    goto FINISH_TWRITE;
+                }
+            }
+            expected = tuple->latest_.load(memory_order_acquire);
+            continue;
+        }
+        else
+            break;
+    }
+    //----------------------------------------------------------------
+
     desired->prev_ = expected;
     tuple->latest_ = desired;
 
@@ -91,6 +123,7 @@ void Transaction::commit()
             (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
             (*itr).ver_->status_.store(Status::committed, memory_order_release);
             (*itr).ver_->prev_->mt_.unlock();
+            (*itr).ver_->mt_.unlock();
         }
         SsnLock.unlock();
     }
@@ -118,6 +151,7 @@ void Transaction::abort()
     {
         (*itr).ver_->status_.store(Status::aborted, memory_order_release);
         (*itr).ver_->prev_->mt_.unlock();
+        (*itr).ver_->mt_.unlock();
     }
     write_set_.clear();
 

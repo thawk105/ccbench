@@ -64,8 +64,7 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
 
     for (;;)
     {
-        // first committer wins
-        //  Forbid a transaction to update a record that has a committed version later than its begin timestamp.
+        // prevent dirty write
         if (expected->status_.load(memory_order_acquire) == Status::inFlight)
         {
             if (this->txid_ <= expected->cstamp_.load(memory_order_acquire))
@@ -77,7 +76,8 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
             expected = tuple->latest_.load(memory_order_acquire);
             continue;
         }
-
+        // first committer wins
+        //  Forbid a transaction to update a record that has a committed version later than its begin timestamp.
         // if latest version is not comitted, vertmp is latest committed version.
         vertmp = expected;
         while (vertmp->status_.load(memory_order_acquire) != Status::committed)

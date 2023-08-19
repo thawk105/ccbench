@@ -59,8 +59,24 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
     desired->cstamp_.store(this->txid_, memory_order_release);
     desired->val_ = write_val;
 
-    Version *vertmp;
     expected = tuple->latest_.load(memory_order_acquire);
+    for (;;)
+    {
+        // prevent dirty write
+        if (expected->status_.load(memory_order_acquire) == Status::inFlight)
+        {
+            if (this->txid_ <= expected->cstamp_.load(memory_order_acquire))
+            {
+                this->status_ = Status::aborted;
+                ++res_->local_wwconflict_counts_;
+                goto FINISH_TWRITE;
+            }
+            expected = tuple->latest_.load(memory_order_acquire);
+            continue;
+        }
+        else
+            break;
+    }
 
     expected->mt_.lock();
     desired->prev_ = expected;
