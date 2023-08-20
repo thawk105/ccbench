@@ -150,32 +150,32 @@ frame.cc.s:
 	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/frame.cc.s
 .PHONY : frame.cc.s
 
-si.o: si.cc.o
+rc.o: rc.cc.o
 
-.PHONY : si.o
+.PHONY : rc.o
 
 # target to build an object file
-si.cc.o:
-	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/si.cc.o
-.PHONY : si.cc.o
+rc.cc.o:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/rc.cc.o
+.PHONY : rc.cc.o
 
-si.i: si.cc.i
+rc.i: rc.cc.i
 
-.PHONY : si.i
+.PHONY : rc.i
 
 # target to preprocess a source file
-si.cc.i:
-	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/si.cc.i
-.PHONY : si.cc.i
+rc.cc.i:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/rc.cc.i
+.PHONY : rc.cc.i
 
-si.s: si.cc.s
+rc.s: rc.cc.s
 
-.PHONY : si.s
+.PHONY : rc.s
 
 # target to generate assembly for a file
-si.cc.s:
-	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/si.cc.s
-.PHONY : si.cc.s
+rc.cc.s:
+	$(MAKE) -f CMakeFiles/ermia.exe.dir/build.make CMakeFiles/ermia.exe.dir/rc.cc.s
+.PHONY : rc.cc.s
 
 ssn.o: ssn.cc.o
 
@@ -216,9 +216,9 @@ help:
 	@echo "... frame.o"
 	@echo "... frame.i"
 	@echo "... frame.s"
-	@echo "... si.o"
-	@echo "... si.i"
-	@echo "... si.s"
+	@echo "... rc.o"
+	@echo "... rc.i"
+	@echo "... rc.s"
 	@echo "... ssn.o"
 	@echo "... ssn.i"
 	@echo "... ssn.s"

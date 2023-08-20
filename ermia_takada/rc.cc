@@ -65,7 +65,7 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
         // prevent dirty write
         if (expected->status_.load(memory_order_acquire) == Status::inFlight)
         {
-            if (this->txid_ <= expected->cstamp_.load(memory_order_acquire))
+            if (this->txid_ > expected->cstamp_.load(memory_order_acquire))
             {
                 this->status_ = Status::aborted;
                 ++res_->local_wwconflict_counts_;

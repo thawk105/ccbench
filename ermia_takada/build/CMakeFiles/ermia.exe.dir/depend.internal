@@ -7,9 +7,9 @@ CMakeFiles/ermia.exe.dir/frame.cc.o
  /home/ccbench/include/inline.hh
  /home/ccbench/include/random.hh
  /home/ccbench/include/zipf.hh
-CMakeFiles/ermia.exe.dir/si.cc.o
+CMakeFiles/ermia.exe.dir/rc.cc.o
  /home/ccbench/ermia_takada/frame.hh
- /home/ccbench/ermia_takada/si.cc
+ /home/ccbench/ermia_takada/rc.cc
  /home/ccbench/include/inline.hh
  /home/ccbench/include/random.hh
  /home/ccbench/include/zipf.hh

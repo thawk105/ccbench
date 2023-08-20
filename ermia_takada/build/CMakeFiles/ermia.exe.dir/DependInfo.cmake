@@ -5,7 +5,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
   "/home/ccbench/ermia_takada/frame.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/frame.cc.o"
-  "/home/ccbench/ermia_takada/si.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/si.cc.o"
+  "/home/ccbench/ermia_takada/rc.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/rc.cc.o"
   "/home/ccbench/ermia_takada/ssn.cc" "/home/ccbench/ermia_takada/build/CMakeFiles/ermia.exe.dir/ssn.cc.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
@@ -20,7 +20,7 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
   "USE_LOCK=0"
   "clocks_per_us=2100"
   "extime=3"
-  "max_ope=10"
+  "max_ope=20"
   "max_ope_readonly=100"
   "ronly_ratio=50"
   "rratio=10"

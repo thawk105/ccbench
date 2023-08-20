@@ -22,10 +22,10 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 #if you want to execute SI+SSN
-file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "si.cc")
+#file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "si.cc")
 
 #if you want to execute RC+SSN
-#file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rc.cc")
+file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rc.cc")
 
 #if you want to execute RCL+SSN
 #file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rcl.cc")
@@ -45,7 +45,7 @@ add_definitions(-DCACHE_LINE_SIZE=64)
 add_definitions(-DPAGE_SIZE=4096)
 add_definitions(-Dclocks_per_us=2100)   #CPU_MHz. Use this info for measuring time
 add_definitions(-Dextime=3)             #Execution time[sec]
-add_definitions(-Dmax_ope=10)           #Total number of operations per single transaction
+add_definitions(-Dmax_ope=20)           #Total number of operations per single transaction
 add_definitions(-Dmax_ope_readonly=100)  #Total number of operations per read only transaction
 add_definitions(-Dronly_ratio=50)        #read-only transaction rate
 add_definitions(-Drratio=10)            #read ratio of single transaction
