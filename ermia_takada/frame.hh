@@ -37,6 +37,8 @@ public:
     uint64_t total_readonly_abort_counts_ = 0;
     vector<int> local_additionalabort;
     vector<int> total_additionalabort;
+    uint64_t local_rdeadlock_abort_counts_ = 0;
+    uint64_t total_rdeadlock_abort_counts_ = 0;
 
     void displayAllResult();
 
@@ -59,11 +61,69 @@ public:
     std::atomic<uint32_t> sstamp_; // Version successor stamp, pi(V)
     std::atomic<uint32_t> cstamp_; // Version creation stamp, c(V)
     std::atomic<Status> status_;
-    std::mutex mt_; // 各versionのlock
+    std::atomic<uint32_t> pstamp_for_rlock_; // 提案手法用, eta
+    bool locked_flag_;                       // rlockによって待たされたupdate transaction
 
     Version() { init(); }
 
     void init();
+};
+
+class WRLock
+{
+public:
+    std::atomic<int> counter;
+    bool isupgraded;
+    WRLock()
+    {
+        counter.store(0, std::memory_order_release);
+        isupgraded = false;
+    }
+
+    bool w_try_lock() // 1
+    {
+        int expected, desired(1);
+        for (;;)
+        {
+            expected = counter.load(std::memory_order_acquire);
+            if (expected != 0)
+                return false;
+            if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
+                return true;
+        }
+    }
+
+    bool r_try_lock() //-1
+    {
+        int expected, desired;
+        for (;;)
+        {
+            expected = counter.load(std::memory_order_acquire);
+            if (expected != 1)
+                desired = expected - 1;
+            else
+                return false;
+            if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
+                return true;
+        }
+    }
+
+    void w_unlock()
+    {
+        counter--;
+    }
+
+    void r_unlock()
+    {
+        int expected, desired;
+        for (;;)
+        {
+            expected = counter.load(std::memory_order_acquire);
+            desired = expected + 1;
+            if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
+                break;
+        }
+    }
 };
 
 class Tuple
@@ -71,8 +131,15 @@ class Tuple
 public:
     uint64_t key;
     std::atomic<Version *> latest_;
+    std::mutex mt_;
+    bool rlocked;
+    WRLock mmt_;
 
-    Tuple() { latest_.store(nullptr); }
+    Tuple()
+    {
+        latest_.store(nullptr);
+        rlocked = false;
+    }
 };
 
 enum class Ope : uint8_t
@@ -113,10 +180,12 @@ public:
     uint32_t txid_;                // TID and begin timestamp
     Status status_ = Status::inFlight;
     int abortcount_ = 0;
+    bool lock_flag = false; // rlockをかけているtransaction
 
     vector<Operation> read_set_;  // write set
     vector<Operation> write_set_; // read set
     vector<Task> task_set_;       // 生成されたtransaction
+    vector<int> task_set_sorted_;
 
     Result *res_;
 
@@ -127,6 +196,7 @@ public:
         read_set_.reserve(max_ope_readonly);
         write_set_.reserve(max_ope);
         task_set_.reserve(max_ope_readonly);
+        task_set_sorted_.reserve(max_ope_readonly);
     }
 
     bool searchReadSet(unsigned int key);

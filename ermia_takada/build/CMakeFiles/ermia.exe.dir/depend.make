@@ -7,11 +7,11 @@ CMakeFiles/ermia.exe.dir/frame.cc.o: /home/ccbench/include/inline.hh
 CMakeFiles/ermia.exe.dir/frame.cc.o: /home/ccbench/include/random.hh
 CMakeFiles/ermia.exe.dir/frame.cc.o: /home/ccbench/include/zipf.hh
 
-CMakeFiles/ermia.exe.dir/rc.cc.o: ../frame.hh
-CMakeFiles/ermia.exe.dir/rc.cc.o: ../rc.cc
-CMakeFiles/ermia.exe.dir/rc.cc.o: /home/ccbench/include/inline.hh
-CMakeFiles/ermia.exe.dir/rc.cc.o: /home/ccbench/include/random.hh
-CMakeFiles/ermia.exe.dir/rc.cc.o: /home/ccbench/include/zipf.hh
+CMakeFiles/ermia.exe.dir/rcl.cc.o: ../frame.hh
+CMakeFiles/ermia.exe.dir/rcl.cc.o: ../rcl.cc
+CMakeFiles/ermia.exe.dir/rcl.cc.o: /home/ccbench/include/inline.hh
+CMakeFiles/ermia.exe.dir/rcl.cc.o: /home/ccbench/include/random.hh
+CMakeFiles/ermia.exe.dir/rcl.cc.o: /home/ccbench/include/zipf.hh
 
 CMakeFiles/ermia.exe.dir/ssn.cc.o: ../frame.hh
 CMakeFiles/ermia.exe.dir/ssn.cc.o: ../ssn.cc

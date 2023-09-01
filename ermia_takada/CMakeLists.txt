@@ -25,10 +25,10 @@ include(CompileOptions)
 #file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "si.cc")
 
 #if you want to execute RC+SSN
-file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rc.cc")
+#file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rc.cc")
 
 #if you want to execute RCL+SSN
-#file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rcl.cc")
+file(GLOB ERMIA_SOURCES "frame.cc" "ssn.cc" "rcl.cc")
 
 
 add_executable(ermia.exe ${ERMIA_SOURCES})
@@ -47,8 +47,8 @@ add_definitions(-Dclocks_per_us=2100)   #CPU_MHz. Use this info for measuring ti
 add_definitions(-Dextime=3)             #Execution time[sec]
 add_definitions(-Dmax_ope=20)           #Total number of operations per single transaction
 add_definitions(-Dmax_ope_readonly=100)  #Total number of operations per read only transaction
-add_definitions(-Dronly_ratio=50)        #read-only transaction rate
-add_definitions(-Drratio=10)            #read ratio of single transaction
+add_definitions(-Dronly_ratio=40)        #read-only transaction rate
+add_definitions(-Drratio=40)            #read ratio of single transaction
 add_definitions(-Dthread_num=4)        #Total number of records
 add_definitions(-Dtuple_num=10000)       #Total number of records
 add_definitions(-Dskew=0.99)               #skew(0~0.99)

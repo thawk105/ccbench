@@ -11,6 +11,7 @@ void Result::displayAllResult()
     cout << "commit SSNcheck abort:\t\t" << total_commitphase_counts_ << endl;
     cout << "ww conflict abort:\t\t" << total_wwconflict_counts_ << endl;
     cout << "total_readonly_abort:\t\t" << total_readonly_abort_counts_ << endl;
+    cout << "total_read deadlock_abort:\t" << total_rdeadlock_abort_counts_ << endl;
     // displayAbortRate
     long double ave_rate =
         (double)total_abort_counts_ /
@@ -41,6 +42,7 @@ void Result::addLocalAllResult(const Result &other)
     total_traversal_counts_ += other.local_traversal_counts_;
     total_readonly_abort_counts_ += other.local_readonly_abort_counts_;
     total_additionalabort.insert(total_additionalabort.end(), other.local_additionalabort.begin(), other.local_additionalabort.end());
+    total_rdeadlock_abort_counts_ += other.local_rdeadlock_abort_counts_;
 }
 
 bool isReady(const std::vector<char> &readys)
@@ -73,6 +75,8 @@ void Version::init()
     sstamp_.store(UINT32_MAX, std::memory_order_release);
     cstamp_.store(0, std::memory_order_release);
     status_.store(Status::inFlight, std::memory_order_release);
+    pstamp_for_rlock_.store(0, std::memory_order_release);
+    locked_flag_ = false;
     this->prev_ = nullptr;
 }
 

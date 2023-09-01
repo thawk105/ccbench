@@ -28,9 +28,11 @@ void Transaction::ssn_twrite(Version *desired, uint64_t key)
 {
     // Insert my tid for ver->prev_->sstamp_
     desired->prev_->pstamp_.store(this->txid_, memory_order_release);
-
-    // Update eta with w:r edge
-    this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
+    if (desired->locked_flag_)
+        this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_for_rlock_.load(memory_order_acquire));
+    else
+        //  Update eta with w:r edge
+        this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
 
     //   t.writes.add(V)
     write_set_.emplace_back(key, desired);
@@ -59,7 +61,10 @@ void Transaction::ssn_commit()
     // finalize eta(T)
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
     {
-        this->pstamp_ = max(this->pstamp_, (*itr).ver_->prev_->pstamp_.load(memory_order_acquire));
+        if ((*itr).ver_->locked_flag_)
+            this->pstamp_ = max(this->pstamp_, (*itr).ver_->prev_->pstamp_for_rlock_.load(memory_order_acquire));
+        else
+            this->pstamp_ = max(this->pstamp_, (*itr).ver_->prev_->pstamp_.load(memory_order_acquire));
     }
 
     // ssn_check_exclusion
@@ -76,6 +81,9 @@ void Transaction::ssn_commit()
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
     {
         (*itr).ver_->pstamp_.store((max((*itr).ver_->pstamp_.load(memory_order_acquire), this->cstamp_)), memory_order_release);
+        // 提案手法部分
+        if (this->lock_flag)
+            (*itr).ver_->pstamp_for_rlock_.store(max((*itr).ver_->pstamp_.load(memory_order_acquire), this->pstamp_));
     }
 
     // update pi

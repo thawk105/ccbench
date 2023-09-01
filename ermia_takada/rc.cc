@@ -78,10 +78,10 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
             break;
     }
 
-    expected->mt_.lock();
+    tuple->mt_.lock();
     desired->prev_ = expected;
     tuple->latest_ = desired;
-    expected->mt_.unlock();
+    tuple->mt_.unlock();
 
     ssn_twrite(desired, key);
 

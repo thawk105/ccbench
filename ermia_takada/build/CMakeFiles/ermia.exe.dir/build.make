@@ -70,18 +70,18 @@ CMakeFiles/ermia.exe.dir/frame.cc.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ermia.exe.dir/frame.cc.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ccbench/ermia_takada/frame.cc -o CMakeFiles/ermia.exe.dir/frame.cc.s
 
-CMakeFiles/ermia.exe.dir/rc.cc.o: CMakeFiles/ermia.exe.dir/flags.make
-CMakeFiles/ermia.exe.dir/rc.cc.o: ../rc.cc
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ccbench/ermia_takada/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/ermia.exe.dir/rc.cc.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/ermia.exe.dir/rc.cc.o -c /home/ccbench/ermia_takada/rc.cc
+CMakeFiles/ermia.exe.dir/rcl.cc.o: CMakeFiles/ermia.exe.dir/flags.make
+CMakeFiles/ermia.exe.dir/rcl.cc.o: ../rcl.cc
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ccbench/ermia_takada/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/ermia.exe.dir/rcl.cc.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/ermia.exe.dir/rcl.cc.o -c /home/ccbench/ermia_takada/rcl.cc
 
-CMakeFiles/ermia.exe.dir/rc.cc.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ermia.exe.dir/rc.cc.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ccbench/ermia_takada/rc.cc > CMakeFiles/ermia.exe.dir/rc.cc.i
+CMakeFiles/ermia.exe.dir/rcl.cc.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ermia.exe.dir/rcl.cc.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ccbench/ermia_takada/rcl.cc > CMakeFiles/ermia.exe.dir/rcl.cc.i
 
-CMakeFiles/ermia.exe.dir/rc.cc.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ermia.exe.dir/rc.cc.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ccbench/ermia_takada/rc.cc -o CMakeFiles/ermia.exe.dir/rc.cc.s
+CMakeFiles/ermia.exe.dir/rcl.cc.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ermia.exe.dir/rcl.cc.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ccbench/ermia_takada/rcl.cc -o CMakeFiles/ermia.exe.dir/rcl.cc.s
 
 CMakeFiles/ermia.exe.dir/ssn.cc.o: CMakeFiles/ermia.exe.dir/flags.make
 CMakeFiles/ermia.exe.dir/ssn.cc.o: ../ssn.cc
@@ -99,14 +99,14 @@ CMakeFiles/ermia.exe.dir/ssn.cc.s: cmake_force
 # Object files for target ermia.exe
 ermia_exe_OBJECTS = \
 "CMakeFiles/ermia.exe.dir/frame.cc.o" \
-"CMakeFiles/ermia.exe.dir/rc.cc.o" \
+"CMakeFiles/ermia.exe.dir/rcl.cc.o" \
 "CMakeFiles/ermia.exe.dir/ssn.cc.o"
 
 # External object files for target ermia.exe
 ermia_exe_EXTERNAL_OBJECTS =
 
 ermia.exe: CMakeFiles/ermia.exe.dir/frame.cc.o
-ermia.exe: CMakeFiles/ermia.exe.dir/rc.cc.o
+ermia.exe: CMakeFiles/ermia.exe.dir/rcl.cc.o
 ermia.exe: CMakeFiles/ermia.exe.dir/ssn.cc.o
 ermia.exe: CMakeFiles/ermia.exe.dir/build.make
 ermia.exe: /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
