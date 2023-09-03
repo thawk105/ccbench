@@ -26,6 +26,24 @@ void Transaction::tread(uint64_t key)
     // get version to read
     Tuple *tuple;
     tuple = get_tuple(key);
+
+    Version *expected;
+    for (;;)
+    {
+        expected = tuple->latest_.load(memory_order_acquire);
+        if (!tuple->mmt_.r_try_lock())
+        {
+            if (this->txid_ > expected->cstamp_.load(memory_order_acquire))
+            {
+                this->status_ = Status::aborted;
+                ++res_->local_wwconflict_counts_;
+                goto FINISH_TREAD;
+            }
+        }
+        else
+            break;
+    }
+
     Version *ver;
     ver = tuple->latest_.load(memory_order_acquire);
     while (ver->status_.load(memory_order_acquire) != Status::committed || txid_ < ver->cstamp_.load(memory_order_acquire))
@@ -35,6 +53,8 @@ void Transaction::tread(uint64_t key)
     }
 
     ssn_tread(ver, key);
+
+    tuple->mmt_.r_unlock(); // short duration?
 
     if (this->status_ == Status::aborted)
     {
@@ -75,21 +95,24 @@ void Transaction::twrite(uint64_t key, uint64_t write_val)
         expected = tuple->latest_.load(memory_order_acquire);
         if (!tuple->mmt_.w_try_lock())
         {
-            if (this->txid_ > expected->cstamp_.load(memory_order_acquire))
+            if (!tuple->rlocked)
             {
-                this->status_ = Status::aborted;
-                ++res_->local_wwconflict_counts_;
-                goto FINISH_TWRITE;
+                // deadlock prevention for write lock
+                if (this->txid_ > expected->cstamp_.load(memory_order_acquire))
+                {
+                    this->status_ = Status::aborted;
+                    ++res_->local_wdeadlock_abort_counts_;
+                    goto FINISH_TWRITE;
+                }
             }
             //----------------------------------------------------------------
-            // deadlock prevention for rlock
-            if (tuple->rlocked)
+            // deadlock prevention for r-only lock
+            else
             {
                 desired->locked_flag_ = true;
                 for (auto itr = write_set_.begin(); itr != write_set_.end(); itr++)
                 {
-                    Tuple *tmp;
-                    tmp = get_tuple((*itr).key_);
+                    Tuple *tmp = (*itr).tuple_;
                     if (tmp->rlocked)
                     {
                         this->status_ = Status::aborted;
@@ -131,8 +154,7 @@ void Transaction::commit()
         {
             (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
             (*itr).ver_->status_.store(Status::committed, memory_order_release);
-            Tuple *tmp;
-            tmp = get_tuple((*itr).key_);
+            Tuple *tmp = (*itr).tuple_;
             tmp->mmt_.w_unlock();
         }
         SsnLock.unlock();
@@ -174,9 +196,8 @@ void Transaction::abort()
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr)
     {
         (*itr).ver_->status_.store(Status::aborted, memory_order_release);
-        Tuple *tmptuple;
-        tmptuple = get_tuple((*itr).key_);
-        tmptuple->mmt_.w_unlock();
+        Tuple *tmp = (*itr).tuple_;
+        tmp->mmt_.w_unlock();
     }
     write_set_.clear();
     read_set_.clear();

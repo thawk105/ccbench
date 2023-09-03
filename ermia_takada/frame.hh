@@ -39,8 +39,11 @@ public:
     vector<int> total_additionalabort;
     uint64_t local_rdeadlock_abort_counts_ = 0;
     uint64_t total_rdeadlock_abort_counts_ = 0;
+    uint64_t local_wdeadlock_abort_counts_ = 0;
+    uint64_t total_wdeadlock_abort_counts_ = 0;
 
-    void displayAllResult();
+    void
+    displayAllResult();
 
     void addLocalAllResult(const Result &other);
 };
@@ -124,6 +127,20 @@ public:
                 break;
         }
     }
+
+    // if the transaction already have r-lock,
+    /*void rw_upgrade()
+    {
+        int expected, desired(1);
+        for (;;)
+        {
+            expected = counter.load(std::memory_order_acquire);
+            if (expected != -1)
+                continue;
+            if (counter.compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
+                break;
+        }
+    }*/
 };
 
 class Tuple
@@ -154,8 +171,10 @@ public:
     uint64_t key_;
     uint64_t value_; // read value
     Version *ver_;
+    Tuple *tuple_; // for lock
 
     Operation(uint64_t key, Version *ver, uint64_t value) : key_(key), ver_(ver), value_(value) {}
+    Operation(uint64_t key, Version *ver, Tuple *tuple) : key_(key), ver_(ver), tuple_(tuple) {}
     Operation(uint64_t key, Version *ver) : key_(key), ver_(ver) {}
 };
 

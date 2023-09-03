@@ -1,5 +1,7 @@
 #include "frame.hh"
 
+extern Tuple *Table;
+
 using namespace std;
 
 void Transaction::ssn_tbegin()
@@ -35,7 +37,7 @@ void Transaction::ssn_twrite(Version *desired, uint64_t key)
         this->pstamp_ = max(this->pstamp_, desired->prev_->pstamp_.load(memory_order_acquire));
 
     //   t.writes.add(V)
-    write_set_.emplace_back(key, desired);
+    write_set_.emplace_back(key, desired, &Table[key]);
 
     // t.reads.discard(v)
     for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr)
