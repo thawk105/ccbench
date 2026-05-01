@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libtool \
         pkg-config \
         git \
+        openssh-client \
         ca-certificates \
         sudo \
         curl \
