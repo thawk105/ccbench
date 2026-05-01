@@ -28,9 +28,6 @@ if (ENABLE_COVERAGE)
 endif ()
 
 function(set_compile_options target_name)
-    # -Wno-error=class-memaccess: third_party/masstree/stringbag.hh memsets a
-    # non-trivial type (info_type has a user-provided ctor but is otherwise
-    # POD-like). GCC 8+ warns; we don't control masstree, so keep it a warning.
     target_compile_options(${target_name}
-            PRIVATE -Wall -Wextra -Werror -Wno-error=class-memaccess)
+            PRIVATE -Wall -Wextra -Werror)
 endfunction(set_compile_options)
