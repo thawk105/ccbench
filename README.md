@@ -1,4 +1,8 @@
-# CCBench : Redesign and Implement Many Concurrency Control
+# CCBench: Concurrency Control Protocol Workbench
+
+<details>
+<summary>CI badges</summary>
+
 ![cicada_build](https://github.com/thawk105/ccbench/workflows/cicada_build/badge.svg)
 ![ermia_build](https://github.com/thawk105/ccbench/workflows/ermia_build/badge.svg)
 ![mocc_build](https://github.com/thawk105/ccbench/workflows/mocc_build/badge.svg)
@@ -8,111 +12,63 @@
 ![tictoc_build](https://github.com/thawk105/ccbench/workflows/tictoc_build/badge.svg)
 ![tpcc_silo_build_and_ctest](https://github.com/thawk105/ccbench/workflows/tpcc_silo_build_and_ctest/badge.svg)
 
-This platform is undergoing rewrite in the repository below.<br>
-https://github.com/thawk105/ccbench_v2 <br>
-Analysis paper using CCBench is below.<br>
-http://www.vldb.org/pvldb/vol13/p3531-tanabe.pdf <br>
----
+</details>
 
-## Installing a binary distribution package
-On Debian/Ubuntu Linux, execute below statement or bootstrap_apt.sh.
-```
-$ git clone --recurse-submodules this_repository
-$ cd ccbench
-$ sudo apt update -y && sudo apt-get install -y $(cat build_tools/ubuntu.deps)
-```
+CCBench is a workbench that re-implements major in-memory concurrency-control
+protocols (Silo, Cicada, MOCC, TicToc, ERMIA, SI, SS2PL, OCC) on a common
+substrate, plus a TPC-C harness for Silo. The accompanying analysis paper is
+at <http://www.vldb.org/pvldb/vol13/p3531-tanabe.pdf>.
 
-## Development on macOS / non-Ubuntu hosts (Dev Container)
-This repository targets x86_64 Linux (it uses `__cpuid_count`, `sched_setaffinity`,
-`<linux/fs.h>`, etc.) and does not build natively on macOS. A devcontainer is
-provided under [.devcontainer/](.devcontainer/) so you can edit and build from
-any host with Docker + the VS Code Dev Containers extension.
+## Quick start
 
-1. Open the repo in VS Code and run **Dev Containers: Reopen in Container**.
-2. The post-create hook runs `git submodule update --init --recursive` for you.
-3. Inside the container, build the third-party libraries once:
-   ```
-   ./build_tools/bootstrap.sh
-   ./build_tools/bootstrap_mimalloc.sh
-   ./build_tools/bootstrap_googletest.sh
-   ```
-4. Then build any protocol as described below.
+CCBench targets x86_64 Linux. On macOS, use the [.devcontainer/](.devcontainer/)
+(`Dev Containers: Reopen in Container`) — see [docs/build.md](docs/build.md)
+for caveats.
 
-The image is pinned to `linux/amd64` because the codebase relies on x86
-intrinsics. **On Apple Silicon this means QEMU emulation**: fine for editing,
-compiling, and correctness testing, but performance numbers from this
-environment are not meaningful — run benchmarks on real x86_64 Linux hardware.
+```sh
+git clone --recurse-submodules <repo>
+cd ccbench
+sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 
-## Prepare using
-note : Make install should be done by specifying a user-local path at the time of configure.
-```
-$ cd ccbench
-$ "run some build_tools/(bootstrap*.sh) files"
-```
-- Processing of bootstrap.sh :<br>
-Build third_party/masstree.
-- Processing of bootstrap_mimalloc.sh :<br>
-Build third_party/mimalloc.<br>
-- Processing of bootstrap_tbb.sh :<br>
-Build third_party/tbb<br>
+./build_tools/bootstrap.sh             # masstree
+./build_tools/bootstrap_mimalloc.sh    # mimalloc
+./build_tools/bootstrap_googletest.sh  # googletest
 
-Export LD_LIBRARY_PATH to appropriate paths.<br>
-Each protocols has own Makefile(or CMakeLists.txt), so you should build each.<br>
-
----
-
-## Data Structure
-### Masstree
-This is a submodule.  
-usage:  
-`git submodule init`  
-`git submodule update`  
-tanabe's wrapper is include/masstree\_wrapper.hpp
-
----
-
-## Experimental data
-https://github.com/thawk105/ccdata 
-
----
-
-## Runtime arguments
-This system uses third_party/gflags and third_party/glog.<br>
-So you can use without runtime arguments, then it executes with default args.<br>
-You can also use runtime arguments like below.<br>
-Note that args you don't set is used default args.<br>
-```
-$ ./cicada.exe -tuple_num=1000000 -thread_num=224
+cd silo && mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release .. && make -j
+./silo.exe -help
 ```
 
----
+## Repository layout
 
-## Details for improving performance
-- It uses xoroshiro128plus which is high performance random generator.
-- It is friendly to Linux vertual memory system.
-- It uses high performance memory allocator mimalloc/tbd appropriately.
-- It reduces memory management cost by our original technique.
-- It refrain from creating temporary objects to improve performance as much as possible.
-- It fixed bug of original cicada.
-- It modifies almost protocols appropriately to improve performance.
+- `<protocol>/` — one directory per CC protocol (`silo`, `cicada`, `mocc`,
+  `tictoc`, `ermia`, `si`, `ss2pl`, `occ`, `tpcc_silo`); each is built
+  independently and has its own `README.md`. Index in
+  [docs/protocols.md](docs/protocols.md).
+- `include/`, `common/` — shared headers and sources (rwlock, masstree wrapper,
+  zipf generator, etc.).
+- `build_tools/` — bootstrap scripts and the apt dependency list.
+- `third_party/` — submodules: `masstree`, `mimalloc`, `googletest`, `spdlog`.
+- `instruction/` — micro-benchmarks for individual instructions.
 
----
+## Documentation
 
-## Welcome
-Welcome pull request about 
-- Improvement of performance in any workloads.
-- Bug fix.
-- Improvement about comments (doxygen style is recommended).
-- Improvement of versatile.
-- Extending CCBench
-  - Reference materials : https://github.com/thawk105/ccbench/pull/7
-- Extend tests.
-  
----
+- [docs/build.md](docs/build.md) — full build instructions (host & devcontainer)
+- [docs/protocols.md](docs/protocols.md) — index of implemented protocols
+- [docs/runtime-args.md](docs/runtime-args.md) — runtime argument reference
+- Experimental data: <https://github.com/thawk105/ccdata>
+
+## Contributing
+
+Pull requests are welcome for performance improvements, bug fixes, doxygen-style
+comments, portability, tests, and protocol extensions. See
+[PR #7](https://github.com/thawk105/ccbench/pull/7) for an example of extending
+CCBench.
 
 ## Acknowledgments
-Takayuki.T dedicates special thanks to ...<br>
-- Cybozu Labs Youth 8th term supported this activity. (2018/4/10 - 2019/4/10)<br>
-- Takashi Hoshino who is very kind advisor from Cybozu Labs Youth.
-- Hideyuki Kawashima/Osamu Tatebe who is very kind supervisor.
 
+Takayuki Tanabe extends thanks to:
+
+- Cybozu Labs Youth (8th term, 2018-04-10 – 2019-04-10) for supporting this work.
+- Takashi Hoshino, advisor at Cybozu Labs Youth.
+- Hideyuki Kawashima and Osamu Tatebe, supervisors.
