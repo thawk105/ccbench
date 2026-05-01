@@ -1,0 +1,28 @@
+{
+  "name": "ccbench",
+  "image": "ghcr.io/thawk105/ccbench-devcontainer:latest",
+  "workspaceFolder": "/workspaces/ccbench",
+  "remoteUser": "vscode",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "xaver.clang-format",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "C_Cpp.default.cppStandard": "c++17",
+        "C_Cpp.default.intelliSenseMode": "linux-gcc-x64",
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": { "path": "/usr/bin/zsh" },
+          "bash": { "path": "/bin/bash" }
+        }
+      }
+    }
+  }
+}

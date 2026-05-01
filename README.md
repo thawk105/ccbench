@@ -22,6 +22,27 @@ $ cd ccbench
 $ sudo apt update -y && sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ```
 
+## Development on macOS / non-Ubuntu hosts (Dev Container)
+This repository targets x86_64 Linux (it uses `__cpuid_count`, `sched_setaffinity`,
+`<linux/fs.h>`, etc.) and does not build natively on macOS. A devcontainer is
+provided under [.devcontainer/](.devcontainer/) so you can edit and build from
+any host with Docker + the VS Code Dev Containers extension.
+
+1. Open the repo in VS Code and run **Dev Containers: Reopen in Container**.
+2. The post-create hook runs `git submodule update --init --recursive` for you.
+3. Inside the container, build the third-party libraries once:
+   ```
+   ./build_tools/bootstrap.sh
+   ./build_tools/bootstrap_mimalloc.sh
+   ./build_tools/bootstrap_googletest.sh
+   ```
+4. Then build any protocol as described below.
+
+The image is pinned to `linux/amd64` because the codebase relies on x86
+intrinsics. **On Apple Silicon this means QEMU emulation**: fine for editing,
+compiling, and correctness testing, but performance numbers from this
+environment are not meaningful — run benchmarks on real x86_64 Linux hardware.
+
 ## Prepare using
 note : Make install should be done by specifying a user-local path at the time of configure.
 ```
