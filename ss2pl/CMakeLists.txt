@@ -11,9 +11,27 @@ file(GLOB BOMB_SS2PL_SOURCES
         "util.cc"
         )
 
+file(GLOB TPCC_SS2PL_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "tpcc_ss2pl.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
 add_executable(bomb_ss2pl.exe ${BOMB_SS2PL_SOURCES})
+add_executable(tpcc_ss2pl.exe ${TPCC_SS2PL_SOURCES})
 
 target_link_libraries(bomb_ss2pl.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(tpcc_ss2pl.exe
         Boost::filesystem
         gflags::gflags
         ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a

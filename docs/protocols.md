@@ -13,7 +13,7 @@ Each directory below is an independent implementation with its own
 | [tictoc](../tictoc/) | TicToc                              | ✓ | ✓ | ✓ | Yu et al., SIGMOD 2016 |
 | [ermia](../ermia/)   | ERMIA (with SSN / latch-free SSN)   | ✓ | ✓ | ✓ | Kim et al., SIGMOD 2016; Wang et al., VLDB 2017 |
 | [oze](../oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC variant |
-| [ss2pl](../ss2pl/)   | Strong Strict 2-Phase Locking       | — | — | ✓ | Baseline locking |
+| [ss2pl](../ss2pl/)   | Strong Strict 2-Phase Locking       | — | ✓ | ✓ | Baseline locking |
 | [d2pl](../d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB and dBoMB only |
 | [mvto](../mvto/)     | Multi-Version Timestamp Ordering    | — | — | ✓ | Reed, 1978 |
 

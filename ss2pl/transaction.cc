@@ -194,6 +194,13 @@ Status TxExecutor::scan(const Storage s,
                         std::string_view left_key, bool l_exclusive,
                         std::string_view right_key, bool r_exclusive,
                         std::vector<TupleBody*>& result) {
+  return scan(s, left_key, l_exclusive, right_key, r_exclusive, result, -1);
+}
+
+Status TxExecutor::scan(const Storage s,
+                        std::string_view left_key, bool l_exclusive,
+                        std::string_view right_key, bool r_exclusive,
+                        std::vector<TupleBody*>& result, int64_t limit) {
   result.clear();
   auto rset_init_size = read_set_.size();
 
@@ -201,7 +208,7 @@ Status TxExecutor::scan(const Storage s,
   Masstrees[get_storage(s)].scan(
       left_key.empty() ? nullptr : left_key.data(), left_key.size(),
       l_exclusive, right_key.empty() ? nullptr : right_key.data(),
-      right_key.size(), r_exclusive, &scan_res, false);
+      right_key.size(), r_exclusive, &scan_res, limit);
 
   for (auto &&itr : scan_res) {
     SetElement<Tuple>* e = searchReadSet(s, itr->body_.get_key());
@@ -273,7 +280,12 @@ Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
         }
       }
 
-      read_set_.erase(rItr);
+      // Don't erase from read_set_: callers that hold pointers into it
+      // (e.g. TPC-C templates iterating scan results) would see them
+      // dangle. The lock state is tracked separately via {r,w}_lock_list_,
+      // so the read_set_ entry can stay; subsequent reads of the same key
+      // will still hit the (now-stale) read snapshot, which matches
+      // silo's behavior.
       goto FINISH_WRITE;
     }
   }
