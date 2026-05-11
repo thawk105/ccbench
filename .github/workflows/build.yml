@@ -79,6 +79,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZER=OFF
 
       - name: Build all protocols
-        # -j2 to keep peak memory bounded on the standard runner (linking
-        # ~28 binaries in parallel can otherwise OOM).
-        run: cmake --build build -j 2
+        # Release without sanitizer is light enough to use full runner
+        # parallelism. (Debug+ASan needed -j2 to avoid OOM, but we no
+        # longer build that here.)
+        run: cmake --build build -j $(nproc)
