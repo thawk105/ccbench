@@ -19,26 +19,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: read
-    # Reuse the devcontainer image (apt deps preinstalled).
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
 
+      - name: Cache apt packages
+        id: apt-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives/*.deb
+            /var/cache/apt/archives/partial/*.deb
+          key: apt-${{ runner.os }}-${{ hashFiles('build_tools/ubuntu.deps') }}
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            $(cat build_tools/ubuntu.deps) \
+            build-essential autoconf automake libtool pkg-config
+
       # Cache key invalidates when any submodule SHA or bootstrap script changes.
       - name: Compute bootstrap cache key
         id: bootstrap-key
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git submodule status > .submodule-state
           echo "hash=$(sha256sum .submodule-state build_tools/bootstrap*.sh | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
 
@@ -47,8 +53,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            third_party/masstree/libkohler_masstree_json.a
             third_party/masstree/lib*.a
+            third_party/masstree/config.h
+            third_party/masstree/config.status
             third_party/mimalloc/out
             third_party/googletest/build
           key: tp-${{ runner.os }}-${{ steps.bootstrap-key.outputs.hash }}
