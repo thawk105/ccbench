@@ -5,9 +5,11 @@
 *.s
 
 .idea
-.vscode
 cmake-build-debug
 cmake-build-release
+
+# CMake build directory
+build/
 
 # Created by https://www.gitignore.io/api/vim,c++,macos
 

@@ -1,6 +1,16 @@
 # An extended version of CCBench
 
-[CCBench](https://github.com/thawk105/ccbench)[1] is a benchmark platform for various concurrency control protocols. This repository provides an extended version of CCBench, which supports additional workloads and protocols.
+![build](https://github.com/thawk105/ccbench/workflows/build/badge.svg)
+
+[CCBench](https://github.com/thawk105/ccbench)[1] is a benchmark platform for various concurrency control protocols. This repository is an extended version of CCBench that adds the **TPC-C** and **BoMB** workloads on top of YCSB, plus several new protocols.
+
+| Protocol | YCSB | TPC-C | BoMB |
+|---|:-:|:-:|:-:|
+| Silo, MOCC, Cicada, ERMIA, TicToc | ✓ | ✓ | ✓ |
+| Oze | ✓ | ✓ | ✓ |
+| SS2PL, D2PL, MVTO | — | — | ✓ |
+
+The accompanying analysis paper for the original CCBench is at <http://www.vldb.org/pvldb/vol13/p3531-tanabe.pdf>.
 
 ## Workloads
 
@@ -71,7 +81,15 @@ TPC-C is a de facto standard benchmark for OLTP systems that simulates a warehou
 
 ## Getting Started
 
-### Build
+CCBench targets **x86_64 Linux**. On macOS, use the prebuilt devcontainer (recommended) — see [Quick start with devcontainer](#quick-start-with-devcontainer) below.
+
+### Quick start with devcontainer
+
+The repository ships with a `linux/amd64` devcontainer at [.devcontainer/](.devcontainer/) that pulls a prebuilt image from GHCR. In VS Code, run **`Dev Containers: Reopen in Container`** — submodules and apt deps are set up automatically by [.devcontainer/post-create.sh](.devcontainer/post-create.sh).
+
+On Apple Silicon the container runs under QEMU emulation: fine for development, **not** for benchmark numbers. See [docs/build.md](docs/build.md) for caveats.
+
+### Build (host)
 
 First, clone the repository and install the required packages. Note that the following steps are for Ubuntu. For other Linux distributions, install the equivalent packages.
 
@@ -81,21 +99,25 @@ $ cd ccbench
 $ sudo apt update -y && sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ```
 
-Then, build a dependent library.
+Build the dependent libraries.
 
 ```sh
-$ cd ccbench
-$ ./build_tools/bootstrap.sh
-$ ./build_tools/bootstrap_mimalloc.sh
+$ ./build_tools/bootstrap.sh             # masstree
+$ ./build_tools/bootstrap_mimalloc.sh    # mimalloc
+$ ./build_tools/bootstrap_googletest.sh  # googletest
 ```
 
-Finally, build benchmark binaries with all supported protocols.
+Build all protocols and workloads from the repository root using the top-level [CMakeLists.txt](CMakeLists.txt):
 
 ```sh
-$ mkdir build
-$ cd build
-$ cmake -DCMAKE_BUILD_TYPE=Release ..
-$ make
+$ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+$ cmake --build build -j
+```
+
+Or build a single binary:
+
+```sh
+$ cmake --build build --target tpcc_silo.exe
 ```
 
 ### Run
@@ -118,6 +140,22 @@ $ ./cicada/ycsb_cicada.exe --thread-num 8 --ycsb-rratio 50
 ```
 
 See usage with the `--help` option for details of the workload-specific options.
+
+## Documentation
+
+- [docs/build.md](docs/build.md) — full build instructions (host & devcontainer)
+- [docs/protocols.md](docs/protocols.md) — index of implemented protocols
+- [docs/runtime-args.md](docs/runtime-args.md) — runtime argument reference
+- [CLAUDE.md](CLAUDE.md) — repo-level context for AI assistants
+- Original CCBench experimental data: <https://github.com/thawk105/ccdata>
+
+## Acknowledgments
+
+Takayuki Tanabe extends thanks to:
+
+- Cybozu Labs Youth (8th term, 2018-04-10 – 2019-04-10) for supporting this work.
+- Takashi Hoshino, advisor at Cybozu Labs Youth.
+- Hideyuki Kawashima and Osamu Tatebe, supervisors.
 
 ## References
 
