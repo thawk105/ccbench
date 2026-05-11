@@ -19,26 +19,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    # Reuse the devcontainer image (apt deps preinstalled).
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Install apt dependencies
+      # Cache key invalidates when any submodule SHA or bootstrap script changes.
+      - name: Compute bootstrap cache key
+        id: bootstrap-key
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends \
-            $(cat build_tools/ubuntu.deps) \
-            build-essential autoconf automake libtool pkg-config
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git submodule status > .submodule-state
+          echo "hash=$(sha256sum .submodule-state build_tools/bootstrap*.sh | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore third_party build cache
+        id: tp-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            third_party/masstree/libkohler_masstree_json.a
+            third_party/masstree/lib*.a
+            third_party/mimalloc/out
+            third_party/googletest/build
+          key: tp-${{ runner.os }}-${{ steps.bootstrap-key.outputs.hash }}
 
       - name: Build third-party (masstree)
+        if: steps.tp-cache.outputs.cache-hit != 'true'
         run: ./build_tools/bootstrap.sh
 
       - name: Build third-party (mimalloc)
+        if: steps.tp-cache.outputs.cache-hit != 'true'
         run: ./build_tools/bootstrap_mimalloc.sh
 
       - name: Build third-party (googletest)
+        if: steps.tp-cache.outputs.cache-hit != 'true'
         run: ./build_tools/bootstrap_googletest.sh
 
       - name: Configure (top-level cmake)
