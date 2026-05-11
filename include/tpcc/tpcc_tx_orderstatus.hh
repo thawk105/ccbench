@@ -119,6 +119,16 @@ bool run_order_status(TxExecutor& tx, TPCCQuery::OrderStatus *query) {
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
+  // The OrderSecondary→Order indirection can return a primary key whose
+  // Order row is absent (the secondary index can be momentarily stale
+  // under concurrent writes). tx.read leaves *body unchanged on
+  // WARN_NOT_FOUND, so without this check we would dereference whatever
+  // body pointed to from the previous tx.read in this transaction —
+  // typically the Customer row, which is a different size and triggers
+  // a HeapObject::cast_to assertion.
+  if (stat != Status::OK) {
+    return false;
+  }
   const Order& o = body->get_value().cast_to<Order>();
 
   // scan orderline

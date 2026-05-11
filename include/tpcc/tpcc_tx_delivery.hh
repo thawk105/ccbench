@@ -90,6 +90,10 @@ bool update_order_and_get_c_id(
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
+  // tx.read leaves *body unchanged on WARN_NOT_FOUND; caller must check.
+  if (status != Status::OK) {
+    return false;
+  }
   Order &ord = body->get_value().cast_to<Order>();
   c_id = ord.O_C_ID;
 
@@ -173,6 +177,9 @@ bool update_customer_balance(
   TupleBody *body;
   Status status = tx.read(Storage::Customer, c_key.view(), &body);
   if (tx.status_ == TransactionStatus::aborted) {
+    return false;
+  }
+  if (status != Status::OK) {
     return false;
   }
   Customer &cust = body->get_value().cast_to<Customer>();
