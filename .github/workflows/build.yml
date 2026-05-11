@@ -73,7 +73,12 @@ jobs:
         run: ./build_tools/bootstrap_googletest.sh
 
       - name: Configure (top-level cmake)
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+        # Sanitizer adds significant link-time memory/cpu cost and CI does
+        # not run binaries, so it adds no value here. Use Release for the
+        # build verification.
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZER=OFF
 
       - name: Build all protocols
-        run: cmake --build build -j
+        # -j2 to keep peak memory bounded on the standard runner (linking
+        # ~28 binaries in parallel can otherwise OOM).
+        run: cmake --build build -j 2
