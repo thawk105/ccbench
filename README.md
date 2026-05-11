@@ -1,8 +1,10 @@
-# An extended version of CCBench
+# CCBench: Concurrency Control Protocol Workbench
 
 ![build](https://github.com/thawk105/ccbench/workflows/build/badge.svg)
 
-[CCBench](https://github.com/thawk105/ccbench)[1] is a benchmark platform for various concurrency control protocols. This repository extends it with the **TPC-C** and **BoMB** workloads on top of YCSB, plus several new protocols.
+CCBench re-implements major in-memory concurrency-control protocols on a common substrate so they can be compared on identical workloads. The original analysis paper is [Tanabe et al., VLDB 2020][1].
+
+The repository now also bundles the **TPC-C** and **BoMB** workloads, and several additional protocols, contributed by [@jnmt](https://github.com/jnmt) on the [`vldb-paper`](https://github.com/jnmt/ccbench/tree/vldb-paper) branch and merged here.
 
 | Protocol | YCSB | TPC-C | BoMB |
 |---|:-:|:-:|:-:|
@@ -10,7 +12,9 @@
 | Oze | ✓ | ✓ | ✓ |
 | SS2PL, D2PL, MVTO | — | — | ✓ |
 
-See [docs/workloads.md](docs/workloads.md) for the workload specs (tables, transactions, parameters).
+See [docs/workloads.md](docs/workloads.md) for the workload specs (tables, transactions, parameters) and [docs/protocols.md](docs/protocols.md) for the full protocol matrix.
+
+[1]: http://www.vldb.org/pvldb/vol13/p3531-tanabe.pdf
 
 ## Quick start (devcontainer)
 
