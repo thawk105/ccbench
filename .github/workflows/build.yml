@@ -39,7 +39,24 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends \
             $(cat build_tools/ubuntu.deps) \
-            build-essential autoconf automake libtool pkg-config
+            build-essential autoconf automake libtool pkg-config \
+            ccache
+
+      # ccache deduplicates compilations across the 28 binaries (each
+      # protocol's CMakeLists.txt currently compiles common/*.cc and its
+      # own .cc files separately for every target).
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+
+      - name: Configure ccache
+        run: |
+          ccache --max-size=400M
+          ccache --zero-stats
 
       # Cache key invalidates when any submodule SHA or bootstrap script changes.
       - name: Compute bootstrap cache key
@@ -75,11 +92,20 @@ jobs:
       - name: Configure (top-level cmake)
         # Sanitizer adds significant link-time memory/cpu cost and CI does
         # not run binaries, so it adds no value here. Use Release for the
-        # build verification.
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZER=OFF
+        # build verification. Wire ccache via compiler launchers.
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_SANITIZER=OFF \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build all protocols
         # Release without sanitizer is light enough to use full runner
         # parallelism. (Debug+ASan needed -j2 to avoid OOM, but we no
         # longer build that here.)
         run: cmake --build build -j $(nproc)
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats
