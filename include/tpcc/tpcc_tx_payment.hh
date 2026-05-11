@@ -17,7 +17,7 @@
  * +===================================================================
  */
 template <typename TxExecutor, typename TxStatus>
-bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, const Warehouse*& ware) {
+bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, Warehouse& ware) {
   SimpleKey<8> w_key;
   Warehouse::CreateKey(w_id, w_key.ptr());
   TupleBody *body;
@@ -35,12 +35,13 @@ bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, co
 
   new_ware.W_YTD = old_ware.W_YTD + h_amount;
 
+  // Copy out before std::move consumes w_obj.
+  ware = new_ware;
   stat = tx.write(Storage::Warehouse, w_key.view(), TupleBody(w_key.view(), std::move(w_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;
   }
-  ware = &new_ware;
   return true;
 }
 
@@ -56,7 +57,7 @@ bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, co
  */
 template <typename TxExecutor, typename TxStatus>
 bool get_and_update_district(TxExecutor& tx,
-                             uint8_t d_id, uint16_t w_id, double h_amount, const District*& dist) {
+                             uint8_t d_id, uint16_t w_id, double h_amount, District& dist) {
   SimpleKey<8> d_key;
   District::CreateKey(w_id, d_id, d_key.ptr());
   TupleBody *body;
@@ -74,12 +75,13 @@ bool get_and_update_district(TxExecutor& tx,
 
   new_dist.D_YTD += h_amount;
 
+  // Copy out before std::move consumes d_obj.
+  dist = new_dist;
   stat = tx.write(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;
   }
-  dist = &new_dist;
   return true;
 }
 
@@ -242,9 +244,9 @@ bool run_payment(TxExecutor& tx, TPCCQuery::Payment *query, HistoryKeyGenerator 
   uint8_t c_d_id = query->c_d_id;
   double h_amount = query->h_amount;
 
-  const Warehouse *ware;
+  Warehouse ware;
   if (!get_and_update_warehouse<TxExecutor,TxStatus>(tx, w_id, h_amount, ware)) return false;
-  const District *dist;
+  District dist;
   if (!get_and_update_district<TxExecutor,TxStatus>(tx, d_id, w_id, h_amount, dist)) return false;
 
   SimpleKey<8> c_key;
@@ -259,7 +261,7 @@ bool run_payment(TxExecutor& tx, TPCCQuery::Payment *query, HistoryKeyGenerator 
 
   if (!insert_history<TxExecutor,TxStatus>(
         tx, c_id, c_d_id, c_w_id, d_id, w_id, h_amount,
-        &ware->W_NAME[0], &dist->D_NAME[0], hkg)) return false;
+        &ware.W_NAME[0], &dist.D_NAME[0], hkg)) return false;
 
   return true;
 }

@@ -33,7 +33,8 @@
 // EXEC SQL WHENEVER NOT FOUND continue;
 // EXEC SQL FETCH c_no INTO :no_o_id;
 template <typename TxExecutor, typename TxStatus>
-bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id) {
+bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id, bool &found) {
+  found = false;
   std::vector<TupleBody*> result;
   SimpleKey<8> left_key, right_key;
   NewOrder::CreateKey(w_id, d_id, 1, left_key.ptr());
@@ -42,6 +43,12 @@ bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id) {
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
+  // Per TPC-C spec: if no NEW-ORDER row exists for this district, skip
+  // delivery for this district only (caller continues with the next).
+  if (result.empty()) {
+    return true;
+  }
+  found = true;
   TupleBody* body = *result.begin();
   o_id = body->get_value().cast_to<NewOrder>().NO_O_ID;
   return true;
@@ -193,8 +200,11 @@ bool run_delivery(TxExecutor &tx, TPCCQuery::Delivery *query) {
 
   for (uint8_t d_id = 1; d_id <= DIST_PER_WARE; ++d_id) {
     uint32_t o_id;
-    if (!get_order_id<TxExecutor,TxStatus>(tx, w_id, d_id, o_id))
+    bool found;
+    if (!get_order_id<TxExecutor,TxStatus>(tx, w_id, d_id, o_id, found))
       return false;
+    // No outstanding new-order in this district: skip per TPC-C spec.
+    if (!found) continue;
 
     if (!delete_new_order<TxExecutor,TxStatus>(tx, w_id, d_id, o_id))
       return false;

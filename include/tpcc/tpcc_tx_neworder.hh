@@ -55,7 +55,7 @@ bool get_customer(TxExecutor& tx, uint32_t c_id, uint8_t d_id, uint16_t w_id, co
  * +===================================================
  */
 template <typename TxExecutor, typename TxStatus>
-bool get_and_update_district(TxExecutor& tx, uint8_t d_id, uint16_t w_id, const District*& dist) {
+bool get_and_update_district(TxExecutor& tx, uint8_t d_id, uint16_t w_id, District& dist) {
   SimpleKey<8> d_key;
   District::CreateKey(w_id, d_id, d_key.ptr());
   TupleBody *body;
@@ -70,12 +70,13 @@ bool get_and_update_district(TxExecutor& tx, uint8_t d_id, uint16_t w_id, const 
   const District& old_dist = body->get_value().cast_to<District>();
   memcpy(&new_dist, &old_dist, sizeof(new_dist));
   new_dist.D_NEXT_O_ID++;
+  // Copy out before std::move consumes d_obj (otherwise dist would dangle).
+  dist = new_dist;
   stat = tx.write(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;
   }
-  dist = &new_dist;
   return true;
 }
 
@@ -88,7 +89,7 @@ bool get_and_update_district(TxExecutor& tx, uint8_t d_id, uint16_t w_id, const 
  */
 template <typename TxExecutor, typename TxStatus>
 bool insert_order(TxExecutor& tx, uint32_t o_id, uint8_t d_id, uint16_t w_id, uint32_t c_id,
-                  uint8_t ol_cnt, bool remote, const Order*& ord) {
+                  uint8_t ol_cnt, bool remote, Order& ord) {
   HeapObject o_obj;
   o_obj.allocate<Order>();
   Order& new_ord = o_obj.ref();
@@ -99,6 +100,8 @@ bool insert_order(TxExecutor& tx, uint32_t o_id, uint8_t d_id, uint16_t w_id, ui
   new_ord.O_ENTRY_D = get_lightweight_timestamp();
   new_ord.O_OL_CNT = ol_cnt;
   new_ord.O_ALL_LOCAL = (remote ? 0 : 1);
+  // Copy out before std::move consumes o_obj.
+  ord = new_ord;
   HeapObject key_obj;
   key_obj.allocate<SimpleKey<8>>();
   SimpleKey<8>& o_key = key_obj.ref();
@@ -116,7 +119,6 @@ bool insert_order(TxExecutor& tx, uint32_t o_id, uint8_t d_id, uint16_t w_id, ui
     dump(tx.thid_, "insert order-secondary failed");
     return false;
   }
-  ord = &new_ord;
   return true;
 }
 
@@ -187,7 +189,7 @@ bool get_item(TxExecutor& tx, uint32_t ol_i_id, const Item*& item) {
 template <typename TxExecutor, typename TxStatus>
 bool get_and_update_stock(TxExecutor& tx, uint16_t ol_supply_w_id,
                           uint32_t ol_i_id, uint8_t ol_quantity,
-                          bool remote, const Stock*& sto) {
+                          bool remote, Stock& sto) {
     SimpleKey<8> s_key;
     Stock::CreateKey(ol_supply_w_id, ol_i_id, s_key.ptr());
     TupleBody *body;
@@ -214,12 +216,13 @@ bool get_and_update_stock(TxExecutor& tx, uint16_t ol_supply_w_id,
     if (s_quantity <= ol_quantity + 10) quantity += 91;
     new_sto.S_QUANTITY = quantity;
 
+    // Copy out before std::move consumes s_obj.
+    sto = new_sto;
     stat = tx.write(Storage::Stock, s_key.view(), TupleBody(s_key.view(), std::move(s_obj)));
     if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
     if (stat != Status::OK) {
       return false;
     }
-    sto = &new_sto;
     return true;
 }
 
@@ -237,7 +240,7 @@ template <typename TxExecutor, typename TxStatus>
 bool insert_orderline(
   TxExecutor& tx, uint32_t o_id, uint8_t d_id, uint16_t w_id,
   uint8_t ol_num, uint32_t ol_i_id, uint16_t ol_supply_w_id,
-  uint8_t ol_quantity, double ol_amount, const Stock* sto) {
+  uint8_t ol_quantity, double ol_amount, const Stock& sto) {
   HeapObject ol_obj;
   ol_obj.allocate<OrderLine>();
   OrderLine& new_ol = ol_obj.ref();
@@ -251,16 +254,16 @@ bool insert_orderline(
   new_ol.OL_AMOUNT = ol_amount;
   auto pick_sdist = [&]() -> const char* {
     switch (d_id) {
-    case 1: return sto->S_DIST_01;
-    case 2: return sto->S_DIST_02;
-    case 3: return sto->S_DIST_03;
-    case 4: return sto->S_DIST_04;
-    case 5: return sto->S_DIST_05;
-    case 6: return sto->S_DIST_06;
-    case 7: return sto->S_DIST_07;
-    case 8: return sto->S_DIST_08;
-    case 9: return sto->S_DIST_09;
-    case 10: return sto->S_DIST_10;
+    case 1: return sto.S_DIST_01;
+    case 2: return sto.S_DIST_02;
+    case 3: return sto.S_DIST_03;
+    case 4: return sto.S_DIST_04;
+    case 5: return sto.S_DIST_05;
+    case 6: return sto.S_DIST_06;
+    case 7: return sto.S_DIST_07;
+    case 8: return sto.S_DIST_08;
+    case 9: return sto.S_DIST_09;
+    case 10: return sto.S_DIST_10;
     default: return nullptr; // BUG
     }
   };
@@ -291,11 +294,11 @@ bool run_new_order(TxExecutor& tx, TPCCQuery::NewOrder *query) {
   const Customer *cust;
   if (!get_customer<TxExecutor,TxStatus>(tx, c_id, d_id, w_id, cust)) return false;
 
-  const District *dist;
+  District dist;
   if (!get_and_update_district<TxExecutor,TxStatus>(tx, d_id, w_id, dist)) return false;
 
-  uint32_t o_id = dist->D_NEXT_O_ID;
-  [[maybe_unused]] const Order *ord;
+  uint32_t o_id = dist.D_NEXT_O_ID;
+  Order ord;
 
   if (!insert_order<TxExecutor,TxStatus>(tx, o_id, d_id, w_id, c_id, ol_cnt, remote, ord)) return false;
   if (!insert_neworder<TxExecutor,TxStatus>(tx, o_id, d_id, w_id)) return false;
@@ -308,13 +311,13 @@ bool run_new_order(TxExecutor& tx, TPCCQuery::NewOrder *query) {
     const Item *item;
     if (!get_item<TxExecutor,TxStatus>(tx, ol_i_id, item)) return false;
 
-    const Stock *sto;
+    Stock sto;
     if (!get_and_update_stock<TxExecutor,TxStatus>(
          tx, ol_supply_w_id, ol_i_id, ol_quantity, remote, sto)) return false;
 
     double i_price = item->I_PRICE;
     double w_tax = ware->W_TAX;
-    double d_tax = dist->D_TAX;
+    double d_tax = dist.D_TAX;
     double c_discount = cust->C_DISCOUNT;
     double ol_amount = ol_quantity * i_price * (1.0 + w_tax + d_tax) * (1.0 - c_discount);
 
