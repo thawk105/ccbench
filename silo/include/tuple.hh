@@ -7,6 +7,7 @@
 #include <cstdint>
 
 #include "../../include/cache_line_size.hh"
+#include "../../include/tuple_body.hh"
 
 struct Tidword {
   union {
@@ -32,6 +33,22 @@ struct Tidword {
 class Tuple {
 public:
   alignas(CACHE_LINE_SIZE) Tidword tidword_;
+  TupleBody body_;
 
-  char val_[VAL_SIZE];
+  Tuple() {}
+
+  void init([[maybe_unused]] size_t thid, TupleBody&& body, [[maybe_unused]] void* p) {
+    // for initializer
+    tidword_.epoch = 1;
+    tidword_.latest = true;
+    tidword_.absent = false;
+    tidword_.lock = false;
+    body_ = std::move(body);
+  }
+
+  void init(TupleBody&& body) {
+    tidword_.absent = true;
+    tidword_.lock = true;
+    body_ = std::move(body);
+  }
 };

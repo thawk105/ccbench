@@ -48,6 +48,10 @@ public:
     return result;
   }
 
+  inline uint64_t random_int(uint64_t min, uint64_t max) {
+    return next() % (max - min + 1) + min;
+  }
+
   uint64_t operator()() { return next(); }
 
   /* This is the jump function for the generator. It is equivalent

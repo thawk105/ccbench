@@ -1,44 +1,81 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(ccbench_mocc
-        VERSION 0.0.1
-        DESCRIPTION "mocc of ccbench"
-        LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
-
-option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
-option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
-option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
-
-find_package(Doxygen)
-find_package(Threads REQUIRED)
-find_package(gflags REQUIRED)
-find_package(glog REQUIRED)
-find_package(Boost
-        COMPONENTS filesystem)
-
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-file(GLOB MOCC_SOURCES
+file(GLOB YCSB_MOCC_SOURCES
         "../common/result.cc"
         "../common/util.cc"
         "lock.cc"
-        "mocc.cc"
+        "ycsb_mocc.cc"
         "result.cc"
         "transaction.cc"
         "util.cc"
         )
 
-add_executable(mocc.exe ${MOCC_SOURCES})
+file(GLOB TPCC_MOCC_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "lock.cc"
+        "tpcc_mocc.cc"
+        "result.cc"
+        "transaction.cc"
+        "util.cc"
+        )
 
-target_link_libraries(mocc.exe
+file(GLOB BOMB_MOCC_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "lock.cc"
+        "bomb_mocc.cc"
+        "result.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+file(GLOB SBOMB_MOCC_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "lock.cc"
+        "sbomb_mocc.cc"
+        "result.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+add_executable(ycsb_mocc.exe ${YCSB_MOCC_SOURCES})
+add_executable(tpcc_mocc.exe ${TPCC_MOCC_SOURCES})
+add_executable(bomb_mocc.exe ${BOMB_MOCC_SOURCES})
+add_executable(sbomb_mocc.exe ${SBOMB_MOCC_SOURCES})
+
+target_link_libraries(ycsb_mocc.exe
         Boost::filesystem
         gflags::gflags
-        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(tpcc_mocc.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(bomb_mocc.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(sbomb_mocc.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
 
@@ -51,7 +88,7 @@ endif ()
 if (DEFINED BACK_OFF)
     add_definitions(-DBACK_OFF=${BACK_OFF})
 else ()
-    add_definitions(-DBACK_OFF=0)
+    add_definitions(-DBACK_OFF=1)
 endif ()
 
 if (DEFINED KEY_SIZE)
@@ -84,4 +121,16 @@ if (DEFINED VAL_SIZE)
     add_definitions(-DVAL_SIZE=${VAL_SIZE})
 else ()
     add_definitions(-DVAL_SIZE=4)
+endif ()
+
+if (DEFINED INSERT_READ_DELAY_MS)
+    add_definitions(-DINSERT_READ_DELAY_MS=${INSERT_READ_DELAY_MS})
+else ()
+    remove_definitions(-DINSERT_READ_DELAY_MS)
+endif ()
+
+if (DEFINED INSERT_BATCH_DELAY_MS)
+    add_definitions(-DINSERT_BATCH_DELAY_MS=${INSERT_BATCH_DELAY_MS})
+else ()
+    remove_definitions(-DINSERT_BATCH_DELAY_MS)
 endif ()

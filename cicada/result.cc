@@ -8,4 +8,4 @@ using namespace std;
 
 alignas(CACHE_LINE_SIZE) std::vector<Result> CicadaResult;
 
-void initResult() { CicadaResult.resize(FLAGS_thread_num); }
+void initResult() { CicadaResult.resize(TotalThreadNum); }

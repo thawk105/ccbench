@@ -13,13 +13,12 @@ public:
   using OpElement<T>::OpElement;
 
   Tidword tidword_;
-  char val_[VAL_SIZE];
+  TupleBody body_;
   bool failed_verification_;
 
-  ReadElement(Tidword tidword, uint64_t key, T *rcdptr, char *newVal)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  ReadElement(Storage s, std::string_view key, T *rcdptr, TupleBody&& body, Tidword tidword)
+          : OpElement<T>::OpElement(s, key, rcdptr), body_(std::move(body)) {
     this->tidword_ = tidword;
-    memcpy(val_, newVal, VAL_SIZE);
     this->failed_verification_ = false;
   }
 
@@ -28,7 +27,7 @@ public:
   }
 
   bool operator<(const ReadElement &right) const {
-    return this->key_ < right.key_;
+    return this->rcdptr_ < right.rcdptr_;
   }
 };
 
@@ -36,8 +35,17 @@ template<typename T>
 class WriteElement : public OpElement<T> {
 public:
   using OpElement<T>::OpElement;
+  TupleBody body_;
+
+  WriteElement(Storage s, std::string_view key, T* rcdptr, TupleBody&& body, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op), body_(std::move(body)) {
+  }
+
+  WriteElement(Storage s, std::string_view key, T* rcdptr, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op) {
+  }
 
   bool operator<(const WriteElement &right) const {
-    return this->key_ < right.key_;
+    return this->rcdptr_ < right.rcdptr_;
   }
 };

@@ -10,6 +10,8 @@
 #define LOCK_TIMEOUT_US 5
 // 5 us.
 
+class Tuple; // defined at tuple.hh
+
 enum class SentinelValue : uint32_t {
   None = 0,
   Acquired,          // 1
@@ -105,43 +107,43 @@ public:
     next_writer = 0;
   }
 
-  MQL_RESULT acquire_reader_lock(uint32_t me, unsigned int key, bool trylock);
+  MQL_RESULT acquire_reader_lock(uint32_t me, Tuple* key, bool trylock);
 
-  MQL_RESULT acquire_writer_lock(uint32_t me, unsigned int key, bool trylock);
+  MQL_RESULT acquire_writer_lock(uint32_t me, Tuple* key, bool trylock);
 
   MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me,
-                                                   unsigned int key,
+                                                   Tuple* key,
                                                    uint32_t pred, bool trylock);
 
   MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me,
-                                                   unsigned int key,
+                                                   Tuple* key,
                                                    uint32_t pred, bool trylock);
 
-  MQL_RESULT cancel_reader_lock(uint32_t me, unsigned int key);
+  MQL_RESULT cancel_reader_lock(uint32_t me, Tuple* key);
 
   MQL_RESULT cancel_reader_lock_relink(uint32_t pred, uint32_t me,
-                                       unsigned int key);
+                                       Tuple* key);
 
-  MQL_RESULT cancel_reader_lock_with_reader_pred(uint32_t me, unsigned int key,
+  MQL_RESULT cancel_reader_lock_with_reader_pred(uint32_t me, Tuple* key,
                                                  uint32_t pred);
 
-  MQL_RESULT cancel_reader_lock_with_writer_pred(uint32_t me, unsigned int key,
+  MQL_RESULT cancel_reader_lock_with_writer_pred(uint32_t me, Tuple* key,
                                                  uint32_t pred);
 
-  MQL_RESULT cancel_writer_lock(uint32_t me, unsigned int key);
+  MQL_RESULT cancel_writer_lock(uint32_t me, Tuple* key);
 
-  MQL_RESULT cancel_writer_lock_no_pred(uint32_t me, unsigned int key);
+  MQL_RESULT cancel_writer_lock_no_pred(uint32_t me, Tuple* key);
 
-  void release_reader_lock(uint32_t me, unsigned int key);
+  void release_reader_lock(uint32_t me, Tuple* key);
 
-  void release_writer_lock(uint32_t me, unsigned int key);
+  void release_writer_lock(uint32_t me, Tuple* key);
 
-  MQL_RESULT finish_acquire_reader_lock(uint32_t me, unsigned int key);
+  MQL_RESULT finish_acquire_reader_lock(uint32_t me, Tuple* key);
 
-  void finish_release_reader_lock(uint32_t me, unsigned int key);
+  void finish_release_reader_lock(uint32_t me, Tuple* key);
 };
 
-class RWLock {
+class ReaderWriterLock {
 public:
   std::atomic<int> counter_;
   // counter == -1, write locked;
@@ -150,7 +152,7 @@ public:
 #define W_LOCKED -1
 #define NOT_LOCK 0
 
-  RWLock() { counter_.store(0, std::memory_order_release); }
+  ReaderWriterLock() { counter_.store(0, std::memory_order_release); }
 
   void r_lock();     // read lock
   bool r_trylock();  // read try lock
@@ -167,11 +169,11 @@ public:
 template<typename T>
 class LockElement {
 public:
-  unsigned int key_;  // record を識別する．
+  Tuple* key_;  // record を識別する．
   T *lock_;
   bool mode_;  // 0 read-mode, 1 write-mode
 
-  LockElement(unsigned int key, T *lock, bool mode)
+  LockElement(Tuple* key, T *lock, bool mode)
           : key_(key), lock_(lock), mode_(mode) {}
 
   bool operator<(const LockElement &right) const {

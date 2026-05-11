@@ -4,13 +4,15 @@
 #include <cstdint>
 
 #include "../../include/cache_line_size.hh"
+#include "../../include/tuple_body.hh"
 
 #define TIDFLAG 1
 
 enum class VersionStatus : uint8_t {
-  inFlight,
+  inflight,
   committed,
   aborted,
+  deleted,
 };
 
 struct Psstamp {
@@ -96,13 +98,13 @@ public:
   std::atomic <uint32_t> cstamp_;   // Version creation stamp, c(V)
   std::atomic <VersionStatus> status_;
 
-  char val_[VAL_SIZE];
+  TupleBody body_;
 
   Version() { init(); }
 
   void init() {
     psstamp_.init(0, UINT32_MAX & ~(TIDFLAG));
-    status_.store(VersionStatus::inFlight, std::memory_order_release);
+    status_.store(VersionStatus::inflight, std::memory_order_release);
     readers_.store(0, std::memory_order_release);
   }
 };

@@ -1,43 +1,77 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(ccbench_tictoc
-        VERSION 0.0.1
-        DESCRIPTION "tictoc of ccbench"
-        LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
-
-option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
-option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
-option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
-
-find_package(Doxygen)
-find_package(Threads REQUIRED)
-find_package(gflags REQUIRED)
-find_package(glog REQUIRED)
-find_package(Boost
-        COMPONENTS filesystem)
-
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-file(GLOB TICTOC_SOURCES
+file(GLOB YCSB_TICTOC_SOURCES
         "../common/result.cc"
         "../common/util.cc"
         "result.cc"
-        "tictoc.cc"
+        "ycsb_tictoc.cc"
         "transaction.cc"
         "util.cc"
         )
 
-add_executable(tictoc.exe ${TICTOC_SOURCES})
+file(GLOB TPCC_TICTOC_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "tpcc_tictoc.cc"
+        "transaction.cc"
+        "util.cc"
+        )
 
-target_link_libraries(tictoc.exe
+file(GLOB BOMB_TICTOC_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "bomb_tictoc.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+file(GLOB SBOMB_TICTOC_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "sbomb_tictoc.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+add_executable(ycsb_tictoc.exe ${YCSB_TICTOC_SOURCES})
+add_executable(tpcc_tictoc.exe ${TPCC_TICTOC_SOURCES})
+add_executable(bomb_tictoc.exe ${BOMB_TICTOC_SOURCES})
+add_executable(sbomb_tictoc.exe ${SBOMB_TICTOC_SOURCES})
+
+target_link_libraries(ycsb_tictoc.exe
         Boost::filesystem
         gflags::gflags
-        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(tpcc_tictoc.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(bomb_tictoc.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(sbomb_tictoc.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
 
@@ -50,7 +84,7 @@ endif ()
 if (DEFINED BACK_OFF)
     add_definitions(-DBACK_OFF=${BACK_OFF})
 else ()
-    add_definitions(-DBACK_OFF=0)
+    add_definitions(-DBACK_OFF=1)
 endif ()
 
 if (DEFINED KEY_SIZE)

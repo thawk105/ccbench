@@ -7,16 +7,16 @@
 #include "lock.hh"
 
 #include "../../include/cache_line_size.hh"
+#include "../../include/tuple_body.hh"
 
-#define TEMP_THRESHOLD 5
 #define TEMP_MAX 20
-#define TEMP_RESET_US 100
 
 struct Tidword {
   union {
     uint64_t obj_;
     struct {
-      uint64_t tid: 32;
+      bool absent: 1;
+      uint64_t tid: 31;
       uint64_t epoch: 32;
     };
   };
@@ -59,13 +59,32 @@ struct Epotemp {
 class Tuple {
 public:
   alignas(CACHE_LINE_SIZE) Tidword tidword_;
+  Epotemp epotemp_;
+  TupleBody body_;
 #ifdef RWLOCK
-  RWLock rwlock_;  // 4byte
+  ReaderWriterLock rwlock_;  // 4byte
   // size to here is 20 bytes
 #endif
 #ifdef MQLOCK
   MQLock mqlock_;
 #endif
 
-  char val_[VAL_SIZE];
+  Tuple() {}
+
+  void init([[maybe_unused]] size_t thid, TupleBody&& body, [[maybe_unused]] void* p) {
+    // for initializer
+    tidword_.epoch = 1;
+    tidword_.tid = 0;
+    tidword_.absent = false;
+    epotemp_.temp = 0;
+    epotemp_.epoch = 1;
+    body_ = std::move(body);
+  }
+
+  void init(TupleBody&& body) {
+    tidword_.tid = 0;
+    tidword_.absent = true;
+    epotemp_.temp = 0;
+    body_ = std::move(body);
+  }
 };

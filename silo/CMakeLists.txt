@@ -1,32 +1,39 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(ccbench_silo
-        VERSION 0.0.1
-        DESCRIPTION "silo of ccbench"
-        LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
-
-option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
-option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
-option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
-
-find_package(Doxygen)
-find_package(Threads REQUIRED)
-find_package(gflags REQUIRED)
-find_package(glog REQUIRED)
-find_package(Boost
-        COMPONENTS filesystem)
-
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-file(GLOB SILO_SOURCES
+file(GLOB YCSB_SILO_SOURCES
         "../common/result.cc"
         "../common/util.cc"
         "result.cc"
-        "silo.cc"
+        "ycsb_silo.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+file(GLOB TPCC_SILO_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "tpcc_silo.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+file(GLOB BOMB_SILO_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "bomb_silo.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+file(GLOB SBOMB_SILO_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "result.cc"
+        "sbomb_silo.cc"
         "transaction.cc"
         "util.cc"
         )
@@ -35,14 +42,41 @@ file(GLOB REPLAY_SOURCES
         "replayTest.cc"
         )
 
-add_executable(silo.exe ${SILO_SOURCES})
+add_executable(ycsb_silo.exe ${YCSB_SILO_SOURCES})
+add_executable(tpcc_silo.exe ${TPCC_SILO_SOURCES})
+add_executable(bomb_silo.exe ${BOMB_SILO_SOURCES})
+add_executable(sbomb_silo.exe ${SBOMB_SILO_SOURCES})
 add_executable(replay_test.exe ${REPLAY_SOURCES})
 
-target_link_libraries(silo.exe
+target_link_libraries(ycsb_silo.exe
         Boost::filesystem
         gflags::gflags
-        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(tpcc_silo.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(bomb_silo.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(sbomb_silo.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
 
@@ -55,7 +89,7 @@ endif ()
 if (DEFINED BACK_OFF)
     add_definitions(-DBACK_OFF=${BACK_OFF})
 else ()
-    add_definitions(-DBACK_OFF=0)
+    add_definitions(-DBACK_OFF=1)
 endif ()
 
 if (DEFINED KEY_SIZE)
@@ -110,4 +144,16 @@ if (DEFINED WAL)
     add_definitions(-DWAL=${WAL})
 else ()
     add_definitions(-DWAL=0)
+endif ()
+
+if (DEFINED INSERT_READ_DELAY_MS)
+    add_definitions(-DINSERT_READ_DELAY_MS=${INSERT_READ_DELAY_MS})
+else ()
+    remove_definitions(-DINSERT_READ_DELAY_MS)
+endif ()
+
+if (DEFINED INSERT_BATCH_DELAY_MS)
+    add_definitions(-DINSERT_BATCH_DELAY_MS=${INSERT_BATCH_DELAY_MS})
+else ()
+    remove_definitions(-DINSERT_BATCH_DELAY_MS)
 endif ()

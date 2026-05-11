@@ -40,3 +40,8 @@ static void setThreadAffinity(const int myid) {
   return;
 }
 #endif  // Linux
+
+inline int cached_sched_getcpu() {
+    thread_local int value = ::sched_getcpu();
+    return value;
+}

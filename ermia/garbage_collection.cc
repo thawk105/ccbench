@@ -18,7 +18,7 @@ bool GarbageCollection::chkSecondRange() {
 
   smin_ = UINT32_MAX;
   smax_ = 0;
-  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
+  for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid_.load(std::memory_order_acquire);
     smin_ = min(smin_, tmptxid);
@@ -38,7 +38,7 @@ void GarbageCollection::decideFirstRange() {
   TransactionTable *tmt;
 
   fmin_ = fmax_ = 0;
-  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
+  for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     tmt = __atomic_load_n(&TMT[i], __ATOMIC_ACQUIRE);
     uint32_t tmptxid = tmt->txid_.load(std::memory_order_acquire);
     fmin_ = min(fmin_, tmptxid);
@@ -105,6 +105,21 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     // releases the lock
     tuple->gc_lock_.store(0, std::memory_order_release);
     gcq_for_version_.pop_front();
+  }
+
+  return;
+}
+
+void GarbageCollection::gcRecord() {
+  uint32_t threshold = getGcThreshold();
+
+  while (!gcq_for_record_.empty()) {
+    Tuple* rec = gcq_for_record_.front();
+    Version* latest = rec->latest_.load(memory_order_acquire);
+    if (latest->cstamp_ >= threshold) break;
+    if (latest->status_ != VersionStatus::deleted) ERR;
+    delete rec;
+    gcq_for_record_.pop_front();
   }
 
   return;

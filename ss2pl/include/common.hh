@@ -52,4 +52,4 @@ DECLARE_bool(ycsb);
 DECLARE_double(zipf_skew);
 #endif
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL uint32_t TotalThreadNum;
