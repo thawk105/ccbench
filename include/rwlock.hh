@@ -5,14 +5,14 @@
 
 using namespace std;
 
-class RWLock {
+class ReaderWriteLock {
 public:
   std::atomic<int> counter;
   // counter == -1, write locked;
   // counter == 0, not locked;
   // counter > 0, there are $counter readers who acquires read-lock.
 
-  RWLock() { counter.store(0, memory_order_release); }
+  ReaderWriteLock() { counter.store(0, memory_order_release); }
 
   void init() { counter.store(0, memory_order_release); }
 

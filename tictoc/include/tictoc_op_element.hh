@@ -7,21 +7,38 @@ class SetElement : public OpElement<T> {
 public:
   using OpElement<T>::OpElement;
 
-  char val_[VAL_SIZE];
+  TupleBody body_;
   TsWord tsw_;
 
-  SetElement(uint64_t key, T *rcdptr, char *val, TsWord tsw)
-          : OpElement<T>::OpElement(key, rcdptr) {
-    memcpy(this->val_, val, VAL_SIZE);
+  SetElement(Storage s, std::string_view key, T *rcdptr, TupleBody&& body, TsWord tsw, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op), body_(std::move(body)) {
     this->tsw_.obj_ = tsw.obj_;
   }
 
-  SetElement(uint64_t key, T *rcdptr, TsWord tsw)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  SetElement(Storage s, std::string_view key, T *rcdptr, TupleBody&& body, TsWord tsw)
+          : OpElement<T>::OpElement(s, key, rcdptr), body_(std::move(body)) {
+    this->tsw_.obj_ = tsw.obj_;
+  }
+
+  SetElement(Storage s, std::string_view key, T *rcdptr, TsWord tsw, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op) {
     this->tsw_.obj_ = tsw.obj_;
   }
 
   bool operator<(const SetElement &right) const {
+    if (this->storage_ != right.storage_) return this->storage_ < right.storage_;
     return this->key_ < right.key_;
+  }
+};
+
+template<typename T>
+class GCElement : public OpElement<T> {
+public:
+  using OpElement<T>::OpElement;
+  uint64_t epoch_;
+
+  GCElement(Storage s, std::string_view key, T *rcdptr, uint64_t epoch)
+          : OpElement<T>::OpElement(s, key, rcdptr) {
+    this->epoch_ = epoch;
   }
 };

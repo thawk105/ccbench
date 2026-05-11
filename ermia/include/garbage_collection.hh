@@ -23,6 +23,7 @@ private:
 public:
   std::deque<TransactionTable *> gcq_for_TMT_;
   std::deque<TransactionTable *> reuse_TMT_element_from_gc_;
+  std::deque <Tuple*> gcq_for_record_;
   std::deque <GCElement<Tuple>> gcq_for_version_;
   std::deque<Version *> reuse_version_from_gc_;
   uint8_t thid_;
@@ -56,6 +57,8 @@ public:
 
   // for worker thread
   void gcVersion(Result *eres_);
+
+  void gcRecord();
 
   void gcTMTelement(Result *eres_);
   // -----

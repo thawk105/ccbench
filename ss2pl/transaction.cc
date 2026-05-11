@@ -15,33 +15,19 @@ using namespace std;
 
 extern void display_procedure_vector(std::vector<Procedure> &pro);
 
-/**
- * @brief Search xxx set
- * @detail Search element of local set corresponding to given key.
- * In this prototype system, the value to be updated for each worker thread 
- * is fixed for high performance, so it is only necessary to check the key match.
- * @param Key [in] the key of key-value
- * @return Corresponding element of local set
- */
-inline SetElement<Tuple> *TxExecutor::searchReadSet(uint64_t key) {
-  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    if ((*itr).key_ == key) return &(*itr);
+inline SetElement<Tuple> *TxExecutor::searchReadSet(Storage s, std::string_view key) {
+  for (auto &re : read_set_) {
+    if (re.storage_ != s) continue;
+    if (re.key_ == key) return &re;
   }
 
   return nullptr;
 }
 
-/**
- * @brief Search xxx set
- * @detail Search element of local set corresponding to given key.
- * In this prototype system, the value to be updated for each worker thread 
- * is fixed for high performance, so it is only necessary to check the key match.
- * @param Key [in] the key of key-value
- * @return Corresponding element of local set
- */
-inline SetElement<Tuple> *TxExecutor::searchWriteSet(uint64_t key) {
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).key_ == key) return &(*itr);
+inline SetElement<Tuple> *TxExecutor::searchWriteSet(Storage s, std::string_view key) {
+  for (auto &we : write_set_) {
+    if (we.storage_ != s) continue;
+    if (we.key_ == key) return &we;
   }
 
   return nullptr;
@@ -65,7 +51,7 @@ void TxExecutor::abort() {
   read_set_.clear();
   write_set_.clear();
 
-  ++sres_->local_abort_counts_;
+  ++result_->local_abort_counts_;
 
 #if BACK_OFF
 #if ADD_ANALYSIS
@@ -75,7 +61,7 @@ void TxExecutor::abort() {
   Backoff::backoff(FLAGS_clocks_per_us);
 
 #if ADD_ANALYSIS
-  sres_->local_backoff_latency_ += rdtscp() - start;
+  result_->local_backoff_latency_ += rdtscp() - start;
 #endif
 
 #endif
@@ -85,12 +71,26 @@ void TxExecutor::abort() {
  * @brief success termination of transaction.
  * @return void
  */
-void TxExecutor::commit() {
+bool TxExecutor::commit() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    /**
-     * update payload.
-     */
-    memcpy((*itr).rcdptr_->val_, write_val_, VAL_SIZE);
+    switch ((*itr).op_) {
+      case OpType::UPDATE: {
+        memcpy((*itr).rcdptr_->body_.get_val_ptr(),
+               (*itr).body_.get_val_ptr(), (*itr).body_.get_val_size());
+        break;
+      }
+      case OpType::INSERT: {
+        break;
+      }
+      case OpType::DELETE: {
+        Status stat = Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+        // create information for garbage collection
+        gc_records_.push_back((*itr).rcdptr_);
+        break;
+      }
+      default:
+        ERR;
+    }
   }
 
   /**
@@ -103,6 +103,8 @@ void TxExecutor::commit() {
    */
   read_set_.clear();
   write_set_.clear();
+
+  return true;
 }
 
 /**
@@ -110,34 +112,57 @@ void TxExecutor::commit() {
  * Allocate timestamp.
  * @return void
  */
-void TxExecutor::begin() { this->status_ = TransactionStatus::inFlight; }
+void TxExecutor::begin() { this->status_ = TransactionStatus::inflight; }
 
 /**
  * @brief Transaction read function.
  * @param [in] key The key of key-value
  */
-void TxExecutor::read(uint64_t key) {
+Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif  // ADD_ANALYSIS
+  TupleBody b;
+  SetElement<Tuple>* e;
 
   /**
    * read-own-writes or re-read from local read set.
    */
-  if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_READ;
+  e = searchReadSet(s, key);
+  if (e) {
+    *body = &(e->body_);
+    goto FINISH_READ;
+  }
+  e = searchWriteSet(s, key);
+  if (e) {
+    *body = &(e->body_);
+    goto FINISH_READ;
+  }
 
   /**
    * Search tuple from data structure.
    */
   Tuple *tuple;
-#if MASSTREE_USE
-  tuple = MT.get_value(key);
+  tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
-  ++sres_->local_tree_traversal_;
+  ++result_->local_tree_traversal_;
 #endif
-#else
-  tuple = get_tuple(Table, key);
+  if (tuple == nullptr) return Status::WARN_NOT_FOUND;
+
+  read_internal(s, key, tuple);
+  *body = &(read_set_.back().body_);
+
+FINISH_READ:
+#if ADD_ANALYSIS
+  result_->local_read_latency_ += rdtscp() - start;
 #endif
+  return Status::OK;
+}
+
+void TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
+  TupleBody body;
+
+  if (reconnoitering_) goto FINISH_READ_LOCK;
 
 #ifdef DLR0
   /**
@@ -145,11 +170,9 @@ void TxExecutor::read(uint64_t key) {
    */
   tuple->lock_.r_lock();
   r_lock_list_.emplace_back(&tuple->lock_);
-  read_set_.emplace_back(key, tuple, tuple->val_);
 #elif defined(DLR1)
   if (tuple->lock_.r_trylock()) {
     r_lock_list_.emplace_back(&tuple->lock_);
-    read_set_.emplace_back(key, tuple, tuple->val_);
   } else {
     /**
      * No-wait and abort.
@@ -159,12 +182,54 @@ void TxExecutor::read(uint64_t key) {
   }
 #endif
 
-FINISH_READ:
+FINISH_READ_LOCK:
+  body = TupleBody(tuple->body_.get_key(), tuple->body_.get_val(), tuple->body_.get_val_align());
+  read_set_.emplace_back(s, key, tuple, std::move(body));
 
-#if ADD_ANALYSIS
-  sres_->local_read_latency_ += rdtscp() - start;
-#endif
+FINISH_READ:
   return;
+}
+
+Status TxExecutor::scan(const Storage s,
+                        std::string_view left_key, bool l_exclusive,
+                        std::string_view right_key, bool r_exclusive,
+                        std::vector<TupleBody*>& result) {
+  result.clear();
+  auto rset_init_size = read_set_.size();
+
+  std::vector<Tuple*> scan_res;
+  Masstrees[get_storage(s)].scan(
+      left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+      l_exclusive, right_key.empty() ? nullptr : right_key.data(),
+      right_key.size(), r_exclusive, &scan_res, false);
+
+  for (auto &&itr : scan_res) {
+    SetElement<Tuple>* e = searchReadSet(s, itr->body_.get_key());
+    if (e) {
+      result.emplace_back(&(e->body_));
+      continue;
+    }
+
+    e = searchWriteSet(s, itr->body_.get_key());
+    if (e) {
+      result.emplace_back(&(e->body_));
+      continue;
+    }
+
+    read_internal(s, itr->body_.get_key(), itr);
+    if (status_ == TransactionStatus::aborted) {
+      return Status::ERROR_LOCK_FAILED;
+    }
+  }
+
+  if (rset_init_size != read_set_.size()) {
+    for (auto itr = read_set_.begin() + rset_init_size;
+         itr != read_set_.end(); ++itr) {
+      result.emplace_back(&((*itr).body_));
+    }
+  }
+
+  return Status::OK;
 }
 
 /**
@@ -172,18 +237,23 @@ FINISH_READ:
  * @param [in] key The key of key-value
  * @return void
  */
-void TxExecutor::write(uint64_t key) {
+Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
 
   // if it already wrote the key object once.
-  if (searchWriteSet(key)) goto FINISH_WRITE;
+  if (searchWriteSet(s, key)) goto FINISH_WRITE;
 
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
+    if ((*rItr).storage_ != s) continue;
     if ((*rItr).key_ == key) {  // hit
 #if DLR0
-      (*rItr).rcdptr_->lock_.upgrade();
+      // Workaround for handling static BoMB properly
+      if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
+        this->status_ = TransactionStatus::aborted;
+        goto FINISH_WRITE;
+      }
 #elif defined(DLR1)
       if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
         this->status_ = TransactionStatus::aborted;
@@ -196,7 +266,7 @@ void TxExecutor::write(uint64_t key) {
       for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
            ++lItr) {
         if (*lItr == &((*rItr).rcdptr_->lock_)) {
-          write_set_.emplace_back(key, (*rItr).rcdptr_);
+          write_set_.emplace_back(s, key, (*rItr).rcdptr_, std::move(body), OpType::UPDATE);
           w_lock_list_.emplace_back(&(*rItr).rcdptr_->lock_);
           r_lock_list_.erase(lItr);
           break;
@@ -212,14 +282,11 @@ void TxExecutor::write(uint64_t key) {
    * Search tuple from data structure.
    */
   Tuple *tuple;
-#if MASSTREE_USE
-  tuple = MT.get_value(key);
+  tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
-  ++sres_->local_tree_traversal_;
+  ++result_->local_tree_traversal_;
 #endif
-#else
-  tuple = get_tuple(Table, key);
-#endif
+  if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
 #if DLR0
   /**
@@ -240,94 +307,141 @@ void TxExecutor::write(uint64_t key) {
    * Register the contents to write lock list and write set.
    */
   w_lock_list_.emplace_back(&tuple->lock_);
-  write_set_.emplace_back(key, tuple);
+  write_set_.emplace_back(s, key, tuple, std::move(body), OpType::UPDATE);
 
 FINISH_WRITE:
 #if ADD_ANALYSIS
-  sres_->local_write_latency_ += rdtscp() - start;
+  result_->local_write_latency_ += rdtscp() - start;
 #endif  // ADD_ANALYSIS
-  return;
+  return Status::OK;
 }
 
-/**
- * @brief transaction readWrite (RMW) operation
- */
-void TxExecutor::readWrite(uint64_t key) {
-  // if it already wrote the key object once.
-  if (searchWriteSet(key)) goto FINISH_WRITE;
-
-  for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
-    if ((*rItr).key_ == key) {  // hit
-#if DLR0
-      (*rItr).rcdptr_->lock_.upgrade();
-#elif defined(DLR1)
-      if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
-        /**
-         * No-wait and abort.
-         */
-        this->status_ = TransactionStatus::aborted;
-        goto FINISH_WRITE;
-      }
+Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
+#if ADD_ANALYSIS
+  std::uint64_t start = rdtscp();
 #endif
 
-      // upgrade success
-      // remove old element of read set.
-      for (auto lItr = r_lock_list_.begin(); lItr != r_lock_list_.end();
-           ++lItr) {
-        if (*lItr == &((*rItr).rcdptr_->lock_)) {
-          write_set_.emplace_back(key, (*rItr).rcdptr_);
-          w_lock_list_.emplace_back(&(*rItr).rcdptr_->lock_);
-          r_lock_list_.erase(lItr);
-          break;
-        }
-      }
+  if (searchWriteSet(s, key)) return Status::WARN_ALREADY_EXISTS;
 
-      read_set_.erase(rItr);
-      goto FINISH_WRITE;
+  Tuple* tuple = Masstrees[get_storage(s)].get_value(key);
+#if ADD_ANALYSIS
+  ++result_->local_tree_traversal_;
+#endif
+  if (tuple != nullptr) {
+    return Status::WARN_ALREADY_EXISTS;
+  }
+
+  tuple = new Tuple();
+  tuple->init(std::move(body));
+
+  Status stat = Masstrees[get_storage(s)].insert_value(key, tuple);
+  if (stat == Status::WARN_ALREADY_EXISTS) {
+    delete tuple;
+    return stat;
+  }
+
+  write_set_.emplace_back(s, key, tuple, OpType::INSERT);
+  w_lock_list_.emplace_back(&tuple->lock_);
+
+#if ADD_ANALYSIS
+  result_->local_write_latency_ += rdtscp() - start;
+#endif
+  return Status::OK;
+}
+
+Status TxExecutor::delete_record(Storage s, std::string_view key) {
+#if ADD_ANALYSIS
+  std::uint64_t start = rdtscp();
+#endif
+
+  // cancel previous write
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    if ((*itr).storage_ != s) continue;
+    if ((*itr).key_ == key) {
+      write_set_.erase(itr);
     }
   }
 
-  /**
-   * Search tuple from data structure.
-   */
-  Tuple *tuple;
-#if MASSTREE_USE
-  tuple = MT.get_value(key);
+  Tuple* tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
-  ++sres_->local_tree_traversal_;
+  ++result_->local_tree_traversal_;
 #endif
-#else
-  tuple = get_tuple(Table, key);
+  if (tuple == nullptr) {
+    return Status::WARN_NOT_FOUND;
+  }
+
+  write_set_.emplace_back(s, key, tuple, OpType::DELETE);
+
+#if ADD_ANALYSIS
+  result_->local_write_latency_ += rdtscp() - start;
 #endif
+  return Status::OK;
+}
+
+Status TxExecutor::read_lock(Storage s, std::string_view key) {
+  Tuple *tuple;
+  tuple = Masstrees[get_storage(s)].get_value(key);
+#if ADD_ANALYSIS
+  ++result_->local_tree_traversal_;
+#endif
+  if (reconnoitering_) return Status::OK;
+
+  if (tuple == nullptr) {
+    return Status::WARN_NOT_FOUND;
+  }
+
+  for (auto& r_lock : r_lock_list_) {
+    if (r_lock == &tuple->lock_) {
+      return Status::OK;
+    }
+  }
+
+  for (auto& w_lock : w_lock_list_) {
+    if (w_lock == &tuple->lock_) {
+      return Status::OK;
+    }
+  }
+
+#ifdef DLR0
+  tuple->lock_.r_lock();
+#elif defined(DLR1)
+  if (!tuple->lock_.r_trylock()) {
+    this->status_ = TransactionStatus::aborted;
+    return Status::ERROR_LOCK_FAILED;
+  }
+#endif
+  r_lock_list_.emplace_back(&tuple->lock_);
+
+  return Status::OK;
+}
+
+Status TxExecutor::write_lock(Storage s, std::string_view key) {
+  Tuple *tuple;
+  tuple = Masstrees[get_storage(s)].get_value(key);
+#if ADD_ANALYSIS
+  ++result_->local_tree_traversal_;
+#endif
+  if (tuple == nullptr) return Status::WARN_NOT_FOUND;
+
+  for (auto& w_lock : w_lock_list_) {
+    if (w_lock == &tuple->lock_) {
+      return Status::OK;
+    }
+  }
 
 #if DLR0
-  /**
-   * Lock with wait.
-   */
   tuple->lock_.w_lock();
 #elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
-    /**
-     * Nowait and abort.
-     */
     this->status_ = TransactionStatus::aborted;
-    goto FINISH_WRITE;
+    return Status::ERROR_LOCK_FAILED;
   }
 #endif
-
-  // read payload
-  memcpy(this->return_val_, tuple->val_, VAL_SIZE);
-  // finish read.
-
-  /**
-   * Register the contents to write lock list and write set.
-   */
   w_lock_list_.emplace_back(&tuple->lock_);
-  write_set_.emplace_back(key, tuple);
 
-FINISH_WRITE:
-  return;
+  return Status::OK;
 }
+
 
 /**
  * @brief unlock and clean-up local lock set.
@@ -345,4 +459,25 @@ void TxExecutor::unlockList() {
    */
   r_lock_list_.clear();
   w_lock_list_.clear();
+}
+
+void TxExecutor::reconnoiter_begin() {
+  reconnoitering_ = true;
+}
+
+void TxExecutor::reconnoiter_end() {
+  unlockList();
+  read_set_.clear();
+  reconnoitering_ = false;
+  begin();
+}
+
+bool TxExecutor::isLeader() {
+  return this->thid_ == 0;
+}
+
+void TxExecutor::leaderWork() {
+#if BACK_OFF
+  leaderBackoffWork(backoff_, SS2PLResult);
+#endif
 }

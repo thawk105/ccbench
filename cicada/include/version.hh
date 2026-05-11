@@ -8,7 +8,7 @@
 #include <cstdint>
 
 #include "../../include/cache_line_size.hh"
-#include "../../include/op_element.hh"
+#include "../../include/tuple_body.hh"
 
 using namespace std;
 
@@ -29,7 +29,7 @@ public:
   atomic<Version *> next_;
   atomic <VersionStatus> status_;  // commit record
 
-  char val_[VAL_SIZE];
+  TupleBody body_;
 
   Version() {
     status_.store(VersionStatus::pending, memory_order_release);
@@ -38,6 +38,21 @@ public:
 
   Version(const uint64_t rts, const uint64_t wts) {
     rts_.store(rts, memory_order_relaxed);
+    wts_.store(wts, memory_order_relaxed);
+    status_.store(VersionStatus::pending, memory_order_release);
+    next_.store(nullptr, memory_order_release);
+  }
+
+  Version(const uint64_t rts, const uint64_t wts, TupleBody&& body)
+    : body_(body) {
+    rts_.store(rts, memory_order_relaxed);
+    wts_.store(wts, memory_order_relaxed);
+    status_.store(VersionStatus::pending, memory_order_release);
+    next_.store(nullptr, memory_order_release);
+  }
+
+   Version(const uint64_t wts) {
+    rts_.store(0, memory_order_relaxed);
     wts_.store(wts, memory_order_relaxed);
     status_.store(VersionStatus::pending, memory_order_release);
     next_.store(nullptr, memory_order_release);
@@ -68,11 +83,12 @@ public:
 
   uint64_t ldAcqWts() { return wts_.load(std::memory_order_acquire); }
 
-  void set(const uint64_t rts, const uint64_t wts) {
+  void set(const uint64_t rts, const uint64_t wts, TupleBody&& body) {
     rts_.store(rts, memory_order_relaxed);
     wts_.store(wts, memory_order_relaxed);
     status_.store(VersionStatus::pending, memory_order_release);
     next_.store(nullptr, memory_order_release);
+    body_ = std::move(body);
   }
 
   void set(const uint64_t rts, const uint64_t wts, Version *next,

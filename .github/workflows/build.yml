@@ -1,0 +1,48 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.devcontainer/**'
+      - '.github/workflows/devcontainer-image.yml'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.devcontainer/**'
+      - '.github/workflows/devcontainer-image.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            $(cat build_tools/ubuntu.deps) \
+            build-essential autoconf automake libtool pkg-config
+
+      - name: Build third-party (masstree)
+        run: ./build_tools/bootstrap.sh
+
+      - name: Build third-party (mimalloc)
+        run: ./build_tools/bootstrap_mimalloc.sh
+
+      - name: Build third-party (googletest)
+        run: ./build_tools/bootstrap_googletest.sh
+
+      - name: Configure (top-level cmake)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build all protocols
+        run: cmake --build build -j

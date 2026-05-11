@@ -1,6 +1,18 @@
 #pragma once
 
 #include <iostream>
+#include <mutex>
+
+#ifdef GLOBAL_VALUE_DEFINE
+std::mutex cout_mutex;
+void dump(int thid, std::string s) {
+  std::lock_guard<std::mutex> lock(cout_mutex);
+  std::cout << "[th#" << thid << "]: " << s << std::endl;
+}
+#else
+extern std::mutex cout_mutex;
+extern void dump(int thid, std::string s);
+#endif
 
 #define CCC(val)                                                              \
   do {                                                                        \

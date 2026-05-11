@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 
+#include "../../include/cache_line_size.hh"
 #include "transaction_status.hh"
 
 class TransactionTable {

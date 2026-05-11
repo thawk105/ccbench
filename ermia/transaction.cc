@@ -1,61 +1,28 @@
-
-#include <string.h>
 #include <algorithm>
 #include <atomic>
 #include <bitset>
+#include <set>
 
 #include "../include/atomic_wrapper.hh"
 #include "../include/backoff.hh"
-#include "../include/debug.hh"
 #include "../include/masstree_wrapper.hh"
-#include "../include/tsc.hh"
 #include "include/common.hh"
+#include "include/scan_callback.hh"
 #include "include/transaction.hh"
 #include "include/version.hh"
 
+extern std::vector<Result> ErmiaResult;
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 
 using namespace std;
 
 /**
- * @brief Search xxx set
- * @detail Search element of local set corresponding to given key.
- * In this prototype system, the value to be updated for each worker thread 
- * is fixed for high performance, so it is only necessary to check the key match.
- * @param Key [in] the key of key-value
- * @return Corresponding element of local set
- */
-inline SetElement<Tuple> *TxExecutor::searchReadSet(unsigned int key) {
-  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    if ((*itr).key_ == key) return &(*itr);
-  }
-
-  return nullptr;
-}
-
-/**
- * @brief Search xxx set
- * @detail Search element of local set corresponding to given key.
- * In this prototype system, the value to be updated for each worker thread 
- * is fixed for high performance, so it is only necessary to check the key match.
- * @param Key [in] the key of key-value
- * @return Corresponding element of local set
- */
-inline SetElement<Tuple> *TxExecutor::searchWriteSet(unsigned int key) {
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).key_ == key) return &(*itr);
-  }
-
-  return nullptr;
-}
-
-/**
  * @brief Initialize function of transaction.
  * Allocate timestamp.
  * @return void
  */
-void TxExecutor::tbegin() {
+void TxExecutor::begin() {
   TransactionTable *newElement, *tmt;
 
   tmt = loadAcquire(TMT[thid_]);
@@ -79,9 +46,9 @@ void TxExecutor::tbegin() {
      * If no cache,
      */
     newElement = new TransactionTable(0, 0, UINT32_MAX, lastcstamp,
-                                      TransactionStatus::inFlight);
+                                      TransactionStatus::inflight);
 #if ADD_ANALYSIS
-    ++eres_->local_TMT_element_malloc_;
+    ++result_->local_TMT_element_malloc_;
 #endif
   } else {
     /**
@@ -89,16 +56,16 @@ void TxExecutor::tbegin() {
      */
     newElement = gcobject_.reuse_TMT_element_from_gc_.back();
     gcobject_.reuse_TMT_element_from_gc_.pop_back();
-    newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inFlight);
+    newElement->set(0, 0, UINT32_MAX, lastcstamp, TransactionStatus::inflight);
 #if ADD_ANALYSIS
-    ++eres_->local_TMT_element_reuse_;
+    ++result_->local_TMT_element_reuse_;
 #endif
   }
 
   /**
    * Check the latest commit timestamp
    */
-  for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
+  for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     tmt = loadAcquire(TMT[i]);
     this->txid_ = max(this->txid_, tmt->lastcstamp_.load(memory_order_acquire));
   }
@@ -116,14 +83,14 @@ void TxExecutor::tbegin() {
 
   pstamp_ = 0;
   sstamp_ = UINT32_MAX;
-  status_ = TransactionStatus::inFlight;
+  status_ = TransactionStatus::inflight;
 }
 
 /**
  * @brief Transaction read function.
  * @param [in] key The key of key-value
  */
-void TxExecutor::ssn_tread(uint64_t key) {
+Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
 #if ADD_ANALYSIS
   uint64_t start(rdtscp());
 #endif
@@ -131,73 +98,148 @@ void TxExecutor::ssn_tread(uint64_t key) {
   /**
    * read-own-writes, re-read from previous read in the same tx.
    */
-  if (searchWriteSet(key) || searchReadSet(key)) goto FINISH_TREAD;
+  SetElement<Tuple>* e = searchReadSet(s, key);
+  if (e) {
+    *body = &(e->ver_->body_);
+    goto FINISH_READ;
+  }
+  e = searchWriteSet(s, key);
+  if (e) {
+    if (e->op_ == OpType::DELETE) {
+      // deleted by myself
+      return Status::WARN_NOT_FOUND;
+    }
+    *body = &(e->ver_->body_);
+    goto FINISH_READ;
+  }
 
   /**
    * Search versions from data structure.
    */
   Tuple *tuple;
-#if MASSTREE_USE
-  tuple = MT.get_value(key);
+  tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
-  ++eres_->local_tree_traversal_;
+  ++result_->local_tree_traversal_;
 #endif
-#else
-  tuple = get_tuple(Table, key);
+  if (tuple == nullptr) return Status::WARN_NOT_FOUND;
+
+  Version *ver;
+  ver = read_internal(s, key, tuple);
+  if (ver == nullptr || ver->status_.load(memory_order_acquire) == VersionStatus::deleted)
+    return Status::WARN_NOT_FOUND;
+
+  /**
+   * read payload.
+   */
+  *body = &(ver->body_);
+#if ADD_ANALYSIS
+  ++result_->local_memcpys;
 #endif
 
+FINISH_READ:
+#if ADD_ANALYSIS
+  result_->local_read_latency_ += rdtscp() - start;
+#endif
+  return Status::OK;
+}
+
+Version* TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
   /**
    * Move to the points of this view.
    */
   Version *ver;
   ver = tuple->latest_.load(memory_order_acquire);
-  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed ||
-         txid_ < ver->cstamp_.load(memory_order_acquire))
+  while ((ver->status_.load(memory_order_acquire) != VersionStatus::committed
+      && ver->status_.load(memory_order_acquire) != VersionStatus::deleted)
+      || txid_ < ver->cstamp_.load(memory_order_acquire)) {
     ver = ver->prev_;
+    if (ver == nullptr) {
+      return nullptr;
+    }
+  }
 
-  if (ver->psstamp_.atomicLoadSstamp() == (UINT32_MAX & ~(TIDFLAG))) {
+  uint32_t v_sstamp;
+  v_sstamp = ver->psstamp_.atomicLoadSstamp();
+  if (v_sstamp & TIDFLAG || v_sstamp == (UINT32_MAX & ~(TIDFLAG))) {
     // no overwrite yet
-    read_set_.emplace_back(key, tuple, ver);
+    read_set_.emplace_back(s, key, tuple, ver);
   } else {
     // update pi with r:w edge
     this->sstamp_ =
-            min(this->sstamp_, (ver->psstamp_.atomicLoadSstamp() >> TIDFLAG));
+            min(this->sstamp_, (v_sstamp >> TIDFLAG));
   }
   upReadersBits(ver);
 
   verify_exclusion_or_abort();
   if (this->status_ == TransactionStatus::aborted) {
-    goto FINISH_TREAD;
+    return nullptr;
   }
 
-  /**
-   * read payload.
-   */
-  memcpy(this->return_val_, ver->val_, VAL_SIZE);
-#if ADD_ANALYSIS
-  ++eres_->local_memcpys;
-#endif
-
-FINISH_TREAD:
-#if ADD_ANALYSIS
-  eres_->local_read_latency_ += rdtscp() - start;
-#endif
-  return;
+  return ver;
 }
+
+Status TxExecutor::install_version(Tuple* tuple, Version* desired) {
+  Version* vertmp;
+  Version* expected = tuple->latest_.load(memory_order_acquire);
+  for (;;) {
+    // w-w conflict
+    // first updater wins rule
+    if (expected->status_.load(memory_order_acquire) ==
+        VersionStatus::inflight) {
+      if (this->txid_ <= expected->cstamp_.load(memory_order_acquire)) {
+        this->status_ = TransactionStatus::aborted;
+        TMT[thid_]->status_.store(TransactionStatus::aborted,
+                                  memory_order_release);
+        gcobject_.reuse_version_from_gc_.emplace_back(desired);
+        return Status::ERROR_CONCURRENT_WRITE_OR_DELETE;
+      }
+
+      expected = tuple->latest_.load(memory_order_acquire);
+      continue;
+    }
+
+    // if latest version is not comitted.
+    vertmp = expected;
+    while (vertmp->status_.load(memory_order_acquire) != VersionStatus::committed
+        && vertmp->status_.load(memory_order_acquire) != VersionStatus::deleted)
+      vertmp = vertmp->prev_;
+
+    // vertmp is latest committed version.
+    if (txid_ < vertmp->cstamp_.load(memory_order_acquire)) {
+      //  write - write conflict, first-updater-wins rule.
+      // Writers must abort if they would overwirte a version created after
+      // their snapshot.
+      this->status_ = TransactionStatus::aborted;
+      TMT[thid_]->status_.store(TransactionStatus::aborted,
+                                memory_order_release);
+      gcobject_.reuse_version_from_gc_.emplace_back(desired);
+      return Status::ERROR_CONCURRENT_WRITE_OR_DELETE;
+    }
+
+    desired->prev_ = expected;
+    if (tuple->latest_.compare_exchange_strong(
+            expected, desired, memory_order_acq_rel, memory_order_acquire))
+      break;
+  }
+
+  return Status::OK;
+}
+
 
 /**
  * @brief Transaction write function.
  * @param [in] key The key of key-value
  */
-void TxExecutor::ssn_twrite(uint64_t key) {
+Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif
+  Status stat = Status::OK;
 
   /**
    * update local write set.
    */
-  if (searchWriteSet(key)) goto FINISH_TWRITE;
+  if (searchWriteSet(s, key)) goto FINISH_WRITE;
 
   /**
    * avoid false positive.
@@ -205,7 +247,7 @@ void TxExecutor::ssn_twrite(uint64_t key) {
   Tuple *tuple;
   tuple = nullptr;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    if ((*itr).key_ == key) {
+    if ((*itr).storage_ == s && (*itr).key_ == key) {
       downReadersBits((*itr).ver_);
       /**
        * If it can find record in read set, use this for high performance.
@@ -220,15 +262,12 @@ void TxExecutor::ssn_twrite(uint64_t key) {
    * Search tuple from data structure.
    */
   if (!tuple) {
-#if MASSTREE_USE
-    tuple = MT.get_value(key);
+    tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
-    ++eres_->local_tree_traversal_;
-#endif
-#else
-    tuple = get_tuple(Table, key);
+    ++result_->local_tree_traversal_;
 #endif
   }
+  if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
   /**
    * If v not in t.writes:
@@ -236,66 +275,27 @@ void TxExecutor::ssn_twrite(uint64_t key) {
    * Forbid a transaction to update  a record that has a committed head version
    * later than its begin timestamp.
    */
-  Version *expected, *desired;
+  Version *desired;
+  desired = new Version();
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();
 #if ADD_ANALYSIS
-    ++eres_->local_version_malloc_;
+    ++result_->local_version_malloc_;
 #endif
   } else {
     desired = gcobject_.reuse_version_from_gc_.back();
     gcobject_.reuse_version_from_gc_.pop_back();
     desired->init();
 #if ADD_ANALYSIS
-    ++eres_->local_version_reuse_;
+    ++result_->local_version_reuse_;
 #endif
   }
-  desired->cstamp_.store(
-          this->txid_,
-          memory_order_relaxed);  // read operation, write operation,
+  desired->cstamp_.store(this->txid_, memory_order_relaxed);  // read operation, write operation,
   // it is also accessed by garbage collection.
 
-  Version *vertmp;
-  expected = tuple->latest_.load(memory_order_acquire);
-  for (;;) {
-    // w-w conflict
-    // first updater wins rule
-    if (expected->status_.load(memory_order_acquire) ==
-        VersionStatus::inFlight) {
-      if (this->txid_ <= expected->cstamp_.load(memory_order_acquire)) {
-        this->status_ = TransactionStatus::aborted;
-        TMT[thid_]->status_.store(TransactionStatus::aborted,
-                                  memory_order_release);
-        gcobject_.reuse_version_from_gc_.emplace_back(desired);
-        goto FINISH_TWRITE;
-      }
-
-      expected = tuple->latest_.load(memory_order_acquire);
-      continue;
-    }
-
-    // if latest version is not comitted.
-    vertmp = expected;
-    while (vertmp->status_.load(memory_order_acquire) !=
-           VersionStatus::committed)
-      vertmp = vertmp->prev_;
-
-    // vertmp is latest committed version.
-    if (txid_ < vertmp->cstamp_.load(memory_order_acquire)) {
-      //  write - write conflict, first-updater-wins rule.
-      // Writers must abort if they would overwirte a version created after
-      // their snapshot.
-      this->status_ = TransactionStatus::aborted;
-      TMT[thid_]->status_.store(TransactionStatus::aborted,
-                                memory_order_release);
-      gcobject_.reuse_version_from_gc_.emplace_back(desired);
-      goto FINISH_TWRITE;
-    }
-
-    desired->prev_ = expected;
-    if (tuple->latest_.compare_exchange_strong(
-            expected, desired, memory_order_acq_rel, memory_order_acquire))
-      break;
+  stat = install_version(tuple, desired);
+  if (stat != Status::OK) {
+    goto FINISH_WRITE;
   }
 
   /**
@@ -312,15 +312,198 @@ void TxExecutor::ssn_twrite(uint64_t key) {
    */
   this->pstamp_ =
           max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
-  write_set_.emplace_back(key, tuple, desired);
+  desired->body_ = std::move(body);
+  write_set_.emplace_back(s, key, tuple, desired, OpType::UPDATE);
 
   verify_exclusion_or_abort();
 
-FINISH_TWRITE:
+FINISH_WRITE:
 #if ADD_ANALYSIS
-  eres_->local_write_latency_ += rdtscp() - start;
+  result_->local_write_latency_ += rdtscp() - start;
 #endif
-  return;
+  return stat;
+}
+
+Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif  // if ADD_ANALYSIS
+
+  if (searchWriteSet(s, key)) return Status::WARN_ALREADY_EXISTS;
+
+  Tuple* tuple = Masstrees[get_storage(s)].get_value(key);
+#if ADD_ANALYSIS
+  ++result_->local_tree_traversal_;
+#endif
+  if (tuple != nullptr) {
+    return Status::WARN_ALREADY_EXISTS;
+  }
+
+  tuple = new Tuple();
+  tuple->init(this->txid_, std::move(body));
+  Version* ver = tuple->latest_.load(std::memory_order_acquire);
+  typename MasstreeWrapper<Tuple>::insert_info_t insert_info;
+  Status stat = Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
+  if (stat == Status::WARN_ALREADY_EXISTS) {
+    delete tuple;
+    return stat;
+  }
+  if (insert_info.node) {
+    if (!node_map_.empty()) {
+      auto it = node_map_.find((void*)insert_info.node);
+      if (it != node_map_.end()) {
+        if (unlikely(it->second != insert_info.old_version)) {
+          status_ = TransactionStatus::aborted;
+          return Status::ERROR_CONCURRENT_WRITE_OR_DELETE;
+        }
+        // otherwise, bump the version
+        it->second = insert_info.new_version;
+      }
+    }
+  } else {
+    ERR;
+  }
+
+  write_set_.emplace_back(s, key, tuple, ver, OpType::INSERT);
+
+#if ADD_ANALYSIS
+  result_->local_write_latency_ += rdtscp() - start;
+#endif  // if ADD_ANALYSIS
+  return Status::OK;
+}
+
+Status TxExecutor::delete_record(Storage s, std::string_view key) {
+#if ADD_ANALYSIS
+  uint64_t start = rdtscp();
+#endif  // if ADD_ANALYSIS
+  Status stat = Status::OK;
+
+  // cancel previous write
+  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    if ((*itr).storage_ != s) continue;
+    if ((*itr).key_ == key) {
+      write_set_.erase(itr);
+    }
+  }
+
+  Tuple* tuple = nullptr;
+  SetElement<Tuple> *re;
+  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+    if ((*itr).storage_ == s && (*itr).key_ == key) {
+      downReadersBits((*itr).ver_);
+      tuple = (*itr).rcdptr_;
+      read_set_.erase(itr);
+      break;
+    }
+  }
+
+  if (!tuple) {
+    tuple = Masstrees[get_storage(s)].get_value(key);
+#if ADD_ANALYSIS
+    ++result_->local_tree_traversal_;
+#endif  // if ADD_ANALYSIS
+    if (tuple == nullptr) return Status::WARN_NOT_FOUND;
+  }
+
+  Version *expected, *desired;
+  desired = new Version();
+  if (gcobject_.reuse_version_from_gc_.empty()) {
+    desired = new Version();
+#if ADD_ANALYSIS
+    ++result_->local_version_malloc_;
+#endif
+  } else {
+    desired = gcobject_.reuse_version_from_gc_.back();
+    gcobject_.reuse_version_from_gc_.pop_back();
+    desired->init();
+#if ADD_ANALYSIS
+    ++result_->local_version_reuse_;
+#endif
+  }
+  desired->cstamp_.store(this->txid_, memory_order_relaxed);  // read operation, write operation,
+
+  // it is also accessed by garbage collection.
+
+  stat = install_version(tuple, desired);
+  if (stat != Status::OK) {
+    goto FINISH_DELETE;
+  }
+
+  /**
+   * Insert my tid for ver->prev_->sstamp_ 
+   */
+  uint64_t tmpTID;
+  tmpTID = thid_;
+  tmpTID = tmpTID << 1;
+  tmpTID |= 1;
+  desired->prev_->psstamp_.atomicStoreSstamp(tmpTID);
+
+  /**
+   * Update eta with w:r edge
+   */
+  this->pstamp_ = max(this->pstamp_, desired->prev_->psstamp_.atomicLoadPstamp());
+  write_set_.emplace_back(s, key, tuple, desired, OpType::DELETE);
+
+  verify_exclusion_or_abort();
+
+FINISH_DELETE:
+#if ADD_ANALYSIS
+  result_->local_write_latency_ += rdtscp() - start;
+#endif
+  return stat;
+}
+
+Status TxExecutor::scan(const Storage s,
+                        std::string_view left_key, bool l_exclusive,
+                        std::string_view right_key, bool r_exclusive,
+                        std::vector<TupleBody*>& result) {
+  return scan(s, left_key, l_exclusive, right_key, r_exclusive, result, -1);
+}
+
+Status TxExecutor::scan(const Storage s,
+                        std::string_view left_key, bool l_exclusive,
+                        std::string_view right_key, bool r_exclusive,
+                        std::vector<TupleBody*>& result, int64_t limit) {
+  result.clear();
+
+  std::vector<Tuple*> scan_res;
+  Masstrees[get_storage(s)].scan(
+            left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+            l_exclusive, right_key.empty() ? nullptr : right_key.data(),
+            right_key.size(), r_exclusive, &scan_res, limit,
+            callback_);
+
+  std::set<Version*> seen;
+  for (auto &&itr : scan_res) {
+    // TODO: Tuple should have key? Accessing key through the latest ver is ugly
+    // Must be a copy to avoid buffer overflow when changing the latest
+    std::string key(itr->latest_.load(memory_order_acquire)->body_.get_key());
+    SetElement<Tuple>* re = searchReadSet(s, key);
+    if (re && seen.find(re->ver_) == seen.end()) {
+      result.emplace_back(&(re->ver_->body_));
+      seen.emplace(re->ver_);
+      continue;
+    }
+
+    SetElement<Tuple>* we = searchWriteSet(s, key);
+    if (we && seen.find(we->ver_) == seen.end()) {
+      result.emplace_back(&(we->ver_->body_));
+      seen.emplace(we->ver_);
+      continue;
+    }
+
+    Version* v = read_internal(s, key, itr);
+    if (this->status_ == TransactionStatus::aborted)
+      return Status::ERROR_PREEMPTIVE_ABORT;
+    if (v == nullptr || v->status_.load(memory_order_acquire) == VersionStatus::deleted)
+      continue;
+    if (seen.find(v) == seen.end()) {
+      result.emplace_back(&(v->body_));
+      seen.emplace(v);
+    }
+  }
+
+  return Status::OK;
 }
 
 /**
@@ -390,19 +573,26 @@ void TxExecutor::ssn_commit() {
   // logging
   //?*
 
-  // status, inFlight -> committed
+  // status, inflight -> committed
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
+    // memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
 #if ADD_ANALYSIS
-    ++eres_->local_memcpys;
+    ++result_->local_memcpys;
 #endif
-    (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
+    if ((*itr).op_ == OpType::DELETE) {
+      Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+      (*itr).ver_->status_.store(VersionStatus::deleted, memory_order_release);
+      gcobject_.gcq_for_record_.push_back((*itr).rcdptr_);
+    } else {
+      (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
+    }
   }
 
   this->status_ = TransactionStatus::committed;
   SsnLock.unlock();
   read_set_.clear();
   write_set_.clear();
+  node_map_.clear();
   return;
 }
 
@@ -472,19 +662,21 @@ void TxExecutor::ssn_parallel_commit() {
    */
   uint64_t one = 1;
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+    if ((*itr).op_ == OpType::INSERT) continue;
     /**
      * for r in v.prev.readers
      */
     Version *ver = (*itr).ver_;
-    while (ver->status_.load(memory_order_acquire) != VersionStatus::committed)
+    while (ver->status_.load(memory_order_acquire) != VersionStatus::committed
+        && ver->status_.load(memory_order_acquire) != VersionStatus::deleted)
       ver = ver->prev_;
     uint64_t rdrs = ver->readers_.load(memory_order_acquire);
-    for (unsigned int worker = 0; worker < FLAGS_thread_num; ++worker) {
+    for (unsigned int worker = 0; worker < TotalThreadNum; ++worker) {
       if ((rdrs & (one << worker)) ? 1 : 0) {
         tmt = loadAcquire(TMT[worker]);
         /**
          * It can ignore if the reader is committing.
-         * It can ignore if the reader is inFlight because
+         * It can ignore if the reader is inflight because
          * the reader will get larger cstamp and it can't be eta of this.
          */
         if (tmt->status_.load(memory_order_acquire) ==
@@ -528,8 +720,17 @@ void TxExecutor::ssn_parallel_commit() {
     goto FINISH_PARALLEL_COMMIT;
   }
 
+  // validate the node set
+  for (auto it : node_map_) {
+    auto node = (MasstreeWrapper<Tuple>::node_type *) it.first;
+    if (node->full_version_value() != it.second) {
+      status_ = TransactionStatus::aborted;
+      tmt->status_.store(TransactionStatus::aborted, memory_order_release);
+      goto FINISH_PARALLEL_COMMIT;
+    }
+  }
 #if ADD_ANALYSIS
-  eres_->local_vali_latency_ += rdtscp() - start;
+  result_->local_vali_latency_ += rdtscp() - start;
   start = rdtscp();
 #endif
 
@@ -555,21 +756,29 @@ void TxExecutor::ssn_parallel_commit() {
   verSstamp &= ~(TIDFLAG);
 
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    Version *next_committed = (*itr).ver_->prev_;
-    while (next_committed->status_.load(memory_order_acquire) !=
-           VersionStatus::committed)
-      next_committed = next_committed->prev_;
-    next_committed->psstamp_.atomicStoreSstamp(verSstamp);
+    if ((*itr).op_ == OpType::UPDATE) {
+      Version *next_committed = (*itr).ver_->prev_;
+      while (next_committed->status_.load(memory_order_acquire) != VersionStatus::committed
+          && next_committed->status_.load(memory_order_acquire) != VersionStatus::deleted)
+        next_committed = next_committed->prev_;
+      next_committed->psstamp_.atomicStoreSstamp(verSstamp);
+    }
     (*itr).ver_->cstamp_.store(this->cstamp_, memory_order_release);
     (*itr).ver_->psstamp_.atomicStorePstamp(this->cstamp_);
     (*itr).ver_->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
-    memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
+    // memcpy((*itr).ver_->val_, write_val_, VAL_SIZE);
 #if ADD_ANALYSIS
-    ++eres_->local_memcpys;
+    ++result_->local_memcpys;
 #endif
-    (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
+    if ((*itr).op_ == OpType::DELETE) {
+      Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+      (*itr).ver_->status_.store(VersionStatus::deleted, memory_order_release);
+      gcobject_.gcq_for_record_.push_back((*itr).rcdptr_);
+    } else {
+      (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
+    }
     gcobject_.gcq_for_version_.emplace_back(
-            GCElement((*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
+            GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
   }
 
   // logging
@@ -577,11 +786,12 @@ void TxExecutor::ssn_parallel_commit() {
 
   read_set_.clear();
   write_set_.clear();
+  node_map_.clear();
   TMT[thid_]->lastcstamp_.store(cstamp_, memory_order_release);
 
 FINISH_PARALLEL_COMMIT:
 #if ADD_ANALYSIS
-  eres_->local_commit_latency_ += rdtscp() - start;
+  result_->local_commit_latency_ += rdtscp() - start;
 #endif
   return;
 }
@@ -594,14 +804,20 @@ FINISH_PARALLEL_COMMIT:
  */
 void TxExecutor::abort() {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    Version *next_committed = (*itr).ver_->prev_;
-    while (next_committed->status_.load(memory_order_acquire) !=
-           VersionStatus::committed)
-      next_committed = next_committed->prev_;
-    /**
-     * cancel successor mark(sstamp).
-     */
-    next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
+    if ((*itr).op_ == OpType::UPDATE || (*itr).op_ == OpType::DELETE) {
+      Version *next_committed = (*itr).ver_->prev_;
+      while (next_committed->status_.load(memory_order_acquire) != VersionStatus::committed
+          && next_committed->status_.load(memory_order_acquire) != VersionStatus::deleted)
+        next_committed = next_committed->prev_;
+      /**
+       * cancel successor mark(sstamp).
+       */
+      next_committed->psstamp_.atomicStoreSstamp(UINT32_MAX & ~(TIDFLAG));
+    } else {
+      // remove inserted records
+      Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+      delete (*itr).rcdptr_;
+    }
     (*itr).ver_->status_.store(VersionStatus::aborted, memory_order_release);
   }
   write_set_.clear();
@@ -613,7 +829,7 @@ void TxExecutor::abort() {
     downReadersBits((*itr).ver_);
 
   read_set_.clear();
-  ++eres_->local_abort_counts_;
+  node_map_.clear();
 
 #if BACK_OFF
 
@@ -624,7 +840,7 @@ void TxExecutor::abort() {
   Backoff::backoff(FLAGS_clocks_per_us);
 
 #if ADD_ANALYSIS
-  eres_->local_backoff_latency_ += rdtscp() - start;
+  result_->local_backoff_latency_ += rdtscp() - start;
 #endif
 
 #endif
@@ -646,31 +862,79 @@ void TxExecutor::mainte() {
 #if ADD_ANALYSIS
       uint64_t start;
       start = rdtscp();
-      ++eres_->local_gc_counts_;
+      ++result_->local_gc_counts_;
 #endif
-      gcobject_.gcTMTelement(eres_);
-      gcobject_.gcVersion(eres_);
+      gcobject_.gcTMTelement(result_);
+      gcobject_.gcVersion(result_);
+      gcobject_.gcRecord();
       pre_gc_threshold_ = loadThreshold;
       gcstart_ = gcstop_;
 #if ADD_ANALYSIS
-      eres_->local_gc_latency_ += rdtscp() - start;
+      result_->local_gc_latency_ += rdtscp() - start;
 #endif
     }
   }
 }
 
-void TxExecutor::dispWS() {
-  cout << "th " << this->thid_ << " : write set : ";
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
-  }
-  cout << endl;
+// TODO: enable this if we want to use
+// void TxExecutor::dispWS() {
+//   cout << "th " << this->thid_ << " : write set : ";
+//   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+//     cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
+//   }
+//   cout << endl;
+// }
+
+// void TxExecutor::dispRS() {
+//   cout << "th " << this->thid_ << " : read set : ";
+//   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
+//     cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
+//   }
+//   cout << endl;
+// }
+
+bool TxExecutor::commit() {
+  ssn_parallel_commit();
+  if (status_ == TransactionStatus::aborted)
+    return false;
+
+  /**
+   * Maintenance phase
+   */
+  mainte();
+  return true;
 }
 
-void TxExecutor::dispRS() {
-  cout << "th " << this->thid_ << " : read set : ";
-  for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    cout << "(" << (*itr).key_ << ", " << (*itr).ver_->val_ << "), ";
+bool TxExecutor::isLeader() {
+  return this->thid_ == 0;
+}
+
+void TxExecutor::leaderWork() {
+  if (gcob.chkSecondRange()) {
+    gcob.decideGcThreshold();
+    gcob.mvSecondRangeToFirstRange();
   }
-  cout << endl;
+#if BACK_OFF
+  leaderBackoffWork(backoff_, ErmiaResult);
+#endif
+}
+
+void TxExecutor::reconnoiter_begin() {
+  reconnoitering_ = true;
+}
+
+void TxExecutor::reconnoiter_end() {
+  read_set_.clear();
+  node_map_.clear();
+  reconnoitering_ = false;
+  begin();
+}
+
+void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type *n, uint64_t version) {
+  auto it = tx_->node_map_.find((void*)n);
+  if (it == tx_->node_map_.end()) {
+    tx_->node_map_.emplace_hint(it, (void*)n, version);
+  } else if ((*it).second != version) {
+    tx_->status_ = TransactionStatus::aborted;
+  }
 }

@@ -32,19 +32,35 @@ submodule — skip it unless you add tbb manually.
 If a binary fails to find mimalloc at runtime, add
 `third_party/mimalloc/out/release/` to `LD_LIBRARY_PATH`.
 
-## Building a protocol
+## Building everything (top-level CMake)
 
-Each protocol directory is independent. The standard pattern is:
+The top-level [CMakeLists.txt](../CMakeLists.txt) drives all protocol subdirectories.
+Standard out-of-source build:
 
 ```sh
-cd silo && mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j
-./silo.exe -help
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
 
-`occ/` uses a plain Makefile instead of CMake. See each protocol's own
-`README.md` for protocol-specific notes (build flags, example invocations).
+Binaries land under `build/<protocol>/` and are named `<workload>_<protocol>.exe`,
+e.g. `build/silo/tpcc_silo.exe`, `build/cicada/ycsb_cicada.exe`,
+`build/mocc/bomb_mocc.exe`.
+
+To build only one binary:
+
+```sh
+cmake --build build --target tpcc_silo.exe
+```
+
+For a debug build with sanitizers (the default), use `-DCMAKE_BUILD_TYPE=Debug`.
+Sanitizer toggles live in the top-level `CMakeLists.txt` (`ENABLE_SANITIZER`,
+`ENABLE_UB_SANITIZER`, `ENABLE_COVERAGE`).
+
+## Per-protocol build
+
+Each `<protocol>/CMakeLists.txt` is also invokable directly, but the recommended
+flow is the top-level build above. See [protocols.md](protocols.md) for the
+list of protocols and which workloads they support.
 
 ## Devcontainer (on macOS / non-Ubuntu hosts)
 
@@ -52,9 +68,10 @@ The repo ships a devcontainer at [.devcontainer/](../.devcontainer/) pinned
 to `linux/amd64`:
 
 1. Open the repo in VS Code and run **Dev Containers: Reopen in Container**.
-2. The post-create hook runs `git submodule update --init --recursive`.
-3. Inside the container, run the three bootstrap scripts above and build
-   any protocol normally.
+2. The post-create hook runs `git submodule update --init --recursive` and
+   prints the next-step commands.
+3. Inside the container, run the three bootstrap scripts above and the
+   top-level `cmake -S . -B build` build.
 
 The image is published to `ghcr.io/thawk105/ccbench-devcontainer:latest` and
 rebuilt by [.github/workflows/devcontainer-image.yml](../.github/workflows/devcontainer-image.yml)

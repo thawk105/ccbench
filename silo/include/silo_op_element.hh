@@ -8,15 +8,21 @@ template<typename T>
 class ReadElement : public OpElement<T> {
 public:
   using OpElement<T>::OpElement;
+  TupleBody body_;
 
-
-  ReadElement(uint64_t key, T *rcdptr, char *val, Tidword tidword)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  ReadElement(Storage s, std::string_view key, T *rcdptr, char *val, Tidword tidword)
+          : OpElement<T>::OpElement(s, key, rcdptr) {
     tidword_.obj_ = tidword.obj_;
     memcpy(this->val_, val, VAL_SIZE);
   }
 
+  ReadElement(Storage s, std::string_view key, T* rcdptr, TupleBody&& body, Tidword tidword)
+          : OpElement<T>::OpElement(s, key, rcdptr), body_(std::move(body)) {
+    tidword_.obj_ = tidword.obj_;
+  }
+
   bool operator<(const ReadElement &right) const {
+    if (this->storage_ != right.storage_) return this->storage_ < right.storage_;
     return this->key_ < right.key_;
   }
 
@@ -33,9 +39,10 @@ template<typename T>
 class WriteElement : public OpElement<T> {
 public:
   using OpElement<T>::OpElement;
+  TupleBody body_;
 
-  WriteElement(uint64_t key, T *rcdptr, std::string_view val)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  WriteElement(Storage s, std::string_view key, T *rcdptr, std::string_view val, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op) {
     static_assert(std::string_view("").size() == 0, "Expected behavior was broken.");
     if (val.size() != 0) {
       val_ptr_ = std::make_unique<char[]>(val.size());
@@ -47,7 +54,16 @@ public:
     // else : fast approach for benchmark
   }
 
+  WriteElement(Storage s, std::string_view key, T* rcdptr, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op) {
+  }
+
+  WriteElement(Storage s, std::string_view key, T* rcdptr, TupleBody&& body, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op), body_(std::move(body)) {
+  }
+
   bool operator<(const WriteElement &right) const {
+    if (this->storage_ != right.storage_) return this->storage_ < right.storage_;
     return this->key_ < right.key_;
   }
 

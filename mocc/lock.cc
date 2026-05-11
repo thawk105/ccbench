@@ -930,7 +930,7 @@ MQLock::cancel_writer_lock_no_pred(uint32_t me, unsigned int key) {
 #endif  // MQLOCK
 
 #ifdef RWLOCK
-void RWLock::r_lock() {
+void ReaderWriterLock::r_lock() {
   int expected, desired;
   expected = counter_.load(std::memory_order_acquire);
   for (;;) {
@@ -947,7 +947,7 @@ void RWLock::r_lock() {
   }
 }
 
-bool RWLock::r_trylock() {
+bool ReaderWriterLock::r_trylock() {
   int expected, desired;
   expected = counter_.load(std::memory_order_acquire);
   for (;;) {
@@ -963,9 +963,9 @@ bool RWLock::r_trylock() {
   }
 }
 
-void RWLock::r_unlock() { counter_--; }
+void ReaderWriterLock::r_unlock() { counter_--; }
 
-void RWLock::w_lock() {
+void ReaderWriterLock::w_lock() {
   int expected, desired(-1);
   expected = counter_.load(std::memory_order_acquire);
   for (;;) {
@@ -980,7 +980,7 @@ void RWLock::w_lock() {
   }
 }
 
-bool RWLock::w_trylock() {
+bool ReaderWriterLock::w_trylock() {
   int expected, desired(-1);
   expected = counter_.load(std::memory_order_acquire);
   for (;;) {
@@ -992,9 +992,9 @@ bool RWLock::w_trylock() {
   }
 }
 
-void RWLock::w_unlock() { counter_++; }
+void ReaderWriterLock::w_unlock() { counter_++; }
 
-bool RWLock::upgrade() {
+bool ReaderWriterLock::upgrade() {
   int expected = 1;
   return counter_.compare_exchange_weak(expected, -1,
                                         std::memory_order_acq_rel);

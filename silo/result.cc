@@ -8,4 +8,4 @@ using namespace std;
 
 alignas(CACHE_LINE_SIZE) std::vector<Result> SiloResult;
 
-void initResult() { SiloResult.resize(FLAGS_thread_num); }
+void initResult() { SiloResult.resize(TotalThreadNum); }

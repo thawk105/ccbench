@@ -4,9 +4,12 @@
 *.old
 *.s
 
-# CMake build directories (each protocol creates its own build/)
-build/
+.idea
+cmake-build-debug
+cmake-build-release
 
+# CMake build directory
+build/
 
 # Created by https://www.gitignore.io/api/vim,c++,macos
 

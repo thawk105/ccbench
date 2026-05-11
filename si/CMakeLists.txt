@@ -1,23 +1,3 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(ccbench_si
-        VERSION 0.0.1
-        DESCRIPTION "si of ccbench"
-        LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
-
-option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
-option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
-option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
-
-find_package(Doxygen)
-find_package(Threads REQUIRED)
-find_package(gflags REQUIRED)
-find_package(glog REQUIRED)
-find_package(Boost
-        COMPONENTS filesystem)
-
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
@@ -37,8 +17,8 @@ add_executable(si.exe ${SI_SOURCES})
 target_link_libraries(si.exe
         Boost::filesystem
         gflags::gflags
-        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
 

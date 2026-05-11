@@ -1,46 +1,23 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(ccbench_ss2pl
-        VERSION 0.0.1
-        DESCRIPTION "ss2pl of ccbench"
-        LANGUAGES CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../cmake")
-
-option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
-option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
-option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
-
-find_package(Doxygen)
-find_package(Threads REQUIRED)
-find_package(gflags REQUIRED)
-find_package(glog REQUIRED)
-find_package(Boost
-        COMPONENTS filesystem)
-
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-enable_testing()
-add_subdirectory(test)
-
-file(GLOB SS2PL_SOURCES
+file(GLOB BOMB_SS2PL_SOURCES
         "../common/result.cc"
         "../common/util.cc"
-        "ss2pl.cc"
         "result.cc"
+        "bomb_ss2pl.cc"
         "transaction.cc"
         "util.cc"
         )
 
-add_executable(ss2pl.exe ${SS2PL_SOURCES})
+add_executable(bomb_ss2pl.exe ${BOMB_SS2PL_SOURCES})
 
-target_link_libraries(ss2pl.exe
+target_link_libraries(bomb_ss2pl.exe
         Boost::filesystem
         gflags::gflags
-        ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-        ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
         Threads::Threads
         )
 
@@ -53,7 +30,7 @@ endif ()
 if (DEFINED BACK_OFF)
     add_definitions(-DBACK_OFF=${BACK_OFF})
 else ()
-    add_definitions(-DBACK_OFF=0)
+    add_definitions(-DBACK_OFF=1)
 endif ()
 
 add_definitions(-DDLR1)

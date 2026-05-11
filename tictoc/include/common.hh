@@ -16,24 +16,23 @@
 
 #ifdef GLOBAL_VALUE_DEFINE
 #define GLOBAL
-
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch(1);
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
-
 #else
 #define GLOBAL extern
-
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte GlobalEpoch;
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
-
 #endif
 
 #ifdef GLOBAL_VALUE_DEFINE
 DEFINE_uint64(clocks_per_us, 2100,
               "CPU_MHz. Use this info for measuring time.");
 DEFINE_uint64(extime, 3, "Execution time[sec].");
+DEFINE_uint64(gc_epoch_time, 40, "Epoch interval[msec].");
 DEFINE_uint64(max_ope, 10,
               "Total number of operations per single transaction.");
 DEFINE_bool(rmw, false,
@@ -47,6 +46,7 @@ DEFINE_double(zipf_skew, 0, "zipf skew. 0 ~ 0.999...");
 #else
 DECLARE_uint64(clocks_per_us);
 DECLARE_uint64(extime);
+DECLARE_uint64(gc_epoch_time);
 DECLARE_uint64(max_ope);
 DECLARE_bool(rmw);
 DECLARE_uint64(rratio);
@@ -56,4 +56,7 @@ DECLARE_bool(ycsb);
 DECLARE_double(zipf_skew);
 #endif
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+GLOBAL uint64_t TotalThreadNum;
+
+alignas(CACHE_LINE_SIZE) GLOBAL uint32_t ReclamationEpoch;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;

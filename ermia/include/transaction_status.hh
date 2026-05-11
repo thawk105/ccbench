@@ -3,8 +3,9 @@
 #include <cstdint>
 
 enum class TransactionStatus : uint8_t {
-  inFlight,
-  committing,
+  invalid,
+  inflight,
   committed,
   aborted,
+  committing,
 };

@@ -3,16 +3,26 @@
 #include <atomic>
 #include <iomanip>
 #include <iostream>
+#include <map>
 
 #include "./cache_line_size.hh"
+
+#define MAX_TX_TYPE 10
 
 class Result {
 public:
   alignas(CACHE_LINE_SIZE) uint64_t local_abort_counts_ = 0;
+  alignas(CACHE_LINE_SIZE) uint64_t local_batch_abort_counts_ = 0;
   uint64_t local_commit_counts_ = 0;
+  uint64_t local_batch_commit_counts_ = 0;
+  uint64_t local_commit_counts_per_tx_[MAX_TX_TYPE] = {0};
+  uint64_t local_abort_counts_per_tx_[MAX_TX_TYPE] = {0};
+  int64_t local_latency_per_tx_[MAX_TX_TYPE] = {0};
+  uint64_t local_success_fw_ = 0;
 #if ADD_ANALYSIS
   uint64_t local_abort_by_operation_ = 0;
   uint64_t local_abort_by_validation_ = 0;
+  uint64_t local_abort_latency_ = 0;
   uint64_t local_commit_latency_ = 0;
   uint64_t local_backoff_latency_ = 0;
   uint64_t local_early_aborts_ = 0;
@@ -39,13 +49,28 @@ public:
   uint64_t local_version_malloc_ = 0;
   uint64_t local_version_reuse_ = 0;
   uint64_t local_write_latency_ = 0;
+  // only for oze
+  uint64_t local_read_validation_latency_ = 0;
+  uint64_t local_write_validation_latency_ = 0;
+  uint64_t local_propagate_pages_ = 0;
+  uint64_t local_graph_size_ = 0;
+  uint64_t local_cycle_check_count_ = 0;
+  uint64_t local_forwarding1_count_ = 0;
+  uint64_t local_forwarding2_count_ = 0;
 #endif
 
   uint64_t total_abort_counts_ = 0;
+  uint64_t total_batch_abort_counts_ = 0;
   uint64_t total_commit_counts_ = 0;
+  uint64_t total_batch_commit_counts_ = 0;
+  uint64_t total_commit_counts_per_tx_[MAX_TX_TYPE] = {0};
+  uint64_t total_abort_counts_per_tx_[MAX_TX_TYPE] = {0};
+  uint64_t total_latency_per_tx_[MAX_TX_TYPE] = {0};
+  uint64_t total_success_fw_ = 0;
 #if ADD_ANALYSIS
   uint64_t total_abort_by_operation_ = 0;
   uint64_t total_abort_by_validation_ = 0;
+  uint64_t total_abort_latency_ = 0;
   uint64_t total_commit_latency_ = 0;
   uint64_t total_backoff_latency_ = 0;
   uint64_t total_early_aborts_ = 0;
@@ -74,6 +99,14 @@ public:
   uint64_t total_write_latency_ = 0;
   // not exist local version.
   uint64_t total_latency_ = 0;
+  // only for oze
+  uint64_t total_read_validation_latency_ = 0;
+  uint64_t total_write_validation_latency_ = 0;
+  uint64_t total_propagate_pages_ = 0;
+  uint64_t total_graph_size_ = 0;
+  uint64_t total_cycle_check_count_ = 0;
+  uint64_t total_forwarding1_count_ = 0;
+  uint64_t total_forwarding2_count_ = 0;
 #endif
 
   void displayAbortCounts();
@@ -82,13 +115,26 @@ public:
 
   void displayCommitCounts();
 
+  void displaySuccessForwarding();
+
   void displayTps(size_t extime, size_t thread_num);
 
+  void displayOps(size_t extime, size_t op_num, size_t batch_op_num);
+
   void displayAllResult(size_t clocks_per_us, size_t extime, size_t thread_num);
+
+  void displayAllResult(size_t clocks_per_us, size_t extime, size_t thread_num,
+                        size_t op_num, size_t batch_op_num);
+
+  void displayPerTxResult(std::map<uint32_t,std::string> tx_types);
+
+  void displayOzeAnalysisResult(size_t clocks_per_us, size_t extime, size_t thread_num);
 
 #if ADD_ANALYSIS
   void displayAbortByOperationRate();   // abort by operation rate;
   void displayAbortByValidationRate();  // abort by validation rate;
+  void displayAbortLatencyRate(size_t clocks_per_us, size_t extime,
+                               size_t thread_num);
   void displayCommitLatencyRate(size_t clocks_per_us, size_t extime,
                                  size_t thread_num);
   void displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
@@ -120,22 +166,34 @@ public:
                                size_t thread_num);
   void displayValiLatencyRate(size_t clocks_per_us, size_t extime,
                               size_t thread_num);
+  void displayReadValidationRate(size_t clocks_per_us, size_t extime, size_t thread_num);
+  void displayWriteValidationRate(size_t clocks_per_us, size_t extime, size_t thread_num);
   void displayValidationFailureByTidRate();
   void displayValidationFailureByWritelockRate();
   void displayVersionMalloc();
   void displayVersionReuse();
-
+  // only for oze
+  void displayPropagatePages();
+  void displayGraphSize();
+  void displayCycleCheckCount();
+  void displayForwardingCount();
 #endif
 
   void addLocalAllResult(const Result &other);
+  void addLocalPerTxResult(const Result &other, std::map<uint32_t,std::string> tx_types);
 
   void addLocalAbortCounts(const uint64_t count);
+  void addLocalBatchAbortCounts(const uint64_t count);
 
   void addLocalCommitCounts(const uint64_t count);
+  void addLocalBatchCommitCounts(const uint64_t count);
+
+  void addLocalSuccessForwarding(const uint64_t count);
 
 #if ADD_ANALYSIS
   void addLocalAbortByOperation(const uint64_t count);
   void addLocalAbortByValidation(const uint64_t count);
+  void addLocalAbortLatency(const uint64_t count);
   void addLocalCommitLatency(const uint64_t count);
   void addLocalBackoffLatency(const uint64_t count);
   void addLocalEarlyAborts(const uint64_t count);
@@ -162,5 +220,13 @@ public:
   void addLocalValidationFailureByWritelock(const uint64_t count);
   void addLocalVersionMalloc(const uint64_t count);
   void addLocalVersionReuse(const uint64_t count);
+  // only for oze
+  void addLocalReadValidationLatency(const uint64_t count);
+  void addLocalWriteValidationLatency(const uint64_t count);
+  void addLocalPropagatePages(const uint64_t count);
+  void addLocalGraphSize(const uint64_t count);
+  void addLocalCycleCheckCount(const uint64_t count);
+  void addLocalForwarding1Count(const uint64_t count);
+  void addLocalForwarding2Count(const uint64_t count);
 #endif
 };

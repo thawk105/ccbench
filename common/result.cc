@@ -14,24 +14,39 @@ using namespace std;
 
 extern void displayRusageRUMaxrss();
 
+void Result::displaySuccessForwarding() {
+  cout << "success_forwarding_:\t" << total_success_fw_ << endl;
+}
+
 void Result::displayAbortCounts() {
   cout << "abort_counts_:\t" << total_abort_counts_ << endl;
+  cout << "batch_abort_counts_:\t" << total_batch_abort_counts_ << endl;
 }
 
 void Result::displayAbortRate() {
   long double ave_rate = (double) total_abort_counts_ /
                          (double) (total_commit_counts_ + total_abort_counts_);
   cout << fixed << setprecision(4) << "abort_rate:\t" << ave_rate << endl;
+  ave_rate = (double) total_batch_abort_counts_ /
+             (double) (total_batch_commit_counts_ + total_batch_abort_counts_);
+  cout << fixed << setprecision(4) << "batch_abort_rate:\t" << ave_rate << endl;
 }
 
 void Result::displayCommitCounts() {
   cout << "commit_counts_:\t" << total_commit_counts_ << endl;
+  cout << "batch_commit_counts_:\t" << total_batch_commit_counts_ << endl;
 }
 
 void Result::displayTps(size_t extime, size_t thread_num) {
-  uint64_t result = total_commit_counts_ / extime;
+  uint64_t result = (total_commit_counts_ + total_batch_commit_counts_) / extime;
   cout << "latency[ns]:\t" << powl(10.0, 9.0) / result * thread_num << endl;
   cout << "throughput[tps]:\t" << result << endl;
+}
+
+void Result::displayOps(size_t extime, size_t op_num, size_t batch_op_num) {
+  uint64_t result = (total_commit_counts_*op_num
+                    + total_batch_commit_counts_*batch_op_num) / extime;
+  cout << "throughput[ops]:\t" << result << endl;
 }
 
 #if ADD_ANALYSIS
@@ -52,6 +67,19 @@ void Result::displayAbortByValidationRate() {
     rate = (double)total_abort_by_validation_ / (double)total_abort_counts_;
     cout << "abort_by_validation:\t" << total_abort_by_validation_ << endl;
     cout << fixed << setprecision(4) << "abort_by_validation_rate:\t" << rate
+         << endl;
+  }
+}
+
+void Result::displayAbortLatencyRate(size_t clocks_per_us, size_t extime,
+                                      size_t thread_num) {
+  if (total_abort_latency_) {
+    long double rate;
+    rate =
+        (long double)total_abort_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+    cout << fixed << setprecision(4) << "abort_latency_rate:\t" << rate
          << endl;
   }
 }
@@ -168,9 +196,21 @@ void Result::displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
         ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
         thread_num;
   }
+  if (total_abort_latency_) {
+    sum_rate +=
+        (long double)total_abort_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+  }
   if (total_gc_latency_) {
     sum_rate +=
         (long double)total_gc_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+  }
+  if (total_commit_latency_) {
+    sum_rate +=
+        (long double)total_commit_latency_ /
         ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
         thread_num;
   }
@@ -304,14 +344,81 @@ void Result::displayWriteLatencyRate(size_t clocks_per_us, size_t extime,
     cout << fixed << setprecision(4) << "write_latency_rate:\t" << rate << endl;
   }
 }
+
+void Result::displayReadValidationRate(size_t clocks_per_us, size_t extime, size_t thread_num) {
+  if (total_read_validation_latency_) {
+    long double rate;
+    rate =
+        (long double)total_read_validation_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+    cout << fixed << setprecision(4) << "read_validation_lat_rate:\t" << rate << endl;
+  }
+}
+
+void Result::displayWriteValidationRate(size_t clocks_per_us, size_t extime, size_t thread_num) {
+  if (total_write_validation_latency_) {
+    long double rate;
+    rate =
+        (long double)total_write_validation_latency_ /
+        ((long double)clocks_per_us * powl(10.0, 6.0) * (long double)extime) /
+        thread_num;
+    cout << fixed << setprecision(4) << "write_validation_lat_rate:\t" << rate << endl;
+  }
+}
+
+void Result::displayPropagatePages() {
+  uint64_t num_txns = total_commit_counts_ + total_abort_counts_;
+  if (total_propagate_pages_) {
+    long double n = (long double)total_propagate_pages_/(long double)num_txns;
+    cout << fixed << setprecision(2) << "propagate_pages_per_tx: " << n << endl;
+  }
+}
+
+void Result::displayGraphSize() {
+  if (total_graph_size_ && total_cycle_check_count_) {
+    long double n = (long double)total_graph_size_/(long double)total_cycle_check_count_;
+    cout << fixed << setprecision(2) << "avg_graph_size_in_cycle_check: " << n << endl;
+  }
+}
+
+void Result::displayCycleCheckCount() {
+  uint64_t num_txns = total_commit_counts_ + total_abort_counts_;
+  if (total_cycle_check_count_) {
+    long double n = (long double)total_cycle_check_count_/(long double)num_txns;
+    cout << fixed << setprecision(2) << "cycle_check_per_tx: " << n << endl;
+  }
+}
+
+void Result::displayForwardingCount() {
+  uint64_t num_txns = total_commit_counts_ + total_abort_counts_;
+  auto n =
+    total_forwarding1_count_; // / (long double)num_txns;
+  cout << "1st_forwarding_count: " << n << endl;
+  auto m =
+    total_forwarding2_count_; // / (long double)num_txns;
+  cout << "2nd_forwarding_count: " << m << endl;
+}
 #endif
 
 void Result::addLocalAbortCounts(const uint64_t count) {
   total_abort_counts_ += count;
 }
 
+void Result::addLocalBatchAbortCounts(const uint64_t count) {
+  total_batch_abort_counts_ += count;
+}
+
 void Result::addLocalCommitCounts(const uint64_t count) {
   total_commit_counts_ += count;
+}
+
+void Result::addLocalBatchCommitCounts(const uint64_t count) {
+  total_batch_commit_counts_ += count;
+}
+
+void Result::addLocalSuccessForwarding(const uint64_t count) {
+  total_success_fw_ += count;
 }
 
 #if ADD_ANALYSIS
@@ -321,6 +428,10 @@ void Result::addLocalAbortByOperation(const uint64_t count) {
 
 void Result::addLocalAbortByValidation(const uint64_t count) {
   total_abort_by_validation_ += count;
+}
+
+void Result::addLocalAbortLatency(const uint64_t count) {
+  total_abort_latency_ += count;
 }
 
 void Result::addLocalCommitLatency(const uint64_t count) {
@@ -422,7 +533,29 @@ void Result::addLocalVersionReuse(const uint64_t count) {
 void Result::addLocalWriteLatency(const uint64_t count) {
   total_write_latency_ += count;
 }
+
+// only for oze
+void Result::addLocalReadValidationLatency(const uint64_t count) { total_read_validation_latency_ += count; }
+void Result::addLocalWriteValidationLatency(const uint64_t count) { total_write_validation_latency_ += count; }
+void Result::addLocalPropagatePages(const uint64_t count) { total_propagate_pages_ += count; }
+void Result::addLocalGraphSize(const uint64_t count) { total_graph_size_ += count; }
+void Result::addLocalCycleCheckCount(const uint64_t count) { total_cycle_check_count_ += count; }
+void Result::addLocalForwarding1Count(const uint64_t count) { total_forwarding1_count_ += count; }
+void Result::addLocalForwarding2Count(const uint64_t count) { total_forwarding1_count_ += count; }
 #endif
+
+void Result::displayOzeAnalysisResult(size_t clocks_per_us, size_t extime, size_t thread_num) {
+  // only for oze
+#if ADD_ANALYSIS
+  displayReadValidationRate(clocks_per_us, extime, thread_num);
+  displayWriteValidationRate(clocks_per_us, extime, thread_num);
+  displayPropagatePages();
+  displayGraphSize();
+  displayCycleCheckCount();
+  // displayForwardingCount();
+  // displaySuccessForwarding();
+#endif
+}
 
 void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
                               size_t extime,
@@ -430,6 +563,7 @@ void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
 #if ADD_ANALYSIS
   displayAbortByOperationRate();
   displayAbortByValidationRate();
+  displayAbortLatencyRate(clocks_per_us, extime, thread_num);
   displayCommitLatencyRate(clocks_per_us, extime, thread_num);
   displayBackoffLatencyRate(clocks_per_us, extime, thread_num);
   displayEarlyAbortRate();
@@ -457,7 +591,9 @@ void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
   displayValidationFailureByWritelockRate();
   displayVersionMalloc();
   displayVersionReuse();
+  displayOzeAnalysisResult(clocks_per_us, extime, thread_num);
 #endif
+  displaySuccessForwarding();
   displayAbortCounts();
   displayCommitCounts();
   displayRusageRUMaxrss();
@@ -465,12 +601,61 @@ void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
   displayTps(extime, thread_num);
 }
 
+void Result::displayAllResult([[maybe_unused]] size_t clocks_per_us,
+                              size_t extime,
+                              [[maybe_unused]] size_t thread_num,
+                              size_t op_num, size_t batch_op_num) {
+#if ADD_ANALYSIS
+  displayAbortByOperationRate();
+  displayAbortByValidationRate();
+  displayAbortLatencyRate(clocks_per_us, extime, thread_num);
+  displayCommitLatencyRate(clocks_per_us, extime, thread_num);
+  displayBackoffLatencyRate(clocks_per_us, extime, thread_num);
+  displayEarlyAbortRate();
+  displayExtraReads();
+  displayGCCounts();
+  displayGCLatencyRate(clocks_per_us, extime, thread_num);
+  displayGCTMTElementsCounts();
+  displayGCVersionCounts();
+  displayMakeProcedureLatencyRate(clocks_per_us, extime, thread_num);
+  displayMemcpys();
+  displayOtherWorkLatencyRate(clocks_per_us, extime, thread_num);
+  displayPreemptiveAbortsCounts();
+  displayRatioOfPreemptiveAbortToTotalAbort();
+  displayReadLatencyRate(clocks_per_us, extime, thread_num);
+  displayRtsupdRate();
+  displayTemperatureResets();
+  displayTimestampHistorySuccessCounts();
+  displayTimestampHistoryFailCounts();
+  displayTMTElementMalloc();
+  displayTMTElementReuse();
+  displayTreeTraversal();
+  displayWriteLatencyRate(clocks_per_us, extime, thread_num);
+  displayValiLatencyRate(clocks_per_us, extime, thread_num);
+  displayValidationFailureByTidRate();
+  displayValidationFailureByWritelockRate();
+  displayVersionMalloc();
+  displayVersionReuse();
+  displayOzeAnalysisResult(clocks_per_us, extime, thread_num);
+#endif
+  displayAbortCounts();
+  displayCommitCounts();
+  displayRusageRUMaxrss();
+  displayAbortRate();
+  displayTps(extime, thread_num);
+  displayOps(extime, op_num, batch_op_num);
+}
+
 void Result::addLocalAllResult(const Result &other) {
   addLocalAbortCounts(other.local_abort_counts_);
+  addLocalBatchAbortCounts(other.local_batch_abort_counts_);
   addLocalCommitCounts(other.local_commit_counts_);
+  addLocalBatchCommitCounts(other.local_batch_commit_counts_);
+  addLocalSuccessForwarding(other.local_success_fw_);
 #if ADD_ANALYSIS
   addLocalAbortByOperation(other.local_abort_by_operation_);
   addLocalAbortByValidation(other.local_abort_by_validation_);
+  addLocalAbortLatency(other.local_abort_latency_);
   addLocalBackoffLatency(other.local_backoff_latency_);
   addLocalCommitLatency(other.local_commit_latency_);
   addLocalEarlyAborts(other.local_early_aborts_);
@@ -500,5 +685,53 @@ void Result::addLocalAllResult(const Result &other) {
       other.local_validation_failure_by_writelock_);
   addLocalVersionMalloc(other.local_version_malloc_);
   addLocalVersionReuse(other.local_version_reuse_);
+  // only for oze
+  addLocalReadValidationLatency(other.local_read_validation_latency_);
+  addLocalWriteValidationLatency(other.local_write_validation_latency_);
+  addLocalPropagatePages(other.local_propagate_pages_);
+  addLocalGraphSize(other.local_graph_size_);
+  addLocalCycleCheckCount(other.local_cycle_check_count_);
+  addLocalForwarding1Count(other.local_forwarding1_count_);
+  addLocalForwarding2Count(other.local_forwarding2_count_);
 #endif
+}
+
+void Result::displayPerTxResult(std::map<uint32_t,std::string> tx_types) {
+  for (auto& [type, name] : tx_types) {
+    long double rate = (double) total_abort_counts_per_tx_[type] /
+                       (double) (total_commit_counts_per_tx_[type] + total_abort_counts_per_tx_[type]);
+    long double latency;
+    if (total_commit_counts_per_tx_[type]) {
+      latency = (double) total_latency_per_tx_[type] / (double) total_commit_counts_per_tx_[type];
+    } else {
+      latency = 0;
+    }
+    std::cout << "  Transaction type: " << name << std::endl;
+    std::cout << "    commits: " << total_commit_counts_per_tx_[type] << std::endl;
+    std::cout << "    aborts: " << total_abort_counts_per_tx_[type] << std::endl;
+    std::cout << "    abort rate: "  << std::fixed << setprecision(4) << rate << std::endl;
+    std::cout << "    latency[us]: " << std::fixed << setprecision(2) << latency << std::endl;
+  }
+  std::cout << "  Summary: ";
+  for (auto& [type, name] : tx_types) {
+    std::cout << total_commit_counts_per_tx_[type]
+              << ","
+              << total_abort_counts_per_tx_[type]
+              << ",";
+  }
+  std::cout << std::endl;
+  std::cout << "  All transaction total latencies: ";
+  for (auto& [type, name] : tx_types) {
+    std::cout << total_latency_per_tx_[type]
+              << ",";
+  }
+  std::cout << std::endl;
+}
+
+void Result::addLocalPerTxResult(const Result &other, std::map<uint32_t,std::string> tx_types) {
+  for (auto& [type, name] : tx_types) {
+    total_commit_counts_per_tx_[type] += other.local_commit_counts_per_tx_[type];
+    total_abort_counts_per_tx_[type] += other.local_abort_counts_per_tx_[type];
+    total_latency_per_tx_[type] += other.local_latency_per_tx_[type];
+  }
 }

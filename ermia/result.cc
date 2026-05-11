@@ -8,4 +8,4 @@ using namespace std;
 
 alignas(CACHE_LINE_SIZE) std::vector<Result> ErmiaResult;
 
-void initResult() { ErmiaResult.resize(FLAGS_thread_num); }
+void initResult() { ErmiaResult.resize(TotalThreadNum); }

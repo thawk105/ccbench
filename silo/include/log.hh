@@ -25,12 +25,12 @@ public:
 class LogRecord {
 public:
   uint64_t tid_;
-  unsigned int key_;
+  std::string_view key_;
   char val_[VAL_SIZE];
 
-  LogRecord() : tid_(0), key_(0) {}
+  LogRecord() : tid_(0), key_("") {}
 
-  LogRecord(uint64_t tid, unsigned int key, char *val) : tid_(tid), key_(key) {
+  LogRecord(uint64_t tid, std::string_view key, char *val) : tid_(tid), key_(key) {
     memcpy(this->val_, val, VAL_SIZE);
   }
 

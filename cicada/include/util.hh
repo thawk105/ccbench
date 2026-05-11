@@ -22,7 +22,7 @@ extern void displayParameter();
 
 [[maybe_unused]] extern void displayThreadRtsArray();
 
-extern void leaderWork([[maybe_unused]] Backoff &backoff);
+extern void cicadaLeaderWork();
 
 extern void makeDB(uint64_t *initial_wts);
 
