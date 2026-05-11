@@ -31,6 +31,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ca-certificates \
         sudo \
         curl \
+        ccache \
         clang-format \
         cmake \
         libboost-filesystem-dev \

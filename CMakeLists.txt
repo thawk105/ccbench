@@ -10,6 +10,18 @@ option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
 
+# Auto-enable ccache when available — local builds also benefit from
+# the cross-target dedup we get in CI. Override with -DCCBENCH_CCACHE=OFF.
+option(CCBENCH_CCACHE "use ccache as compiler launcher when found" ON)
+if(CCBENCH_CCACHE)
+  find_program(CCACHE_PROGRAM ccache)
+  if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "ccache enabled: ${CCACHE_PROGRAM}")
+  endif()
+endif()
+
 find_package(Doxygen)
 find_package(Threads REQUIRED)
 find_package(gflags REQUIRED)
