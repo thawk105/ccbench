@@ -62,14 +62,13 @@ target_link_libraries(ccbench_common PUBLIC
   glog::glog
 )
 
-add_subdirectory(cicada)
-add_subdirectory(d2pl)
-add_subdirectory(ermia)
-add_subdirectory(mocc)
-add_subdirectory(mvto)
-add_subdirectory(oze)
-add_subdirectory(si)
-add_subdirectory(silo)
-add_subdirectory(ss2pl)
-add_subdirectory(tictoc)
-#add_subdirectory(tpcc_silo)
+# All concurrency-control protocols live under cc/. Each one's
+# CMakeLists.txt is just a single ccbench_add_protocol(...) call.
+include(ProtocolHelpers)
+foreach(_proto cicada d2pl ermia mocc mvto oze si silo ss2pl tictoc)
+  add_subdirectory(cc/${_proto})
+endforeach()
+
+# Dump the protocol × workload support matrix into the build dir, so the
+# table in CLAUDE.md / docs/protocols.md can be refreshed mechanically.
+ccbench_write_protocol_matrix("${CMAKE_BINARY_DIR}/PROTOCOL_MATRIX.md")

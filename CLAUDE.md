@@ -47,7 +47,7 @@ cmake --build build -j
 Or build one specific target:
 
 ```
-cmake --build build --target tpcc_silo.exe
+cmake --build build --target tpcc_silo.exe   # binary lands in build/cc/silo/
 ```
 
 The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache` is on PATH, deduplicating compilations across the ~28 binaries (full warm rebuild ≈ 3 sec vs 30+ sec cold). Disable with `-DCCBENCH_CCACHE=OFF`.
@@ -56,25 +56,43 @@ The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache` i
 
 ## Protocols and workload coverage
 
-The top-level CMake builds these protocols. Each produces one binary per supported workload, named `<workload>_<protocol>.exe`.
+All CC protocols live under [cc/](cc/) — `cc/silo/`, `cc/cicada/`, etc. Each one's [CMakeLists.txt](cc/silo/CMakeLists.txt) is a single declarative `ccbench_add_protocol(...)` call (see [cmake/ProtocolHelpers.cmake](cmake/ProtocolHelpers.cmake)); the top-level [CMakeLists.txt](CMakeLists.txt) iterates over them. Each produces one binary per supported workload, named `<workload>_<protocol>.exe`, landing in `build/cc/<protocol>/`.
+
+The support matrix is **auto-generated** at configure time from the `WORKLOADS` argument of every `ccbench_add_protocol(...)` call into `build/PROTOCOL_MATRIX.md`. Don't hand-edit a copy of it here — re-run cmake and paste the file contents if you need a snapshot:
 
 | Protocol | YCSB | TPC-C | BoMB | sBoMB / dBoMB |
 |---|:-:|:-:|:-:|:-:|
-| `silo/`   | ✓ | ✓ | ✓ | sBoMB |
-| `mocc/`   | ✓ | ✓ | ✓ | sBoMB |
-| `cicada/` | ✓ | ✓ | ✓ | sBoMB |
-| `ermia/`  | ✓ | ✓ | ✓ | sBoMB |
-| `tictoc/` | ✓ | ✓ | ✓ | sBoMB |
-| `oze/`    | ✓ | ✓ | ✓ | — |
-| `si/`     | ✓ | ✓ | ✓ | sBoMB |
-| `ss2pl/`  | — | ✓ | ✓ | — |
-| `mvto/`   | — | ✓ | ✓ | — |
-| `d2pl/`   | — | — | ✓ | sBoMB + dBoMB |
+| `cc/silo/`   | ✓ | ✓ | ✓ | sBoMB |
+| `cc/mocc/`   | ✓ | ✓ | ✓ | sBoMB |
+| `cc/cicada/` | ✓ | ✓ | ✓ | sBoMB |
+| `cc/ermia/`  | ✓ | ✓ | ✓ | sBoMB |
+| `cc/tictoc/` | ✓ | ✓ | ✓ | sBoMB |
+| `cc/oze/`    | ✓ | ✓ | ✓ | — |
+| `cc/si/`     | ✓ | ✓ | ✓ | sBoMB |
+| `cc/ss2pl/`  | — | ✓ | ✓ | — |
+| `cc/mvto/`   | — | ✓ | ✓ | — |
+| `cc/d2pl/`   | — | — | ✓ | sBoMB + dBoMB |
 
 **Not built by default** ([CMakeLists.txt](CMakeLists.txt) keeps the line commented):
-- `occ/` — present in tree but uses a plain Makefile, not wired into the CMake tree.
+- `cc/occ/` — present in tree but uses a plain Makefile, not wired into the CMake tree.
 
-`si/` is a fresh implementation derived from `ermia/` by stripping the SSN (Serial Safety Net) layer; the original legacy `si/` (uint64-key API) was replaced. `d2pl/` deliberately doesn't support TPC-C — its deterministic locking model needs pre-declared `lock_entries_`, which the optimistic-style TPC-C templates don't provide.
+`cc/si/` is a fresh implementation derived from `cc/ermia/` by stripping the SSN (Serial Safety Net) layer; the original legacy `si/` (uint64-key API) was replaced. `cc/d2pl/` deliberately doesn't support TPC-C — its deterministic locking model needs pre-declared `lock_entries_`, which the optimistic-style TPC-C templates don't provide.
+
+### Adding or tuning a protocol
+
+A protocol's CMakeLists.txt is a single function call:
+
+```cmake
+ccbench_add_protocol(<name>
+  SOURCES   <shared .cc files>                # do NOT list workload entry points
+  WORKLOADS ycsb tpcc bomb sbomb              # any subset of these tags
+  OPTIONS                                     # protocol-specific -D defines
+    FOO=${CCBENCH_FOO}
+    BAR                                       # bare flag = `-DBAR` (no value)
+)
+```
+
+Universal `-D` flags (`KEY_SIZE`, `VAL_SIZE`, `BACK_OFF`, `ADD_ANALYSIS`, `MASSTREE_USE`) and the link against `ccbench_common` + `ccbench::masstree` + `ccbench::mimalloc` are added automatically. New cache options go in [cmake/Options.cmake](cmake/Options.cmake). An `OPTIONS` entry whose value is empty is dropped — same as the old `remove_definitions(-DFLAG)` path.
 
 ## Implementation notes
 
@@ -109,7 +127,7 @@ if (stat != Status::OK) return false;   // do not skip this
 
 ### Per-thread GC + cross-thread Tuple references
 
-`ermia/` and `si/` keep a per-thread `gcq_for_version_` (entries reference `Tuple*` via `rcdptr_`) plus a per-thread `gcq_for_record_` (`Tuple*` itself). A `Tuple` deleted by Thread A goes only into A's `gcq_for_record_`, but Thread B's `gcq_for_version_` may still reference it. To avoid UAF in `gcRecord`, both protocols use an EBR-style guard: each thread publishes the smallest cstamp in its `gcq_for_version_` to `MinQueuedCstamp[thid]` on push (in commit) and after the pop loop in `gcVersion`; `gcRecord` only frees a Tuple whose delete cstamp is strictly less than the global min. **If you change either GC queue's push/pop sites, keep the publish call in sync** — see comments in [si/garbage_collection.cc](si/garbage_collection.cc) and [ermia/garbage_collection.cc](ermia/garbage_collection.cc).
+`cc/ermia/` and `cc/si/` keep a per-thread `gcq_for_version_` (entries reference `Tuple*` via `rcdptr_`) plus a per-thread `gcq_for_record_` (`Tuple*` itself). A `Tuple` deleted by Thread A goes only into A's `gcq_for_record_`, but Thread B's `gcq_for_version_` may still reference it. To avoid UAF in `gcRecord`, both protocols use an EBR-style guard: each thread publishes the smallest cstamp in its `gcq_for_version_` to `MinQueuedCstamp[thid]` on push (in commit) and after the pop loop in `gcVersion`; `gcRecord` only frees a Tuple whose delete cstamp is strictly less than the global min. **If you change either GC queue's push/pop sites, keep the publish call in sync** — see comments in [cc/si/garbage_collection.cc](cc/si/garbage_collection.cc) and [cc/ermia/garbage_collection.cc](cc/ermia/garbage_collection.cc).
 
 ### Build modes for development
 
@@ -122,9 +140,9 @@ if (stat != Status::OK) return false;   // do not skip this
 - [include/tpcc/](include/tpcc/) — unified TPC-C framework (tables, queries, 5 transactions)
 - [include/ycsb.hh](include/ycsb.hh), [include/bomb.hh](include/bomb.hh), [include/bomb_pessimistic.hh](include/bomb_pessimistic.hh), [include/dbomb_deterministic.hh](include/dbomb_deterministic.hh), [include/sbomb_deterministic.hh](include/sbomb_deterministic.hh), [include/workload.hh](include/workload.hh) — workload entry points
 - [common/](common/) — shared sources used across protocols
-- `<protocol>/` — one directory per concurrency control protocol, each with its own `CMakeLists.txt` and `<workload>_<protocol>.cc` entry points
+- [cc/](cc/) — one subdirectory per concurrency control protocol (`cc/silo/`, `cc/cicada/`, …), each with a single-call `CMakeLists.txt` and the `<workload>_<protocol>.cc` entry points
 - [third_party/](third_party/) — submodules: `masstree`, `mimalloc`, `googletest`, `spdlog`
 - [build_tools/](build_tools/) — bootstrap scripts and `ubuntu.deps` (apt package list)
-- [cmake/](cmake/) — shared CMake modules (e.g. `CompileOptions.cmake`)
+- [cmake/](cmake/) — shared CMake modules: `CompileOptions.cmake`, [Options.cmake](cmake/Options.cmake) (universal `-D` flags), [ProtocolHelpers.cmake](cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`)
 - [docs/](docs/) — `build.md`, `workloads.md`, `protocols.md`, `runtime-args.md`
 - [instruction/](instruction/) — micro-benchmarks for individual instructions (cache, fetch_add, etc.)

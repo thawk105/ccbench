@@ -5,12 +5,12 @@ every flag has a default and any subset can be overridden on the command
 line. The full list for a given binary is always available via:
 
 ```sh
-./build/silo/tpcc_silo.exe -help
+./build/cc/silo/tpcc_silo.exe -help
 ```
 
 Binaries are named `<workload>_<protocol>.exe` and live under
-`build/<protocol>/`. Each binary accepts the **common** flags below plus the
-flags for its specific workload.
+`build/cc/<protocol>/`. Each binary accepts the **common** flags below plus
+the flags for its specific workload.
 
 ## Common flags
 
@@ -69,19 +69,19 @@ BoMB has many knobs; the ones below are the most common. See
 TPC-C on Silo with 8 warehouses:
 
 ```sh
-./build/silo/tpcc_silo.exe -thread_num=8 -tpcc_num_wh=8 -extime=10
+./build/cc/silo/tpcc_silo.exe -thread_num=8 -tpcc_num_wh=8 -extime=10
 ```
 
 YCSB-A (50/50 r/w) on Cicada:
 
 ```sh
-./build/cicada/ycsb_cicada.exe -thread_num=8 -ycsb_rratio=50 -ycsb_zipf_skew=0.9
+./build/cc/cicada/ycsb_cicada.exe -thread_num=8 -ycsb_rratio=50 -ycsb_zipf_skew=0.9
 ```
 
 BoMB mixed mode on Silo:
 
 ```sh
-./build/silo/bomb_silo.exe -thread_num=8 -bomb_mixed_mode -bomb_mixed_short_rate=1000
+./build/cc/silo/bomb_silo.exe -thread_num=8 -bomb_mixed_mode -bomb_mixed_short_rate=1000
 ```
 
 Each protocol's `README.md` may have additional protocol-specific flags

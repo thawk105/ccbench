@@ -1,0 +1,10 @@
+ccbench_add_protocol(mocc
+  SOURCES   transaction.cc util.cc result.cc lock.cc
+  WORKLOADS ycsb tpcc bomb sbomb
+  OPTIONS
+    RWLOCK
+    TEMPERATURE_RESET_OPT=${CCBENCH_TEMPERATURE_RESET_OPT}
+    KEY_SORT=${CCBENCH_KEY_SORT}
+    INSERT_READ_DELAY_MS=${CCBENCH_INSERT_READ_DELAY_MS}
+    INSERT_BATCH_DELAY_MS=${CCBENCH_INSERT_BATCH_DELAY_MS}
+)

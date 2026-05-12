@@ -42,9 +42,9 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-Binaries land under `build/<protocol>/` and are named `<workload>_<protocol>.exe`,
-e.g. `build/silo/tpcc_silo.exe`, `build/cicada/ycsb_cicada.exe`,
-`build/mocc/bomb_mocc.exe`.
+Binaries land under `build/cc/<protocol>/` and are named `<workload>_<protocol>.exe`,
+e.g. `build/cc/silo/tpcc_silo.exe`, `build/cc/cicada/ycsb_cicada.exe`,
+`build/cc/mocc/bomb_mocc.exe`.
 
 To build only one binary:
 
@@ -58,9 +58,13 @@ Sanitizer toggles live in the top-level `CMakeLists.txt` (`ENABLE_SANITIZER`,
 
 ## Per-protocol build
 
-Each `<protocol>/CMakeLists.txt` is also invokable directly, but the recommended
-flow is the top-level build above. See [protocols.md](protocols.md) for the
-list of protocols and which workloads they support.
+Each `cc/<protocol>/CMakeLists.txt` is a single declarative
+`ccbench_add_protocol(...)` call — see [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake)
+for the function definition and [cmake/Options.cmake](../cmake/Options.cmake)
+for the universal build-time tunables (`CCBENCH_KEY_SIZE`, `CCBENCH_BACK_OFF`,
+etc.) that can be overridden on the cmake command line. See
+[protocols.md](protocols.md) for the list of protocols and which workloads
+they support.
 
 ## Devcontainer (on macOS / non-Ubuntu hosts)
 
