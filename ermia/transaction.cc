@@ -780,6 +780,9 @@ void TxExecutor::ssn_parallel_commit() {
     gcobject_.gcq_for_version_.emplace_back(
             GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
   }
+  // After pushing this commit's GCElements, expose the (possibly new)
+  // queue front cstamp so other threads' gcRecord can advance safely.
+  gcobject_.publishMinQueuedCstamp();
 
   // logging
   //?*
@@ -866,6 +869,9 @@ void TxExecutor::mainte() {
 #endif
       gcobject_.gcTMTelement(result_);
       gcobject_.gcVersion(result_);
+      // gcRecord uses MinQueuedCstamp[] (published by every thread on
+      // push to and pop from gcq_for_version_) to defer Tuple free
+      // until no thread can still hold a reference.
       gcobject_.gcRecord();
       pre_gc_threshold_ = loadThreshold;
       gcstart_ = gcstop_;

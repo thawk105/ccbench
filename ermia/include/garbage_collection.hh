@@ -62,6 +62,17 @@ public:
 
   void gcTMTelement(Result *eres_);
   // -----
+
+  // EBR-style guard: publish smallest cstamp in this thread's
+  // gcq_for_version_ (UINT32_MAX if empty). gcRecord refuses to free a
+  // Tuple whose delete cstamp >= min(MinQueuedCstamp[*]). See
+  // si/include/garbage_collection.hh for the matching definition.
+  INLINE void publishMinQueuedCstamp() {
+    uint32_t v = gcq_for_version_.empty()
+                 ? UINT32_MAX
+                 : gcq_for_version_.front().cstamp_;
+    MinQueuedCstamp[thid_].store(v, std::memory_order_release);
+  }
 };
 
 #ifdef GLOBAL_VALUE_DEFINE

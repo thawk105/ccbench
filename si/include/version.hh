@@ -4,27 +4,31 @@
 #include <cstdint>
 
 #include "../../include/cache_line_size.hh"
+#include "../../include/tuple_body.hh"
+
+#define TIDFLAG 1
 
 enum class VersionStatus : uint8_t {
-  inFlight,
+  inflight,
   committed,
   aborted,
+  deleted,
 };
 
 struct Psstamp {
   union {
     uint64_t obj_;
     struct {
-      uint32_t pstamp;
-      uint32_t sstamp;
+      uint32_t pstamp_;
+      uint32_t sstamp_;
     };
   };
 
   Psstamp() { obj_ = 0; }
 
   void init(uint32_t pstamp, uint32_t sstamp) {
-    this->pstamp = pstamp;
-    this->sstamp = sstamp;
+    pstamp_ = pstamp;
+    sstamp_ = sstamp;
   }
 
   uint64_t atomicLoad() {
@@ -36,9 +40,9 @@ struct Psstamp {
   bool atomicCASPstamp(uint32_t expectedPstamp, uint32_t desiredPstamp) {
     Psstamp expected, desired;
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
-    expected.pstamp = expectedPstamp;
+    expected.pstamp_ = expectedPstamp;
     desired = expected;
-    desired.pstamp = desiredPstamp;
+    desired.pstamp_ = desiredPstamp;
     if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_, false,
                                     __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
       return true;
@@ -49,13 +53,13 @@ struct Psstamp {
   uint32_t atomicLoadPstamp() {
     Psstamp expected;
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
-    return expected.pstamp;
+    return expected.pstamp_;
   }
 
   uint32_t atomicLoadSstamp() {
     Psstamp expected;
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
-    return expected.sstamp;
+    return expected.sstamp_;
   }
 
   void atomicStorePstamp(uint32_t newpstamp) {
@@ -63,7 +67,7 @@ struct Psstamp {
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
     for (;;) {
       desired = expected;
-      desired.pstamp = newpstamp;
+      desired.pstamp_ = newpstamp;
       if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_,
                                       false, __ATOMIC_ACQ_REL,
                                       __ATOMIC_ACQUIRE))
@@ -76,7 +80,7 @@ struct Psstamp {
     expected.obj_ = __atomic_load_n(&obj_, __ATOMIC_ACQUIRE);
     for (;;) {
       desired = expected;
-      desired.sstamp = newsstamp;
+      desired.sstamp_ = newsstamp;
       if (__atomic_compare_exchange_n(&obj_, &expected.obj_, desired.obj_,
                                       false, __ATOMIC_ACQ_REL,
                                       __ATOMIC_ACQUIRE))
@@ -87,21 +91,20 @@ struct Psstamp {
 
 class Version {
 public:
-  alignas(CACHE_LINE_SIZE) Version *prev_;  // Pointer to overwritten version
-  Version *committed_prev_;  // Pointer to the next committed version, to reduce
-  // serach cost.
-  std::atomic <uint32_t> cstamp_;  // Version creation stamp, c(V)
+  alignas(CACHE_LINE_SIZE) Psstamp
+          psstamp_;  // Version access stamp, eta(V), Version successor stamp, pi(V)
+  Version *prev_;                  // Pointer to overwritten version
+  std::atomic <uint64_t> readers_;  // summarize all of V's readers.
+  std::atomic <uint32_t> cstamp_;   // Version creation stamp, c(V)
   std::atomic <VersionStatus> status_;
-  char val_[VAL_SIZE] = {};
 
-  Version() {
-    status_.store(VersionStatus::inFlight, std::memory_order_release);
-  }
+  TupleBody body_;
+
+  Version() { init(); }
 
   void init() {
-    prev_ = nullptr;
-    committed_prev_ = nullptr;
-    cstamp_.store(0, std::memory_order_relaxed);
-    status_.store(VersionStatus::inFlight, std::memory_order_relaxed);
+    psstamp_.init(0, UINT32_MAX & ~(TIDFLAG));
+    status_.store(VersionStatus::inflight, std::memory_order_release);
+    readers_.store(0, std::memory_order_release);
   }
 };

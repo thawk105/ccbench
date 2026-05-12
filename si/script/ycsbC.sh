@@ -5,9 +5,11 @@ rratio=100
 rmw=off
 skew=0.9
 ycsb=on
-cpu_mhz=2400
+cpu_mhz=2100
+gci=10
 extime=3
 epoch=3
+
 
 host=`hostname`
 chris41="chris41.omni.hpcc.jp"
@@ -23,13 +25,13 @@ enth=224
 inc=28
 fi
 
-result=result_si_ycsbC_tuple1g_skew09_val1k.dat
+result=result_ermia_ycsbC_tuple1g_skew09_val1k.dat
 rm $result
 echo "#worker threads, avg-tps, min-tps, max-tps, avg-ar, min-ar, max-ar, avg-camiss, min-camiss, max-camiss" >> $result
-echo "#sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $extime" >> $result
+echo "#perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime" >> $result
 thread=2
 
-echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
 echo "Thread number $thread"
 
 sumTH=0
@@ -44,17 +46,17 @@ minCA=0
 for ((i=1; i <= epoch; ++i))
 do
   if test $host = $dbs11 ; then
-    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+  sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
   fi
   if test $host = $chris41 ; then
-    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+  perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
   fi
 
   tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
   tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
   tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
   sumTH=`echo "$sumTH + $tmpTH" | bc`
-  sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
+  sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
   sumCA=`echo "$sumCA + $tmpCA" | bc`
   echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
 
@@ -91,8 +93,7 @@ do
   flag=`echo "$tmpCA < $minCA" | bc`
   if test $flag -eq 1 ; then
     minCA=$tmpCA
-  fi
-
+  fi 
 done
 avgTH=`echo "$sumTH / $epoch" | bc`
 avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
@@ -101,13 +102,13 @@ echo "sumTH: $sumTH, sumAR: $sumAR, sumCA: $sumCA"
 echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
 echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
 echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
-echo ""
 thout=`echo "$thread - 1" | bc`
-echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
+echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA" >> $result
+echo ""
 
 for ((thread=$inith; thread<=$enth; thread+=$inc))
 do
-  echo "sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime"
+  echo "perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime"
   echo "Thread number $thread"
   
   sumTH=0
@@ -122,17 +123,17 @@ do
   for ((i=1; i <= epoch; ++i))
   do
     if test $host = $dbs11 ; then
-      sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    sudo perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
     fi
     if test $host = $chris41 ; then
-      perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $extime > exp.txt
+    perf stat -e cache-misses,cache-references -o ana.txt numactl --interleave=all ../si.exe $tuple $maxope $thread $rratio $rmw $skew $ycsb $cpu_mhz $gci $extime > exp.txt
     fi
   
     tmpTH=`grep Throughput ./exp.txt | awk '{print $2}'`
     tmpAR=`grep abort_rate ./exp.txt | awk '{print $2}'`
     tmpCA=`grep cache-misses ./ana.txt | awk '{print $4}'`
     sumTH=`echo "$sumTH + $tmpTH" | bc`
-    sumAR=`echo "scale=4; $sumAR + $tmpAR" | bc | xargs printf %.4f`
+    sumAR=`echo "$sumAR + $tmpAR" | bc | xargs printf %.4f`
     sumCA=`echo "$sumCA + $tmpCA" | bc`
     echo "tmpTH: $tmpTH, tmpAR: $tmpAR, tmpCA: $tmpCA"
   
@@ -169,8 +170,7 @@ do
     flag=`echo "$tmpCA < $minCA" | bc`
     if test $flag -eq 1 ; then
       minCA=$tmpCA
-    fi
-  
+    fi 
   done
   avgTH=`echo "$sumTH / $epoch" | bc`
   avgAR=`echo "scale=4; $sumAR / $epoch" | bc | xargs printf %.4f`
@@ -179,8 +179,8 @@ do
   echo "avgTH: $avgTH, avgAR: $avgAR, avgCA: $avgCA"
   echo "maxTH: $maxTH, maxAR: $maxAR, maxCA: $maxCA"
   echo "minTH: $minTH, minAR: $minAR, minCA: $minCA"
-  echo ""
   thout=`echo "$thread - 1" | bc`
-  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR, $avgCA $minCA $maxCA" >> $result
+  echo "$thout $avgTH $minTH $maxTH $avgAR $minAR $maxAR $avgCA $minCA $maxCA" >> $result
+  echo ""
 done
 

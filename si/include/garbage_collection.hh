@@ -4,7 +4,8 @@
 #include <queue>
 
 #include "../../include/inline.hh"
-#include "../../include/result.hh"
+#include "../../include/op_element.hh"
+
 #include "si_op_element.hh"
 #include "tuple.hh"
 #include "version.hh"
@@ -16,27 +17,22 @@ class GarbageCollection {
 private:
   uint32_t fmin_, fmax_;  // first range of txid in TMT.
   uint32_t smin_, smax_;  // second range of txid in TMT.
-
   static std::atomic <uint32_t>
           GC_threshold_;  // share for all object (meaning all thread).
 
 public:
-  // deque を使うのは，どこまでサイズが肥大するか不明瞭であるから．
-  // vector のリサイズは要素の全コピーが発生するなどして重いから．
-#ifdef CCTR_ON
   std::deque<TransactionTable *> gcq_for_TMT_;
   std::deque<TransactionTable *> reuse_TMT_element_from_gc_;
-#endif  // CCTR_ON
-  std::deque <GCElement<Tuple>> gcq_for_versions_;
+  std::deque <Tuple*> gcq_for_record_;
+  std::deque <GCElement<Tuple>> gcq_for_version_;
   std::deque<Version *> reuse_version_from_gc_;
   uint8_t thid_;
 
-  GarbageCollection() {
-    //#ifdef CCTR_ON
-    //    gcqForTMT.resize(1000);
-    //#endif // CCTR_ON
-    //    gcqForVersion.resize(1000);
-  }
+  GarbageCollection() {}
+
+  GarbageCollection(uint8_t thid) : thid_(thid) {}
+
+  void set_thid_(uint8_t thid) { thid_ = thid; }
 
   // for all thread
   INLINE uint32_t getGcThreshold() {
@@ -60,15 +56,26 @@ public:
   // -----
 
   // for worker thread
-  void gcVersion(Result *sres_);
+  void gcVersion(Result *eres_);
 
-#ifdef CCTR_ON
-  void gcTMTElements(Result *sres_);
-#endif  // CCTR_ON
+  void gcRecord();
+
+  void gcTMTelement(Result *eres_);
   // -----
+
+  // Publish the smallest cstamp currently held in this thread's
+  // gcq_for_version_ (UINT32_MAX if empty). gcRecord on any thread will
+  // refuse to free a Tuple unless every thread's published min strictly
+  // exceeds the Tuple's delete-version cstamp.
+  INLINE void publishMinQueuedCstamp() {
+    uint32_t v = gcq_for_version_.empty()
+                 ? UINT32_MAX
+                 : gcq_for_version_.front().cstamp_;
+    MinQueuedCstamp[thid_].store(v, std::memory_order_release);
+  }
 };
 
 #ifdef GLOBAL_VALUE_DEFINE
-// declare in ermia.cc
+// declare in si.cc
 std::atomic<uint32_t> GarbageCollection::GC_threshold_(0);
 #endif

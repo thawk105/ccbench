@@ -2,19 +2,76 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
-file(GLOB SI_SOURCES
+file(GLOB YCSB_SI_SOURCES
         "../common/result.cc"
         "../common/util.cc"
-        "si.cc"
+        "ycsb_si.cc"
         "garbage_collection.cc"
         "result.cc"
         "transaction.cc"
         "util.cc"
         )
 
-add_executable(si.exe ${SI_SOURCES})
+file(GLOB TPCC_SI_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "tpcc_si.cc"
+        "garbage_collection.cc"
+        "result.cc"
+        "transaction.cc"
+        "util.cc"
+        )
 
-target_link_libraries(si.exe
+file(GLOB BOMB_SI_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "bomb_si.cc"
+        "garbage_collection.cc"
+        "result.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+file(GLOB SBOMB_SI_SOURCES
+        "../common/result.cc"
+        "../common/util.cc"
+        "sbomb_si.cc"
+        "garbage_collection.cc"
+        "result.cc"
+        "transaction.cc"
+        "util.cc"
+        )
+
+add_executable(ycsb_si.exe ${YCSB_SI_SOURCES})
+add_executable(tpcc_si.exe ${TPCC_SI_SOURCES})
+add_executable(bomb_si.exe ${BOMB_SI_SOURCES})
+add_executable(sbomb_si.exe ${SBOMB_SI_SOURCES})
+
+target_link_libraries(ycsb_si.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(tpcc_si.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(bomb_si.exe
+        Boost::filesystem
+        gflags::gflags
+        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
+        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
+        Threads::Threads
+        )
+
+target_link_libraries(sbomb_si.exe
         Boost::filesystem
         gflags::gflags
         ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
@@ -31,15 +88,19 @@ endif ()
 if (DEFINED BACK_OFF)
     add_definitions(-DBACK_OFF=${BACK_OFF})
 else ()
-    add_definitions(-DBACK_OFF=0)
+    add_definitions(-DBACK_OFF=1)
 endif ()
-
-add_definitions(-DCCTR_ON)
 
 if (DEFINED KEY_SIZE)
     add_definitions(-DKEY_SIZE=${KEY_SIZE})
 else ()
     add_definitions(-DKEY_SIZE=8)
+endif ()
+
+if (DEFINED KEY_SORT)
+    add_definitions(-DKEY_SORT=${KEY_SORT})
+else ()
+    add_definitions(-DKEY_SORT=0)
 endif ()
 
 if (DEFINED MASSTREE_USE)
@@ -52,4 +113,16 @@ if (DEFINED VAL_SIZE)
     add_definitions(-DVAL_SIZE=${VAL_SIZE})
 else ()
     add_definitions(-DVAL_SIZE=4)
+endif ()
+
+if (DEFINED INSERT_READ_DELAY_MS)
+    add_definitions(-DINSERT_READ_DELAY_MS=${INSERT_READ_DELAY_MS})
+else ()
+    remove_definitions(-DINSERT_READ_DELAY_MS)
+endif ()
+
+if (DEFINED INSERT_BATCH_DELAY_MS)
+    add_definitions(-DINSERT_BATCH_DELAY_MS=${INSERT_BATCH_DELAY_MS})
+else ()
+    remove_definitions(-DINSERT_BATCH_DELAY_MS)
 endif ()
