@@ -37,7 +37,7 @@ bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, Wa
 
   // Copy out before std::move consumes w_obj.
   ware = new_ware;
-  stat = tx.write(Storage::Warehouse, w_key.view(), TupleBody(w_key.view(), std::move(w_obj)));
+  stat = tx.update(Storage::Warehouse, w_key.view(), TupleBody(w_key.view(), std::move(w_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;
@@ -77,7 +77,7 @@ bool get_and_update_district(TxExecutor& tx,
 
   // Copy out before std::move consumes d_obj.
   dist = new_dist;
-  stat = tx.write(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
+  stat = tx.update(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;
@@ -190,7 +190,7 @@ bool get_and_update_customer(TxExecutor& tx, const SimpleKey<8>& c_key,
     len += copy_cstr(&new_cust.C_DATA[len], &old_cust.C_DATA[0], 501 - len);
   }
 
-  stat = tx.write(Storage::Customer, c_key.view(), TupleBody(c_key.view(), std::move(c_obj)));
+  stat = tx.update(Storage::Customer, c_key.view(), TupleBody(c_key.view(), std::move(c_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;

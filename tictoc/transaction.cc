@@ -216,7 +216,7 @@ Status TxExecutor::scan(const Storage s,
   return Status::OK;
 }
 
-Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
+Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif

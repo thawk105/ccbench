@@ -135,13 +135,13 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 //         sleepMs(INSERT_READ_DELAY_MS);
 // #endif
 //       } else if ((*itr).ope_ == Ope::WRITE) {
-//         trans.write((*itr).key_);
+//         trans.update((*itr).key_);
 //       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
 //         trans.read((*itr).key_);
 // #ifdef INSERT_READ_DELAY_MS
 //         sleepMs(INSERT_READ_DELAY_MS);
 // #endif
-//         trans.write((*itr).key_);
+//         trans.update((*itr).key_);
 //       } else {
 //         ERR;
 //       }

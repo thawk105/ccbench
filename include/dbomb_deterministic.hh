@@ -118,7 +118,7 @@ RETRY:
         mc.mc_i_id = old.mc_i_id;
         mc.mc_stock_quantity = old.mc_stock_quantity + 1.0;
         mc.mc_stock_price = old.mc_stock_price + 1.0;
-        tx.write(Storage::MaterialCostMaster, key.view(), TupleBody(key.view(), std::move(obj)));
+        tx.update(Storage::MaterialCostMaster, key.view(), TupleBody(key.view(), std::move(obj)));
       }
       if (FLAGS_bomb_interactive_ms) sleepMs(FLAGS_bomb_interactive_ms); // as batch
     }

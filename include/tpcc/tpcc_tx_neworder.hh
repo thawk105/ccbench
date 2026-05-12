@@ -72,7 +72,7 @@ bool get_and_update_district(TxExecutor& tx, uint8_t d_id, uint16_t w_id, Distri
   new_dist.D_NEXT_O_ID++;
   // Copy out before std::move consumes d_obj (otherwise dist would dangle).
   dist = new_dist;
-  stat = tx.write(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
+  stat = tx.update(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (stat != Status::OK) {
     return false;
@@ -218,7 +218,7 @@ bool get_and_update_stock(TxExecutor& tx, uint16_t ol_supply_w_id,
 
     // Copy out before std::move consumes s_obj.
     sto = new_sto;
-    stat = tx.write(Storage::Stock, s_key.view(), TupleBody(s_key.view(), std::move(s_obj)));
+    stat = tx.update(Storage::Stock, s_key.view(), TupleBody(s_key.view(), std::move(s_obj)));
     if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
     if (stat != Status::OK) {
       return false;

@@ -128,7 +128,7 @@ RETRY:
             } else if (pro.ope_ == Ope::WRITE) {
                 obj[i].template allocate<YCSB>();
                 YCSB& t = obj[i].ref();
-                tx.write(Storage::YCSB, key[i].view(), TupleBody(key[i].view(), std::move(obj[i])));
+                tx.update(Storage::YCSB, key[i].view(), TupleBody(key[i].view(), std::move(obj[i])));
             } else if (pro.ope_ == Ope::READ_MODIFY_WRITE) {
                 TupleBody* body;
                 tx.read(Storage::YCSB, key[i].view(), &body);
@@ -137,7 +137,7 @@ RETRY:
                   obj[i].template allocate<YCSB>();
                   YCSB& new_tuple = obj[i].ref();
                   memcpy(new_tuple.val_, old_tuple.val_, VAL_SIZE);
-                  tx.write(Storage::YCSB, key[i].view(), TupleBody(key[i].view(), std::move(obj[i])));
+                  tx.update(Storage::YCSB, key[i].view(), TupleBody(key[i].view(), std::move(obj[i])));
                 }
             } else {
                 ERR;

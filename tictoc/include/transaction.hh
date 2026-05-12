@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string.h>
+#include "../../include/tx_executor_concept.hh"
 
 #include <iostream>
 #include <set>
@@ -157,7 +158,7 @@ public:
    * @brief Transaction write function.
    * @param [in] key The key of key-value
    */
-  Status write(Storage s, std::string_view key, TupleBody&& body);
+  Status update(Storage s, std::string_view key, TupleBody&& body);
 
   Status insert(Storage s, std::string_view key, TupleBody&& body);
 
@@ -180,3 +181,5 @@ public:
 
   void leaderWork();
 };
+
+static_assert(TxExecutorLike<TxExecutor>);

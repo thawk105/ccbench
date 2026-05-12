@@ -74,10 +74,10 @@ RETRY:
       if ((*itr).ope_ == Ope::READ) {
         trans.read((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
-        trans.write((*itr).key_);
+        trans.update((*itr).key_);
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
         trans.read((*itr).key_);
-        trans.write((*itr).key_);
+        trans.update((*itr).key_);
       } else {
         ERR;
       }

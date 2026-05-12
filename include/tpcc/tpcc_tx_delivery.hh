@@ -104,7 +104,7 @@ bool update_order_and_get_c_id(
 
   new_ord.O_CARRIER_ID = o_carrier_id;
 
-  status = tx.write(Storage::Order, o_key.view(), TupleBody(o_key.view(), std::move(o_obj)));
+  status = tx.update(Storage::Order, o_key.view(), TupleBody(o_key.view(), std::move(o_obj)));
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
@@ -149,7 +149,7 @@ bool update_order_line_and_get_ol_total(
 
     new_ol.OL_DELIVERY_D = ol_delivery_d;
 
-    status = tx.write(Storage::OrderLine, ol_key, TupleBody(ol_key, std::move(ol_obj)));
+    status = tx.update(Storage::OrderLine, ol_key, TupleBody(ol_key, std::move(ol_obj)));
     if (status != Status::OK) ERR;
     if (tx.status_ == TransactionStatus::aborted) {
       return false;
@@ -192,7 +192,7 @@ bool update_customer_balance(
   new_cust.C_BALANCE += ol_total;
   new_cust.C_DELIVERY_CNT += 1;
 
-  status = tx.write(Storage::Customer, c_key.view(), TupleBody(c_key.view(), std::move(c_obj)));
+  status = tx.update(Storage::Customer, c_key.view(), TupleBody(c_key.view(), std::move(c_obj)));
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
