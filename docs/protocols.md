@@ -13,19 +13,25 @@ Each directory below is an independent implementation with its own
 | [tictoc](../tictoc/) | TicToc                              | ✓ | ✓ | ✓ | Yu et al., SIGMOD 2016 |
 | [ermia](../ermia/)   | ERMIA (with SSN / latch-free SSN)   | ✓ | ✓ | ✓ | Kim et al., SIGMOD 2016; Wang et al., VLDB 2017 |
 | [oze](../oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC variant |
+| [si](../si/)         | Snapshot Isolation                  | ✓ | △ | ✓ | ERMIA without the SSN layer (no anti-dependency check) |
 | [ss2pl](../ss2pl/)   | Strong Strict 2-Phase Locking       | — | ✓ | ✓ | Baseline locking |
 | [d2pl](../d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB and dBoMB only; pre-declared lock entries make TPC-C templates inapplicable |
 | [mvto](../mvto/)     | Multi-Version Timestamp Ordering    | — | ✓ | ✓ | Reed, 1978 |
 
-## Not built by default
+`si` was rewritten by stripping the SSN layer from `ermia` (the original
+`si/` was on the legacy uint64-key API and excluded from the build).
+TPC-C is marked △ because single-thread Release runs are clean but
+multi-thread Release runs SEGV — this is a pre-existing UB inherited
+from `ermia` (both `tpcc_ermia.exe` and `tpcc_si.exe` crash identically
+on `-thread_num=2 -tpcc_num_wh=2`; ASan/UBSan/`-O0` builds all run
+correctly, which is the classic uninit-memory / optimizer-exploited-UB
+signature).
 
-These directories are present in the tree but commented out in the top-level
-`CMakeLists.txt`:
+## Not built by default
 
 | Directory | Notes |
 |---|---|
-| [si](../si/) | Snapshot Isolation. Was a baseline used for ERMIA analysis; build kept for reference. |
 | [occ](../occ/) | K&R OCC (Kung & Robinson, 1981). Uses a plain Makefile, not wired into the CMake tree. |
 
-To enable them, uncomment the corresponding `add_subdirectory(...)` line in
+To enable, uncomment the corresponding `add_subdirectory(...)` line in
 the top-level [CMakeLists.txt](../CMakeLists.txt).

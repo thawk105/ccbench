@@ -2,7 +2,6 @@
 
 #include "../../include/op_element.hh"
 
-#include "transaction_table.hh"
 #include "version.hh"
 
 template<typename T>
@@ -12,13 +11,19 @@ public:
 
   Version *ver_;
 
-  SetElement(uint64_t key, T *rcdptr, Version *ver)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  SetElement(Storage s, std::string_view key, T *rcdptr, Version *ver)
+          : OpElement<T>::OpElement(s, key, rcdptr) {
+    this->ver_ = ver;
+  }
+
+  SetElement(Storage s, std::string_view key, T *rcdptr, Version *ver, OpType op)
+          : OpElement<T>::OpElement(s, key, rcdptr, op) {
     this->ver_ = ver;
   }
 
   bool operator<(const SetElement &right) const {
-    return this->key_ < right.key;
+    if (this->storage_ != right.storage_) return this->storage_ < right.storage_;
+    return this->key_ < right.key_;
   }
 };
 
@@ -30,23 +35,9 @@ public:
   Version *ver_;
   uint32_t cstamp_;
 
-  GCElement() : OpElement<T>::OpElement() {
-    this->ver_ = nullptr;
-    cstamp_ = 0;
-  }
-
-  GCElement(uint64_t key, T *rcdptr, Version *ver, uint32_t cstamp)
-          : OpElement<T>::OpElement(key, rcdptr) {
+  GCElement(Storage s, std::string_view key, T *rcdptr, Version *ver, uint32_t cstamp)
+          : OpElement<T>::OpElement(s, key, rcdptr) {
     this->ver_ = ver;
     this->cstamp_ = cstamp;
   }
-};
-
-class GCTMTElement {
-public:
-  TransactionTable *tmt_;
-
-  GCTMTElement() : tmt_(nullptr) {}
-
-  GCTMTElement(TransactionTable *tmt) : tmt_(tmt) {}
 };

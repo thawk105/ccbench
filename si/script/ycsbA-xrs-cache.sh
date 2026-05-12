@@ -8,7 +8,7 @@ cpu_mhz=2400
 extime=3
 epoch=5
 
-result=result_si_ycsbA_tuple100-10m_cachemiss.dat
+result=result_ermia_ycsbA_tuple100-10m_cachemiss.dat
 rm $result
 echo "#tuple num, cache-misses, min, max" >> $result
 echo "#./si.exe tuple $maxope $thread $rratio $skew $ycsb $cpu_mhz $extime" >> $result
