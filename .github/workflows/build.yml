@@ -2,7 +2,8 @@ name: build
 
 on:
   push:
-    branches: [master]
+    # Run on every branch. (Pull-request runs may double up for same-repo
+    # PRs; that's the trade-off for getting CI feedback on topic branches.)
     paths-ignore:
       - 'README.md'
       - 'docs/**'
