@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB YCSB_ERMIA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "ycsb_ermia.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -13,8 +11,6 @@ file(GLOB YCSB_ERMIA_SOURCES
         )
 
 file(GLOB TPCC_ERMIA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "tpcc_ermia.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -23,8 +19,6 @@ file(GLOB TPCC_ERMIA_SOURCES
         )
 
 file(GLOB BOMB_ERMIA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "bomb_ermia.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -33,8 +27,6 @@ file(GLOB BOMB_ERMIA_SOURCES
         )
 
 file(GLOB SBOMB_ERMIA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "sbomb_ermia.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -47,38 +39,14 @@ add_executable(tpcc_ermia.exe ${TPCC_ERMIA_SOURCES})
 add_executable(bomb_ermia.exe ${BOMB_ERMIA_SOURCES})
 add_executable(sbomb_ermia.exe ${SBOMB_ERMIA_SOURCES})
 
-target_link_libraries(ycsb_ermia.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_ermia.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_ermia.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(sbomb_ermia.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t ycsb_ermia.exe tpcc_ermia.exe bomb_ermia.exe sbomb_ermia.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

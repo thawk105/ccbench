@@ -5,8 +5,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB BOMB_MVTO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "bomb_mvto.cc"
         "result.cc"
         "transaction.cc"
@@ -14,8 +12,6 @@ file(GLOB BOMB_MVTO_SOURCES
         )
 
 file(GLOB TPCC_MVTO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "tpcc_mvto.cc"
         "result.cc"
         "transaction.cc"
@@ -25,22 +21,14 @@ file(GLOB TPCC_MVTO_SOURCES
 add_executable(bomb_mvto.exe ${BOMB_MVTO_SOURCES})
 add_executable(tpcc_mvto.exe ${TPCC_MVTO_SOURCES})
 
-target_link_libraries(bomb_mvto.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_mvto.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t bomb_mvto.exe tpcc_mvto.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

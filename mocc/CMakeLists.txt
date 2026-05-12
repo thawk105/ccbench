@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB YCSB_MOCC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "lock.cc"
         "ycsb_mocc.cc"
         "result.cc"
@@ -13,8 +11,6 @@ file(GLOB YCSB_MOCC_SOURCES
         )
 
 file(GLOB TPCC_MOCC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "lock.cc"
         "tpcc_mocc.cc"
         "result.cc"
@@ -23,8 +19,6 @@ file(GLOB TPCC_MOCC_SOURCES
         )
 
 file(GLOB BOMB_MOCC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "lock.cc"
         "bomb_mocc.cc"
         "result.cc"
@@ -33,8 +27,6 @@ file(GLOB BOMB_MOCC_SOURCES
         )
 
 file(GLOB SBOMB_MOCC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "lock.cc"
         "sbomb_mocc.cc"
         "result.cc"
@@ -47,38 +39,14 @@ add_executable(tpcc_mocc.exe ${TPCC_MOCC_SOURCES})
 add_executable(bomb_mocc.exe ${BOMB_MOCC_SOURCES})
 add_executable(sbomb_mocc.exe ${SBOMB_MOCC_SOURCES})
 
-target_link_libraries(ycsb_mocc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_mocc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_mocc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(sbomb_mocc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t ycsb_mocc.exe tpcc_mocc.exe bomb_mocc.exe sbomb_mocc.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

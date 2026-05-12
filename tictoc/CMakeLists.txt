@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB YCSB_TICTOC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "ycsb_tictoc.cc"
         "transaction.cc"
@@ -12,8 +10,6 @@ file(GLOB YCSB_TICTOC_SOURCES
         )
 
 file(GLOB TPCC_TICTOC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "tpcc_tictoc.cc"
         "transaction.cc"
@@ -21,8 +17,6 @@ file(GLOB TPCC_TICTOC_SOURCES
         )
 
 file(GLOB BOMB_TICTOC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "bomb_tictoc.cc"
         "transaction.cc"
@@ -30,8 +24,6 @@ file(GLOB BOMB_TICTOC_SOURCES
         )
 
 file(GLOB SBOMB_TICTOC_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "sbomb_tictoc.cc"
         "transaction.cc"
@@ -43,38 +35,14 @@ add_executable(tpcc_tictoc.exe ${TPCC_TICTOC_SOURCES})
 add_executable(bomb_tictoc.exe ${BOMB_TICTOC_SOURCES})
 add_executable(sbomb_tictoc.exe ${SBOMB_TICTOC_SOURCES})
 
-target_link_libraries(ycsb_tictoc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_tictoc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_tictoc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(sbomb_tictoc.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t ycsb_tictoc.exe tpcc_tictoc.exe bomb_tictoc.exe sbomb_tictoc.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()
