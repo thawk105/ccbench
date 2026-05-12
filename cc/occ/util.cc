@@ -19,15 +19,15 @@
 #include "include/tuple.hh"
 #include "include/util.hh"
 
-#include "../include/cache_line_size.hh"
-#include "../include/config.hh"
-#include "../include/debug.hh"
-#include "../include/masstree_wrapper.hh"
-#include "../include/procedure.hh"
-#include "../include/random.hh"
-#include "../include/tsc.hh"
-#include "../include/util.hh"
-#include "../include/zipf.hh"
+#include "../../include/cache_line_size.hh"
+#include "../../include/config.hh"
+#include "../../include/debug.hh"
+#include "../../include/masstree_wrapper.hh"
+#include "../../include/procedure.hh"
+#include "../../include/random.hh"
+#include "../../include/tsc.hh"
+#include "../../include/util.hh"
+#include "../../include/zipf.hh"
 
 void chkArg() {
   displayParameter();

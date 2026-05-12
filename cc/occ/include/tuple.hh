@@ -6,7 +6,7 @@
 #include <atomic>
 #include <cstdint>
 
-#include "../../include/cache_line_size.hh"
+#include "../../../include/cache_line_size.hh"
 
 class Tuple {
  public:
