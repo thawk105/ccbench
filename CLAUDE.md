@@ -4,19 +4,21 @@ Context for Claude when working in this repository.
 
 ## What this repo is
 
-This is an **extended CCBench**, originally based on jnmt's vldb-paper branch. It provides a benchmark platform for concurrency-control protocols, supporting three workloads:
+CCBench re-implements major in-memory concurrency-control protocols on a common substrate so they can be compared on identical workloads (Tanabe et al., VLDB 2020). The repository now also bundles the **TPC-C** and **BoMB** workloads and several extra protocols, contributed by [@jnmt](https://github.com/jnmt) on the `vldb-paper` branch and merged here.
+
+Three workloads:
 
 - **TPC-C** — the standard OLTP benchmark
 - **YCSB** — key-value workload (read/write ratio, zipfian skew, etc.)
-- **BoMB** — Bill-of-Materials Benchmark (long-running product costing + short OLTP txns), described in detail in [README.md](README.md)
+- **BoMB** — Bill-of-Materials Benchmark (long-running product costing + short OLTP txns)
 
-Each workload runs across multiple concurrency-control protocols, giving cross-protocol comparison on identical workloads.
+Workload specs are in [docs/workloads.md](docs/workloads.md).
 
 ## Target environment
 
 - **OS**: x86_64 Linux (Debian/Ubuntu). Not portable to macOS.
 - **Why**: code uses x86 intrinsics (`__cpuid_count` in [include/cpu.hh](include/cpu.hh)) and Linux-only APIs (`sched_setaffinity`, `SYS_gettid`, `<linux/fs.h>` in [include/fileio.hh](include/fileio.hh)).
-- **CI**: GitHub Actions on `ubuntu-latest` — see [.github/workflows/build.yml](.github/workflows/build.yml) for the canonical build steps.
+- **CI**: GitHub Actions on `ubuntu-latest` — see [.github/workflows/build.yml](.github/workflows/build.yml). It triggers on push to any branch and on PRs; ccache + apt + bootstrap output are all cached.
 
 ## Working from macOS
 
@@ -48,7 +50,9 @@ Or build one specific target:
 cmake --build build --target tpcc_silo.exe
 ```
 
-Note: `bootstrap_tbb.sh` references `third_party/tbb`, which is **not** registered as a submodule. Skip it unless you add tbb manually.
+The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache` is on PATH, deduplicating compilations across the ~28 binaries (full warm rebuild ≈ 3 sec vs 30+ sec cold). Disable with `-DCCBENCH_CCACHE=OFF`.
+
+`bootstrap_tbb.sh` references `third_party/tbb`, which is **not** registered as a submodule. Skip it unless you add tbb manually.
 
 ## Protocols and workload coverage
 
@@ -62,24 +66,63 @@ The top-level CMake builds these protocols. Each produces one binary per support
 | `ermia/`  | ✓ | ✓ | ✓ | sBoMB |
 | `tictoc/` | ✓ | ✓ | ✓ | sBoMB |
 | `oze/`    | ✓ | ✓ | ✓ | — |
-| `ss2pl/`  | — | — | ✓ | — |
+| `si/`     | ✓ | ✓ | ✓ | sBoMB |
+| `ss2pl/`  | — | ✓ | ✓ | — |
+| `mvto/`   | — | ✓ | ✓ | — |
 | `d2pl/`   | — | — | ✓ | sBoMB + dBoMB |
-| `mvto/`   | — | — | ✓ | — |
 
-**Not built by default** (commented out in top-level [CMakeLists.txt](CMakeLists.txt)):
-- `si/` — older snapshot-isolation protocol; build is left in tree but excluded.
-- `occ/` — present in tree but not wired into the top-level build.
+**Not built by default** ([CMakeLists.txt](CMakeLists.txt) keeps the line commented):
+- `occ/` — present in tree but uses a plain Makefile, not wired into the CMake tree.
 
-The deleted standalone `tpcc_silo/` directory has been replaced by `silo/tpcc_silo.cc`, which uses the unified TPC-C framework in [include/tpcc/](include/tpcc/).
+`si/` is a fresh implementation derived from `ermia/` by stripping the SSN (Serial Safety Net) layer; the original legacy `si/` (uint64-key API) was replaced. `d2pl/` deliberately doesn't support TPC-C — its deterministic locking model needs pre-declared `lock_entries_`, which the optimistic-style TPC-C templates don't provide.
+
+## Implementation notes
+
+### Common transaction API
+
+All built protocols expose the same `TxExecutor` API expected by the workload templates in [include/tpcc.hh](include/tpcc.hh), [include/bomb.hh](include/bomb.hh), [include/ycsb.hh](include/ycsb.hh):
+
+```cpp
+Status read(Storage s, std::string_view key, TupleBody** body);
+Status write(Storage s, std::string_view key, TupleBody&& body);
+Status insert(Storage s, std::string_view key, TupleBody&& body);
+Status delete_record(Storage s, std::string_view key);
+Status scan(...,  std::vector<TupleBody*>& result);
+Status scan(...,  std::vector<TupleBody*>& result, int64_t limit);
+bool   commit();
+void   abort();
+```
+
+When porting a workload to a new protocol, the protocol must implement both `scan` overloads (the TPC-C templates use the limit form for OrderSecondary lookups and Delivery's `get_order_id`).
+
+### `tx.read` returns Status — *check it*
+
+`tx.read` returns `Status::OK` on hit and `Status::WARN_NOT_FOUND` on miss. On miss, `*body` is **left unchanged** (it does not get nullified). Checking only `tx.status_ == TransactionStatus::aborted` is not enough — a stale `body` pointer from a previous read will silently get dereferenced, which manifests as a `HeapObject::cast_to` assertion under Debug+ASan and as garbage data in Release. Always:
+
+```cpp
+Status stat = tx.read(s, key, &body);
+if (tx.status_ == TransactionStatus::aborted) return false;
+if (stat != Status::OK) return false;   // do not skip this
+```
+
+### Per-thread GC + cross-thread Tuple references
+
+`ermia/` and `si/` keep a per-thread `gcq_for_version_` (entries reference `Tuple*` via `rcdptr_`) plus a per-thread `gcq_for_record_` (`Tuple*` itself). A `Tuple` deleted by Thread A goes only into A's `gcq_for_record_`, but Thread B's `gcq_for_version_` may still reference it. To avoid UAF in `gcRecord`, both protocols use an EBR-style guard: each thread publishes the smallest cstamp in its `gcq_for_version_` to `MinQueuedCstamp[thid]` on push (in commit) and after the pop loop in `gcVersion`; `gcRecord` only frees a Tuple whose delete cstamp is strictly less than the global min. **If you change either GC queue's push/pop sites, keep the publish call in sync** — see comments in [si/garbage_collection.cc](si/garbage_collection.cc) and [ermia/garbage_collection.cc](ermia/garbage_collection.cc).
+
+### Build modes for development
+
+- **Debug+ASan** (the default top-level Debug build) is the right mode for correctness work — most TPC-C bugs we have caught (use-after-free in `get_and_update_*`, the `cast_to<Order>` assertion, the gcRecord UAF) showed up there first and were invisible under pure Release.
+- **Release** is for benchmark numbers only. CI builds Release without sanitizer (`-DENABLE_SANITIZER=OFF`) — it does not run binaries, just verifies they compile.
 
 ## Repository layout
 
 - [include/](include/) — shared headers (atomics, rwlock, zipf, masstree wrapper, etc.)
 - [include/tpcc/](include/tpcc/) — unified TPC-C framework (tables, queries, 5 transactions)
-- [include/ycsb.hh](include/ycsb.hh), [include/bomb.hh](include/bomb.hh), [include/workload.hh](include/workload.hh) — workload entry points
+- [include/ycsb.hh](include/ycsb.hh), [include/bomb.hh](include/bomb.hh), [include/bomb_pessimistic.hh](include/bomb_pessimistic.hh), [include/dbomb_deterministic.hh](include/dbomb_deterministic.hh), [include/sbomb_deterministic.hh](include/sbomb_deterministic.hh), [include/workload.hh](include/workload.hh) — workload entry points
 - [common/](common/) — shared sources used across protocols
 - `<protocol>/` — one directory per concurrency control protocol, each with its own `CMakeLists.txt` and `<workload>_<protocol>.cc` entry points
 - [third_party/](third_party/) — submodules: `masstree`, `mimalloc`, `googletest`, `spdlog`
 - [build_tools/](build_tools/) — bootstrap scripts and `ubuntu.deps` (apt package list)
 - [cmake/](cmake/) — shared CMake modules (e.g. `CompileOptions.cmake`)
+- [docs/](docs/) — `build.md`, `workloads.md`, `protocols.md`, `runtime-args.md`
 - [instruction/](instruction/) — micro-benchmarks for individual instructions (cache, fetch_add, etc.)
