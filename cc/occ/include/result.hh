@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../../include/result.hh"
+#include "../../../include/result.hh"
 
 extern std::vector<Result> OccResult;
 

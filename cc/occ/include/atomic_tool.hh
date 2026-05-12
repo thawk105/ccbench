@@ -2,7 +2,7 @@
 
 #include "common.hh"
 
-#include "../../include/inline.hh"
+#include "../../../include/inline.hh"
 
 INLINE uint64_t atomicLoadGE();
 

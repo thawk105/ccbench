@@ -4,10 +4,10 @@
 #include <set>
 #include <vector>
 
-#include "../../include/fileio.hh"
-#include "../../include/procedure.hh"
-#include "../../include/result.hh"
-#include "../../include/string.hh"
+#include "../../../include/fileio.hh"
+#include "../../../include/procedure.hh"
+#include "../../../include/result.hh"
+#include "../../../include/string.hh"
 #include "common.hh"
 #include "log.hh"
 #include "occ_op_element.hh"

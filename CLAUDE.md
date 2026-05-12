@@ -74,7 +74,7 @@ The support matrix is **auto-generated** at configure time from the `WORKLOADS` 
 | `cc/d2pl/`   | — | — | ✓ | sBoMB + dBoMB |
 
 **Not built by default** ([CMakeLists.txt](CMakeLists.txt) keeps the line commented):
-- `cc/occ/` — present in tree but uses a plain Makefile, not wired into the CMake tree.
+- [cc/occ/](cc/occ/) — present in tree but uses a plain Makefile on the legacy uint64-key API, not wired into the CMake tree.
 
 `cc/si/` is a fresh implementation derived from `cc/ermia/` by stripping the SSN (Serial Safety Net) layer; the original legacy `si/` (uint64-key API) was replaced. `cc/d2pl/` deliberately doesn't support TPC-C — its deterministic locking model needs pre-declared `lock_entries_`, which the optimistic-style TPC-C templates don't provide.
 
