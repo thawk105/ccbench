@@ -14,8 +14,8 @@ Each directory below is an independent implementation with its own
 | [ermia](../ermia/)   | ERMIA (with SSN / latch-free SSN)   | ✓ | ✓ | ✓ | Kim et al., SIGMOD 2016; Wang et al., VLDB 2017 |
 | [oze](../oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC variant |
 | [ss2pl](../ss2pl/)   | Strong Strict 2-Phase Locking       | — | ✓ | ✓ | Baseline locking |
-| [d2pl](../d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB and dBoMB only |
-| [mvto](../mvto/)     | Multi-Version Timestamp Ordering    | — | — | ✓ | Reed, 1978 |
+| [d2pl](../d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB and dBoMB only; pre-declared lock entries make TPC-C templates inapplicable |
+| [mvto](../mvto/)     | Multi-Version Timestamp Ordering    | — | ✓ | ✓ | Reed, 1978 |
 
 ## Not built by default
 
