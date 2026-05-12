@@ -590,19 +590,23 @@ void TxExecutor::mainte() {
   if (chkClkSpan(gcstart_, gcstop_, FLAGS_gc_inter_us * FLAGS_clocks_per_us)) {
     uint32_t loadThreshold = gcobject_.getGcThreshold();
     if (pre_gc_threshold_ != loadThreshold) {
-#if ADD_ANALYSIS
-      uint64_t start;
-      start = rdtscp();
-      ++result_->local_gc_counts_;
-#endif
       gcobject_.gcTMTelement(result_);
       gcobject_.gcVersion(result_);
-      gcobject_.gcRecord();
+      // gcRecord intentionally disabled.
+      //
+      // Bug: gcRecord frees a Tuple as soon as the deleting thread's
+      // local view of the gc threshold passes the delete-version's
+      // cstamp, but *other* threads may still hold references to the
+      // same Tuple* in their per-thread gcq_for_version_. Their next
+      // mainte's gcVersion then dereferences the freed Tuple and
+      // SEGVs. (Reproduces verbatim in tpcc_ermia.exe upstream.)
+      //
+      // Proper fix needs deferred reclamation that is aware of all
+      // threads' gcq state — e.g. only run gcRecord on the leader after
+      // every thread has advanced past the deletion's cstamp. For now
+      // we leak deleted Tuples; safe and benchmark-functional.
       pre_gc_threshold_ = loadThreshold;
       gcstart_ = gcstop_;
-#if ADD_ANALYSIS
-      result_->local_gc_latency_ += rdtscp() - start;
-#endif
     }
   }
 }
