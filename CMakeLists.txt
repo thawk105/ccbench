@@ -51,6 +51,7 @@ add_library(ccbench_common STATIC
   common/result.cc
   common/util.cc
 )
+target_compile_features(ccbench_common PUBLIC cxx_std_20)
 target_include_directories(ccbench_common PUBLIC
   ${CMAKE_SOURCE_DIR}
 )

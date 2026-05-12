@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "../../include/tx_executor_concept.hh"
 
 #include "../../include/backoff.hh"
 #include "../../include/procedure.hh"
@@ -81,7 +82,7 @@ public:
 
   Status read_internal(Storage s, std::string_view key, Tuple* tuple);
 
-  Status write(Storage s, std::string_view key, TupleBody&& body);
+  Status update(Storage s, std::string_view key, TupleBody&& body);
 
   Status scan(Storage s,
               std::string_view left_key, bool l_exclusive,
@@ -128,3 +129,5 @@ public:
 
   Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };
+
+static_assert(TxExecutorLike<TxExecutor>);

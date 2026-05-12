@@ -230,7 +230,7 @@ Status TxExecutor::install_version(Tuple* tuple, Version* desired) {
  * @brief Transaction write function.
  * @param [in] key The key of key-value
  */
-Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
+Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif

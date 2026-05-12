@@ -65,7 +65,7 @@ RETRY:
       if ((*itr).ope_ == Ope::READ) {
         trans.read((*itr).key_);
       } else if ((*itr).ope_ == Ope::WRITE) {
-        trans.write((*itr).key_);
+        trans.update((*itr).key_);
       } else if ((*itr).ope_ == Ope::READ_MODIFY_WRITE) {
         trans.readWrite((*itr).key_);
       } else {

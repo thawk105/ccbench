@@ -177,6 +177,13 @@ Status TxExecutor::scan(const Storage s,
                       std::string_view left_key, bool l_exclusive,
                       std::string_view right_key, bool r_exclusive,
                       std::vector<TupleBody*>& result) {
+  return scan(s, left_key, l_exclusive, right_key, r_exclusive, result, -1);
+}
+
+Status TxExecutor::scan(const Storage s,
+                      std::string_view left_key, bool l_exclusive,
+                      std::string_view right_key, bool r_exclusive,
+                      std::vector<TupleBody*>& result, int64_t limit) {
   result.clear();
   auto rset_init_size = read_set_.size();
 
@@ -184,7 +191,7 @@ Status TxExecutor::scan(const Storage s,
   Masstrees[get_storage(s)].scan(
             left_key.empty() ? nullptr : left_key.data(), left_key.size(),
             l_exclusive, right_key.empty() ? nullptr : right_key.data(),
-            right_key.size(), r_exclusive, &scan_res, false);
+            right_key.size(), r_exclusive, &scan_res, limit);
 
   for (auto &&itr : scan_res) {
     SetElement<Tuple>* e = searchReadSet(s, itr->body_.get_key());
@@ -217,7 +224,7 @@ Status TxExecutor::scan(const Storage s,
  * @param [in] key The key of key-value
  * @return void
  */
-Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
+Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
 #endif

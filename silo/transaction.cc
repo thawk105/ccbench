@@ -471,7 +471,7 @@ void TxExecutor::wal(std::uint64_t ctid) {
   }
 }
 
-Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
+Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   std::uint64_t start = rdtscp();
 #endif

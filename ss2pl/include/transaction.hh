@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <queue>
+#include "../../include/tx_executor_concept.hh"
 
 #include "../../include/backoff.hh"
 #include "../../include/procedure.hh"
@@ -73,7 +74,7 @@ public:
               std::vector<TupleBody *>&result, int64_t limit);
 
   void write(uint64_t key);
-  Status write(Storage s, std::string_view key, TupleBody&& body);
+  Status update(Storage s, std::string_view key, TupleBody&& body);
 
   void readWrite(uint64_t key);
 
@@ -100,3 +101,5 @@ public:
   // inline
   Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
 };
+
+static_assert(TxExecutorLike<TxExecutor>);

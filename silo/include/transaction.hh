@@ -4,6 +4,7 @@
 #include <set>
 #include <string_view>
 #include <vector>
+#include "../../include/tx_executor_concept.hh"
 
 #include "../../include/backoff.hh"
 #include "../../include/fileio.hh"
@@ -148,7 +149,7 @@ public:
    * @brief Transaction write function.
    * @param [in] key The key of key-value
    */
-  Status write(Storage s, std::string_view key, TupleBody&& body);
+  Status update(Storage s, std::string_view key, TupleBody&& body);
 
   void writePhase();
 
@@ -163,3 +164,5 @@ public:
 
   void gc_records();
 };
+
+static_assert(TxExecutorLike<TxExecutor>);

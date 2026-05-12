@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <queue>
+#include "../../include/tx_executor_concept.hh"
 
 #include "../../include/backoff.hh"
 #include "../../include/config.hh"
@@ -123,7 +124,7 @@ public:
   Status read(Storage s, std::string_view key, TupleBody** body);
   Version* read_internal(Storage s, std::string_view key, Tuple* tuple);
 
-  Status write(Storage s, std::string_view key, TupleBody&& body);
+  Status update(Storage s, std::string_view key, TupleBody&& body);
 
   Status insert(Storage s, std::string_view key, TupleBody&& body);
 
@@ -369,3 +370,5 @@ public:
     return &table[key];
   }
 };
+
+static_assert(TxExecutorLike<TxExecutor>);

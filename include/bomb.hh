@@ -567,7 +567,7 @@ public:
       pc.pc_factory_id = f_id;
       pc.pc_product_id = p_id;
       pc.pc_cost = cost;
-      Status status = tx.write(Storage::ProductCostMaster, key.view(), TupleBody(key.view(), std::move(obj)));
+      Status status = tx.update(Storage::ProductCostMaster, key.view(), TupleBody(key.view(), std::move(obj)));
       if (FLAGS_bomb_interactive_ms) sleepMicroSec(FLAGS_bomb_interactive_ms);
       return status;
     }
@@ -652,7 +652,7 @@ public:
         mc.mc_i_id = old.mc_i_id;
         mc.mc_stock_quantity = old.mc_stock_quantity + 1.0;
         mc.mc_stock_price = old.mc_stock_price + 1.0;
-        tx.write(Storage::MaterialCostMaster, key.view(), TupleBody(key.view(), std::move(obj)));
+        tx.update(Storage::MaterialCostMaster, key.view(), TupleBody(key.view(), std::move(obj)));
       }
       if (FLAGS_bomb_interactive_ms) sleepMicroSec(FLAGS_bomb_interactive_ms); // as batch
     }
@@ -796,7 +796,7 @@ public:
       im_tuple.im_factory_id = factory_id;
       im_tuple.im_product_id = product_id;
       im_tuple.im_quantity = quantity;
-      return tx.write(Storage::ItemManufacturingMaster, key.view(), TupleBody(key.view(), std::move(obj)));
+      return tx.update(Storage::ItemManufacturingMaster, key.view(), TupleBody(key.view(), std::move(obj)));
     }
 
     Status upsert_item_manufacturing_master(TxExecutor& tx,
@@ -820,7 +820,7 @@ public:
         stat = tx.insert(Storage::ItemManufacturingMaster, key.view(), TupleBody(key.view(), std::move(obj)));
       } else {
         // update
-        stat = tx.write(Storage::ItemManufacturingMaster, key.view(), TupleBody(key.view(), std::move(obj)));
+        stat = tx.update(Storage::ItemManufacturingMaster, key.view(), TupleBody(key.view(), std::move(obj)));
       }
       if (FLAGS_bomb_interactive_ms) sleepMicroSec(FLAGS_bomb_interactive_ms);
       return stat;
@@ -836,7 +836,7 @@ public:
       ic_tuple.ic_parent_i_id = parent_id;
       ic_tuple.ic_i_id = item_id;
       ic_tuple.ic_material_quantity = quantity;
-      return tx.write(Storage::ItemConstructionMaster, key.view(), TupleBody(key.view(), std::move(obj)));
+      return tx.update(Storage::ItemConstructionMaster, key.view(), TupleBody(key.view(), std::move(obj)));
     }
 
     Status run_add_new_prodcut(TxExecutor& tx, Query& query) {

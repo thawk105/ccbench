@@ -78,22 +78,24 @@ The top-level CMake builds these protocols. Each produces one binary per support
 
 ## Implementation notes
 
-### Common transaction API
+### Common transaction API (compile-time enforced)
 
 All built protocols expose the same `TxExecutor` API expected by the workload templates in [include/tpcc.hh](include/tpcc.hh), [include/bomb.hh](include/bomb.hh), [include/ycsb.hh](include/ycsb.hh):
 
 ```cpp
 Status read(Storage s, std::string_view key, TupleBody** body);
-Status write(Storage s, std::string_view key, TupleBody&& body);
-Status insert(Storage s, std::string_view key, TupleBody&& body);
+Status update(Storage s, std::string_view key, TupleBody&& body);   // SQL UPDATE; returns WARN_NOT_FOUND if row absent
+Status insert(Storage s, std::string_view key, TupleBody&& body);   // SQL INSERT
 Status delete_record(Storage s, std::string_view key);
-Status scan(...,  std::vector<TupleBody*>& result);
-Status scan(...,  std::vector<TupleBody*>& result, int64_t limit);
+Status scan(..., std::vector<TupleBody*>& result);
+Status scan(..., std::vector<TupleBody*>& result, int64_t limit);   // limit form is required (TPC-C uses it)
 bool   commit();
 void   abort();
 ```
 
-When porting a workload to a new protocol, the protocol must implement both `scan` overloads (the TPC-C templates use the limit form for OrderSecondary lookups and Delivery's `get_order_id`).
+This contract is **enforced at compile time** by [include/tx_executor_concept.hh](include/tx_executor_concept.hh). Each protocol's `transaction.hh` ends with `static_assert(TxExecutorLike<TxExecutor>);`, so a missing or wrong-signature method fails the protocol's own build with a named diagnostic — no more "ran fine, then crashed inside TPC-C delivery because the limit overload of `scan` was missing".
+
+The check uses an `is_detected`-style SFINAE helper instead of a C++20 `concept` because the bundled `masstree-beta` upstream still calls `std::allocator::construct/destroy` (removed in C++20), pinning the whole tree to C++17.
 
 ### `tx.read` returns Status — *check it*
 

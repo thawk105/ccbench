@@ -224,7 +224,7 @@ Status TxExecutor::read_internal_occ(Storage s, std::string_view key, Tuple* tup
  * @brief Transaction write function.
  * @param [in] key The key of key-value
  */
-Status TxExecutor::write(Storage s, std::string_view key, TupleBody&& body) {
+Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
     uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
