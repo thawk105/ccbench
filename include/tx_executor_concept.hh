@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <string_view>
 #include <type_traits>
@@ -33,77 +34,20 @@
  *    reconnoiter_*) are deliberately not constrained, so the same concept
  *    applies cleanly across optimistic / pessimistic / deterministic
  *    families.
- *
- * Why SFINAE rather than a C++20 `concept`?
- *  The `<masstree>` header used pervasively here calls `std::allocator::
- *  construct/destroy`, which were removed in C++20. We can't bump the
- *  whole tree to C++20 until that upstream is patched, so we express the
- *  same contract with an `is_detected`-style helper that works in C++17.
  */
-
-namespace ccbench::detail {
-
-template <class, class = void> struct void_t_helper { using type = void; };
-
-// is_detected: succeeds when EXPR is well-formed for type T.
-#define CCBENCH_CONTRACT_HAS(NAME, EXPR)                                 \
-  template <class T, class = void>                                       \
-  struct NAME : std::false_type {};                                      \
-  template <class T>                                                     \
-  struct NAME<T, std::void_t<decltype(EXPR)>> : std::true_type {}
-
-CCBENCH_CONTRACT_HAS(
-    has_read,
-    std::declval<T&>().read(std::declval<Storage>(),
-                            std::declval<std::string_view>(),
-                            std::declval<TupleBody**>()));
-
-CCBENCH_CONTRACT_HAS(
-    has_update,
-    std::declval<T&>().update(std::declval<Storage>(),
-                              std::declval<std::string_view>(),
-                              std::declval<TupleBody&&>()));
-
-CCBENCH_CONTRACT_HAS(
-    has_insert,
-    std::declval<T&>().insert(std::declval<Storage>(),
-                              std::declval<std::string_view>(),
-                              std::declval<TupleBody&&>()));
-
-CCBENCH_CONTRACT_HAS(
-    has_delete_record,
-    std::declval<T&>().delete_record(std::declval<Storage>(),
-                                     std::declval<std::string_view>()));
-
-CCBENCH_CONTRACT_HAS(
-    has_scan,
-    std::declval<T&>().scan(std::declval<Storage>(),
-                            std::declval<std::string_view>(), false,
-                            std::declval<std::string_view>(), false,
-                            std::declval<std::vector<TupleBody*>&>()));
-
-CCBENCH_CONTRACT_HAS(
-    has_scan_limit,
-    std::declval<T&>().scan(std::declval<Storage>(),
-                            std::declval<std::string_view>(), false,
-                            std::declval<std::string_view>(), false,
-                            std::declval<std::vector<TupleBody*>&>(),
-                            std::declval<std::int64_t>()));
-
-CCBENCH_CONTRACT_HAS(has_commit, std::declval<T&>().commit());
-CCBENCH_CONTRACT_HAS(has_abort,  std::declval<T&>().abort());
-
-#undef CCBENCH_CONTRACT_HAS
-
-}  // namespace ccbench::detail
-
 template <class T>
-inline constexpr bool TxExecutorLike =
-    ccbench::detail::has_read<T>::value &&
-    ccbench::detail::has_update<T>::value &&
-    ccbench::detail::has_insert<T>::value &&
-    ccbench::detail::has_delete_record<T>::value &&
-    ccbench::detail::has_scan<T>::value &&
-    ccbench::detail::has_scan_limit<T>::value &&
-    ccbench::detail::has_commit<T>::value &&
-    ccbench::detail::has_abort<T>::value;
+concept TxExecutorLike = requires(
+    T t,
+    Storage s,
+    std::string_view k,
+    TupleBody** body,
+    std::vector<TupleBody*>& result) {
+  { t.read(s, k, body) }                                    -> std::same_as<Status>;
+  { t.update(s, k, std::declval<TupleBody&&>()) }           -> std::same_as<Status>;
+  { t.insert(s, k, std::declval<TupleBody&&>()) }           -> std::same_as<Status>;
+  { t.delete_record(s, k) }                                 -> std::same_as<Status>;
+  { t.scan(s, k, false, k, false, result) }                 -> std::same_as<Status>;
+  { t.scan(s, k, false, k, false, result, std::int64_t{}) } -> std::same_as<Status>;
+  { t.commit() }                                            -> std::same_as<bool>;
+  { t.abort() }                                             -> std::same_as<void>;
+};
