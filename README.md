@@ -34,12 +34,12 @@ cmake --build build -j
 
 ## Run
 
-Binaries land at `build/<protocol>/<workload>_<protocol>.exe`. Examples:
+Binaries land at `build/cc/<protocol>/<workload>_<protocol>.exe`. Examples:
 
 ```sh
-./build/silo/tpcc_silo.exe   -thread_num=8 -tpcc_num_wh=8
-./build/cicada/ycsb_cicada.exe -thread_num=8 -ycsb_rratio=50
-./build/silo/bomb_silo.exe   -thread_num=8 -bomb_mixed_mode -bomb_mixed_short_rate=1000
+./build/cc/silo/tpcc_silo.exe     -thread_num=8 -tpcc_num_wh=8
+./build/cc/cicada/ycsb_cicada.exe -thread_num=8 -ycsb_rratio=50
+./build/cc/silo/bomb_silo.exe     -thread_num=8 -bomb_mixed_mode -bomb_mixed_short_rate=1000
 ```
 
 See `--help` for workload-specific flags, or [docs/runtime-args.md](docs/runtime-args.md) for the full reference.
