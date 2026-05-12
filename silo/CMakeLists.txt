@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB YCSB_SILO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "ycsb_silo.cc"
         "transaction.cc"
@@ -12,8 +10,6 @@ file(GLOB YCSB_SILO_SOURCES
         )
 
 file(GLOB TPCC_SILO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "tpcc_silo.cc"
         "transaction.cc"
@@ -21,8 +17,6 @@ file(GLOB TPCC_SILO_SOURCES
         )
 
 file(GLOB BOMB_SILO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "bomb_silo.cc"
         "transaction.cc"
@@ -30,8 +24,6 @@ file(GLOB BOMB_SILO_SOURCES
         )
 
 file(GLOB SBOMB_SILO_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "sbomb_silo.cc"
         "transaction.cc"
@@ -48,37 +40,13 @@ add_executable(bomb_silo.exe ${BOMB_SILO_SOURCES})
 add_executable(sbomb_silo.exe ${SBOMB_SILO_SOURCES})
 add_executable(replay_test.exe ${REPLAY_SOURCES})
 
-target_link_libraries(ycsb_silo.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(tpcc_silo.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_silo.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(sbomb_silo.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
+foreach(t ycsb_silo.exe tpcc_silo.exe bomb_silo.exe sbomb_silo.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})

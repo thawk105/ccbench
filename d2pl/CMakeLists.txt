@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB SBOMB_D2PL_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "sbomb_d2pl.cc"
         "transaction.cc"
@@ -12,8 +10,6 @@ file(GLOB SBOMB_D2PL_SOURCES
         )
 
 file(GLOB DBOMB_D2PL_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "result.cc"
         "dbomb_d2pl.cc"
         "transaction.cc"
@@ -23,22 +19,14 @@ file(GLOB DBOMB_D2PL_SOURCES
 add_executable(sbomb_d2pl.exe ${SBOMB_D2PL_SOURCES})
 add_executable(bomb_d2pl.exe ${DBOMB_D2PL_SOURCES})
 
-target_link_libraries(sbomb_d2pl.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(bomb_d2pl.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t sbomb_d2pl.exe bomb_d2pl.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

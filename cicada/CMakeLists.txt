@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB YCSB_CICADA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "ycsb_cicada.cc"
         "result.cc"
         "transaction.cc"
@@ -12,8 +10,6 @@ file(GLOB YCSB_CICADA_SOURCES
         )
 
 file(GLOB TPCC_CICADA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "tpcc_cicada.cc"
         "result.cc"
         "transaction.cc"
@@ -21,8 +17,6 @@ file(GLOB TPCC_CICADA_SOURCES
         )
 
 file(GLOB BOMB_CICADA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "bomb_cicada.cc"
         "result.cc"
         "transaction.cc"
@@ -30,8 +24,6 @@ file(GLOB BOMB_CICADA_SOURCES
         )
 
 file(GLOB SBOMB_CICADA_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "sbomb_cicada.cc"
         "result.cc"
         "transaction.cc"
@@ -43,38 +35,14 @@ add_executable(tpcc_cicada.exe ${TPCC_CICADA_SOURCES})
 add_executable(bomb_cicada.exe ${BOMB_CICADA_SOURCES})
 add_executable(sbomb_cicada.exe ${SBOMB_CICADA_SOURCES})
 
-target_link_libraries(ycsb_cicada.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_cicada.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_cicada.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(sbomb_cicada.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t ycsb_cicada.exe tpcc_cicada.exe bomb_cicada.exe sbomb_cicada.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

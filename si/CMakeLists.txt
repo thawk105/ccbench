@@ -3,8 +3,6 @@ include(CMakePackageConfigHelpers)
 include(CompileOptions)
 
 file(GLOB YCSB_SI_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "ycsb_si.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -13,8 +11,6 @@ file(GLOB YCSB_SI_SOURCES
         )
 
 file(GLOB TPCC_SI_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "tpcc_si.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -23,8 +19,6 @@ file(GLOB TPCC_SI_SOURCES
         )
 
 file(GLOB BOMB_SI_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "bomb_si.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -33,8 +27,6 @@ file(GLOB BOMB_SI_SOURCES
         )
 
 file(GLOB SBOMB_SI_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "sbomb_si.cc"
         "garbage_collection.cc"
         "result.cc"
@@ -47,38 +39,14 @@ add_executable(tpcc_si.exe ${TPCC_SI_SOURCES})
 add_executable(bomb_si.exe ${BOMB_SI_SOURCES})
 add_executable(sbomb_si.exe ${SBOMB_SI_SOURCES})
 
-target_link_libraries(ycsb_si.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_si.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_si.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(sbomb_si.exe
-        Boost::filesystem
-        gflags::gflags
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t ycsb_si.exe tpcc_si.exe bomb_si.exe sbomb_si.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()

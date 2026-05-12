@@ -28,6 +28,39 @@ find_package(gflags REQUIRED)
 find_package(glog REQUIRED)
 find_package(Boost COMPONENTS filesystem)
 
+# ---------------------------------------------------------------------------
+# Imported targets for the bootstrap-built third-party static libraries.
+# Replaces the raw ${THIRD_PARTY_DIR}/.../*.a paths previously copy-pasted
+# into every protocol's target_link_libraries(...).
+# ---------------------------------------------------------------------------
+add_library(ccbench::masstree STATIC IMPORTED GLOBAL)
+set_target_properties(ccbench::masstree PROPERTIES
+  IMPORTED_LOCATION "${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a")
+
+add_library(ccbench::mimalloc STATIC IMPORTED GLOBAL)
+set_target_properties(ccbench::mimalloc PROPERTIES
+  IMPORTED_LOCATION "${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a")
+
+# ---------------------------------------------------------------------------
+# common/ as a real shared static library — replaces the per-binary
+# duplication that compiled common/result.cc + common/util.cc once per
+# target (~28 duplicate compilations across all protocols × workloads).
+# Protocols just `target_link_libraries(<bin> PRIVATE ccbench_common)`.
+# ---------------------------------------------------------------------------
+add_library(ccbench_common STATIC
+  common/result.cc
+  common/util.cc
+)
+target_include_directories(ccbench_common PUBLIC
+  ${CMAKE_SOURCE_DIR}
+)
+target_link_libraries(ccbench_common PUBLIC
+  Threads::Threads
+  Boost::filesystem
+  gflags::gflags
+  glog::glog
+)
+
 add_subdirectory(cicada)
 add_subdirectory(d2pl)
 add_subdirectory(ermia)

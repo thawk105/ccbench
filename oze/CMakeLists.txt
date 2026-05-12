@@ -5,8 +5,6 @@ include(CompileOptions)
 include_directories(${THIRD_PARTY_DIR}/googletest/googletest/include)
 
 file(GLOB YCSB_OZE_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "ycsb_oze.cc"
         "result.cc"
         "transaction.cc"
@@ -15,8 +13,6 @@ file(GLOB YCSB_OZE_SOURCES
         )
 
 file(GLOB TPCC_OZE_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "tpcc_oze.cc"
         "result.cc"
         "transaction.cc"
@@ -25,8 +21,6 @@ file(GLOB TPCC_OZE_SOURCES
         )
 
 file(GLOB BOMB_OZE_SOURCES
-        "../common/result.cc"
-        "../common/util.cc"
         "bomb_oze.cc"
         "result.cc"
         "transaction.cc"
@@ -38,33 +32,14 @@ add_executable(ycsb_oze.exe ${YCSB_OZE_SOURCES})
 add_executable(tpcc_oze.exe ${TPCC_OZE_SOURCES})
 add_executable(bomb_oze.exe ${BOMB_OZE_SOURCES})
 
-target_link_libraries(ycsb_oze.exe
-        Boost::filesystem
-        gflags::gflags
-        glog::glog
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
 
-target_link_libraries(tpcc_oze.exe
-        Boost::filesystem
-        gflags::gflags
-        glog::glog
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
-target_link_libraries(bomb_oze.exe
-        Boost::filesystem
-        gflags::gflags
-        glog::glog
-        ${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a
-        ${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a
-        Threads::Threads
-        )
-
+foreach(t ycsb_oze.exe tpcc_oze.exe bomb_oze.exe)
+    target_link_libraries(${t} PRIVATE
+            ccbench_common
+            ccbench::masstree
+            ccbench::mimalloc
+            )
+endforeach()
 if (DEFINED ADD_ANALYSIS)
     add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
 else ()
