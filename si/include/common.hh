@@ -81,4 +81,12 @@ alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 alignas(CACHE_LINE_SIZE) GLOBAL
 TransactionTable **TMT;  // Transaction Mapping Table
 
+// Per-thread "smallest cstamp currently in this thread's gcq_for_version_",
+// or UINT32_MAX if the queue is empty. Each thread updates its own slot
+// when it pushes/pops; gcRecord reads all slots to compute a global min
+// and only frees a Tuple whose delete-version cstamp is strictly less
+// than that min, guaranteeing no other thread still references the Tuple
+// from its gcq_for_version_ (epoch-based reclamation).
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint32_t> *MinQueuedCstamp;
+
 GLOBAL std::mutex SsnLock;

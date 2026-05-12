@@ -107,16 +107,34 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     gcq_for_version_.pop_front();
   }
 
+  // After all pops, republish the new queue front so other threads'
+  // gcRecord sees that this thread no longer needs the older Tuples.
+  publishMinQueuedCstamp();
+
   return;
 }
 
 void GarbageCollection::gcRecord() {
+  // Compute the global minimum across every thread's published
+  // gcq_for_version_ front cstamp. We may only free a Tuple whose
+  // delete-version cstamp is strictly less than this min — otherwise
+  // some other thread still has a reference to that Tuple in its own
+  // gcq_for_version_ and would deref it (UAF) on its next gcVersion.
+  uint32_t global_min_queued = UINT32_MAX;
+  for (unsigned int i = 0; i < TotalThreadNum; ++i) {
+    uint32_t v = MinQueuedCstamp[i].load(std::memory_order_acquire);
+    if (v < global_min_queued) global_min_queued = v;
+  }
   uint32_t threshold = getGcThreshold();
 
   while (!gcq_for_record_.empty()) {
     Tuple* rec = gcq_for_record_.front();
     Version* latest = rec->latest_.load(memory_order_acquire);
-    if (latest->cstamp_ >= threshold) break;
+    uint32_t cs = latest->cstamp_.load(memory_order_acquire);
+    // Original gate: don't free things still potentially being read.
+    if (cs >= threshold) break;
+    // Cross-thread gate: don't free things still in someone's gcq.
+    if (cs >= global_min_queued) break;
     if (latest->status_ != VersionStatus::deleted) ERR;
     delete rec;
     gcq_for_record_.pop_front();

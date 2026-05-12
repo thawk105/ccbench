@@ -526,6 +526,9 @@ void TxExecutor::si_commit() {
     gcobject_.gcq_for_version_.emplace_back(
             GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
   }
+  // After pushing this commit's GCElements, expose the (possibly new)
+  // queue front cstamp so other threads' gcRecord can advance safely.
+  gcobject_.publishMinQueuedCstamp();
 
   read_set_.clear();
   write_set_.clear();
@@ -592,19 +595,11 @@ void TxExecutor::mainte() {
     if (pre_gc_threshold_ != loadThreshold) {
       gcobject_.gcTMTelement(result_);
       gcobject_.gcVersion(result_);
-      // gcRecord intentionally disabled.
-      //
-      // Bug: gcRecord frees a Tuple as soon as the deleting thread's
-      // local view of the gc threshold passes the delete-version's
-      // cstamp, but *other* threads may still hold references to the
-      // same Tuple* in their per-thread gcq_for_version_. Their next
-      // mainte's gcVersion then dereferences the freed Tuple and
-      // SEGVs. (Reproduces verbatim in tpcc_ermia.exe upstream.)
-      //
-      // Proper fix needs deferred reclamation that is aware of all
-      // threads' gcq state — e.g. only run gcRecord on the leader after
-      // every thread has advanced past the deletion's cstamp. For now
-      // we leak deleted Tuples; safe and benchmark-functional.
+      // gcRecord uses MinQueuedCstamp[] (published by every thread on
+      // push to and pop from gcq_for_version_) to defer Tuple free
+      // until no thread can still hold a reference — see the original
+      // bug history in garbage_collection.cc.
+      gcobject_.gcRecord();
       pre_gc_threshold_ = loadThreshold;
       gcstart_ = gcstop_;
     }

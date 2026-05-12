@@ -62,6 +62,17 @@ public:
 
   void gcTMTelement(Result *eres_);
   // -----
+
+  // Publish the smallest cstamp currently held in this thread's
+  // gcq_for_version_ (UINT32_MAX if empty). gcRecord on any thread will
+  // refuse to free a Tuple unless every thread's published min strictly
+  // exceeds the Tuple's delete-version cstamp.
+  INLINE void publishMinQueuedCstamp() {
+    uint32_t v = gcq_for_version_.empty()
+                 ? UINT32_MAX
+                 : gcq_for_version_.front().cstamp_;
+    MinQueuedCstamp[thid_].store(v, std::memory_order_release);
+  }
 };
 
 #ifdef GLOBAL_VALUE_DEFINE

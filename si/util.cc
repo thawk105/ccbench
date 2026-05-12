@@ -58,6 +58,7 @@ void chkArg() {
 
   try {
     TMT = new TransactionTable *[TotalThreadNum];
+    MinQueuedCstamp = new std::atomic<uint32_t>[TotalThreadNum];
   } catch (bad_alloc) {
     ERR;
   }
@@ -65,6 +66,7 @@ void chkArg() {
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     TMT[i] =
             new TransactionTable(0, 0, UINT32_MAX, 0, TransactionStatus::inflight);
+    MinQueuedCstamp[i].store(UINT32_MAX, std::memory_order_relaxed);
   }
 }
 

@@ -81,4 +81,9 @@ alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
 alignas(CACHE_LINE_SIZE) GLOBAL
 TransactionTable **TMT;  // Transaction Mapping Table
 
+// See si/include/common.hh for the rationale; same EBR-style guard
+// that prevents gcRecord from freeing a Tuple while another thread
+// still has it in its per-thread gcq_for_version_.
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint32_t> *MinQueuedCstamp;
+
 GLOBAL std::mutex SsnLock;
