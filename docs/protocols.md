@@ -27,8 +27,8 @@ build).
 
 | Directory | Notes |
 |---|---|
-| `cc/occ/` (not yet moved) | K&R OCC (Kung & Robinson, 1981). Uses a plain Makefile, not wired into the CMake tree. |
+| [cc/occ](../cc/occ/) | K&R OCC (Kung & Robinson, 1981). Uses a plain Makefile (on the legacy uint64-key API), not wired into the CMake tree. |
 
-To enable, add it to the `foreach(_proto …)` loop in the top-level
-[CMakeLists.txt](../CMakeLists.txt) once it has a `ccbench_add_protocol(...)`
-entry under `cc/`.
+To enable, port `cc/occ/` to a `ccbench_add_protocol(...)` entry and add
+it to the `foreach(_proto …)` loop in the top-level
+[CMakeLists.txt](../CMakeLists.txt).

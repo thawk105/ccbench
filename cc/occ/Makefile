@@ -1,7 +1,7 @@
 PROG1 = occ.exe
 SV_FORMAT_SRCS1 := occ.cc transaction.cc util.cc result.cc
 
-REL := ../common/
+REL := ../../common/
 include $(REL)Makefile
 SV_FORMAT_ALLSRC = $(SV_FORMAT_SRCS1) $(SRCS2) $(wildcard include/*.hh)
 
@@ -35,7 +35,7 @@ CFLAGS = -c -pipe -g -O3 -std=c++17 -march=native \
 				 -DWAL=$(WAL) \
 
 INCLUDE = -I/usr/include \
-					-I../third_party/ \
+					-I../../third_party/ \
 
 LDLIBS = -lpthread -lboost_filesystem -lboost_system -lgflags -lglog
 
@@ -43,7 +43,7 @@ OBJS1 = $(SV_FORMAT_SRCS1:.cc=.o)
 
 all: $(PROG1)
 
-include ../include/MakefileForMasstreeUse
+include ../../include/MakefileForMasstreeUse
 $(PROG1) : $(OBJS1) $(MASSOBJ)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS) $(INCLUDE)
 
@@ -55,5 +55,5 @@ format:
 
 clean:
 	rm -f *~ *.o *.exe *.stackdump
-	rm -f ../common/*~ ../common/*.o ../common/*.exe ../common/*.stackdump
+	rm -f ../../common/*~ ../../common/*.o ../../common/*.exe ../../common/*.stackdump
 	rm -rf .deps
