@@ -2,6 +2,15 @@
 
 Context for Claude when working in this repository.
 
+## Read before editing
+
+[docs/coding-conventions.md](docs/coding-conventions.md) — repository
+conventions and file-type-specific best practices (Dockerfile,
+CMake, GitHub Actions workflows, C++, shell, etc.). **Consult the
+relevant section before touching a file of that kind.** When you spot
+a convention worth recording, add it there instead of repeating it in
+PR comments.
+
 ## What this repo is
 
 CCBench re-implements major in-memory concurrency-control protocols on a common substrate so they can be compared on identical workloads (Tanabe et al., VLDB 2020). The repository now also bundles the **TPC-C** and **BoMB** workloads and several extra protocols, contributed by [@jnmt](https://github.com/jnmt) on the `vldb-paper` branch and merged here.
