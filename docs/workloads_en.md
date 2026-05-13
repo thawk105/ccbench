@@ -2,7 +2,7 @@
 
 CCBench provides three workloads. Each is built per-protocol as
 `<workload>_<protocol>.exe` under `build/<protocol>/`. See
-[runtime-args.md](runtime-args.md) for the flags accepted by each binary.
+[runtime-args.md](runtime-args_en.md) for the flags accepted by each binary.
 
 - [BoMB](#bomb) — Bill of Materials Benchmark (long + short OLTP mix)
 - [TPC-C](#tpc-c) — the standard OLTP benchmark
@@ -55,7 +55,7 @@ BoMB uses the following seven tables. The underlined attribute is the primary ke
 
 ## TPC-C
 
-TPC-C is a de facto standard benchmark for OLTP systems that simulates a warehouse-centric order processing application. See [the official documents](https://www.tpc.org/tpcc/) for details of the specification. We support the full mix of the TPC-C five transactions (NewOrder, Payment, OrderStatus, Delivery, StockLevel). You can specify the number of warehouses as a scale factor and the percentages of the five transactions via the `-tpcc_*` flags documented in [runtime-args.md](runtime-args.md#tpc-c-flags-tpcc_protocolexe).
+TPC-C is a de facto standard benchmark for OLTP systems that simulates a warehouse-centric order processing application. See [the official documents](https://www.tpc.org/tpcc/) for details of the specification. We support the full mix of the TPC-C five transactions (NewOrder, Payment, OrderStatus, Delivery, StockLevel). You can specify the number of warehouses as a scale factor and the percentages of the five transactions via the `-tpcc_*` flags documented in [runtime-args.md](runtime-args_en.md#tpc-c-flags-tpcc_protocolexe).
 
 ## YCSB
 

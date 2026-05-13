@@ -68,7 +68,7 @@ Each `cc/<protocol>/CMakeLists.txt` is a single declarative
 for the function definition and [cmake/Options.cmake](../cmake/Options.cmake)
 for the universal build-time tunables (`CCBENCH_KEY_SIZE`, `CCBENCH_BACK_OFF`,
 etc.) that can be overridden on the cmake command line. See
-[protocols.md](protocols.md) for the list of protocols and which workloads
+[protocols.md](protocols_en.md) for the list of protocols and which workloads
 they support.
 
 The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache`

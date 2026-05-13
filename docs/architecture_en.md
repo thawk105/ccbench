@@ -1,6 +1,6 @@
 # Architecture
 
-リポジトリの全体像と、各プロトコルが従う内部規約をまとめる。ビルド手順は [build.md](build.md)、プロトコル × ワークロードの対応表は [protocols.md](protocols.md)、ワークロード仕様は [workloads.md](workloads.md) を参照。
+リポジトリの全体像と、各プロトコルが従う内部規約をまとめる。ビルド手順は [build.md](build_en.md)、プロトコル × ワークロードの対応表は [protocols.md](protocols_en.md)、ワークロード仕様は [workloads.md](workloads_en.md) を参照。
 
 ## What this repo is
 
@@ -12,7 +12,7 @@ Three workloads:
 - **YCSB** — key-value workload (read/write ratio, zipfian skew, etc.)
 - **BoMB** — Bill-of-Materials Benchmark (long-running product costing + short OLTP txns)
 
-Workload specs are in [workloads.md](workloads.md).
+Workload specs are in [workloads.md](workloads_en.md).
 
 ## Repository layout
 
@@ -46,7 +46,7 @@ This contract is **enforced at compile time** by [include/tx_executor_concept.hh
 
 The check uses an `is_detected`-style SFINAE helper instead of a C++20 `concept` because the bundled `masstree-beta` upstream still calls `std::allocator::construct/destroy` (removed in C++20), pinning the whole tree to C++17.
 
-The semantics of `tx.read` (Status return, miss-handling) are non-obvious and are written up as a coding rule in [coding-conventions.md § C++](coding-conventions.md).
+The semantics of `tx.read` (Status return, miss-handling) are non-obvious and are written up as a coding rule in [coding-conventions.md § C++](coding-conventions_en.md).
 
 ## Per-thread GC + cross-thread Tuple references
 

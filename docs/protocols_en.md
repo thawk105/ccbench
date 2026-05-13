@@ -4,7 +4,7 @@ Each directory below lives under [cc/](../cc/) and has a single-call
 `CMakeLists.txt` (see [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake)
 for the declarative helper). All are driven from the top-level
 [CMakeLists.txt](../CMakeLists.txt). Build instructions are in
-[build.md](build.md).
+[build.md](build_en.md).
 
 | Directory | Protocol | YCSB | TPC-C | BoMB | Reference |
 |---|---|:-:|:-:|:-:|---|
