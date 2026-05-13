@@ -58,3 +58,18 @@ jobs:
           sbom: false
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:cache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:cache,mode=max
+
+      # Every push above re-points :latest / :ci / :cache to fresh
+      # digests; the prior digests stay around forever as untagged
+      # versions because ghcr does no automatic GC. Trim them so the
+      # package's "Versions" UI stays useful. tagged versions (i.e.
+      # :latest, :ci, :cache themselves) are never touched.
+      - name: Prune untagged image versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ccbench-devcontainer
+          package-type: container
+          # keep the 10 most recent untagged digests as a safety
+          # margin (e.g. for rolling back a bad image push).
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: 'true'
