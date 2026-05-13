@@ -59,8 +59,8 @@ public:
   bool is_ronly_ = false;
 
   TxExecutor(int thid, Result *res, const bool &quit)
-    : result_(res), thid_(thid), quit_(quit), backoff_(FLAGS_clocks_per_us),
-      callback_(TxScanCallback(this)) {
+    : callback_(TxScanCallback(this)), thid_(thid), result_(res),
+      backoff_(FLAGS_clocks_per_us), quit_(quit) {
     this->status_ = TransactionStatus::inflight;
     this->rnd_.init();
     max_rset_.obj_ = 0;

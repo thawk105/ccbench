@@ -72,7 +72,7 @@ public:
     const bool& quit_; // for thread termination control
 
     TxExecutor(uint8_t thid, Backoff& backoff, Result *res, const bool &quit)
-        : result_(res), thid_(thid), backoff_(backoff), quit_(quit), callback_(TxScanCallback(this)) {
+        : result_(res), backoff_(backoff), callback_(TxScanCallback(this)), thid_(thid), quit_(quit) {
         txid_.thid = thid_;
         txid_.tid = 0;
 

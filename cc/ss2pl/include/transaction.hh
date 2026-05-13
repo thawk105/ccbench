@@ -43,7 +43,7 @@ public:
   bool is_batch_ = false;
 
   TxExecutor(int thid, Result *res,  const bool &quit)
-    : thid_(thid), result_(res), quit_(quit), backoff_(FLAGS_clocks_per_us) {
+    : thid_(thid), result_(res), backoff_(FLAGS_clocks_per_us), quit_(quit) {
 //    read_set_.reserve(FLAGS_max_ope);
 //    write_set_.reserve(FLAGS_max_ope);
 //    pro_set_.reserve(FLAGS_max_ope);

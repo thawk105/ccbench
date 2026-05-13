@@ -39,13 +39,13 @@ class TxNode {
         TxSet from_;       // incoming edges
         TxNode(TxID id) :
             id_(id),
-            is_aborted(false),
-            status_(TransactionStatus::inflight)
+            status_(TransactionStatus::inflight),
+            is_aborted(false)
             {};
         TxNode(TxID id, TransactionStatus status) :
             id_(id),
-            is_aborted(false),
-            status_(status)
+            status_(status),
+            is_aborted(false)
             {};
 };
 
