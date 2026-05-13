@@ -537,15 +537,15 @@ public:
       }
     };
 
-    static const uint32_t get_i_id_product_start() {
+    static uint32_t get_i_id_product_start() {
       return 1;
     }
 
-    static const uint32_t get_i_id_material_start() {
+    static uint32_t get_i_id_material_start() {
       return get_i_id_product_start() + FLAGS_bomb_product_size;
     }
 
-    static const uint32_t get_i_id_work_start() {
+    static uint32_t get_i_id_work_start() {
       return get_i_id_material_start() + FLAGS_bomb_material_size;
     }
 
