@@ -486,7 +486,12 @@ bool TxExecutor::validation() {
     if ((*itr).op_ == OpType::INSERT) {
       continue;
     }
-    Version *expected(nullptr), *ver, *pre_ver;
+    // pre_ver is only read on the else branch below, which is reachable
+    // only after the while-loop has assigned to it — but GCC 13 cannot
+    // prove that across the (op != RMW && op != DELETE && !WRITE_LATEST_ONLY
+    // && ver != expected) condition. Initialize to silence -Wmaybe-uninitialized
+    // without changing runtime behavior.
+    Version *expected(nullptr), *ver, *pre_ver = nullptr;
     for (;;) {
       if ((*itr).op_ == OpType::RMW || (*itr).op_ == OpType::DELETE || WRITE_LATEST_ONLY) {
         ver = expected = (*itr).rcdptr_->ldAcqLatest();
