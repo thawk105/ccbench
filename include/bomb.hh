@@ -300,7 +300,7 @@ public:
         rnd_.init();
 
         if (!FLAGS_bomb_mixed_mode) {
-          int total_threads = FLAGS_bomb_l1_thread_num
+          uint64_t total_threads = FLAGS_bomb_l1_thread_num
                               + FLAGS_bomb_s1_thread_num
                               + FLAGS_bomb_s2_thread_num
                               + FLAGS_bomb_s3_thread_num
@@ -438,22 +438,27 @@ public:
       TxArgs args;
 
       TxType decideType(TxExecutor& tx, [[maybe_unused]] Xoroshiro128Plus& r) {
+        // tx.thid_ is a non-negative thread index whose underlying type varies
+        // between protocols (int / size_t / uint8_t / unsigned int). Cast it
+        // to uint32_t once so each comparison against FLAGS_bomb_*_thread_num
+        // (declared as uint32) is sign-clean.
+        const uint32_t thid = static_cast<uint32_t>(tx.thid_);
         TxType txType;
-        if (tx.thid_ < FLAGS_bomb_l1_thread_num) {
+        if (thid < FLAGS_bomb_l1_thread_num) {
           txType = TxType::UpdateProductCostMaster;
-        } else if (tx.thid_ < FLAGS_bomb_l1_thread_num
+        } else if (thid < FLAGS_bomb_l1_thread_num
                               + FLAGS_bomb_s1_thread_num) {
           txType = TxType::UpdateMaterialCostMaster;
-        } else if (tx.thid_ < FLAGS_bomb_l1_thread_num
+        } else if (thid < FLAGS_bomb_l1_thread_num
                               + FLAGS_bomb_s1_thread_num
                               + FLAGS_bomb_s2_thread_num) {
           txType = TxType::IssueJournalVoucher;
-        } else if (tx.thid_ < FLAGS_bomb_l1_thread_num
+        } else if (thid < FLAGS_bomb_l1_thread_num
                               + FLAGS_bomb_s1_thread_num
                               + FLAGS_bomb_s2_thread_num
                               + FLAGS_bomb_s3_thread_num) {
           txType = TxType::AddNewProduct;
-        } else if (tx.thid_ < FLAGS_bomb_l1_thread_num
+        } else if (thid < FLAGS_bomb_l1_thread_num
                               + FLAGS_bomb_s1_thread_num
                               + FLAGS_bomb_s2_thread_num
                               + FLAGS_bomb_s3_thread_num
@@ -467,7 +472,7 @@ public:
       }
 
       std::pair<TxType,timepoint> getRequest(TxExecutor& tx) {
-        if (tx.thid_ < FLAGS_bomb_l1_thread_num) {
+        if (static_cast<uint32_t>(tx.thid_) < FLAGS_bomb_l1_thread_num) {
           timepoint start = std::chrono::high_resolution_clock::now();;
           return make_pair(TxType::UpdateProductCostMaster, start);
         } else {
@@ -487,7 +492,7 @@ public:
 
       timepoint generate(BombWorkload* workload, TxExecutor& tx) {
         timepoint start;
-        if (tx.thid_ < FLAGS_bomb_l1_thread_num) {
+        if (static_cast<uint32_t>(tx.thid_) < FLAGS_bomb_l1_thread_num) {
           type = TxType::UpdateProductCostMaster;
           start = std::chrono::high_resolution_clock::now();
         } else if (!FLAGS_bomb_mixed_mode) {
@@ -1416,7 +1421,7 @@ RETRY:
       while (!loadAcquire(quit)) {
         for (int i = 0; i < numQueues; i++) {
           auto start = std::chrono::high_resolution_clock::now();
-          for (int j = 0; j < FLAGS_bomb_req_batch_size; j++) {
+          for (uint32_t j = 0; j < FLAGS_bomb_req_batch_size; j++) {
             requestQueues[i].push(make_pair(decideType(r, thresholds), start));
           }
           if (FLAGS_bomb_mixed_short_rate_tps) {
