@@ -132,7 +132,11 @@ RETRY:
       std::map<uint32_t,Node*> verify_bom;
 
       tx.reconnoiter_begin(); // Do target selection as if read from cache
-      auto ret = BombWorkload<Tuple,Param>::select_im_by_factory(tx, f_id, product_ids);
+      // Reconnoiter pass: this call's job is to fill product_ids. The
+      // Status is intentionally discarded — if it aborted, product_ids
+      // is just empty or partial and the build_bom_tree loop below
+      // propagates the abort.
+      (void) BombWorkload<Tuple,Param>::select_im_by_factory(tx, f_id, product_ids);
       for (auto& p_id : product_ids) {
         Node* root = BombWorkload<Tuple,Param>::build_bom_tree(tx, p_id);
         if (root == nullptr) ERR;
@@ -194,7 +198,10 @@ RETRY:
         }
       }
 
-      ret = BombWorkload<Tuple,Param>::select_im_by_factory(tx, f_id, verify_products);
+      // Verify pass: see comment on the first select_im_by_factory call
+      // above — Status is discarded by design, downstream code propagates
+      // any abort.
+      (void) BombWorkload<Tuple,Param>::select_im_by_factory(tx, f_id, verify_products);
       for (auto& p_id : verify_products) {
         Node* root = BombWorkload<Tuple,Param>::build_bom_tree(tx, p_id);
         if (root == nullptr) ERR;
