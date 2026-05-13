@@ -8,6 +8,10 @@ on:
       - '.github/workflows/devcontainer-image.yml'
   workflow_dispatch:
 
+# The Dockerfile is multi-stage. We publish the dev stage as :latest
+# (what humans `Reopen in Container` into) and the slimmer base stage
+# as :ci (what build.yml runs the build job inside). Both share layers
+# via the same :cache image.
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -25,22 +29,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@v6
-        id: meta
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - uses: docker/build-push-action@v7
+      # dev stage -> :latest (devcontainer)
+      - name: Build & push dev image (:latest)
+        uses: docker/build-push-action@v7
         with:
           context: .devcontainer
           file: .devcontainer/Dockerfile
+          target: dev
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:latest
+          provenance: false
+          sbom: false
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:cache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:cache,mode=max
+
+      # base stage -> :ci (used by build.yml's container job)
+      - name: Build & push CI image (:ci)
+        uses: docker/build-push-action@v7
+        with:
+          context: .devcontainer
+          file: .devcontainer/Dockerfile
+          target: base
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:ci
           provenance: false
           sbom: false
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/ccbench-devcontainer:cache
