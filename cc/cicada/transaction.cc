@@ -359,12 +359,9 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
   }
 
   Tuple* tuple;
-  bool rmw;
-  rmw = false;
   ReadElement<Tuple> *re;
   re = searchReadSet(s, key);
   if (re) {
-    rmw = true;
     tuple = re->rcdptr_;
   } else {
     tuple = Masstrees[get_storage(s)].get_value(key);

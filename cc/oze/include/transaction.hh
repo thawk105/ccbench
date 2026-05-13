@@ -623,7 +623,6 @@ OUT:
     uint64_t get_read_version_cardinality() {
         // only for statistics
         TxSet txns;
-        auto itr = read_set_.begin();
         for (auto re : read_set_) {
             txns.emplace(re.txid_);
         }

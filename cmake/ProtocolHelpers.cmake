@@ -48,7 +48,8 @@ function(ccbench_add_protocol name)
     # fixed. Append the next entry here when its source-level cleanup
     # PR lands.
     target_compile_options(${target} PRIVATE
-      -Werror=maybe-uninitialized)
+      -Werror=maybe-uninitialized
+      -Werror=unused-but-set-variable)
 
     set_property(TARGET ${target} PROPERTY CCBENCH_PROTOCOL "${name}")
     set_property(TARGET ${target} PROPERTY CCBENCH_WORKLOAD "${wl}")
