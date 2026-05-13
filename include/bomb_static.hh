@@ -33,7 +33,8 @@ public:
       // for static BoM
       tx.begin();
       std::vector<uint32_t> product_ids;
-      auto ret = BombWorkload<Tuple,Param>::select_im_by_factory(tx, 1, product_ids);
+      // Return value intentionally discarded: the call populates product_ids.
+      (void)BombWorkload<Tuple,Param>::select_im_by_factory(tx, 1, product_ids);
       for (auto& p_id : product_ids) {
         Node* root = BombWorkload<Tuple,Param>::build_bom_tree(tx, p_id);
         if (root == nullptr) ERR;

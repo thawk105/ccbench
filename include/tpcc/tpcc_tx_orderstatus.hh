@@ -66,13 +66,14 @@ bool get_orderline(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id) {
   SimpleKey<8> left_key, right_key;
   OrderLine::CreateKey(w_id, d_id, o_id, 1, left_key.ptr());
   OrderLine::CreateKey(w_id, d_id, o_id+1, 1, right_key.ptr());
-  Status status = tx.scan(
+  // Return value intentionally discarded: the empty-result and aborted
+  // checks below cover both Status::OK and Status::WARN_NOT_FOUND.
+  (void)tx.scan(
       Storage::OrderLine, left_key.view(), false, right_key.view(), true, result);
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
   for (auto& tuple : result) {
-    TupleBody* body;
     [[maybe_unused]] const OrderLine& ol = tuple->get_value().cast_to<OrderLine>();
   }
   return true;

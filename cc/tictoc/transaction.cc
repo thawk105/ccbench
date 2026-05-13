@@ -524,7 +524,9 @@ void TxExecutor::writePhase() {
       }
       case OpType::DELETE: {
         result.absent = true;
-        Status stat = Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+        // Return value intentionally ignored: a missing key still needs the
+        // record put on the GC queue below.
+        (void)Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
         gc_records_.emplace_back((*itr).storage_, (*itr).key_, (*itr).rcdptr_, ThLocalEpoch[thid_].obj_);
         break;
       }

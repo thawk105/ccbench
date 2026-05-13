@@ -39,8 +39,6 @@ using namespace std;
 void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Backoff backoff(FLAGS_clocks_per_us);
   TxExecutor trans(thid, backoff, (Result *) &OzeResult[thid], quit);
-  Result &myres = std::ref(OzeResult[thid]);
-  uint64_t epoch_timer_start, epoch_timer_stop;
   BombWorkload<Tuple,void> workload;
   workload.prepare(trans, nullptr);
 
@@ -112,6 +110,7 @@ int main(int argc, char *argv[]) try {
     OzeResult[0].addLocalPerTxResult(OzeResult[i], TxTypes);
   }
   ShowOptParameters();
+  std::cout << "actual_extime:\t" << actual_extime << std::endl;
   OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
   std::cout << "Details per transaction type:" << std::endl;
   OzeResult[0].displayPerTxResult(TxTypes);

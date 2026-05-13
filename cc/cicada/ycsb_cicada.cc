@@ -40,7 +40,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   YcsbWorkload workload;
   Backoff backoff(FLAGS_clocks_per_us);
   TxExecutor trans(thid, backoff, (Result *) &CicadaResult[thid], quit);
-  Result &myres = std::ref(CicadaResult[thid]);
 
 #ifdef Linux
   setThreadAffinity(thid);

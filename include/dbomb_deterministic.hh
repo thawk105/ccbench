@@ -49,7 +49,8 @@ RETRY:
       uint32_t f_id = query.args.f_id;
       std::vector<uint32_t> product_ids;
       tx.reconnoiter_begin(); // Do target selection as if read from cache
-      Status stat = select_pc_by_factory(tx, f_id, product_ids);
+      // Return value intentionally discarded: the call populates product_ids.
+      (void)select_pc_by_factory(tx, f_id, product_ids);
       tx.reconnoiter_end();
 
       // prepare keys
@@ -92,7 +93,6 @@ RETRY:
       uint32_t i = 0;
       SimpleKey<8> keys[query.args.i_id_set.size()];
       for (auto& m_id : query.args.i_id_set) {
-        SimpleKey<8> key;
         MaterialCostMaster::CreateKey(query.args.f_id, m_id, keys[i].ptr());
         tx.lock_entries_.emplace_back(Storage::MaterialCostMaster, keys[i].view(), true);
         i++;

@@ -123,11 +123,13 @@ RETRY:
                 TupleBody* body;
                 tx.read(Storage::YCSB, key[i].view(), &body);
                 if (tx.status_ != TransactionStatus::aborted) {
-                  YCSB& t = body->get_value().cast_to<YCSB>();
+                  // Touch the value so the read is not optimized away.
+                  [[maybe_unused]] YCSB& t = body->get_value().cast_to<YCSB>();
                 }
             } else if (pro.ope_ == Ope::WRITE) {
                 obj[i].template allocate<YCSB>();
-                YCSB& t = obj[i].ref();
+                // Materialize the payload before it gets std::move'd into update.
+                [[maybe_unused]] YCSB& t = obj[i].ref();
                 tx.update(Storage::YCSB, key[i].view(), TupleBody(key[i].view(), std::move(obj[i])));
             } else if (pro.ope_ == Ope::READ_MODIFY_WRITE) {
                 TupleBody* body;

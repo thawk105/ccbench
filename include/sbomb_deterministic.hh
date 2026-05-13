@@ -33,7 +33,8 @@ public:
       // for static BoM
       tx.begin();
       std::vector<uint32_t> product_ids;
-      auto ret = BombWorkload<Tuple,Param>::select_im_by_factory(tx, 1, product_ids);
+      // Return value intentionally discarded: the call populates product_ids.
+      (void)BombWorkload<Tuple,Param>::select_im_by_factory(tx, 1, product_ids);
       for (auto& p_id : product_ids) {
         Node* root = BombWorkload<Tuple,Param>::build_bom_tree(tx, p_id);
         if (root == nullptr) ERR;
@@ -92,7 +93,6 @@ public:
 
       // prepare keys
       for (auto& m_id : query.args.i_id_set) {
-        SimpleKey<8> key;
         MaterialCostMaster::CreateKey(query.args.f_id, m_id, keys[i].ptr());
         tx.lock_entries_.emplace_back(Storage::MaterialCostMaster, keys[i].view(), true);
         i++;

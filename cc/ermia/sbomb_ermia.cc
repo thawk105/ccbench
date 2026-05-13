@@ -40,7 +40,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 
   Backoff backoff(FLAGS_clocks_per_us); // Cicada's backoff opt.
   TxExecutor trans(thid, backoff, (Result *) &ErmiaResult[thid], quit);
-  Result &myres = std::ref(ErmiaResult[thid]);
   StaticBombWorkload<Tuple,void> workload;
 
 #ifdef Linux

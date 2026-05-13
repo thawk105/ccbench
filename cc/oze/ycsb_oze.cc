@@ -40,8 +40,6 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   YcsbWorkload workload;
   Backoff backoff(FLAGS_clocks_per_us);
   TxExecutor trans(thid, backoff, (Result *) &OzeResult[thid], quit);
-  Result &myres = std::ref(OzeResult[thid]);
-  uint64_t epoch_timer_start, epoch_timer_stop;
 
 #ifdef Linux
   setThreadAffinity(thid);
@@ -101,6 +99,7 @@ int main(int argc, char *argv[]) try {
     OzeResult[0].addLocalAllResult(OzeResult[i]);
   }
   ShowOptParameters();
+  std::cout << "actual_extime:\t" << actual_extime << std::endl;
   OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
 
   return 0;

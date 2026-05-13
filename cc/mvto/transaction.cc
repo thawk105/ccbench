@@ -137,7 +137,7 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody &&body) {
   }
 
   // Install new version with pending state
-  Version *ver, *new_ver;
+  Version *new_ver;
   new_ver = newVersionGeneration(tuple, std::move(body));
   if (FLAGS_preserve_write) {
     install_version(tuple, new_ver);
@@ -213,7 +213,7 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
   }
 
   // Install delete version with pending state
-  Version *ver, *new_ver;
+  Version *new_ver;
   new_ver = new Version(this->wts_.ts_);
   if (FLAGS_preserve_write) {
     install_version(tuple, new_ver);
@@ -263,7 +263,10 @@ Status TxExecutor::scan(const Storage s,
       continue;
     }
 
-    Version *v = read_internal(s, key, itr);
+    // read_internal pushes the visible version into read_set_ on success;
+    // the caller appends from read_set_ at the bottom of scan(). The return
+    // value is only useful for in-place reads, which scan() does not need.
+    (void)read_internal(s, key, itr);
     if (this->status_ == TransactionStatus::aborted)
       return Status::ERROR_PREEMPTIVE_ABORT;
   }

@@ -39,7 +39,9 @@ bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id, b
   SimpleKey<8> left_key, right_key;
   NewOrder::CreateKey(w_id, d_id, 1, left_key.ptr());
   NewOrder::CreateKey(w_id, d_id + 1, 1, right_key.ptr());
-  Status status = tx.scan(Storage::NewOrder, left_key.view(), false, right_key.view(), true, result, 1);
+  // Return value intentionally discarded: the empty-result and aborted
+  // checks below cover both Status::OK and Status::WARN_NOT_FOUND.
+  (void)tx.scan(Storage::NewOrder, left_key.view(), false, right_key.view(), true, result, 1);
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
@@ -62,7 +64,10 @@ template <typename TxExecutor, typename TxStatus>
 bool delete_new_order(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id) {
   SimpleKey<8> no_key;
   NewOrder::CreateKey(w_id, d_id, o_id, no_key.ptr());
-  Status status = tx.delete_record(Storage::NewOrder, no_key.view());
+  // Return value intentionally discarded: we already verified the row
+  // exists via get_order_id() before calling here, so the only thing left
+  // for the caller to react to is an abort.
+  (void)tx.delete_record(Storage::NewOrder, no_key.view());
   if (tx.status_ == TransactionStatus::aborted) {
     return false;
   }
