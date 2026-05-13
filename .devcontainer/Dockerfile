@@ -31,18 +31,18 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
         autoconf \
         automake \
-        libtool \
-        pkg-config \
-        git \
+        build-essential \
         ca-certificates \
         ccache \
         cmake \
+        git \
         libboost-filesystem-dev \
         libgflags-dev \
-        libgoogle-glog-dev
+        libgoogle-glog-dev \
+        libtool \
+        pkg-config
 
 ARG USERNAME=vscode
 ARG USER_UID=1000
@@ -73,11 +73,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
     && apt-get install -y --no-install-recommends \
-        zsh \
         clang-format \
-        sudo \
-        openssh-client \
         curl \
+        htop \
+        openssh-client \
+        sudo \
+        zsh \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 
