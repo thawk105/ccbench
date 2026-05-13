@@ -28,9 +28,17 @@ public:
   std::string_view key_;
   char val_[VAL_SIZE];
 
-  LogRecord() : tid_(0), key_("") {}
+  // computeChkSum() below sums every int-sized chunk of *this*, including
+  // any trailing struct padding after val_, so both constructors zero
+  // the entire object first to make those reads well-defined.
+  LogRecord() {
+    memset(this, 0, sizeof(LogRecord));
+  }
 
-  LogRecord(uint64_t tid, std::string_view key, char *val) : tid_(tid), key_(key) {
+  LogRecord(uint64_t tid, std::string_view key, char *val) {
+    memset(this, 0, sizeof(LogRecord));
+    tid_ = tid;
+    key_ = key;
     memcpy(this->val_, val, VAL_SIZE);
   }
 
