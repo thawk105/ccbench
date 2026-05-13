@@ -47,7 +47,9 @@ bool run_stock_level(TxExecutor& tx, TPCCQuery::StockLevel *query) {
   SimpleKey<8> low, up;
   OrderLine::CreateKey(w_id, d_id, dist->D_NEXT_O_ID - 20, 1, low.ptr());
   OrderLine::CreateKey(w_id, d_id, dist->D_NEXT_O_ID, 1, up.ptr());
-  Status stat = tx.scan(Storage::OrderLine, low.view(), false, up.view(), true, result);
+  // Return value intentionally discarded: empty result and aborted status
+  // checks below cover both Status::OK and Status::WARN_NOT_FOUND.
+  (void)tx.scan(Storage::OrderLine, low.view(), false, up.view(), true, result);
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
   if (tx.status_ == TransactionStatus::aborted) {
     return false;

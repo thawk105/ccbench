@@ -489,7 +489,6 @@ public:
 
     Status __get_visible_version(Tuple *tuple, Version **return_ver, bool aligned_read=false) {
         Status stat = Status::OK;
-        bool isInvisible;
         Version* ver = nullptr;
         Version* prev_ver = nullptr;
         std::vector<Version*> followers;

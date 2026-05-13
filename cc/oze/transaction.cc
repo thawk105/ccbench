@@ -68,7 +68,6 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
 
     Status ret = Status::OK;
     TxID target;
-    bool isInvisible;
     Tuple *tuple;
     Version *ver = nullptr;
     ReadElement<Tuple>* re;
@@ -142,10 +141,7 @@ ABORT_READ:
 
 Status TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple, Version** return_ver) {
     TxID target;
-    bool isInvisible;
     Version *ver = nullptr;
-    ReadElement<Tuple>* re;
-    WriteElement<Tuple>* we;
     Status stat = Status::OK;
 
     tuple->lock_.w_lock();
@@ -563,9 +559,6 @@ bool TxExecutor::validation() {
     uint64_t start = rdtscp();
 #endif  // if ADD_ANALYSIS
 
-    int num_pages = 0;
-    int num_skip_propagate = 0;
-
     KeySet finished_set;
     KeySet propagate_set;
 
@@ -806,7 +799,7 @@ bool TxExecutor::write_validation(WriteElement<Tuple> element, KeySet& finished_
     for (auto& txid : reachable_to) {
         add_related_read_keys(&tuple->graph_.at(txid), followers_read_keys);
     }
-    for (const auto& k : followers_read_keys) {
+    for ([[maybe_unused]] const auto& k : followers_read_keys) {
         push_candidate_keys(propagate_set, finished_set, followers_read_keys);
     }
 
@@ -920,8 +913,6 @@ bool TxExecutor::read_validation(KeySet& target_set, KeySet& finished_set) {
 #endif
 
     while (!target_set.empty()) {
-        ReadElement<Tuple> *re;
-        WriteElement<Tuple> *we;
         auto iterator = target_set.cbegin();
         Tuple* tuple = *iterator;
         std::string key(tuple->latest_.load(memory_order_acquire)->body_.get_key());
@@ -971,7 +962,7 @@ bool TxExecutor::read_validation(KeySet& target_set, KeySet& finished_set) {
         for (auto& txid : reachable_to) {
             add_related_read_keys(&tuple->graph_.at(txid), keys);
         }
-        for (const auto& k : keys) {
+        for ([[maybe_unused]] const auto& k : keys) {
             push_candidate_keys(target_set, finished_set, keys);
         }
 

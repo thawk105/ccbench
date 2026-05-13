@@ -581,7 +581,9 @@ public:
       if (FLAGS_bomb_use_cache) {
         tx.reconnoiter_begin();
         std::vector<uint32_t> product_ids;
-        auto ret = BombWorkload<Tuple,Param>::select_im_by_factory(tx, 1, product_ids);
+        // Return value intentionally discarded: the reconnaissance pass
+        // populates product_ids, which is all we need here.
+        (void)BombWorkload<Tuple,Param>::select_im_by_factory(tx, 1, product_ids);
         for (auto& p_id : product_ids) {
           Node* root = BombWorkload<Tuple,Param>::build_bom_tree(tx, p_id);
           if (root == nullptr) ERR;
@@ -615,7 +617,6 @@ public:
       while (next.size() != 0) {
         auto node = next.back();
         next.pop_back();
-        auto n = tx.read_set_.size();
         ItemMaster::CreateKey(node->i_id_, item.ptr());
         Status stat = tx.read_lock(Storage::ItemMaster, item.view());
         if (stat != Status::OK) {
@@ -1058,6 +1059,9 @@ public:
       TupleBody* body;
       Status stat = tx.read(Storage::MaterialCostMaster, key.view(), &body);
       if (tx.status_ == TransactionStatus::aborted) return false;
+      // Per CLAUDE.md: tx.read leaves *body unchanged on WARN_NOT_FOUND,
+      // so the cast_to below would dereference a stale pointer.
+      if (stat != Status::OK) return false;
       MaterialCostMaster& mc = body->get_value().cast_to<MaterialCostMaster>();
       cost = mc.mc_stock_price / mc.mc_stock_quantity;
       return true;
@@ -1150,7 +1154,6 @@ public:
 
     template <typename TxExecutor, typename TransactionStatus>
     void run(TxExecutor& tx) {
-        Status stat;
         Query query;
         auto start = query.generate(this, tx);
 
@@ -1374,7 +1377,6 @@ RETRY:
       for (uint32_t i = 0; i < FLAGS_bomb_base_product_size_per_factory; i++) { // all
         auto itr = select_random(rand, product_ids);
         for (uint32_t f_id = 1; f_id <= FLAGS_bomb_factory_size; f_id++) {
-          uint32_t p_id = *itr;
           insert_item_manufacturing_master(0, param, f_id, *itr, 1.0);
           pm_keys.emplace_back(f_id, *itr);
         }

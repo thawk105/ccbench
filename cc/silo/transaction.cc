@@ -552,7 +552,9 @@ void TxExecutor::writePhase() {
       }
       case OpType::DELETE: {
         maxtid.absent = true;
-        Status stat = Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+        // Return value intentionally ignored: a missing key still needs the
+        // tid bump and gc_records_ push below.
+        (void)Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
         storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
         // create information for garbage collection
         gc_records_.push_back((*itr).rcdptr_);

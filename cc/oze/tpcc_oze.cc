@@ -39,8 +39,6 @@ using namespace std;
 void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Backoff backoff(FLAGS_clocks_per_us);
   TxExecutor trans(thid, backoff, (Result *) &OzeResult[thid], quit);
-  Result &myres = std::ref(OzeResult[thid]);
-  uint64_t epoch_timer_start, epoch_timer_stop;
   TPCCWorkload<Tuple,void> workload;
   workload.prepare(trans, nullptr);
 

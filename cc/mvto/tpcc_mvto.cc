@@ -30,7 +30,6 @@ using namespace std;
 void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   Backoff backoff(FLAGS_clocks_per_us);
   TxExecutor trans(thid, backoff, (Result *) &MvtoResult[thid], quit);
-  Result &myres = std::ref(MvtoResult[thid]);
   TPCCWorkload<Tuple,TupleInitParam> workload;
   workload.prepare(trans, new TupleInitParam());
 

@@ -387,7 +387,6 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
   }
 
   Tuple* tuple = nullptr;
-  SetElement<Tuple> *re;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).storage_ == s && (*itr).key_ == key) {
       downReadersBits((*itr).ver_);
@@ -405,7 +404,7 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
     if (tuple == nullptr) return Status::WARN_NOT_FOUND;
   }
 
-  Version *expected, *desired;
+  Version *desired;
   desired = new Version();
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();

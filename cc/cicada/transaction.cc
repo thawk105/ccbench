@@ -446,7 +446,10 @@ Status TxExecutor::scan(const Storage s,
       continue;
     }
 
-    Version* v = read_internal(s, key, itr);
+    // read_internal pushes the visible version into read_set_ on success;
+    // the caller appends from read_set_ at the bottom of scan(). The return
+    // value is only useful for in-place reads, which scan() does not need.
+    (void)read_internal(s, key, itr);
     if (this->status_ == TransactionStatus::aborted)
       return Status::ERROR_PREEMPTIVE_ABORT;
   }
