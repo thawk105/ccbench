@@ -34,7 +34,7 @@ void init(int32_t table_num) {
   // init
   try {
     ThManagementTable = new ThreadManagementEntry *[TotalThreadNum];
-  } catch (bad_alloc) {
+  } catch (const bad_alloc&) {
     ERR;
   }
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {

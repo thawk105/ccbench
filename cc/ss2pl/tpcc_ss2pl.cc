@@ -96,6 +96,6 @@ int main(int argc, char *argv[]) try {
   SS2PLResult[0].displayPerTxResult(TxTypes);
 
   return 0;
-} catch (bad_alloc) {
+} catch (const bad_alloc&) {
   ERR;
 }

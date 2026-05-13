@@ -104,6 +104,6 @@ int main(int argc, char *argv[]) try {
   OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
 
   return 0;
-} catch (bad_alloc) {
+} catch (const bad_alloc&) {
   ERR;
 }

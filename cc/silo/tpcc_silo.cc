@@ -122,6 +122,6 @@ int main(int argc, char *argv[]) try {
   SiloResult[0].displayPerTxResult(TxTypes);
 
   return 0;
-} catch (bad_alloc) {
+} catch (const bad_alloc&) {
   ERR;
 }

@@ -59,7 +59,7 @@ void chkArg() {
   try {
     TMT = new TransactionTable *[TotalThreadNum];
     MinQueuedCstamp = new std::atomic<uint32_t>[TotalThreadNum];
-  } catch (bad_alloc) {
+  } catch (const bad_alloc&) {
     ERR;
   }
 
