@@ -134,6 +134,32 @@ if (stat != Status::OK) return false;   // do not skip this
 - **Debug+ASan** (the default top-level Debug build) is the right mode for correctness work — most TPC-C bugs we have caught (use-after-free in `get_and_update_*`, the `cast_to<Order>` assertion, the gcRecord UAF) showed up there first and were invisible under pure Release.
 - **Release** is for benchmark numbers only. CI builds Release without sanitizer (`-DENABLE_SANITIZER=OFF`) — it does not run binaries, just verifies they compile.
 
+### Compiler-version mismatch with CI
+
+CI runs on `ubuntu-latest` (currently Ubuntu 24.04 → **GCC 13**). The default devcontainer ships **GCC 11**. The two compilers disagree on `-Wmaybe-uninitialized` (and likely other flow-sensitive warnings): GCC 13 catches false-positive-prone cases that GCC 11 lets through.
+
+When working on the phased `-Werror` cleanup (#43) — or anything else that promotes a warning to error — **verify on GCC 13 locally before pushing**. Three rounds of CI red on PR #44 (`-Wmaybe-uninitialized`) were avoidable by doing this once. Options:
+
+```sh
+# Option 1: PPA (one-time setup, fastest iteration afterwards)
+sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+sudo apt-get update && sudo apt-get install -y gcc-13 g++-13
+CC=gcc-13 CXX=g++-13 cmake -S . -B build-gcc13 -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZER=OFF
+cmake --build build-gcc13 -j
+```
+
+```sh
+# Option 2: Docker (no host changes; slower because deps re-install each run)
+docker run --rm -v "$PWD":/ccbench -w /ccbench ubuntu:24.04 bash -c '
+  apt-get update && apt-get install -y --no-install-recommends \
+    $(cat build_tools/ubuntu.deps) build-essential pkg-config && \
+  cmake -S . -B build-gcc13 -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZER=OFF && \
+  cmake --build build-gcc13 -j
+'
+```
+
+Pushing a `-Werror=<flag>` promotion without a GCC 13 build first counts as "didn't actually verify."
+
 ## Repository layout
 
 - [include/](include/) — shared headers (atomics, rwlock, zipf, masstree wrapper, etc.)

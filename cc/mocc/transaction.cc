@@ -621,7 +621,12 @@ FINISH_DELETE:
 
 void TxExecutor::lock(Tuple *tuple, bool mode) {
   unsigned int vioctr = 0;
-  Tuple* threshold;
+  // Sentinel "no violation found yet" (max pointer). The CLL_ scan
+  // below overwrites this on the first violation; the explicit
+  // `if (vioctr == 0) threshold = (Tuple*)-1` afterwards confirms the
+  // default. Initializing here keeps GCC 13's -Wmaybe-uninitialized
+  // happy without changing runtime semantics.
+  Tuple* threshold = (Tuple*)-1;
   bool upgrade = false;
 
 #ifdef RWLOCK
