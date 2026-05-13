@@ -100,6 +100,6 @@ int main(int argc, char *argv[]) try {
                                   FLAGS_max_ope, FLAGS_batch_max_ope);
 
   return 0;
-} catch (bad_alloc) {
+} catch (const bad_alloc&) {
   ERR;
 }

@@ -103,6 +103,6 @@ int main(int argc, char *argv[]) try {
   TicTocResult[0].displayPerTxResult(TxTypes);
 
   return 0;
-} catch (bad_alloc) {
+} catch (const bad_alloc&) {
   ERR;
 }

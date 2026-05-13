@@ -111,6 +111,6 @@ int main(int argc, char *argv[]) try {
   // deleteDB();
 
   return 0;
-} catch (bad_alloc) {
+} catch (const bad_alloc&) {
   ERR;
 }

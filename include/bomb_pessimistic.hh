@@ -511,7 +511,7 @@ public:
             try {
               ret = requestQueues[queueIndex].pop();
               break;
-            } catch (std::out_of_range e) {
+            } catch (const std::out_of_range& e) {
               std::this_thread::sleep_for(std::chrono::nanoseconds(100));
             }
           }
