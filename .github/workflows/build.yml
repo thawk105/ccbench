@@ -19,18 +19,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Run the job inside the same devcontainer image developers use locally
-    # (Ubuntu base + apt deps + ccache + GCC already installed). This drops
-    # the per-run `apt-get install` step and the apt cache that used to wrap
-    # it, and guarantees the CI toolchain matches the devcontainer's.
+    # Run the job inside the slim CI image (sibling of the human-facing
+    # :latest devcontainer image — same base layers, dev-only tooling
+    # like zsh/clang-format/sudo/openssh-client stripped out). Both tags
+    # are built and pushed from the same multi-stage Dockerfile by
+    # .github/workflows/devcontainer-image.yml.
     #
-    # --user root: the devcontainer image's default user is vscode (uid=1000),
-    # but the GHA runner's work dir (/__w/_temp, bind-mounted into the
-    # container) is owned by the runner user on the host. Without root the
-    # action's housekeeping writes (e.g. actions/checkout's saveState) hit
-    # EACCES. Running as root inside the container is fine — it's isolated.
+    # --user root: the image's default is vscode (uid=1000), but the
+    # GHA runner's work dir (/__w/_temp, bind-mounted into the container)
+    # is owned by the runner user on the host. Without root, actions'
+    # housekeeping writes (e.g. actions/checkout's saveState) hit EACCES.
+    # Running as root inside the container is fine — it's isolated.
     container:
-      image: ghcr.io/thawk105/ccbench-devcontainer:latest
+      image: ghcr.io/thawk105/ccbench-devcontainer:ci
       options: --user root
     timeout-minutes: 30
     env:
