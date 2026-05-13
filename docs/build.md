@@ -4,9 +4,14 @@
 
 CCBench targets x86_64 Linux (Debian/Ubuntu). It uses x86 intrinsics
 (`__cpuid_count` in [include/cpu.hh](../include/cpu.hh)) and Linux-only APIs
-(`sched_setaffinity`, `<linux/fs.h>` in [include/fileio.hh](../include/fileio.hh)),
+(`sched_setaffinity`, `SYS_gettid`, `<linux/fs.h>` in [include/fileio.hh](../include/fileio.hh)),
 so it does not build natively on macOS or other platforms. For development
 on macOS, use the [devcontainer](#devcontainer-on-macos--non-ubuntu-hosts).
+
+CI runs on GitHub Actions `ubuntu-latest` — see
+[.github/workflows/build.yml](../.github/workflows/build.yml). It triggers
+on push to any branch and on PRs; ccache + apt + bootstrap output are all
+cached.
 
 Install build dependencies (this is what CI uses):
 
@@ -65,6 +70,29 @@ for the universal build-time tunables (`CCBENCH_KEY_SIZE`, `CCBENCH_BACK_OFF`,
 etc.) that can be overridden on the cmake command line. See
 [protocols.md](protocols.md) for the list of protocols and which workloads
 they support.
+
+The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache`
+is on PATH, deduplicating compilations across the ~34 binaries (full warm
+rebuild ≈ 3 sec vs 30+ sec cold). Disable with `-DCCBENCH_CCACHE=OFF`.
+
+## Build modes for development
+
+- **Debug+ASan** (the default top-level Debug build) is the right mode for
+  correctness work — most TPC-C bugs we have caught (use-after-free in
+  `get_and_update_*`, the `cast_to<Order>` assertion, the gcRecord UAF)
+  showed up there first and were invisible under pure Release.
+- **Release** is for benchmark numbers only. CI builds Release without
+  sanitizer (`-DENABLE_SANITIZER=OFF`) — it does not run binaries, just
+  verifies they compile.
+
+## Compiler version
+
+Both the devcontainer (`ubuntu:24.04` base, see
+[.devcontainer/Dockerfile](../.devcontainer/Dockerfile)) and CI
+(`ubuntu-latest`) ship **GCC 13**, so what builds in the devcontainer also
+builds in CI. This wasn't always true — see #44, where GCC 11 in an older
+devcontainer disagreed with CI's GCC 13 on `-Wmaybe-uninitialized` and
+burned three CI cycles before the gap was closed.
 
 ## Devcontainer (on macOS / non-Ubuntu hosts)
 

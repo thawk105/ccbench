@@ -52,14 +52,32 @@
 
 ## C++
 
-- **`tx.read` の戻り値は必ず check する** (CLAUDE.md の "tx.read returns
-  Status — check it" セクション参照)。
+- **`tx.read` の戻り値は必ず check する**。詳細は下記 [`tx.read` returns Status — *check it*](#txread-returns-status--check-it)。
 - **未初期化のローカル変数は宣言時に default-init する** (`int x = 0;` /
   `T* p = nullptr;`)。GCC 13 の `-Wmaybe-uninitialized` が
   [#44](https://github.com/thawk105/ccbench/pull/44) で実バグを表面化した
   経緯あり。
 - **`auto` で受けた `Status` を読み捨てない**。意図的に捨てたい場合は
   `(void) func(...)` + 理由のコメント、捨てたくない場合は明示的に check。
+
+### `tx.read` returns Status — *check it*
+
+`tx.read` returns `Status::OK` on hit and `Status::WARN_NOT_FOUND` on miss.
+On miss, `*body` is **left unchanged** (it does not get nullified). Checking
+only `tx.status_ == TransactionStatus::aborted` is not enough — a stale
+`body` pointer from a previous read will silently get dereferenced, which
+manifests as a `HeapObject::cast_to` assertion under Debug+ASan and as
+garbage data in Release. Always:
+
+```cpp
+Status stat = tx.read(s, key, &body);
+if (tx.status_ == TransactionStatus::aborted) return false;
+if (stat != Status::OK) return false;   // do not skip this
+```
+
+これは過去 PR #58 で実際に `get_material_cost()` で抜けていた箇所が
+`-Werror=unused-variable` で表面化したことがある — レビューで指摘する前に
+ここを読む / 書く側で意識する。
 
 ## Shell スクリプト
 
