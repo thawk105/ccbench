@@ -11,6 +11,13 @@ relevant section before touching a file of that kind.** When you spot
 a convention worth recording, add it there instead of repeating it in
 PR comments.
 
+## Read before opening an issue (or PR / commit)
+
+[docs/contributing.md](docs/contributing.md) — issue / PR / commit
+の出し方の規約。**特に「1 issue = 1 context」原則** は読んでから
+立てること。`[P4+P8+P10]` 系の複数コンテキスト混ぜ issue は迷惑なので
+立てない。立っていたら分割する (#37 → #60–#64 の例)。
+
 ## Where to record what you learn (CLAUDE.md / docs vs Claude memory)
 
 Claude maintains a **per-project private memory**
