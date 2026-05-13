@@ -237,7 +237,7 @@ public:
   std::uint8_t o_carrier_id;
   std::uint64_t ol_delivery_d;
 
-  void generate(uint16_t w_id0, Option &opt) {
+  void generate(uint16_t w_id0, [[maybe_unused]] Option &opt) {
 #ifdef FIXED_WAREHOUSE_PER_THREAD
     w_id = w_id0;
 #else

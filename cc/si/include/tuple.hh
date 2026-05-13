@@ -18,7 +18,7 @@ public:
     gc_lock_.store(0, std::memory_order_release);
   }
 
-  void init([[maybe_unused]] size_t thid, TupleBody&& body, void* param) {
+  void init([[maybe_unused]] size_t thid, TupleBody&& body, [[maybe_unused]] void* param) {
     // for initializer
     min_cstamp_ = 0;
     latest_.store(new Version(), std::memory_order_release);

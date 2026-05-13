@@ -241,8 +241,9 @@ private:
 
 template<typename T>
 class MasstreeWrapper<T>::DefaultScanCallback : public ScanCallback {
-  void on_resp_node(const node_type *n, uint64_t version) {}
-  bool invoke(const std::string_view &k, T v, const node_type *n, uint64_t version) {
+  void on_resp_node(const node_type * /*n*/, uint64_t /*version*/) {}
+  bool invoke(const std::string_view & /*k*/, T /*v*/, const node_type * /*n*/,
+              uint64_t /*version*/) {
     return true;
   }
 };
@@ -267,8 +268,8 @@ class MasstreeWrapper<T>::SearchRangeScanner {
   }
 
   void visit_leaf(const Masstree::scanstackelt<table_params>& iter,
-                  const Masstree::key<uint64_t>& key,
-                  threadinfo& ti) {
+                  const Masstree::key<uint64_t>& /*key*/,
+                  threadinfo& /*ti*/) {
     const Masstree::leaf<table_params>* node = iter.node();
     uint64_t version = iter.full_version_value();
     callback_.on_resp_node(node, version);

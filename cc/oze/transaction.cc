@@ -470,7 +470,7 @@ Status TxExecutor::scan(const Storage s,
   return Status::OK;
 }
 
-void TxExecutor::validation_worker(size_t worker_id,
+void TxExecutor::validation_worker([[maybe_unused]] size_t worker_id,
     KeySet &target_set, size_t offset, size_t assignment,
     KeySet &propagate_set, Graph &graph, TransactionStatus &result) {
     // copy initial state
