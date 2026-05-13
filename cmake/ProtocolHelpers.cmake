@@ -54,7 +54,8 @@ function(ccbench_add_protocol name)
       -Werror=reorder
       -Werror=unused-parameter
       -Werror=catch-value
-      -Werror=unused-variable)
+      -Werror=unused-variable
+      -Werror=ignored-qualifiers)
 
     set_property(TARGET ${target} PROPERTY CCBENCH_PROTOCOL "${name}")
     set_property(TARGET ${target} PROPERTY CCBENCH_WORKLOAD "${wl}")
