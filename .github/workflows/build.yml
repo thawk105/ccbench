@@ -19,6 +19,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Run the job inside the same devcontainer image developers use locally
+    # (Ubuntu base + apt deps + ccache + GCC already installed). This drops
+    # the per-run `apt-get install` step and the apt cache that used to wrap
+    # it, and guarantees the CI toolchain matches the devcontainer's.
+    #
+    # --user root: the devcontainer image's default user is vscode (uid=1000),
+    # but the GHA runner's work dir (/__w/_temp, bind-mounted into the
+    # container) is owned by the runner user on the host. Without root the
+    # action's housekeeping writes (e.g. actions/checkout's saveState) hit
+    # EACCES. Running as root inside the container is fine — it's isolated.
+    container:
+      image: ghcr.io/thawk105/ccbench-devcontainer:latest
+      options: --user root
     timeout-minutes: 30
     env:
       # Pin ccache dir so actions/cache and ccache agree on the path.
@@ -30,24 +43,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache apt packages
-        id: apt-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            /var/cache/apt/archives/*.deb
-            /var/cache/apt/archives/partial/*.deb
-          key: apt-${{ runner.os }}-${{ hashFiles('build_tools/ubuntu.deps') }}
+      # actions/checkout writes its own safe.directory, but later steps
+      # invoke git from a fresh shell (`sh -e {0}`) where that scoped
+      # config is not always picked up. Set it once globally so every
+      # `git ...` call in this job — checkout's submodule walk, the
+      # bootstrap-key step, etc. — sees the workspace as safe.
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Install apt dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends \
-            $(cat build_tools/ubuntu.deps) \
-            build-essential autoconf automake libtool pkg-config \
-            ccache
-
-      # ccache deduplicates compilations across the 28 binaries (each
+      # ccache deduplicates compilations across the 34 binaries (each
       # protocol's CMakeLists.txt currently compiles common/*.cc and its
       # own .cc files separately for every target).
       - name: Restore ccache
