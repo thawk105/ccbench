@@ -11,6 +11,33 @@ relevant section before touching a file of that kind.** When you spot
 a convention worth recording, add it there instead of repeating it in
 PR comments.
 
+## Where to record what you learn (CLAUDE.md / docs vs Claude memory)
+
+Claude maintains a **per-project private memory**
+(`~/.claude/projects/.../memory/`) that persists across sessions but
+**is not part of the repository** — it doesn't ship with the clone, no
+other contributor or other Claude instance sees it. CLAUDE.md and
+`docs/` ship with every clone and reach everyone. Pick the right
+destination when recording something new:
+
+- **Goes in this repo (CLAUDE.md / docs/)** if a human contributor would
+  also need it to work effectively on the codebase:
+  - Repository facts (architecture, build flow, protocol matrix, etc.)
+  - Coding conventions adopted by the project
+  - Decision rationale that future maintainers will want to look up
+- **Goes in Claude memory (private to one Claude instance)** if it's
+  personal to how *this* Claude collaborates with *this* user:
+  - User preferences ("reply in Japanese", "no Co-Authored-By trailer")
+  - Claude's own behavioral heuristics (parallelization rules,
+    prompt-writing patterns)
+  - "Last time I made mistake X, the user's fix was Y" — reminders for
+    future Claude turns, not for human review
+
+Rule of thumb: **"would a new contributor cloning the repo need this?"**
+→ yes → repo; → no → memory. Personal preferences and Claude-side
+heuristics specifically **should not** be committed to CLAUDE.md or
+`docs/` — that pollutes the shared repo with one person's taste.
+
 ## What this repo is
 
 CCBench re-implements major in-memory concurrency-control protocols on a common substrate so they can be compared on identical workloads (Tanabe et al., VLDB 2020). The repository now also bundles the **TPC-C** and **BoMB** workloads and several extra protocols, contributed by [@jnmt](https://github.com/jnmt) on the `vldb-paper` branch and merged here.
