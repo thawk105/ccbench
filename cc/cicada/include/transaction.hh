@@ -62,7 +62,7 @@ public:
   uint64_t gcstart_, gcstop_;            // for garbage collection
 
   TxExecutor(uint8_t thid, Backoff& backoff, Result *res, const bool &quit)
-    : result_(res), thid_(thid), backoff_(backoff), quit_(quit), callback_(TxScanCallback(this)) {
+    : result_(res), quit_(quit), callback_(TxScanCallback(this)), backoff_(backoff), thid_(thid) {
 
     // wait to initialize MinWts
     while (MinWts.load(memory_order_acquire) == 0);

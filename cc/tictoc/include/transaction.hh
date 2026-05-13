@@ -55,7 +55,7 @@ public:
   TxScanCallback callback_;
 
   TxExecutor(int thid, Result *res, const bool &quit)
-      : result_(res), thid_(thid), quit_(quit), backoff_(FLAGS_clocks_per_us),
+      : thid_(thid), result_(res), backoff_(FLAGS_clocks_per_us), quit_(quit),
         callback_(TxScanCallback(this)) {
     epoch_timer_start = rdtsc();
     epoch_timer_stop = 0;

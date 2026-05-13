@@ -50,7 +50,8 @@ function(ccbench_add_protocol name)
     target_compile_options(${target} PRIVATE
       -Werror=maybe-uninitialized
       -Werror=unused-but-set-variable
-      -Werror=unused-label)
+      -Werror=unused-label
+      -Werror=reorder)
 
     set_property(TARGET ${target} PROPERTY CCBENCH_PROTOCOL "${name}")
     set_property(TARGET ${target} PROPERTY CCBENCH_WORKLOAD "${wl}")
