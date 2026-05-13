@@ -2,7 +2,7 @@
 # Force linux/amd64 because the codebase uses x86-only intrinsics
 # (e.g. __cpuid_count in include/cpu.hh). On Apple Silicon this runs
 # under QEMU emulation: fine for build/edit/test, not for benchmarking.
-FROM --platform=linux/amd64 ubuntu:22.04
+FROM --platform=linux/amd64 ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
@@ -43,7 +43,11 @@ ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
 
-RUN groupadd --gid ${USER_GID} ${USERNAME} \
+# Ubuntu 24.04 ships a default `ubuntu` user at uid=1000, which collides
+# with our useradd below. Remove it first; the `|| true` keeps this
+# tolerant of older bases that don't have it.
+RUN userdel -r ubuntu 2>/dev/null || true \
+    && groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
