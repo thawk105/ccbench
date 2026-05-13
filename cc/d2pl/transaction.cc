@@ -168,9 +168,6 @@ void TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
    */
   body = TupleBody(tuple->body_.get_key(), tuple->body_.get_val(), tuple->body_.get_val_align());
   read_set_.emplace_back(s, key, tuple, std::move(body));
-
-FINISH_READ:
-  return;
 }
 
 Status TxExecutor::scan(const Storage s,

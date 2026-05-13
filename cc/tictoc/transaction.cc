@@ -162,7 +162,6 @@ Status TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) 
   this->appro_commit_ts_ = max(this->appro_commit_ts_, v1.wts);
   read_set_.emplace_back(s, key, tuple, std::move(b), v1);
 
-FINISH_READ:
   return Status::OK;
 }
 

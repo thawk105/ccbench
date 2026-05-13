@@ -484,7 +484,6 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
 
   write_set_.emplace_back(s, key, tuple, OpType::DELETE);
 
-FINISH_DELETE:
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
 #endif
