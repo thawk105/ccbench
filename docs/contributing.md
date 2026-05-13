@@ -79,6 +79,53 @@
 
 ---
 
+## ドキュメントの言語と命名規約
+
+このリポジトリは日本語ネイティブが主にメンテし、AI 翻訳で英語版を提供する戦略を取る。「真実の単一性」を保つため **原典がどちらの言語か** を suffix で明示する。
+
+### ファイル別の規約
+
+| ファイル | 言語 | 原典/生成 | 備考 |
+|---|---|---|---|
+| `README.md` | (stub) | — | GitHub home が拾うので残す。中身は `README_en.md` / `README_ja.md` (もしあれば) へのナビだけ |
+| `README_en.md` | 英語 | **原典** | 全世界向けのプロジェクト紹介。論文引用に出てくる name face なので英語が一次 |
+| `README_ja.md` | 日本語 | 生成 (任意) | あれば AI 翻訳で生成 |
+| `CLAUDE.md` | 日本語 | **原典** | Claude Code が固定 path `CLAUDE.md` を読む仕様のためファイル名は変えない。中身を日本語にして原典扱い |
+| `CLAUDE_en.md` | 英語 | 生成 | 英語環境の Claude / 海外 contributor 向け |
+| `docs/<name>_ja.md` | 日本語 | **原典** | 全 docs の原典。修正はここから |
+| `docs/<name>_en.md` | 英語 | 生成 | AI 翻訳で `_ja.md` から生成 |
+
+### 「原典」の責務
+
+- 仕様変更 / 規約更新は **原典 (`*_ja.md` / `README_en.md`)** に対して行う
+- 同じ commit で翻訳側 (`*_en.md` / 任意で `README_ja.md`) を更新する義務がある (片方だけ更新は禁止)
+- レビューは原典に対して行う。翻訳側は「原典に従っているか」だけチェック
+- 「翻訳と原典がズレている」と気付いたら、原典を正とする
+
+### 翻訳の生成方針
+
+- AI (Claude / DeepL 等) で翻訳して `_en.md` (or `_ja.md`) を生成
+- 技術用語は訳さない (`rebase`, `force-push`, `Werror`, `target_compile_options`, `Tuple`, `Status`, 等)
+- コードブロック内・コマンドラインは絶対に翻訳しない
+- markdown のリンク先 path は **両言語版で同じ言語に揃える** (例: `_ja.md` 内のリンクは `_ja.md` を指す)
+  - 例外: 外部 URL、画像 etc.
+- 将来的には CI workflow で自動翻訳する余地あり (現状は手動 / Claude のターン内で生成)
+
+### Suffix なしファイルは作らない
+
+- `docs/architecture.md` のような **suffix なし** ファイルは作らない (= どちらの言語かが曖昧)
+- ただし `README.md` と `CLAUDE.md` だけは外部仕様 (GitHub UI / Claude Code) で固定 path が要るので例外
+
+### 新規 docs を立てるとき
+
+1. **まず `docs/<name>_ja.md` を書く** (原典)
+2. AI 翻訳で `docs/<name>_en.md` を生成
+3. 両ファイルを 1 つの commit に含める
+4. リンクを張る側 (CLAUDE.md / README_en.md / 他 docs) は **自分の言語と同じ suffix のリンク** を張る
+   - `CLAUDE.md` (日本語) → `docs/<name>_ja.md` にリンク
+   - `CLAUDE_en.md` (英語) → `docs/<name>_en.md` にリンク
+   - `README.md` (stub) は両言語ナビなのでどちらも OK
+
 ## PR を出すとき (TODO)
 
 PR の出し方の規約はまだ書いていない。気付いた点があれば追記。
