@@ -619,7 +619,7 @@ public:
         ItemMaster::CreateKey(node->i_id_, item.ptr());
         Status stat = tx.read_lock(Storage::ItemMaster, item.view());
         if (stat != Status::OK) {
-          std:stringstream ss; ss << "item id: " << node->i_id_;
+          std::stringstream ss; ss << "item id: " << node->i_id_;
           dump(tx.thid_, ss.str());
           return nullptr;
         }

@@ -820,7 +820,6 @@ bool TxExecutor::write_validation(WriteElement<Tuple> element, KeySet& finished_
         return true;
     }
 
-FINISH_VALIDATION:
 #if ADD_ANALYSIS
     result_->local_write_validation_latency_ += rdtscp() - start;
 #endif  // if ADD_ANALYSIS
@@ -998,7 +997,6 @@ bool TxExecutor::read_validation(KeySet& target_set, KeySet& finished_set) {
         }
     }
 
-FINISH_VALIDATION:
 #if DEBUG_MSG
     std::cout << "TxID " << this->txid_ << " read page validation done" << std::endl;
 #endif

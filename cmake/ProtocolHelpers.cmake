@@ -49,7 +49,8 @@ function(ccbench_add_protocol name)
     # PR lands.
     target_compile_options(${target} PRIVATE
       -Werror=maybe-uninitialized
-      -Werror=unused-but-set-variable)
+      -Werror=unused-but-set-variable
+      -Werror=unused-label)
 
     set_property(TARGET ${target} PROPERTY CCBENCH_PROTOCOL "${name}")
     set_property(TARGET ${target} PROPERTY CCBENCH_WORKLOAD "${wl}")
