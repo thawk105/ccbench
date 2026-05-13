@@ -276,7 +276,8 @@ class MasstreeWrapper<T>::SearchRangeScanner {
   }
 
   bool visit_value(const Str key, T *val, threadinfo &) {
-    if (max_scan_num_ >= 0 && scan_buffer_->size() >= max_scan_num_) {
+    if (max_scan_num_ >= 0 &&
+        scan_buffer_->size() >= static_cast<std::size_t>(max_scan_num_)) {
       return false;
     }
 
