@@ -225,7 +225,10 @@ public:
             uint32_t max = expected & 0xffffffff;
             uint32_t left = *reinterpret_cast<const uint32_t*>(left_key.data());
             uint32_t right = *reinterpret_cast<const uint32_t*>(right_key.data());
-            uint64_t updated;
+            // Must start at 0: the |= branches below only write half the
+            // word each (upper 32b in one, lower 32b in the other), so
+            // any uninitialized garbage would leak into the result.
+            uint64_t updated = 0;
             if (max < right) {
               updated |= static_cast<uint64_t>(right) & 0xffffffff;
             } else {

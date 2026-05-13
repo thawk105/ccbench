@@ -42,11 +42,13 @@ function(ccbench_add_protocol name)
       ${_universal_defs}
       ${_extra_defs})
 
-    # NOTE: deliberately do NOT call set_compile_options(${target}) here.
-    # The old per-protocol CMakeLists never enabled -Wall -Wextra -Werror,
-    # and the existing source tree has accumulated warnings under those
-    # flags. Turning Werror on here would be a separate cleanup task —
-    # this issue is just about declarative target wiring.
+    # Phased -Werror cleanup (see #43). The full -Wall -Wextra -Werror via
+    # set_compile_options() is still gated on Phase 5 — we promote one
+    # warning class to error at a time as the existing offenders get
+    # fixed. Append the next entry here when its source-level cleanup
+    # PR lands.
+    target_compile_options(${target} PRIVATE
+      -Werror=maybe-uninitialized)
 
     set_property(TARGET ${target} PROPERTY CCBENCH_PROTOCOL "${name}")
     set_property(TARGET ${target} PROPERTY CCBENCH_WORKLOAD "${wl}")
