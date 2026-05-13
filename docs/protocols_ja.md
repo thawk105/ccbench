@@ -9,7 +9,7 @@
 | [cc/mocc](../cc/mocc/)     | MOCC                                | ✓ | ✓ | ✓ | Wang et al., VLDB 2017 |
 | [cc/tictoc](../cc/tictoc/) | TicToc                              | ✓ | ✓ | ✓ | Yu et al., SIGMOD 2016 |
 | [cc/ermia](../cc/ermia/)   | ERMIA (with SSN / latch-free SSN)   | ✓ | ✓ | ✓ | Kim et al., SIGMOD 2016; Wang et al., VLDB 2017 |
-| [cc/oze](../cc/oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC variant |
+| [cc/oze](../cc/oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC の派生 |
 | [cc/si](../cc/si/)         | Snapshot Isolation                  | ✓ | ✓ | ✓ | ERMIA から SSN レイヤを剥がしたもの (anti-dependency チェック無し) |
 | [cc/ss2pl](../cc/ss2pl/)   | Strong Strict 2-Phase Locking       | — | ✓ | ✓ | ベースラインのロック方式 |
 | [cc/d2pl](../cc/d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB と dBoMB のみサポート。pre-declared lock entries が必要なため TPC-C テンプレートには適用不能 |
@@ -21,7 +21,7 @@
 
 各プロトコルの sBoMB (single-threaded BoMB) と dBoMB (deterministic BoMB) サポート状況は [build/PROTOCOL_MATRIX.md](../build/PROTOCOL_MATRIX.md) にあり、これは CMake configure 時に各 `ccbench_add_protocol(...)` 呼び出しの `WORKLOADS` 引数から **自動生成** される。現在のスナップショット:
 
-| Protocol | YCSB | TPC-C | BoMB | sBoMB | dBoMB |
+| プロトコル | YCSB | TPC-C | BoMB | sBoMB | dBoMB |
 |---|:-:|:-:|:-:|:-:|:-:|
 | `cc/silo/`   | ✓ | ✓ | ✓ | ✓ | — |
 | `cc/mocc/`   | ✓ | ✓ | ✓ | ✓ | — |

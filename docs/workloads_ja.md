@@ -2,7 +2,7 @@
 
 CCBench は 3 つのワークロードを提供する。それぞれプロトコルごとに `<workload>_<protocol>.exe` として `build/cc/<protocol>/` 配下にビルドされる。各バイナリが受け付けるフラグは [runtime-args_ja.md](runtime-args_ja.md) を参照。
 
-- [BoMB](#bomb) — Bill of Materials Benchmark (long + short OLTP mix)
+- [BoMB](#bomb) — Bill of Materials Benchmark (長時間 + 短時間 OLTP の混合)
 - [TPC-C](#tpc-c) — 標準的な OLTP ベンチマーク
 - [YCSB](#ycsb) — key-value ワークロード
 

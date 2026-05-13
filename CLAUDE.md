@@ -6,19 +6,19 @@ Claude (AI) がこのリポジトリで作業するときの起動コンテキ�
 各 `docs/*_ja.md` (原典) を見ること。英語 reader は [CLAUDE_en.md](CLAUDE_en.md)
 を読む。
 
-## Where to start (Claude も人間も)
+## どこから読むか (Claude も人間も)
 
 | 知りたいこと | 読む場所 |
 |---|---|
 | リポジトリの全体像、アーキテクチャ、TxExecutor の API 契約、GC 規約 | [docs/architecture_ja.md](docs/architecture_ja.md) |
-| ビルド手順 (cmake, devcontainer, GCC version, build modes) | [docs/build_ja.md](docs/build_ja.md) |
+| ビルド手順 (cmake、devcontainer、GCC バージョン、ビルドモード) | [docs/build_ja.md](docs/build_ja.md) |
 | 各プロトコルとワークロード対応表、新プロトコルの追加方法 | [docs/protocols_ja.md](docs/protocols_ja.md) |
 | ワークロード仕様 (TPC-C / YCSB / BoMB) | [docs/workloads_ja.md](docs/workloads_ja.md) |
 | 実行時引数 | [docs/runtime-args_ja.md](docs/runtime-args_ja.md) |
 | **ファイル種別ごとのコーディング規約 (Dockerfile / CMake / GHA / C++ / Shell)** | [docs/coding-conventions_ja.md](docs/coding-conventions_ja.md) |
-| **Issue / PR / commit / docs 言語規約 (1 issue = 1 context、`_ja`/`_en` セット更新等)** | [docs/contributing_ja.md](docs/contributing_ja.md) |
+| **Issue / PR / コミット / docs 言語規約 (1 issue = 1 context、`_ja`/`_en` セット更新など)** | [docs/contributing_ja.md](docs/contributing_ja.md) |
 
-## Hard rules (出かける前に必ず確認)
+## ハードルール (出かける前に必ず確認)
 
 1. **編集するファイル種別の規約を [coding-conventions_ja.md](docs/coding-conventions_ja.md)
    で確認してから書く**。指摘される前に Docker / CMake / C++ の業界 best
@@ -39,7 +39,7 @@ Claude (AI) がこのリポジトリで作業するときの起動コンテキ�
    する PR は merge 不可。詳細は
    [contributing_ja.md § 「原典」の責務](docs/contributing_ja.md) を参照。
 
-## Where to record what you learn (CLAUDE.md / docs vs Claude memory)
+## 何をどこに記録するか (CLAUDE.md / docs か、Claude memory か)
 
 Claude は **プロジェクトごとの private memory** を持つ
 (`~/.claude/projects/.../memory/`)。これはセッションをまたいで永続するが、
@@ -53,7 +53,7 @@ contributor や他の Claude インスタンスからは見えない。CLAUDE.md
   - リポジトリの事実 (アーキテクチャ、build フロー、protocol matrix など)
     → `docs/architecture_ja.md`, `docs/build_ja.md`, `docs/protocols_ja.md`
   - プロジェクトで採用されたコーディング規約 → `docs/coding-conventions_ja.md`
-  - process / governance (issue / PR / commit) → `docs/contributing_ja.md`
+  - プロセス / ガバナンス (issue / PR / コミット) → `docs/contributing_ja.md`
   - 将来のメンテナが調べたくなる決定の理由
 - **Claude memory に書く (1 Claude インスタンスの私物)** もの: この Claude
   がこの user と協業する時固有の話
@@ -64,11 +64,11 @@ contributor や他の Claude インスタンスからは見えない。CLAUDE.md
   - 「前回ミス X をやって、ユーザーが Y で直してくれた」── 将来の Claude の
     ためのリマインダ、人間のレビュー対象ではない
 
-**判断軸: 「new contributor がリポを clone したとき必要か?」** → YES なら
-repo (`docs/*` 優先、本当に AI-only meta な話だけ `CLAUDE.md`)、NO なら
-memory。個人の好みや Claude 側ヒューリスティクスは **絶対に** `CLAUDE.md` や
-`docs/` に commit しない (= 一個人の taste で shared repo を汚染することに
-なる)。
+**判断軸: 「新しい contributor がこのリポを clone したとき必要か?」** → YES
+ならリポジトリ側 (`docs/*` 優先、本当に AI 専用のメタな話だけ `CLAUDE.md`)、
+NO なら memory。個人の好みや Claude 側のヒューリスティクスは **絶対に**
+`CLAUDE.md` や `docs/` に commit しない (= 一個人の taste で共有リポジトリ
+を汚染することになる)。
 
 ## このファイルを膨らませないこと
 

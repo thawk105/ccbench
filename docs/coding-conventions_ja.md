@@ -15,7 +15,7 @@
 
 ## Dockerfile
 
-- **`apt-get install` の multi-line args は alphabetical sort**
+- **`apt-get install` の複数行引数はアルファベット順にソートする**
   ([Docker docs: Sort multi-line arguments](https://docs.docker.com/build/building/best-practices/#sort-multi-line-arguments))。
   重複追加防止 + merge conflict 低減 + レビュー性向上のため。
 - **`--no-install-recommends` を必ず付ける**。recommends で余計な dev tool が
@@ -60,14 +60,9 @@
 - **`auto` で受けた `Status` を読み捨てない**。意図的に捨てたい場合は
   `(void) func(...)` + 理由のコメント、捨てたくない場合は明示的に check。
 
-### `tx.read` returns Status — *check it*
+### `tx.read` の戻り値 Status は **必ず check する**
 
-`tx.read` returns `Status::OK` on hit and `Status::WARN_NOT_FOUND` on miss.
-On miss, `*body` is **left unchanged** (it does not get nullified). Checking
-only `tx.status_ == TransactionStatus::aborted` is not enough — a stale
-`body` pointer from a previous read will silently get dereferenced, which
-manifests as a `HeapObject::cast_to` assertion under Debug+ASan and as
-garbage data in Release. Always:
+`tx.read` はヒット時に `Status::OK`、ミス時に `Status::WARN_NOT_FOUND` を返す。ミス時には `*body` は **そのまま** (= nullify されない) なので、`tx.status_ == TransactionStatus::aborted` だけチェックしても不十分 — 前回の read で得た古い `body` ポインタがそのまま deref されてしまい、Debug+ASan では `HeapObject::cast_to` の assertion で死に、Release では garbage data を読む。必ず次の形で書く:
 
 ```cpp
 Status stat = tx.read(s, key, &body);

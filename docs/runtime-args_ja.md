@@ -54,7 +54,7 @@ BoMB には多くの knob がある。下記はよく使うものだけ。ワー
 | `-bomb_s1_thread_num` … `-bomb_s5_thread_num` | varies | S1〜S5 各 short トランザクションの thread 数。 |
 | `-bomb_perc_s1` … `-bomb_perc_s4` | varies | short トランザクション間の % 混合比。 |
 | `-bomb_use_cache` | `false` | キャッシュ済みの BoM tree を使う (静的設定)。 |
-| `-bomb_rate_control` | `false` | rate-limited な request injection を有効化。 |
+| `-bomb_rate_control` | `false` | レート制限付きの request injection を有効化。 |
 
 ## 例
 
