@@ -23,8 +23,15 @@ jobs:
     # (Ubuntu base + apt deps + ccache + GCC already installed). This drops
     # the per-run `apt-get install` step and the apt cache that used to wrap
     # it, and guarantees the CI toolchain matches the devcontainer's.
+    #
+    # --user root: the devcontainer image's default user is vscode (uid=1000),
+    # but the GHA runner's work dir (/__w/_temp, bind-mounted into the
+    # container) is owned by the runner user on the host. Without root the
+    # action's housekeeping writes (e.g. actions/checkout's saveState) hit
+    # EACCES. Running as root inside the container is fine — it's isolated.
     container:
       image: ghcr.io/thawk105/ccbench-devcontainer:latest
+      options: --user root
     timeout-minutes: 30
     env:
       # Pin ccache dir so actions/cache and ccache agree on the path.
