@@ -12,7 +12,7 @@ The repository now also bundles the **TPC-C** and **BoMB** workloads, and severa
 | SS2PL, MVTO | — | ✓ | ✓ |
 | D2PL | — | — | ✓ |
 
-See [docs/workloads.md](docs/workloads.md) for the workload specs (tables, transactions, parameters) and [docs/protocols.md](docs/protocols.md) for the full protocol matrix.
+See [docs/workloads_en.md](docs/workloads_en.md) for the workload specs (tables, transactions, parameters) and [docs/protocols_en.md](docs/protocols_en.md) for the full protocol matrix.
 
 [1]: http://www.vldb.org/pvldb/vol13/p3531-tanabe.pdf
 
@@ -30,7 +30,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-> On Apple Silicon the container runs under QEMU emulation: fine for development, **not** for benchmark numbers. Use a real x86_64 Linux host for measurements. See [docs/build.md](docs/build.md) for the full host setup.
+> On Apple Silicon the container runs under QEMU emulation: fine for development, **not** for benchmark numbers. Use a real x86_64 Linux host for measurements. See [docs/build_en.md](docs/build_en.md) for the full host setup.
 
 ## Run
 
@@ -42,15 +42,18 @@ Binaries land at `build/cc/<protocol>/<workload>_<protocol>.exe`. Examples:
 ./build/cc/silo/bomb_silo.exe     -thread_num=8 -bomb_mixed_mode -bomb_mixed_short_rate=1000
 ```
 
-See `--help` for workload-specific flags, or [docs/runtime-args.md](docs/runtime-args.md) for the full reference.
+See `--help` for workload-specific flags, or [docs/runtime-args_en.md](docs/runtime-args_en.md) for the full reference.
 
 ## Documentation
 
-- [docs/build.md](docs/build.md) — host & devcontainer build instructions
-- [docs/workloads.md](docs/workloads.md) — TPC-C / YCSB / BoMB specs
-- [docs/protocols.md](docs/protocols.md) — protocol matrix and references
-- [docs/runtime-args.md](docs/runtime-args.md) — runtime flag reference
-- [CLAUDE.md](CLAUDE.md) — repo-level context for AI assistants
+- [docs/architecture_en.md](docs/architecture_en.md) — repo overview, TxExecutor API contract, GC rules
+- [docs/build_en.md](docs/build_en.md) — host & devcontainer build instructions
+- [docs/workloads_en.md](docs/workloads_en.md) — TPC-C / YCSB / BoMB specs
+- [docs/protocols_en.md](docs/protocols_en.md) — protocol matrix and references
+- [docs/runtime-args_en.md](docs/runtime-args_en.md) — runtime flag reference
+- [docs/coding-conventions_en.md](docs/coding-conventions_en.md) — per-file-type conventions
+- [docs/contributing_en.md](docs/contributing_en.md) — how to open issues / PRs / commits, doc-language rules
+- [CLAUDE_en.md](CLAUDE_en.md) — repo-level context for AI assistants
 - Original CCBench experimental data: <https://github.com/thawk105/ccdata>
 
 ## Acknowledgments

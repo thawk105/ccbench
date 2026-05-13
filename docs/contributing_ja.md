@@ -1,6 +1,6 @@
 # Contributing
 
-このリポジトリで issue を立てる / PR を出す / コミットを書くときの規約。コーディングルール (ファイル種別ごとの best practice) は [coding-conventions.md](coding-conventions.md) を見ること。
+このリポジトリで issue を立てる / PR を出す / コミットを書くときの規約。コーディングルール (ファイル種別ごとの best practice) は [coding-conventions_ja.md](coding-conventions_ja.md) を見ること。
 
 最初は **issue を立てるルールから書き始めている**。新しい合意ができたら追記していく方針。
 
@@ -87,20 +87,30 @@
 
 | ファイル | 言語 | 原典/生成 | 備考 |
 |---|---|---|---|
-| `README.md` | (stub) | — | GitHub home が拾うので残す。中身は `README_en.md` / `README_ja.md` (もしあれば) へのナビだけ |
-| `README_en.md` | 英語 | **原典** | 全世界向けのプロジェクト紹介。論文引用に出てくる name face なので英語が一次 |
-| `README_ja.md` | 日本語 | 生成 (任意) | あれば AI 翻訳で生成 |
+| `README.md` | 英語 | **原典** | GitHub home が拾う + 論文引用に出てくる name face なので、原典は英語。見出しは世界向けに簡潔に保つ |
+| `README_ja.md` | 日本語 | 生成 (任意) | 必要なら AI 翻訳で生成 |
 | `CLAUDE.md` | 日本語 | **原典** | Claude Code が固定 path `CLAUDE.md` を読む仕様のためファイル名は変えない。中身を日本語にして原典扱い |
 | `CLAUDE_en.md` | 英語 | 生成 | 英語環境の Claude / 海外 contributor 向け |
 | `docs/<name>_ja.md` | 日本語 | **原典** | 全 docs の原典。修正はここから |
 | `docs/<name>_en.md` | 英語 | 生成 | AI 翻訳で `_ja.md` から生成 |
 
-### 「原典」の責務
+`README.md` と `CLAUDE.md` だけが **外部仕様 (GitHub home / Claude Code) で固定 path を要求される** ため、suffix なしの例外扱い。原典の言語が違うのは、`README` は世界向け (英語) で `CLAUDE` は主メンテナ向け (日本語) という性質の違いを反映している。
 
-- 仕様変更 / 規約更新は **原典 (`*_ja.md` / `README_en.md`)** に対して行う
-- 同じ commit で翻訳側 (`*_en.md` / 任意で `README_ja.md`) を更新する義務がある (片方だけ更新は禁止)
-- レビューは原典に対して行う。翻訳側は「原典に従っているか」だけチェック
-- 「翻訳と原典がズレている」と気付いたら、原典を正とする
+### 「原典」の責務 — **`_ja` / `_en` セット更新義務 (Hard rule)**
+
+`README.md` (= 単独で完結) **以外**のすべての docs / CLAUDE 系ファイルは、**`_ja` / `_en` (or 原典 / 翻訳) ペア** として扱う。**片方だけ更新するのは禁止**。これを守らないと PR が片言語で merge されて「原典 vs 翻訳のズレ」が必ず累積する。
+
+具体的に:
+
+- 仕様変更 / 規約更新は必ず **原典側に対して行う**
+  - `CLAUDE.md` (日本語、原典) ↔ `CLAUDE_en.md` (英語、翻訳)
+  - `docs/<name>_ja.md` (原典) ↔ `docs/<name>_en.md` (翻訳)
+- **同一 PR / 同一 commit で翻訳側も更新する**。片方だけ更新は merge 不可
+  - レビュアーは「両方更新されているか」を必ずチェック
+  - CI で `_ja` と `_en` の組がペアで存在するか、最終更新時刻が同じかなどを将来的に enforce する余地あり
+- レビューの対象は原典。翻訳側は「原典に従っているか」だけチェック
+- 「翻訳と原典がズレている」と気付いたら、**原典を正とする** (= 原典に従って翻訳を直す)
+- 例外: `README.md` は **単独で完結する英語原典** で、対応する `README_ja.md` は **任意** (= 作っても作らなくても良い)。作る場合のみペア更新義務が発生する
 
 ### 翻訳の生成方針
 
@@ -111,20 +121,20 @@
   - 例外: 外部 URL、画像 etc.
 - 将来的には CI workflow で自動翻訳する余地あり (現状は手動 / Claude のターン内で生成)
 
-### Suffix なしファイルは作らない
+### `docs/` の中では suffix なしファイルを作らない
 
-- `docs/architecture.md` のような **suffix なし** ファイルは作らない (= どちらの言語かが曖昧)
-- ただし `README.md` と `CLAUDE.md` だけは外部仕様 (GitHub UI / Claude Code) で固定 path が要るので例外
+- `docs/architecture.md` のような **suffix なし** ファイルは `docs/` 配下では作らない (= どちらの言語かが曖昧)
+- `README.md` と `CLAUDE.md` はリポジトリ root に置く例外 (上記)
 
 ### 新規 docs を立てるとき
 
 1. **まず `docs/<name>_ja.md` を書く** (原典)
 2. AI 翻訳で `docs/<name>_en.md` を生成
 3. 両ファイルを 1 つの commit に含める
-4. リンクを張る側 (CLAUDE.md / README_en.md / 他 docs) は **自分の言語と同じ suffix のリンク** を張る
+4. リンクを張る側は **自分の言語と同じ suffix のリンク** を張る
    - `CLAUDE.md` (日本語) → `docs/<name>_ja.md` にリンク
    - `CLAUDE_en.md` (英語) → `docs/<name>_en.md` にリンク
-   - `README.md` (stub) は両言語ナビなのでどちらも OK
+   - `README.md` (英語、原典) → `docs/<name>_en.md` にリンク (英語 reader 向け)
 
 ## PR を出すとき (TODO)
 
