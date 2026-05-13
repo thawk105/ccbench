@@ -37,7 +37,7 @@ public:
       rnd_.init();
     }
 
-    void prepare(TxExecutor& tx, Param *p) {
+    void prepare(TxExecutor& tx, [[maybe_unused]] Param *p) {
       hkg_.init(tx.thid_, true);
       w_id = (tx.thid_ % FLAGS_tpcc_num_wh) + 1; // home warehouse.
     }

@@ -54,7 +54,9 @@ void displayParameter() {
   cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
-void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {}
+void partTableInit([[maybe_unused]] size_t thid,
+                   [[maybe_unused]] uint64_t start,
+                   [[maybe_unused]] uint64_t end) {}
 
 void makeDB() {}
 

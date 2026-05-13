@@ -437,7 +437,7 @@ public:
       TxType type;
       TxArgs args;
 
-      TxType decideType(TxExecutor& tx, Xoroshiro128Plus& r) {
+      TxType decideType(TxExecutor& tx, [[maybe_unused]] Xoroshiro128Plus& r) {
         TxType txType;
         if (tx.thid_ < FLAGS_bomb_l1_thread_num) {
           txType = TxType::UpdateProductCostMaster;
@@ -1392,7 +1392,7 @@ RETRY:
       return TxType::ChangeProductQuantity;
     }
 
-    static void request_dispatcher(size_t thid, char &ready, const bool &start, const bool &quit) {
+    static void request_dispatcher([[maybe_unused]] size_t thid, char &ready, const bool &start, const bool &quit) {
       // prepare queues for short transactions
       int numQueues = TotalThreadNum - FLAGS_bomb_l1_thread_num;
       requestQueues = new ConcurrentQueue<std::pair<TxType, timepoint>>[numQueues];

@@ -63,7 +63,7 @@ public:
   }
 
   // only for initial data preparation
-  void init([[maybe_unused]] size_t thid, TupleBody&& body, void* param) {
+  void init([[maybe_unused]] size_t thid, TupleBody&& body, [[maybe_unused]] void* param) {
 
     TxID txid = TxID();
     txid.thid = thid;
