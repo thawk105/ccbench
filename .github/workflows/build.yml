@@ -43,6 +43,14 @@ jobs:
         with:
           submodules: recursive
 
+      # actions/checkout writes its own safe.directory, but later steps
+      # invoke git from a fresh shell (`sh -e {0}`) where that scoped
+      # config is not always picked up. Set it once globally so every
+      # `git ...` call in this job — checkout's submodule walk, the
+      # bootstrap-key step, etc. — sees the workspace as safe.
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       # ccache deduplicates compilations across the 34 binaries (each
       # protocol's CMakeLists.txt currently compiles common/*.cc and its
       # own .cc files separately for every target).
