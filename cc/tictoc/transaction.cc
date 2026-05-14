@@ -477,7 +477,7 @@ void TxExecutor::abort() {
   // remove inserted records
   for (auto& we : write_set_) {
     if (we.op_ == OpType::INSERT) {
-      Masstrees[get_storage(we.storage_)].remove_value(we.key_);
+      Masstrees[get_storage(we.storage_)].remove_value_if_present(we.key_);
       delete we.rcdptr_;
     }
   }
@@ -526,7 +526,7 @@ void TxExecutor::writePhase() {
         result.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // record put on the GC queue below.
-        (void)Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+        Masstrees[get_storage((*itr).storage_)].remove_value_if_present((*itr).key_);
         gc_records_.emplace_back((*itr).storage_, (*itr).key_, (*itr).rcdptr_, ThLocalEpoch[thid_].obj_);
         break;
       }

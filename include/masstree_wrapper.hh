@@ -165,6 +165,12 @@ public:
     return Status::WARN_NOT_FOUND;
   }
 
+  // "delete if present" — discards "not found" since callers in the
+  // DELETE-commit path may race with concurrent deletions of the same key.
+  void remove_value_if_present(std::string_view key) {
+    (void) remove_value(key);
+  }
+
   T *get_value(std::string_view key) {
     unlocked_cursor_type lp(table_, key.data(), key.size());
     bool found = lp.find_unlocked(*ti);

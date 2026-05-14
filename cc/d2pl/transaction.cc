@@ -85,7 +85,7 @@ bool TxExecutor::commit() {
       case OpType::DELETE: {
         // Return value intentionally ignored: a missing key still needs the
         // record put on the GC queue below.
-        (void)Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
+        Masstrees[get_storage((*itr).storage_)].remove_value_if_present((*itr).key_);
         // create information for garbage collection
         gc_records_.push_back((*itr).rcdptr_);
         break;
