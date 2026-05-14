@@ -40,7 +40,7 @@ void init(int32_t table_num) {
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     ThManagementTable[i] = new ThreadManagementEntry(1, FLAGS_cc_mode);
   }
-  for (unsigned int i = 0; i < table_num * 2; ++i) {
+  for (unsigned int i = 0; i < static_cast<unsigned int>(table_num) * 2; ++i) {
     ScanHistory[i].store(nullptr);
   }
 }
