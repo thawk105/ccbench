@@ -1,0 +1,55 @@
+name: format
+
+on:
+  push:
+    # Keep paths-ignore in sync with build.yml: a docs-only or
+    # devcontainer-only change should not spin up CI.
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.devcontainer/**'
+      - '.github/workflows/devcontainer-image.yml'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.devcontainer/**'
+      - '.github/workflows/devcontainer-image.yml'
+
+jobs:
+  # Independent of build.yml's `build` job on purpose: a formatting
+  # violation and a compile break are unrelated failures, and seeing
+  # one job red while the other stays green pinpoints which it is.
+  format-check:
+    runs-on: ubuntu-latest
+    # clang-format only ships in the `dev` stage of .devcontainer/Dockerfile
+    # (published as :latest) — the slim :ci image used by build.yml has it
+    # stripped. Use :latest here rather than fattening :ci, which would mean
+    # a Dockerfile change + image rebuild for no other gain.
+    #
+    # --user root: same reason as build.yml — the GHA runner's bind-mounted
+    # work dir is host-owned, so actions' housekeeping writes need root.
+    container:
+      image: ghcr.io/thawk105/ccbench-devcontainer:latest
+      options: --user root
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # Later steps run git from a fresh `sh -e {0}` shell where
+      # checkout's scoped safe.directory is not always picked up; set it
+      # globally so `git ls-files` below sees the workspace as safe.
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Same target set as the bulk reformat (PR #76): all *.cc / *.hh /
+      # *.cpp tracked under cc/, include/ and common/. There are no
+      # third_party/ or build/ trees nested under those, so the extension
+      # filter alone is enough; --Werror makes any diff fail the job.
+      - name: clang-format dry-run
+        run: |
+          clang-format --version
+          git ls-files -- cc include common \
+            | grep -E '\.(cc|hh|cpp)$' \
+            | xargs clang-format --dry-run --Werror
