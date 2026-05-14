@@ -4,7 +4,7 @@
 
 template <typename T>
 class ReadElement : public OpElement<T> {
- public:
+public:
   using OpElement<T>::OpElement;
 
   char val_[VAL_SIZE];
@@ -21,7 +21,7 @@ class ReadElement : public OpElement<T> {
 
 template <typename T>
 class WriteElement : public OpElement<T> {
- public:
+public:
   using OpElement<T>::OpElement;
 
   WriteElement(uint64_t key, T* rcdptr)

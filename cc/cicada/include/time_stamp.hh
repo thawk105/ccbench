@@ -14,7 +14,7 @@ public:
 
   inline uint64_t get_ts() { return ts_; }
 
-  inline void set_ts(uint64_t &ts) { this->ts_ = ts; }
+  inline void set_ts(uint64_t& ts) { this->ts_ = ts; }
 
   inline void set_clockBoost(unsigned int CLOCK_PER_US) {
     // set 0 or some value equivalent to 1 us.

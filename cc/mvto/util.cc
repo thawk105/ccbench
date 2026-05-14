@@ -21,25 +21,25 @@ void chkArg() {
     exit(0);
   }
 
-  if (posix_memalign((void **) &ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &ThreadWtsArray, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThreadWtsArray, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &ThreadRtsArray, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThreadRtsArray, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GCFlag, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GCFlag, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GCExecuteFlag, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GCExecuteFlag, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
@@ -92,13 +92,13 @@ void mvtoLeaderWork() {
   }
   if (gc_update) {
     uint64_t minw =
-            __atomic_load_n(&(ThreadWtsArray[0].obj_), __ATOMIC_ACQUIRE);
+        __atomic_load_n(&(ThreadWtsArray[0].obj_), __ATOMIC_ACQUIRE);
     uint64_t minr;
     minr = __atomic_load_n(&(ThreadRtsArray[0].obj_), __ATOMIC_ACQUIRE);
 
     for (unsigned int i = 1; i < TotalThreadNum; ++i) {
       uint64_t tmp =
-              __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
+          __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
       if (minw > tmp) minw = tmp;
       tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);
       if (minr > tmp) minr = tmp;
@@ -117,10 +117,7 @@ void mvtoLeaderWork() {
 
 void ShowOptParameters() {
   cout << "#ShowOptParameters()"
-       << ": ADD_ANALYSIS " << ADD_ANALYSIS
-       << ": BACK_OFF " << BACK_OFF
-       << ": MASSTREE_USE " << MASSTREE_USE
-       << ": KEY_SIZE " << KEY_SIZE
-       << ": VAL_SIZE " << VAL_SIZE
-       << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
+       << ": VAL_SIZE " << VAL_SIZE << endl;
 }

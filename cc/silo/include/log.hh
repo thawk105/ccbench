@@ -31,11 +31,9 @@ public:
   // computeChkSum() below sums every int-sized chunk of *this*, including
   // any trailing struct padding after val_, so both constructors zero
   // the entire object first to make those reads well-defined.
-  LogRecord() {
-    memset(this, 0, sizeof(LogRecord));
-  }
+  LogRecord() { memset(this, 0, sizeof(LogRecord)); }
 
-  LogRecord(uint64_t tid, std::string_view key, char *val) {
+  LogRecord(uint64_t tid, std::string_view key, char* val) {
     memset(this, 0, sizeof(LogRecord));
     tid_ = tid;
     key_ = key;
@@ -45,7 +43,7 @@ public:
   int computeChkSum() {
     // compute checksum
     int chkSum = 0;
-    int *itr = (int *) this;
+    int* itr = (int*) this;
     for (unsigned int i = 0; i < sizeof(LogRecord) / sizeof(int); ++i) {
       chkSum += (*itr);
       ++itr;

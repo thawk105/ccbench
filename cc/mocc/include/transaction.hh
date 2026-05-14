@@ -28,19 +28,19 @@ class TxScanCallback;
 
 class TxExecutor {
 public:
-  vector <ReadElement<Tuple>> read_set_;
-  vector <WriteElement<Tuple>> write_set_;
-  vector <Procedure> pro_set_;
+  vector<ReadElement<Tuple>> read_set_;
+  vector<WriteElement<Tuple>> write_set_;
+  vector<Procedure> pro_set_;
   std::deque<Tuple*> gc_records_;
   std::unordered_map<void*, uint64_t> node_map_;
 #ifdef RWLOCK
   vector<LockElement<ReaderWriterLock>> RLL_;
   vector<LockElement<ReaderWriterLock>> CLL_;
-#endif  // RWLOCK
+#endif // RWLOCK
 #ifdef MQLOCK
   vector<LockElement<MQLock>> RLL_;
   vector<LockElement<MQLock>> CLL_;
-#endif  // MQLOCK
+#endif // MQLOCK
   TransactionStatus status_;
   TxScanCallback callback_;
 
@@ -49,7 +49,7 @@ public:
   Tidword max_rset_;
   Tidword max_wset_;
   Xoroshiro128Plus rnd_;
-  Result *result_;
+  Result* result_;
   uint64_t epoch_timer_start, epoch_timer_stop;
   Backoff backoff_;
   const bool& quit_; // for thread termination control
@@ -58,21 +58,21 @@ public:
   bool is_batch_ = false;
   bool is_ronly_ = false;
 
-  TxExecutor(int thid, Result *res, const bool &quit)
-    : callback_(TxScanCallback(this)), thid_(thid), result_(res),
-      backoff_(FLAGS_clocks_per_us), quit_(quit) {
+  TxExecutor(int thid, Result* res, const bool& quit)
+      : callback_(TxScanCallback(this)), thid_(thid), result_(res),
+        backoff_(FLAGS_clocks_per_us), quit_(quit) {
     this->status_ = TransactionStatus::inflight;
     this->rnd_.init();
     max_rset_.obj_ = 0;
     max_wset_.obj_ = 0;
   }
 
-  ReadElement<Tuple> *searchReadSet(Storage s, std::string_view key);
+  ReadElement<Tuple>* searchReadSet(Storage s, std::string_view key);
 
-  WriteElement<Tuple> *searchWriteSet(Storage s, std::string_view key);
+  WriteElement<Tuple>* searchWriteSet(Storage s, std::string_view key);
 
-  template<typename T>
-  T *searchRLL(Tuple* key);
+  template <typename T>
+  T* searchRLL(Tuple* key);
 
   void removeFromCLL(Tuple* key);
 
@@ -84,23 +84,21 @@ public:
 
   Status update(Storage s, std::string_view key, TupleBody&& body);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result);
+              std::vector<TupleBody*>& result);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result, int64_t limit);
+              std::vector<TupleBody*>& result, int64_t limit);
 
   Status insert(Storage s, std::string_view key, TupleBody&& body);
 
   Status delete_record(Storage s, std::string_view key);
 
-  void lock(Tuple *tuple, bool mode);
+  void lock(Tuple* tuple, bool mode);
 
-  void construct_RLL();  // invoked on abort;
+  void construct_RLL(); // invoked on abort;
   void unlockCLL();
 
   bool validation();
@@ -115,9 +113,9 @@ public:
 
   void leaderWork();
 
-  void reconnoiter_begin(); 
+  void reconnoiter_begin();
 
-  void reconnoiter_end(); 
+  void reconnoiter_end();
 
   void gc_records();
 
@@ -127,7 +125,7 @@ public:
 
   void dispWS();
 
-  Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
+  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
 };
 
 static_assert(TxExecutorLike<TxExecutor>);

@@ -15,7 +15,7 @@ using std::endl;
 
 // Fast zipf distribution by Jim Gray et al.
 class FastZipf {
-  Xoroshiro128Plus *rnd_;
+  Xoroshiro128Plus* rnd_;
   size_t nr_;
   double alpha_, zetan_, eta_;
   double threshold_;
@@ -23,29 +23,24 @@ class FastZipf {
 public:
   FastZipf() {}
 
-  FastZipf(Xoroshiro128Plus *rnd, double theta, size_t nr)
-          : rnd_(rnd),
-            nr_(nr),
-            alpha_(1.0 / (1.0 - theta)),
-            zetan_(zeta(nr, theta)),
-            eta_((1.0 - std::pow(2.0 / (double) nr, 1.0 - theta)) /
-                 (1.0 - zeta(2, theta) / zetan_)),
-            threshold_(1.0 + std::pow(0.5, theta)) {
+  FastZipf(Xoroshiro128Plus* rnd, double theta, size_t nr)
+      : rnd_(rnd), nr_(nr), alpha_(1.0 / (1.0 - theta)),
+        zetan_(zeta(nr, theta)),
+        eta_((1.0 - std::pow(2.0 / (double) nr, 1.0 - theta)) /
+             (1.0 - zeta(2, theta) / zetan_)),
+        threshold_(1.0 + std::pow(0.5, theta)) {
     assert(0.0 <= theta);
-    assert(theta < 1.0);  // 1.0 can not be specified.
+    assert(theta < 1.0); // 1.0 can not be specified.
   }
 
   // Use this constructor if zeta is pre-calculated.
-  FastZipf(Xoroshiro128Plus *rnd, double theta, size_t nr, double zetan)
-          : rnd_(rnd),
-            nr_(nr),
-            alpha_(1.0 / (1.0 - theta)),
-            zetan_(zetan),
-            eta_((1.0 - std::pow(2.0 / (double) nr, 1.0 - theta)) /
-                 (1.0 - zeta(2, theta) / zetan_)),
-            threshold_(1.0 + std::pow(0.5, theta)) {
+  FastZipf(Xoroshiro128Plus* rnd, double theta, size_t nr, double zetan)
+      : rnd_(rnd), nr_(nr), alpha_(1.0 / (1.0 - theta)), zetan_(zetan),
+        eta_((1.0 - std::pow(2.0 / (double) nr, 1.0 - theta)) /
+             (1.0 - zeta(2, theta) / zetan_)),
+        threshold_(1.0 + std::pow(0.5, theta)) {
     assert(0.0 <= theta);
-    assert(theta < 1.0);  // 1.0 can not be specified.
+    assert(theta < 1.0); // 1.0 can not be specified.
   }
 
   // FastZipf(const FastZipf& f)
@@ -62,7 +57,7 @@ public:
     double uz = u * zetan_;
     if (uz < 1.0) return 0;
     if (uz < threshold_) return 1;
-    return (size_t)((double) nr_ * std::pow(eta_ * u - eta_ + 1.0, alpha_));
+    return (size_t) ((double) nr_ * std::pow(eta_ * u - eta_ + 1.0, alpha_));
   }
 
   // INLINE size_t get() {

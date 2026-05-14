@@ -8,7 +8,7 @@ extern void displayDB();
 
 extern void displayParameter();
 
-extern void genLogFile(std::string &logpath, const int thid);
+extern void genLogFile(std::string& logpath, const int thid);
 
 extern void leaderWork();
 

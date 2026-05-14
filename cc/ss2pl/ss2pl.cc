@@ -1,14 +1,14 @@
 
-#include <ctype.h>  //isdigit,
+#include <ctype.h> //isdigit,
 #include <pthread.h>
-#include <string.h>       //strlen,
-#include <sys/syscall.h>  //syscall(SYS_gettid),
-#include <sys/types.h>    //syscall(SYS_gettid),
-#include <unistd.h>       //syscall(SYS_gettid),
+#include <string.h>      //strlen,
+#include <sys/syscall.h> //syscall(SYS_gettid),
+#include <sys/types.h>   //syscall(SYS_gettid),
+#include <unistd.h>      //syscall(SYS_gettid),
 #include <x86intrin.h>
 
 #include <iostream>
-#include <string>  //string
+#include <string> //string
 #include <thread>
 
 #define GLOBAL_VALUE_DEFINE
@@ -31,11 +31,11 @@
 #include "include/transaction.hh"
 #include "include/util.hh"
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
-  Result &myres = std::ref(SS2PLResult[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(SS2PLResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, (Result *) &myres);
+  TxExecutor trans(thid, (Result*) &myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   Backoff backoff(FLAGS_clocks_per_us);
 
@@ -48,14 +48,15 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %ld\n",
   // sysconf(_SC_NPROCESSORS_CONF));
-#endif  // Linux
+#endif // Linux
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
-                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false, thid, myres);
-RETRY:
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
+                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, false,
+                  thid, myres);
+  RETRY:
     if (loadAcquire(quit)) break;
     if (thid == 0) leaderBackoffWork(backoff, SS2PLResult);
 
@@ -90,7 +91,7 @@ RETRY:
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("2PL benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
@@ -106,19 +107,16 @@ int main(int argc, char *argv[]) try {
                      std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     SS2PLResult[0].addLocalAllResult(SS2PLResult[i]);
   }
   ShowOptParameters();
-  SS2PLResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, FLAGS_thread_num);
+  SS2PLResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                  FLAGS_thread_num);
 
   return 0;
-} catch (bad_alloc) {
-  ERR;
-}
+} catch (bad_alloc) { ERR; }

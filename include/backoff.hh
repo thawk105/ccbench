@@ -27,9 +27,7 @@ public:
   uint64_t last_time_ = 0;
   size_t clocks_per_us_;
 
-  Backoff(size_t clocks_per_us) {
-    init(clocks_per_us);
-  }
+  Backoff(size_t clocks_per_us) { init(clocks_per_us); }
 
   void init(size_t clocks_per_us) {
     last_time_ = rdtscp();
@@ -80,7 +78,7 @@ public:
       new_backoff += kIncrBackoff;
     else {
       if ((committed_txs & 1) == 0 ||
-          new_backoff == kMaxBackoff)  // 確率はおよそ 1/2, すなわちランダム．
+          new_backoff == kMaxBackoff) // 確率はおよそ 1/2, すなわちランダム．
         new_backoff -= kIncrBackoff;
       else if ((committed_txs & 1) == 1 || new_backoff == kMinBackoff)
         new_backoff += kIncrBackoff;
@@ -111,10 +109,11 @@ public:
 };
 
 [[maybe_unused]] inline void
-leaderBackoffWork([[maybe_unused]] Backoff &backoff, [[maybe_unused]] std::vector <Result> &res) {
+leaderBackoffWork([[maybe_unused]] Backoff& backoff,
+                  [[maybe_unused]] std::vector<Result>& res) {
   if (backoff.check_update_backoff()) {
     uint64_t sum_committed_txs(0);
-    for (auto &th : res) {
+    for (auto& th : res) {
       sum_committed_txs += loadAcquire(th.local_commit_counts_);
     }
     backoff.update_backoff(sum_committed_txs);

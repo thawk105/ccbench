@@ -1,8 +1,8 @@
 
-#include <sys/syscall.h>  // syscall(SYS_gettid),
+#include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
-#include <sys/types.h>  // syscall(SYS_gettid),
-#include <unistd.h>     // syscall(SYS_gettid),
+#include <sys/types.h> // syscall(SYS_gettid),
+#include <unistd.h>    // syscall(SYS_gettid),
 
 #include <atomic>
 #include <bitset>
@@ -42,7 +42,7 @@ void chkArg() {
     ERR;
   }
 
-  if (posix_memalign((void **) &ThLocalEpoch, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThLocalEpoch, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
@@ -139,7 +139,7 @@ bool chkEpochLoaded() {
   return true;
 }
 
-void tictocLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
+void tictocLeaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop) {
   epoch_timer_stop = rdtscp();
   if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
                  FLAGS_gc_epoch_time * FLAGS_clocks_per_us * 1000) &&

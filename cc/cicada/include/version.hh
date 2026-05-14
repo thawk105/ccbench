@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdio.h>
-#include <string.h>  // memcpy
+#include <string.h> // memcpy
 #include <sys/time.h>
 
 #include <atomic>
@@ -16,7 +16,7 @@ enum class VersionStatus : uint8_t {
   invalid,
   pending,
   aborted,
-  precommitted,  // now, unuse.
+  precommitted, // now, unuse.
   committed,
   deleted,
   unused,
@@ -24,10 +24,10 @@ enum class VersionStatus : uint8_t {
 
 class Version {
 public:
-  alignas(CACHE_LINE_SIZE) atomic <uint64_t> rts_;
-  atomic <uint64_t> wts_;
-  atomic<Version *> next_;
-  atomic <VersionStatus> status_;  // commit record
+  alignas(CACHE_LINE_SIZE) atomic<uint64_t> rts_;
+  atomic<uint64_t> wts_;
+  atomic<Version*> next_;
+  atomic<VersionStatus> status_; // commit record
 
   TupleBody body_;
 
@@ -44,14 +44,14 @@ public:
   }
 
   Version(const uint64_t rts, const uint64_t wts, TupleBody&& body)
-    : body_(body) {
+      : body_(body) {
     rts_.store(rts, memory_order_relaxed);
     wts_.store(wts, memory_order_relaxed);
     status_.store(VersionStatus::pending, memory_order_release);
     next_.store(nullptr, memory_order_release);
   }
 
-   Version(const uint64_t wts) {
+  Version(const uint64_t wts) {
     rts_.store(0, memory_order_relaxed);
     wts_.store(wts, memory_order_relaxed);
     status_.store(VersionStatus::pending, memory_order_release);
@@ -59,21 +59,20 @@ public:
   }
 
   void displayInfo() {
-    printf(
-            "Version::displayInfo(): this: %p rts_: %lu: wts_: %lu: next_: %p: "
-            "status_: "
-            "%u\n",
-            this, ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t) ldAcqStatus());
+    printf("Version::displayInfo(): this: %p rts_: %lu: wts_: %lu: next_: %p: "
+           "status_: "
+           "%u\n",
+           this, ldAcqRts(), ldAcqWts(), ldAcqNext(), (uint8_t) ldAcqStatus());
   }
 
-  Version *latestCommittedVersionAfterThis() {
-    Version *version = this;
+  Version* latestCommittedVersionAfterThis() {
+    Version* version = this;
     while (version->ldAcqStatus() != VersionStatus::committed)
       version = version->ldAcqNext();
     return version;
   }
 
-  Version *ldAcqNext() { return next_.load(std::memory_order_acquire); }
+  Version* ldAcqNext() { return next_.load(std::memory_order_acquire); }
 
   uint64_t ldAcqRts() { return rts_.load(std::memory_order_acquire); }
 
@@ -91,7 +90,7 @@ public:
     body_ = std::move(body);
   }
 
-  void set(const uint64_t rts, const uint64_t wts, Version *next,
+  void set(const uint64_t rts, const uint64_t wts, Version* next,
            const VersionStatus status) {
     rts_.store(rts, memory_order_relaxed);
     wts_.store(wts, memory_order_relaxed);
@@ -99,9 +98,9 @@ public:
     next_.store(next, memory_order_release);
   }
 
-  Version *skipTheStatusVersionAfterThis(const VersionStatus status,
+  Version* skipTheStatusVersionAfterThis(const VersionStatus status,
                                          const bool pendingWait) {
-    Version *ver = this;
+    Version* ver = this;
     VersionStatus local_status = ver->ldAcqStatus();
     if (pendingWait)
       while (local_status == VersionStatus::pending) {
@@ -118,20 +117,22 @@ public:
     return ver;
   }
 
-  Version *skipNotTheStatusVersionAfterThis(const VersionStatus status,
+  Version* skipNotTheStatusVersionAfterThis(const VersionStatus status,
                                             const bool pendingWait) {
-    Version *ver = this;
+    Version* ver = this;
     if (pendingWait)
-      while (ver->ldAcqStatus() == VersionStatus::pending);
+      while (ver->ldAcqStatus() == VersionStatus::pending)
+        ;
     while (ver->ldAcqStatus() != status) {
       ver = ver->ldAcqNext();
       if (pendingWait)
-        while (ver->ldAcqStatus() == VersionStatus::pending);
+        while (ver->ldAcqStatus() == VersionStatus::pending)
+          ;
     }
     return ver;
   }
 
-  void strRelNext(Version *next) {  // store release next = strRelNext
+  void strRelNext(Version* next) { // store release next = strRelNext
     next_.store(next, std::memory_order_release);
   }
 };

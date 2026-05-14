@@ -39,7 +39,7 @@ public:
   std::deque<Tuple*> gc_records_;    // for records
   std::deque<GCElement<Tuple>> gcq_; // for versions
   std::vector<Procedure> pro_set_;
-  Result *result_ = nullptr;
+  Result* result_ = nullptr;
   const bool& quit_; // for thread termination control
 
   Backoff& backoff_;
@@ -50,15 +50,16 @@ public:
 
   uint8_t thid_ = 0;
   uint64_t rts_;
-  uint64_t start_, stop_;                // for one-sided synchronization
-  uint64_t grpcmt_start_, grpcmt_stop_;  // for group commit
-  uint64_t gcstart_, gcstop_;            // for garbage collection
+  uint64_t start_, stop_;               // for one-sided synchronization
+  uint64_t grpcmt_start_, grpcmt_stop_; // for group commit
+  uint64_t gcstart_, gcstop_;           // for garbage collection
 
-  TxExecutor(uint8_t thid, Backoff& backoff, Result *res, const bool &quit)
-    : result_(res), quit_(quit), backoff_(backoff), thid_(thid) {
+  TxExecutor(uint8_t thid, Backoff& backoff, Result* res, const bool& quit)
+      : result_(res), quit_(quit), backoff_(backoff), thid_(thid) {
 
     // wait to initialize MinWts
-    while (MinWts.load(memory_order_acquire) == 0);
+    while (MinWts.load(memory_order_acquire) == 0)
+      ;
     rts_ = MinWts.load(memory_order_acquire) - 1;
     wts_.generateTimeStampFirst(thid_);
 
@@ -94,15 +95,13 @@ public:
 
   Status delete_record(Storage s, std::string_view key);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result);
+              std::vector<TupleBody*>& result);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result, int64_t limit);
+              std::vector<TupleBody*>& result, int64_t limit);
 
   bool validation();
 
@@ -138,20 +137,21 @@ public:
 #endif
   }
 
-  void gcAfterThisVersion([[maybe_unused]] Tuple *tuple, Version *delTarget) {
+  void gcAfterThisVersion([[maybe_unused]] Tuple* tuple, Version* delTarget) {
     while (delTarget != nullptr) {
       // escape next pointer
-      Version *tmp = delTarget->next_.load(std::memory_order_acquire);
+      Version* tmp = delTarget->next_.load(std::memory_order_acquire);
       delete delTarget;
-[[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
+      [[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
 #if ADD_ANALYSIS
-      ++result_->local_gc_version_counts_;
+          ++result_->local_gc_version_counts_;
 #endif
       delTarget = tmp;
     }
   }
 
-  Version *newVersionGeneration([[maybe_unused]] Tuple *tuple, TupleBody&& body) {
+  Version* newVersionGeneration([[maybe_unused]] Tuple* tuple,
+                                TupleBody&& body) {
 #if ADD_ANALYSIS
     ++result_->local_version_malloc_;
 #endif
@@ -164,7 +164,7 @@ public:
       expected = tuple->ldAcqLatest();
       version->strRelNext(expected);
       if (tuple->latest_.compare_exchange_strong(
-          expected, version, memory_order_acq_rel, memory_order_acquire)) {
+              expected, version, memory_order_acq_rel, memory_order_acquire)) {
         break;
       }
     }
@@ -175,34 +175,34 @@ public:
     return get_latest_previous_version(this->wts_.ts_, version, &after);
   }
 
-  Version* get_latest_previous_version(
-      uint64_t base_timestamp, Version* version, [[maybe_unused]] Version** after) {
+  Version* get_latest_previous_version(uint64_t base_timestamp,
+                                       Version* version,
+                                       [[maybe_unused]] Version** after) {
     while (version->ldAcqWts() >= base_timestamp) {
       *after = version;
       version = version->ldAcqNext();
-      if (version == nullptr) {
-        return nullptr;
-      }
+      if (version == nullptr) { return nullptr; }
     }
-    while (version->ldAcqStatus() == VersionStatus::pending);
+    while (version->ldAcqStatus() == VersionStatus::pending)
+      ;
     while (version->ldAcqStatus() == VersionStatus::aborted) {
       version = version->ldAcqNext();
-      if (version == nullptr) {
-        return nullptr;
-      }
-      while (version->ldAcqStatus() == VersionStatus::pending);
+      if (version == nullptr) { return nullptr; }
+      while (version->ldAcqStatus() == VersionStatus::pending)
+        ;
     }
     return version;
   }
 
   void update_rts(Version* version) {
-      uint64_t expected = version->ldAcqRts();
-      while (true) {
-        if (expected > this->wts_.ts_) break;
-        if (version->rts_.compare_exchange_strong(
-            expected, this->wts_.ts_, memory_order_acq_rel, memory_order_acquire))
-          break;
-      }
+    uint64_t expected = version->ldAcqRts();
+    while (true) {
+      if (expected > this->wts_.ts_) break;
+      if (version->rts_.compare_exchange_strong(expected, this->wts_.ts_,
+                                                memory_order_acq_rel,
+                                                memory_order_acquire))
+        break;
+    }
   }
 
   /**
@@ -213,8 +213,8 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  inline ReadElement<Tuple> *searchReadSet(Storage s, std::string_view key) {
-    for (auto &re : read_set_) {
+  inline ReadElement<Tuple>* searchReadSet(Storage s, std::string_view key) {
+    for (auto& re : read_set_) {
       if (re.storage_ != s) continue;
       if (re.key_ == key) return &re;
     }
@@ -230,8 +230,8 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  inline WriteElement<Tuple> *searchWriteSet(Storage s, std::string_view key) {
-    for (auto &we : write_set_) {
+  inline WriteElement<Tuple>* searchWriteSet(Storage s, std::string_view key) {
+    for (auto& we : write_set_) {
       if (we.storage_ != s) continue;
       if (we.key_ == key) return &we;
     }
@@ -240,19 +240,20 @@ public:
   }
 
   void clean_up_read_write_set() {
-    for (auto &we: write_set_) {
+    for (auto& we : write_set_) {
       if (we.op_ == OpType::INSERT) {
         Masstrees[get_storage(we.storage_)].remove_value(we.key_);
         delete we.rcdptr_;
       } else {
-        we.new_ver_->status_.store(VersionStatus::aborted, std::memory_order_release);
+        we.new_ver_->status_.store(VersionStatus::aborted,
+                                   std::memory_order_release);
       }
     }
     write_set_.clear();
     read_set_.clear();
   }
 
-  static INLINE Tuple *get_tuple(Tuple *table, uint64_t key) {
+  static INLINE Tuple* get_tuple(Tuple* table, uint64_t key) {
     return &table[key];
   }
 };

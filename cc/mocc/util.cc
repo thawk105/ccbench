@@ -1,9 +1,9 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/types.h>    // syscall(SYS_gettid),
-#include <unistd.h>       // syscall(SYS_gettid),
+#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/types.h>   // syscall(SYS_gettid),
+#include <unistd.h>      // syscall(SYS_gettid),
 #include <algorithm>
 #include <atomic>
 #include <bitset>
@@ -51,7 +51,8 @@ void chkArg() {
   }
 
   if (FLAGS_per_xx_temp < sizeof(Tuple)) {
-    cout << "FLAGS_per_xx_temp's minimum is sizeof(Tuple) " << sizeof(Tuple) << endl;
+    cout << "FLAGS_per_xx_temp's minimum is sizeof(Tuple) " << sizeof(Tuple)
+         << endl;
     ERR;
   }
 
@@ -60,22 +61,22 @@ void chkArg() {
     ERR;
   }
 
-  if (posix_memalign((void **) &Start, 64,
+  if (posix_memalign((void**) &Start, 64,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &Stop, 64,
+  if (posix_memalign((void**) &Stop, 64,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &ThLocalEpoch, 64,
+  if (posix_memalign((void**) &ThLocalEpoch, 64,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
 #ifdef MQLOCK
   // if (posix_memalign((void**)&MQLNodeList, 64, (TotalThreadNum + 3) *
   // sizeof(MQLNode)) != 0) ERR;
-  MQLNodeTable = new MQLNode *[TotalThreadNum + 3];
+  MQLNodeTable = new MQLNode*[TotalThreadNum + 3];
   for (unsigned int i = 0; i < TotalThreadNum + 3; ++i)
     MQLNodeTable[i] = new MQLNode[TotalThreadNum];
-#endif  // MQLOCK
+#endif // MQLOCK
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     ThLocalEpoch[i].obj_ = 0;
@@ -192,7 +193,7 @@ bool chkEpochLoaded() {
   return true;
 }
 
-void moccLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
+void moccLeaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop) {
   epoch_timer_stop = rdtscp();
   // chkEpochLoaded は最新のグローバルエポックを
   //全てのワーカースレッドが読み込んだか確認する．
@@ -206,7 +207,8 @@ void moccLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
 
 #if TEMPERATURE_RESET_OPT
 #else
-    size_t epotemp_length = FLAGS_tuple_num * sizeof(Tuple) / FLAGS_per_xx_temp + 1;
+    size_t epotemp_length =
+        FLAGS_tuple_num * sizeof(Tuple) / FLAGS_per_xx_temp + 1;
     uint64_t nowepo = (loadAcquireGE()).obj_;
     for (uint64_t i = 0; i < epotemp_length; ++i) {
       Epotemp epotemp(0, nowepo);

@@ -55,7 +55,7 @@ DECLARE_bool(ycsb);
 DECLARE_double(zipf_skew);
 #endif
 
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *CTIDW;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* ThLocalEpoch;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* CTIDW;
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple* Table;

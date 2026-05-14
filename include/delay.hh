@@ -8,8 +8,7 @@
 
 using namespace std;
 
-[[maybe_unused]] static void
-clock_delay(size_t clocks) {
+[[maybe_unused]] static void clock_delay(size_t clocks) {
   std::size_t start(rdtscp()), stop;
 
   for (;;) {
