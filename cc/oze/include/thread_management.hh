@@ -7,7 +7,7 @@
 #include "transaction_status.hh"
 
 class ThreadManagementEntry {
-  public:
+public:
   ThreadManagementEntry(uint64_t epoch, uint8_t mode) {
     this->epoch_.store(epoch, std::memory_order_relaxed);
     this->mode_.store(mode, std::memory_order_relaxed);
@@ -30,7 +30,7 @@ class ThreadManagementEntry {
     return this->mode_.load(std::memory_order_acquire);
   }
 
-  private:
+private:
   alignas(CACHE_LINE_SIZE) std::atomic<uint64_t> epoch_;
   std::atomic<uint8_t> mode_;
   std::atomic<uint64_t> last_long_tx_epoch_;

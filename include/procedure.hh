@@ -22,7 +22,7 @@ public:
 
   Procedure(Ope ope, uint64_t key) : ope_(ope), key_(key) {}
 
-  bool operator<(const Procedure &right) const {
+  bool operator<(const Procedure& right) const {
     if (this->key_ == right.key_ && this->ope_ == Ope::WRITE &&
         right.ope_ == Ope::READ) {
       return true;

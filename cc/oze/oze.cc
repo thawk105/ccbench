@@ -34,11 +34,11 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, (Result *) &OzeResult[thid], quit);
-  Result &myres = std::ref(OzeResult[thid]);
+  TxExecutor trans(thid, (Result*) &OzeResult[thid], quit);
+  Result& myres = std::ref(OzeResult[thid]);
   uint64_t epoch_timer_start, epoch_timer_stop;
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   Backoff backoff(FLAGS_clocks_per_us);
@@ -48,36 +48,35 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
-#endif  // Linux
+#endif // Linux
 
 #ifdef Darwin
   int nowcpu;
   GETCPU(nowcpu);
   // printf("Thread %d on CPU %d\n", *myid, nowcpu);
-#endif  // Darwin
+#endif // Darwin
 
-   uint64_t tuples = FLAGS_tuple_num;
-  if (FLAGS_batch_simple_rr) {
-    tuples = FLAGS_tuple_num - FLAGS_batch_tuples;
-  }
+  uint64_t tuples = FLAGS_tuple_num;
+  if (FLAGS_batch_simple_rr) { tuples = FLAGS_tuple_num - FLAGS_batch_tuples; }
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
 #if PARTITION_TABLE
-    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope, FLAGS_thread_num,
-                  FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true, thid, myres);
+    makeProcedure(trans.pro_set_, rnd, zipf, FLAGS_tuple_num, FLAGS_max_ope,
+                  FLAGS_thread_num, FLAGS_rratio, FLAGS_rmw, FLAGS_ycsb, true,
+                  thid, myres);
 #else
     auto r = rnd.next() % 100;
-    if ((FLAGS_thread_num && thid >= FLAGS_thread_num)
-      || (r < FLAGS_batch_ratio)) {
+    if ((FLAGS_thread_num && thid >= FLAGS_thread_num) ||
+        (r < FLAGS_batch_ratio)) {
       trans.is_batch_ = true;
-      makeBatchProcedure(trans.pro_set_, rnd, FLAGS_tuple_num, FLAGS_batch_tuples,
-                         FLAGS_batch_max_ope, FLAGS_batch_rratio, FLAGS_rmw,
-                         myres);
-    } else if (r >= FLAGS_batch_ratio
-                && r < FLAGS_batch_ratio + FLAGS_ronly_ratio) {
+      makeBatchProcedure(trans.pro_set_, rnd, FLAGS_tuple_num,
+                         FLAGS_batch_tuples, FLAGS_batch_max_ope,
+                         FLAGS_batch_rratio, FLAGS_rmw, myres);
+    } else if (r >= FLAGS_batch_ratio &&
+               r < FLAGS_batch_ratio + FLAGS_ronly_ratio) {
       trans.is_batch_ = false;
       makeProcedure(trans.pro_set_, rnd, FLAGS_tuple_num, FLAGS_batch_tuples,
                     FLAGS_max_ope, myres);
@@ -89,7 +88,7 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
     }
 #endif
 
-RETRY:
+  RETRY:
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
 #if BACK_OFF
@@ -126,9 +125,7 @@ RETRY:
     }
 
 #ifdef INSERT_BATCH_DELAY_MS
-    if (trans.is_batch_) {
-      sleepMs(INSERT_BATCH_DELAY_MS);
-    }
+    if (trans.is_batch_) { sleepMs(INSERT_BATCH_DELAY_MS); }
 #endif
 
     /**
@@ -152,8 +149,7 @@ RETRY:
     }
 
     // Abondon ongoing long transaction when time up
-    if (trans.status_ == TransactionStatus::invalid)
-      break;
+    if (trans.status_ == TransactionStatus::invalid) break;
 
     /**
      * Write phase
@@ -165,10 +161,10 @@ RETRY:
      */
     if (trans.is_batch_) {
       storeRelease(myres.local_batch_commit_counts_,
-                  loadAcquire(myres.local_batch_commit_counts_) + 1);
+                   loadAcquire(myres.local_batch_commit_counts_) + 1);
     } else {
       storeRelease(myres.local_commit_counts_,
-                  loadAcquire(myres.local_commit_counts_) + 1);
+                   loadAcquire(myres.local_commit_counts_) + 1);
     }
 
     /**
@@ -180,7 +176,7 @@ RETRY:
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
@@ -201,15 +197,13 @@ int main(int argc, char *argv[]) try {
   waitForReady(readys);
   uint64_t start_tsc = rdtscp();
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
   uint64_t end_tsc = rdtscp();
-  long double actual_extime = round(
-    (end_tsc-start_tsc) /
-    ((long double)FLAGS_clocks_per_us * powl(10.0, 6.0)));
+  long double actual_extime =
+      round((end_tsc - start_tsc) /
+            ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     OzeResult[0].addLocalAllResult(OzeResult[i]);
@@ -217,11 +211,9 @@ int main(int argc, char *argv[]) try {
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
   OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                 TotalThreadNum,
-                                 FLAGS_max_ope, FLAGS_batch_max_ope);
+                                TotalThreadNum, FLAGS_max_ope,
+                                FLAGS_batch_max_ope);
   deleteDB();
 
   return 0;
-} catch (bad_alloc) {
-  ERR;
-}
+} catch (bad_alloc) { ERR; }

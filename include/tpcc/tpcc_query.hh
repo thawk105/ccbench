@@ -56,9 +56,12 @@ public:
 
   Option() {
     threshold_delivery = perc_stock_level * (UINT64_MAX / 100);
-    threshold_order_status = threshold_delivery + (perc_delivery * (UINT64_MAX / 100));
-    threshold_payment = threshold_order_status + (perc_order_status * (UINT64_MAX / 100));
-    threshold_new_order = threshold_payment + (perc_payment * (UINT64_MAX / 100));
+    threshold_order_status =
+        threshold_delivery + (perc_delivery * (UINT64_MAX / 100));
+    threshold_payment =
+        threshold_order_status + (perc_order_status * (UINT64_MAX / 100));
+    threshold_new_order =
+        threshold_payment + (perc_payment * (UINT64_MAX / 100));
 #if 0
     ::printf("query_type_threshold: %.3f %.3f %.3f %.3f\n"
              , threshold_new_order    / (double)UINT64_MAX
@@ -83,7 +86,7 @@ public:
   bool remote;
   std::uint8_t ol_cnt;
 
-  void generate([[maybe_unused]]uint16_t w_id0, Option &opt) {
+  void generate([[maybe_unused]] uint16_t w_id0, Option& opt) {
 #ifdef FIXED_WAREHOUSE_PER_THREAD
     w_id = w_id0;
 #else
@@ -116,17 +119,21 @@ public:
       }
       items[i].ol_quantity = random_int(1, 10);
     }
-    if (rbk == 1) { // set an unused item number to produce "not-found" for roll back
+    if (rbk ==
+        1) { // set an unused item number to produce "not-found" for roll back
       items[ol_cnt - 1].ol_i_id += opt.max_items;
     }
   }
 
   void print() {
-    printf("nod: w_id=%" PRIu16 " d_id=%" PRIu8 " c_id=%" PRIu32 " rbk=%" PRIu8 " remote=%s ol_cnt=%" PRIu8 "\n",
-          w_id, d_id, c_id, rbk, remote ? "t" : "f", ol_cnt);
+    printf("nod: w_id=%" PRIu16 " d_id=%" PRIu8 " c_id=%" PRIu32 " rbk=%" PRIu8
+           " remote=%s ol_cnt=%" PRIu8 "\n",
+           w_id, d_id, c_id, rbk, remote ? "t" : "f", ol_cnt);
     for (unsigned int i = 0; i < ol_cnt; ++i) {
-      printf(" [%d]: ol_i_id=%" PRIu32 " ol_supply_w_id=%" PRIu16 " c_quantity=%" PRIu8 "\n", i,
-            items[i].ol_i_id, items[i].ol_supply_w_id, items[i].ol_quantity);
+      printf(" [%d]: ol_i_id=%" PRIu32 " ol_supply_w_id=%" PRIu16
+             " c_quantity=%" PRIu8 "\n",
+             i, items[i].ol_i_id, items[i].ol_supply_w_id,
+             items[i].ol_quantity);
     }
   }
 };
@@ -143,7 +150,7 @@ public:
   double h_amount;
   bool by_last_name;
 
-  void generate([[maybe_unused]]std::uint16_t w_id0, Option &opt) {
+  void generate([[maybe_unused]] std::uint16_t w_id0, Option& opt) {
 #ifdef FIXED_WAREHOUSE_PER_THREAD
     w_id = w_id0;
 #else
@@ -183,8 +190,9 @@ public:
   }
 
   void print() {
-    printf("pay: w_id=%" PRIu16 " d_id=%" PRIu8 " d_w_id=%" PRIu16 " c_w_id=%" PRIu16 " c_d_id=%" PRIu8 " h_amount=%.2f\n",
-          w_id, d_id, d_w_id, c_w_id, c_d_id, h_amount);
+    printf("pay: w_id=%" PRIu16 " d_id=%" PRIu8 " d_w_id=%" PRIu16
+           " c_w_id=%" PRIu16 " c_d_id=%" PRIu8 " h_amount=%.2f\n",
+           w_id, d_id, d_w_id, c_w_id, c_d_id, h_amount);
     if (by_last_name) {
       printf(" by_last_name=t c_last=%s\n", c_last);
     } else {
@@ -201,7 +209,7 @@ public:
   char c_last[LASTNAME_LEN + 1];
   bool by_last_name;
 
-  void generate(uint16_t w_id0, Option &opt) {
+  void generate(uint16_t w_id0, Option& opt) {
 #ifdef FIXED_WAREHOUSE_PER_THREAD
     w_id = w_id0;
 #else
@@ -237,7 +245,7 @@ public:
   std::uint8_t o_carrier_id;
   std::uint64_t ol_delivery_d;
 
-  void generate(uint16_t w_id0, [[maybe_unused]] Option &opt) {
+  void generate(uint16_t w_id0, [[maybe_unused]] Option& opt) {
 #ifdef FIXED_WAREHOUSE_PER_THREAD
     w_id = w_id0;
 #else
@@ -248,8 +256,9 @@ public:
   }
 
   void print() {
-    printf("del: w_id=%" PRIu16 " o_carrier_id=%" PRIu8 "ol_delivery_d=%" PRIu64 "\n",
-          w_id, o_carrier_id, ol_delivery_d);
+    printf("del: w_id=%" PRIu16 " o_carrier_id=%" PRIu8 "ol_delivery_d=%" PRIu64
+           "\n",
+           w_id, o_carrier_id, ol_delivery_d);
   }
 };
 
@@ -259,7 +268,7 @@ public:
   std::uint8_t d_id;
   std::uint8_t threshold;
 
-  void generate(uint16_t w_id0, Option &opt) {
+  void generate(uint16_t w_id0, Option& opt) {
 #ifdef FIXED_WAREHOUSE_PER_THREAD
     w_id = w_id0;
 #else
@@ -270,13 +279,14 @@ public:
   }
 
   void print() {
-    printf("stklvl: w_id=%" PRIu16 " d_id=%" PRIu8 " threshold=%" PRIu8, w_id, d_id, threshold);
+    printf("stklvl: w_id=%" PRIu16 " d_id=%" PRIu8 " threshold=%" PRIu8, w_id,
+           d_id, threshold);
   }
 };
 
 } // namespace TPCCQuery
 
-static TxType decideQueryType(TPCCQuery::Option &opt) {
+static TxType decideQueryType(TPCCQuery::Option& opt) {
   uint64_t x = random_64bits();
   if (x >= opt.threshold_new_order) return TxType::NewOrder;
   if (x >= opt.threshold_payment) return TxType::Payment;
@@ -296,7 +306,7 @@ public:
     TPCCQuery::StockLevel stock_level;
   };
 
-  void generate(std::uint16_t w_id, TPCCQuery::Option &opt) {
+  void generate(std::uint16_t w_id, TPCCQuery::Option& opt) {
     type = decideQueryType(opt);
     switch (type) {
       case TxType::NewOrder:
@@ -321,10 +331,10 @@ public:
 
   void print() {
     switch (type) {
-      case TxType::NewOrder :
+      case TxType::NewOrder:
         new_order.print();
         break;
-      case TxType::Payment :
+      case TxType::Payment:
         payment.print();
         break;
       case TxType::OrderStatus:

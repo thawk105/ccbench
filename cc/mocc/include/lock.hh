@@ -14,30 +14,24 @@ class Tuple; // defined at tuple.hh
 
 enum class SentinelValue : uint32_t {
   None = 0,
-  Acquired,          // 1
-  SuccessorLeaving,  // 2
+  Acquired,         // 1
+  SuccessorLeaving, // 2
 };
 
-enum class LockMode : uint8_t {
-  None, Reader, Writer
-};
+enum class LockMode : uint8_t { None, Reader, Writer };
 
-enum class LockStatus : uint8_t {
-  Waiting, Granted, Leaving
-};
+enum class LockStatus : uint8_t { Waiting, Granted, Leaving };
 
-enum class MQL_RESULT : uint8_t {
-  Acquired, Cancelled
-};
+enum class MQL_RESULT : uint8_t { Acquired, Cancelled };
 
 struct MQLMetaInfo {
   union {
     uint64_t obj;
     struct {
-      bool busy: 1;          // 0 == not busy, 1 == busy;
-      LockMode stype: 8;     // 0 == none, 1 == reader, 2 == writer
-      LockStatus status: 8;  // 0 == waiting, 1 == granted, 2 == leaving
-      uint32_t next: 32;     // store a thrad id. and you know where the qnode;
+      bool busy : 1;         // 0 == not busy, 1 == busy;
+      LockMode stype : 8;    // 0 == none, 1 == reader, 2 == writer
+      LockStatus status : 8; // 0 == waiting, 1 == granted, 2 == leaving
+      uint32_t next : 32;    // store a thrad id. and you know where the qnode;
     };
   };
 
@@ -65,8 +59,8 @@ struct MQLMetaInfo {
 class MQLNode {
 public:
   // interact with predecessor
-  std::atomic <LockMode> type;
-  std::atomic <uint32_t> prev;
+  std::atomic<LockMode> type;
+  std::atomic<uint32_t> prev;
   std::atomic<bool> granted;
   // -----
   // interact with successor
@@ -98,8 +92,8 @@ public:
 class MQLock {
 public:
   std::atomic<unsigned int> nreaders;
-  std::atomic <uint32_t> tail;
-  std::atomic <uint32_t> next_writer;
+  std::atomic<uint32_t> tail;
+  std::atomic<uint32_t> next_writer;
 
   MQLock() {
     nreaders = 0;
@@ -111,18 +105,15 @@ public:
 
   MQL_RESULT acquire_writer_lock(uint32_t me, Tuple* key, bool trylock);
 
-  MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me,
-                                                   Tuple* key,
+  MQL_RESULT acquire_reader_lock_check_reader_pred(uint32_t me, Tuple* key,
                                                    uint32_t pred, bool trylock);
 
-  MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me,
-                                                   Tuple* key,
+  MQL_RESULT acquire_reader_lock_check_writer_pred(uint32_t me, Tuple* key,
                                                    uint32_t pred, bool trylock);
 
   MQL_RESULT cancel_reader_lock(uint32_t me, Tuple* key);
 
-  MQL_RESULT cancel_reader_lock_relink(uint32_t pred, uint32_t me,
-                                       Tuple* key);
+  MQL_RESULT cancel_reader_lock_relink(uint32_t pred, uint32_t me, Tuple* key);
 
   MQL_RESULT cancel_reader_lock_with_reader_pred(uint32_t me, Tuple* key,
                                                  uint32_t pred);
@@ -154,47 +145,47 @@ public:
 
   ReaderWriterLock() { counter_.store(0, std::memory_order_release); }
 
-  void r_lock();     // read lock
-  bool r_trylock();  // read try lock
-  void r_unlock();   // read unlock
-  void w_lock();     // write lock
-  bool w_trylock();  // write try lock
-  void w_unlock();   // write unlock
-  bool upgrade();    // upgrade from reader to writer
+  void r_lock();    // read lock
+  bool r_trylock(); // read try lock
+  void r_unlock();  // read unlock
+  void w_lock();    // write lock
+  bool w_trylock(); // write try lock
+  void w_unlock();  // write unlock
+  bool upgrade();   // upgrade from reader to writer
 
   int ldAcqCounter() { return counter_.load(std::memory_order_acquire); }
 };
 
 // for lock list
-template<typename T>
+template <typename T>
 class LockElement {
 public:
-  Tuple* key_;  // record を識別する．
-  T *lock_;
-  bool mode_;  // 0 read-mode, 1 write-mode
+  Tuple* key_; // record を識別する．
+  T* lock_;
+  bool mode_; // 0 read-mode, 1 write-mode
 
-  LockElement(Tuple* key, T *lock, bool mode)
-          : key_(key), lock_(lock), mode_(mode) {}
+  LockElement(Tuple* key, T* lock, bool mode)
+      : key_(key), lock_(lock), mode_(mode) {}
 
-  bool operator<(const LockElement &right) const {
+  bool operator<(const LockElement& right) const {
     return this->key_ < right.key_;
   }
 
   // Copy constructor
-  LockElement(const LockElement &other) {
+  LockElement(const LockElement& other) {
     key_ = other.key_;
     lock_ = other.lock_;
     mode_ = other.mode_;
   }
 
   // move constructor
-  LockElement(LockElement &&other) {
+  LockElement(LockElement&& other) {
     key_ = other.key_;
     lock_ = other.lock_;
     mode_ = other.mode_;
   }
 
-  LockElement &operator=(LockElement &&other) noexcept {
+  LockElement& operator=(LockElement&& other) noexcept {
     if (this != &other) {
       key_ = other.key_;
       lock_ = other.lock_;

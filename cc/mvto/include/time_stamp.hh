@@ -14,7 +14,7 @@ public:
 
   inline uint64_t get_ts() { return ts_; }
 
-  inline void set_ts(uint64_t &ts) { this->ts_ = ts; }
+  inline void set_ts(uint64_t& ts) { this->ts_ = ts; }
 
   inline void generateTimeStampFirst(uint8_t tid) {
     localClock_ = rdtscp();

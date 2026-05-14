@@ -31,8 +31,8 @@
 #include "../../include/ycsb.hh"
 #include "../../include/zipf.hh"
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
-  Result &myres = std::ref(TicTocResult[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(TicTocResult[thid]);
   TxExecutor trans(thid, &myres, quit);
   YcsbWorkload workload;
 
@@ -57,18 +57,18 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("YCSB TicToc benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   YcsbWorkload::displayWorkloadParameter();
-  YcsbWorkload::makeDB<Tuple,void>(nullptr);
+  YcsbWorkload::makeDB<Tuple, void>(nullptr);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -80,11 +80,9 @@ int main(int argc, char *argv[]) try {
                      std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     TicTocResult[0].addLocalAllResult(TicTocResult[i]);
@@ -94,6 +92,4 @@ int main(int argc, char *argv[]) try {
                                    FLAGS_thread_num);
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }

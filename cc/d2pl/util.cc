@@ -1,8 +1,8 @@
 
 #include <stdlib.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/types.h>    // syscall(SSY_gettid),
-#include <unistd.h>       // syscall(SSY_gettid),
+#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/types.h>   // syscall(SSY_gettid),
+#include <unistd.h>      // syscall(SSY_gettid),
 
 #include <atomic>
 #include <bitset>
@@ -30,9 +30,7 @@ void chkArg() {
 
   TotalThreadNum = FLAGS_thread_num;
 
-  if (FLAGS_rratio > 100) {
-    ERR;
-  }
+  if (FLAGS_rratio > 100) { ERR; }
 
   if (FLAGS_clocks_per_us < 100) {
     cout << "CPU_MHZ is less than 100. are your really?" << endl;
@@ -52,14 +50,9 @@ void displayParameter() {
   cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
-void
-ShowOptParameters() {
+void ShowOptParameters() {
   cout << "#ShowOptParameters()"
-       << ": ADD_ANALYSIS " << ADD_ANALYSIS
-       << ": BACK_OFF " << BACK_OFF
-       << ": MASSTREE_USE " << MASSTREE_USE
-       << ": KEY_SIZE " << KEY_SIZE
-       << ": KEY_SORT " << KEY_SORT
-       << ": VAL_SIZE " << VAL_SIZE
-       << endl;
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+       << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
+       << ": KEY_SORT " << KEY_SORT << ": VAL_SIZE " << VAL_SIZE << endl;
 }

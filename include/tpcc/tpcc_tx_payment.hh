@@ -17,15 +17,14 @@
  * +===================================================================
  */
 template <typename TxExecutor, typename TxStatus>
-bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, Warehouse& ware) {
+bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount,
+                              Warehouse& ware) {
   SimpleKey<8> w_key;
   Warehouse::CreateKey(w_id, w_key.ptr());
-  TupleBody *body;
+  TupleBody* body;
   Status stat = tx.read(Storage::Warehouse, w_key.view(), &body);
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   Warehouse& old_ware = body->get_value().cast_to<Warehouse>();
 
   HeapObject w_obj;
@@ -37,11 +36,10 @@ bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, Wa
 
   // Copy out before std::move consumes w_obj.
   ware = new_ware;
-  stat = tx.update(Storage::Warehouse, w_key.view(), TupleBody(w_key.view(), std::move(w_obj)));
+  stat = tx.update(Storage::Warehouse, w_key.view(),
+                   TupleBody(w_key.view(), std::move(w_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   return true;
 }
 
@@ -56,16 +54,14 @@ bool get_and_update_warehouse(TxExecutor& tx, uint16_t w_id, double h_amount, Wa
  * +====================================================================
  */
 template <typename TxExecutor, typename TxStatus>
-bool get_and_update_district(TxExecutor& tx,
-                             uint8_t d_id, uint16_t w_id, double h_amount, District& dist) {
+bool get_and_update_district(TxExecutor& tx, uint8_t d_id, uint16_t w_id,
+                             double h_amount, District& dist) {
   SimpleKey<8> d_key;
   District::CreateKey(w_id, d_id, d_key.ptr());
-  TupleBody *body;
+  TupleBody* body;
   Status stat = tx.read(Storage::District, d_key.view(), &body);
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   District& old_dist = body->get_value().cast_to<District>();
 
   HeapObject d_obj;
@@ -77,11 +73,10 @@ bool get_and_update_district(TxExecutor& tx,
 
   // Copy out before std::move consumes d_obj.
   dist = new_dist;
-  stat = tx.update(Storage::District, d_key.view(), TupleBody(d_key.view(), std::move(d_obj)));
+  stat = tx.update(Storage::District, d_key.view(),
+                   TupleBody(d_key.view(), std::move(d_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   return true;
 }
 
@@ -109,16 +104,18 @@ bool get_and_update_district(TxExecutor& tx,
  * ==========================================================
  */
 template <typename Tuple>
-bool get_customer_key_by_last_name(
-  uint16_t c_w_id, uint8_t c_d_id, const char* c_last, SimpleKey<8>& c_key) {
+bool get_customer_key_by_last_name(uint16_t c_w_id, uint8_t c_d_id,
+                                   const char* c_last, SimpleKey<8>& c_key) {
   char c_last_key_buf[Customer::CLastKey::required_size()];
-  std::string_view c_last_key = Customer::CreateSecondaryKey(c_w_id, c_d_id, c_last, &c_last_key_buf[0]);
+  std::string_view c_last_key =
+      Customer::CreateSecondaryKey(c_w_id, c_d_id, c_last, &c_last_key_buf[0]);
 
   MasstreeWrapper<Tuple>::thread_init(cached_sched_getcpu());
-  Tuple* tuple = Masstrees[get_storage(Storage::CustomerSecondary)].get_value(c_last_key);
+  Tuple* tuple =
+      Masstrees[get_storage(Storage::CustomerSecondary)].get_value(c_last_key);
 
   assert(tuple != nullptr);
-  std::vector<SimpleKey<8>> *vec_ptr;
+  std::vector<SimpleKey<8>>* vec_ptr;
   std::string_view value_view = tuple->body_.get_val();
   assert(value_view.size() == sizeof(uintptr_t));
   ::memcpy(&vec_ptr, value_view.data(), sizeof(uintptr_t));
@@ -163,13 +160,11 @@ bool get_customer_key_by_last_name(
 template <typename TxExecutor, typename TxStatus>
 bool get_and_update_customer(TxExecutor& tx, const SimpleKey<8>& c_key,
                              uint32_t c_id, uint8_t c_d_id, uint16_t c_w_id,
-                            uint8_t d_id, uint16_t w_id, double h_amount) {
-  TupleBody *body;
+                             uint8_t d_id, uint16_t w_id, double h_amount) {
+  TupleBody* body;
   Status stat = tx.read(Storage::Customer, c_key.view(), &body);
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   const Customer& old_cust = body->get_value().cast_to<Customer>();
 
   HeapObject c_obj;
@@ -182,19 +177,18 @@ bool get_and_update_customer(TxExecutor& tx, const SimpleKey<8>& c_key,
   new_cust.C_PAYMENT_CNT += 1;
 
   if (new_cust.C_CREDIT[0] == 'B' && new_cust.C_CREDIT[1] == 'C') {
-    size_t len = snprintf(
-      &new_cust.C_DATA[0], 501,
-      "| %4" PRIu32 " %2" PRIu8 " %4" PRIu16 " %2" PRIu16 " %4" PRIu16 " $%7.2f",
-      c_id, c_d_id, c_w_id, d_id, w_id, h_amount);
+    size_t len = snprintf(&new_cust.C_DATA[0], 501,
+                          "| %4" PRIu32 " %2" PRIu8 " %4" PRIu16 " %2" PRIu16
+                          " %4" PRIu16 " $%7.2f",
+                          c_id, c_d_id, c_w_id, d_id, w_id, h_amount);
     assert(len <= 500);
     len += copy_cstr(&new_cust.C_DATA[len], &old_cust.C_DATA[0], 501 - len);
   }
 
-  stat = tx.update(Storage::Customer, c_key.view(), TupleBody(c_key.view(), std::move(c_obj)));
+  stat = tx.update(Storage::Customer, c_key.view(),
+                   TupleBody(c_key.view(), std::move(c_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   return true;
 }
 
@@ -207,9 +201,10 @@ bool get_and_update_customer(TxExecutor& tx, const SimpleKey<8>& c_key,
  * ================================================================================
  */
 template <typename TxExecutor, typename TxStatus>
-bool insert_history(TxExecutor& tx,
-                    uint32_t c_id, uint8_t c_d_id, uint16_t c_w_id, uint8_t d_id, uint16_t w_id,
-                    double h_amount, const char* w_name, const char* d_name, HistoryKeyGenerator *hkg) {
+bool insert_history(TxExecutor& tx, uint32_t c_id, uint8_t c_d_id,
+                    uint16_t c_w_id, uint8_t d_id, uint16_t w_id,
+                    double h_amount, const char* w_name, const char* d_name,
+                    HistoryKeyGenerator* hkg) {
   HeapObject h_obj;
   h_obj.allocate<History>();
   History& new_hist = h_obj.ref();
@@ -220,23 +215,23 @@ bool insert_history(TxExecutor& tx,
   new_hist.H_W_ID = w_id;
   new_hist.H_DATE = get_lightweight_timestamp();
   new_hist.H_AMOUNT = h_amount;
-  ::snprintf(new_hist.H_DATA, sizeof(new_hist.H_DATA),
-             "%-10.10s    %.10s", w_name, d_name);
+  ::snprintf(new_hist.H_DATA, sizeof(new_hist.H_DATA), "%-10.10s    %.10s",
+             w_name, d_name);
 
   // SimpleKey<8> h_key;
   // Customer::CreateKey(c_w_id, c_d_id, c_id, h_key.ptr());
   SimpleKey<8> h_key = hkg->get_as_simple_key();
-  Status stat = tx.insert(Storage::History, h_key.view(), TupleBody(h_key.view(), std::move(h_obj)));
+  Status stat = tx.insert(Storage::History, h_key.view(),
+                          TupleBody(h_key.view(), std::move(h_obj)));
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat == Status::WARN_ALREADY_EXISTS) {
-    return false;
-  }
+  if (stat == Status::WARN_ALREADY_EXISTS) { return false; }
   return true;
 }
 
 
 template <typename TxExecutor, typename TxStatus, typename Tuple>
-bool run_payment(TxExecutor& tx, TPCCQuery::Payment *query, HistoryKeyGenerator *hkg) {
+bool run_payment(TxExecutor& tx, TPCCQuery::Payment* query,
+                 HistoryKeyGenerator* hkg) {
   uint16_t w_id = query->w_id;
   uint16_t c_w_id = query->c_w_id;
   uint8_t d_id = query->d_id;
@@ -245,23 +240,30 @@ bool run_payment(TxExecutor& tx, TPCCQuery::Payment *query, HistoryKeyGenerator 
   double h_amount = query->h_amount;
 
   Warehouse ware;
-  if (!get_and_update_warehouse<TxExecutor,TxStatus>(tx, w_id, h_amount, ware)) return false;
+  if (!get_and_update_warehouse<TxExecutor, TxStatus>(tx, w_id, h_amount, ware))
+    return false;
   District dist;
-  if (!get_and_update_district<TxExecutor,TxStatus>(tx, d_id, w_id, h_amount, dist)) return false;
+  if (!get_and_update_district<TxExecutor, TxStatus>(tx, d_id, w_id, h_amount,
+                                                     dist))
+    return false;
 
   SimpleKey<8> c_key;
   if (query->by_last_name) {
-    if (!get_customer_key_by_last_name<Tuple>(c_w_id, c_d_id, query->c_last, c_key)) return false;
+    if (!get_customer_key_by_last_name<Tuple>(c_w_id, c_d_id, query->c_last,
+                                              c_key))
+      return false;
   } else {
     // search customers by c_id
     Customer::CreateKey(c_w_id, c_d_id, c_id, c_key.ptr());
   }
-  if (!get_and_update_customer<TxExecutor,TxStatus>(
-        tx, c_key, c_id, c_d_id, c_w_id, d_id, w_id, h_amount)) return false;
+  if (!get_and_update_customer<TxExecutor, TxStatus>(
+          tx, c_key, c_id, c_d_id, c_w_id, d_id, w_id, h_amount))
+    return false;
 
-  if (!insert_history<TxExecutor,TxStatus>(
-        tx, c_id, c_d_id, c_w_id, d_id, w_id, h_amount,
-        &ware.W_NAME[0], &dist.D_NAME[0], hkg)) return false;
+  if (!insert_history<TxExecutor, TxStatus>(tx, c_id, c_d_id, c_w_id, d_id,
+                                            w_id, h_amount, &ware.W_NAME[0],
+                                            &dist.D_NAME[0], hkg))
+    return false;
 
   return true;
 }

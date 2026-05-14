@@ -15,17 +15,17 @@ class TransactionTable;
 
 class GarbageCollection {
 private:
-  uint32_t fmin_, fmax_;  // first range of txid in TMT.
-  uint32_t smin_, smax_;  // second range of txid in TMT.
-  static std::atomic <uint32_t>
-          GC_threshold_;  // share for all object (meaning all thread).
+  uint32_t fmin_, fmax_; // first range of txid in TMT.
+  uint32_t smin_, smax_; // second range of txid in TMT.
+  static std::atomic<uint32_t>
+      GC_threshold_; // share for all object (meaning all thread).
 
 public:
-  std::deque<TransactionTable *> gcq_for_TMT_;
-  std::deque<TransactionTable *> reuse_TMT_element_from_gc_;
-  std::deque <Tuple*> gcq_for_record_;
-  std::deque <GCElement<Tuple>> gcq_for_version_;
-  std::deque<Version *> reuse_version_from_gc_;
+  std::deque<TransactionTable*> gcq_for_TMT_;
+  std::deque<TransactionTable*> reuse_TMT_element_from_gc_;
+  std::deque<Tuple*> gcq_for_record_;
+  std::deque<GCElement<Tuple>> gcq_for_version_;
+  std::deque<Version*> reuse_version_from_gc_;
   uint8_t thid_;
 
   GarbageCollection() {}
@@ -56,11 +56,11 @@ public:
   // -----
 
   // for worker thread
-  void gcVersion(Result *eres_);
+  void gcVersion(Result* eres_);
 
   void gcRecord();
 
-  void gcTMTelement(Result *eres_);
+  void gcTMTelement(Result* eres_);
   // -----
 
   // EBR-style guard: publish smallest cstamp in this thread's
@@ -68,9 +68,8 @@ public:
   // Tuple whose delete cstamp >= min(MinQueuedCstamp[*]). See
   // si/include/garbage_collection.hh for the matching definition.
   INLINE void publishMinQueuedCstamp() {
-    uint32_t v = gcq_for_version_.empty()
-                 ? UINT32_MAX
-                 : gcq_for_version_.front().cstamp_;
+    uint32_t v = gcq_for_version_.empty() ? UINT32_MAX
+                                          : gcq_for_version_.front().cstamp_;
     MinQueuedCstamp[thid_].store(v, std::memory_order_release);
   }
 };

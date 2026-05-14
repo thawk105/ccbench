@@ -37,7 +37,7 @@ class LibcError : public std::exception {
 private:
   std::string str_;
 
-  static std::string generateMessage(int errnum, const std::string &msg) {
+  static std::string generateMessage(int errnum, const std::string& msg) {
     std::string s(msg);
     const size_t BUF_SIZE = 1024;
     char buf[BUF_SIZE];
@@ -45,39 +45,42 @@ private:
     s += buf;
 #ifdef Linux
     if (::strerror_r(errnum, buf, BUF_SIZE) != nullptr)
-#endif  // Linux
+#endif // Linux
 #ifdef Darwin
-    if (::strerror_r(errnum, buf, BUF_SIZE) != 0)
-#endif  // Darwin
-    s += buf;
+      if (::strerror_r(errnum, buf, BUF_SIZE) != 0)
+#endif // Darwin
+        s += buf;
     return s;
   }
 
 public:
-  explicit LibcError(int errnum = errno, const std::string &msg = "libc_error:")
-          : str_(generateMessage(errnum, msg)) {}
+  explicit LibcError(int errnum = errno, const std::string& msg = "libc_error:")
+      : str_(generateMessage(errnum, msg)) {}
 };
 
 // function
-[[maybe_unused]] extern bool chkSpan(struct timeval &start, struct timeval &stop, long threshold);
+[[maybe_unused]] extern bool chkSpan(struct timeval& start,
+                                     struct timeval& stop, long threshold);
 
 extern size_t decideParallelBuildNumber(size_t tuple_num);
 
-extern void displayProcedureVector(std::vector <Procedure> &pro);
+extern void displayProcedureVector(std::vector<Procedure>& pro);
 
 extern void displayRusageRUMaxrss();
 
-extern bool isReady(const std::vector<char> &readys);
+extern bool isReady(const std::vector<char>& readys);
 
-extern void readyAndWaitForReadyOfAllThread(std::atomic <size_t> &running, const size_t thnm);
+extern void readyAndWaitForReadyOfAllThread(std::atomic<size_t>& running,
+                                            const size_t thnm);
 
 extern void sleepMs(size_t ms);
 
 extern void sleepMicroSec(size_t ms);
 
-extern void waitForReady(const std::vector<char> &readys);
+extern void waitForReady(const std::vector<char>& readys);
 
-extern void waitForReadyOfAllThread(std::atomic <size_t> &running, const size_t thnm);
+extern void waitForReadyOfAllThread(std::atomic<size_t>& running,
+                                    const size_t thnm);
 
 //----------
 // After this line, intending to force inline function.
@@ -93,9 +96,9 @@ extern void waitForReadyOfAllThread(std::atomic <size_t> &running, const size_t 
     return false;
 }
 
-[[maybe_unused]] inline static bool chkClkSpanSec(
-        const uint64_t start, const uint64_t stop, const unsigned int clocks_per_us,
-        const uint64_t sec) {
+[[maybe_unused]] inline static bool
+chkClkSpanSec(const uint64_t start, const uint64_t stop,
+              const unsigned int clocks_per_us, const uint64_t sec) {
   uint64_t diff = 0;
   diff = stop - start;
   diff = diff / clocks_per_us / 1000 / 1000;
@@ -249,7 +252,7 @@ extern void waitForReadyOfAllThread(std::atomic <size_t> &running, const size_t 
   while (rdtscp() - start < tics) _mm_pause();
 }
 
-template<typename Int>
+template <typename Int>
 Int byteswap(Int in) {
   switch (sizeof(Int)) {
     case 1:
@@ -265,22 +268,22 @@ Int byteswap(Int in) {
   }
 }
 
-template<typename Int>
-void assign_as_bigendian(Int value, char *out) {
+template <typename Int>
+void assign_as_bigendian(Int value, char* out) {
   Int tmp = byteswap(value);
   ::memcpy(out, &tmp, sizeof(tmp));
 }
 
-template<typename Int>
-void parse_bigendian(const char *in, Int &out) {
+template <typename Int>
+void parse_bigendian(const char* in, Int& out) {
   Int tmp;
   ::memcpy(&tmp, in, sizeof(tmp));
   out = byteswap(tmp);
 }
 
-template<typename T>
-std::string_view struct_str_view(const T &t) {
-  return std::string_view(reinterpret_cast<const char *>(&t), sizeof(t));
+template <typename T>
+std::string_view struct_str_view(const T& t) {
+  return std::string_view(reinterpret_cast<const char*>(&t), sizeof(t));
 }
 
 /**
@@ -288,7 +291,8 @@ std::string_view struct_str_view(const T &t) {
  * out buffer will be null-terminated.
  * returned value is written size excluding the last null character.
  */
-inline std::size_t copy_cstr(char *out, const char *in, std::size_t out_buf_size) {
+inline std::size_t copy_cstr(char* out, const char* in,
+                             std::size_t out_buf_size) {
   if (out_buf_size == 0) return 0;
   std::size_t i = 0;
   while (i < out_buf_size - 1) {
@@ -315,7 +319,7 @@ inline std::string str_view_hex(std::string_view sv) {
 }
 
 
-template<typename T>
-inline std::string_view str_view(const T &t) {
-  return std::string_view(reinterpret_cast<const char *>(&t), sizeof(t));
+template <typename T>
+inline std::string_view str_view(const T& t) {
+  return std::string_view(reinterpret_cast<const char*>(&t), sizeof(t));
 }

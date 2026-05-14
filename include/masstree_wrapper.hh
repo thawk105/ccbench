@@ -36,7 +36,8 @@
 
 class key_unparse_unsigned {
 public:
-  static int unparse_key(Masstree::key<std::uint64_t> key, char *buf, int buflen) {
+  static int unparse_key(Masstree::key<std::uint64_t> key, char* buf,
+                         int buflen) {
     return snprintf(buf, buflen, "%" PRIu64, key.ikey());
   }
 };
@@ -45,13 +46,13 @@ public:
  * type of object is T.
  * inserting a pointer of T as value.
  */
-template<typename T>
+template <typename T>
 class MasstreeWrapper {
 public:
-  static constexpr std::uint64_t insert_bound = UINT64_MAX;  // 0xffffff;
+  static constexpr std::uint64_t insert_bound = UINT64_MAX; // 0xffffff;
   // static constexpr std::uint64_t insert_bound = 0xffffff; //0xffffff;
   struct table_params : public Masstree::nodeparams<15, 15> {
-    typedef T *value_type;
+    typedef T* value_type;
     typedef Masstree::value_print<value_type> value_print_type;
     typedef threadinfo threadinfo_type;
     typedef key_unparse_unsigned key_unparse_type;
@@ -67,7 +68,7 @@ public:
 
   typedef typename table_type::leaf_type node_type;
   typedef typename unlocked_cursor_type::nodeversion_value_type
-          nodeversion_value_type;
+      nodeversion_value_type;
 
   struct insert_info_t {
     const node_type* node;
@@ -75,7 +76,7 @@ public:
     uint64_t new_version;
   };
 
-  static __thread typename table_params::threadinfo_type *ti;
+  static __thread typename table_params::threadinfo_type* ti;
 
   MasstreeWrapper() { this->table_init(); }
 
@@ -91,18 +92,19 @@ public:
    * The order of calling on_resp_node() and invoke() is up to the implementation.
    */
   class ScanCallback {
-    public:
+  public:
     virtual ~ScanCallback() {}
 
     /**
      * This node lies within the search range (at version v)
      */
-    virtual void on_resp_node(const node_type *n, uint64_t version) = 0;
+    virtual void on_resp_node(const node_type* n, uint64_t version) = 0;
 
     /**
      * This key/value pair was read from node n @ version
      */
-    virtual bool invoke(const std::string_view &k, T v, const node_type *n, uint64_t version) = 0;
+    virtual bool invoke(const std::string_view& k, T v, const node_type* n,
+                        uint64_t version) = 0;
   };
 
   void table_init() {
@@ -122,11 +124,12 @@ public:
     table_.print(stdout);
     fprintf(stdout, "Stats: %s\n",
             Masstree::json_stats(table_, ti)
-                    .unparse(lcdf::Json::indent_depth(1000))
-                    .c_str());
+                .unparse(lcdf::Json::indent_depth(1000))
+                .c_str());
   }
 
-  Status insert_value(std::string_view key, T *value, insert_info_t *insert_info = NULL) {
+  Status insert_value(std::string_view key, T* value,
+                      insert_info_t* insert_info = NULL) {
     cursor_type lp(table_, key.data(), key.size());
     bool found = lp.find_insert(*ti);
     // always_assert(!found, "keys should all be unique");
@@ -147,9 +150,10 @@ public:
     return Status::OK;
   }
 
-  void insert_value(std::uint64_t key, T *value) {
+  void insert_value(std::uint64_t key, T* value) {
     std::uint64_t key_buf{__builtin_bswap64(key)};
-    insert_value({reinterpret_cast<char *>(&key_buf), sizeof(key_buf)}, value); // NOLINT
+    insert_value({reinterpret_cast<char*>(&key_buf), sizeof(key_buf)},
+                 value); // NOLINT
   }
 
   Status remove_value(std::string_view key) {
@@ -165,24 +169,22 @@ public:
     return Status::WARN_NOT_FOUND;
   }
 
-  T *get_value(std::string_view key) {
+  T* get_value(std::string_view key) {
     unlocked_cursor_type lp(table_, key.data(), key.size());
     bool found = lp.find_unlocked(*ti);
-    if (found) {
-      return lp.value();
-    }
+    if (found) { return lp.value(); }
     return nullptr;
   }
 
-  T *get_value(std::uint64_t key) {
+  T* get_value(std::uint64_t key) {
     std::uint64_t key_buf{__builtin_bswap64(key)};
-    return get_value({reinterpret_cast<char *>(&key_buf), sizeof(key_buf)});
+    return get_value({reinterpret_cast<char*>(&key_buf), sizeof(key_buf)});
   }
 
-  void scan(const char *const lkey, const std::size_t len_lkey,
-            const bool l_exclusive, const char *const rkey,
+  void scan(const char* const lkey, const std::size_t len_lkey,
+            const bool l_exclusive, const char* const rkey,
             const std::size_t len_rkey, const bool r_exclusive,
-            std::vector<T*> *res, int64_t max_scan_num,
+            std::vector<T*>* res, int64_t max_scan_num,
             ScanCallback& callback) {
     Str mtkey;
     if (lkey == nullptr) {
@@ -191,31 +193,34 @@ public:
       mtkey = Str(lkey, len_lkey);
     }
 
-    SearchRangeScanner scanner(rkey, len_rkey, r_exclusive, res, max_scan_num, callback);
+    SearchRangeScanner scanner(rkey, len_rkey, r_exclusive, res, max_scan_num,
+                               callback);
     table_.scan(mtkey, !l_exclusive, scanner, *ti);
   }
 
-  void scan(const char *const lkey, const std::size_t len_lkey,
-            const bool l_exclusive, const char *const rkey,
+  void scan(const char* const lkey, const std::size_t len_lkey,
+            const bool l_exclusive, const char* const rkey,
             const std::size_t len_rkey, const bool r_exclusive,
-            std::vector<T*> *res, bool limited_scan, ScanCallback& callback) {
+            std::vector<T*>* res, bool limited_scan, ScanCallback& callback) {
     scan(lkey, len_lkey, l_exclusive, rkey, len_rkey, r_exclusive, res,
          limited_scan ? (int64_t) 1000 : (int64_t) -1, callback);
   }
 
-  void scan(const char *const lkey, const std::size_t len_lkey,
-            const bool l_exclusive, const char *const rkey,
+  void scan(const char* const lkey, const std::size_t len_lkey,
+            const bool l_exclusive, const char* const rkey,
             const std::size_t len_rkey, const bool r_exclusive,
-            std::vector<T*> *res, int64_t max_scan_num) {
-    scan(lkey, len_lkey, l_exclusive, rkey, len_rkey, r_exclusive, res, max_scan_num, default_callback);
+            std::vector<T*>* res, int64_t max_scan_num) {
+    scan(lkey, len_lkey, l_exclusive, rkey, len_rkey, r_exclusive, res,
+         max_scan_num, default_callback);
   }
 
   // for compatibility
-  void scan(const char *const lkey, const std::size_t len_lkey,
-            const bool l_exclusive, const char *const rkey,
+  void scan(const char* const lkey, const std::size_t len_lkey,
+            const bool l_exclusive, const char* const rkey,
             const std::size_t len_rkey, const bool r_exclusive,
-            std::vector<T*> *res, bool limited_scan) {
-    scan(lkey, len_lkey, l_exclusive, rkey, len_rkey, r_exclusive, res, limited_scan, default_callback);
+            std::vector<T*>* res, bool limited_scan) {
+    scan(lkey, len_lkey, l_exclusive, rkey, len_rkey, r_exclusive, res,
+         limited_scan, default_callback);
   }
 
   static inline uint64_t ExtractVersionNumber(const node_type* n) {
@@ -233,49 +238,43 @@ private:
   table_type table_;
   std::uint64_t key_gen_;
 
-  static inline Str make_key(std::uint64_t int_key, std::uint64_t &key_buf) {
+  static inline Str make_key(std::uint64_t int_key, std::uint64_t& key_buf) {
     key_buf = __builtin_bswap64(int_key);
-    return Str((const char *) &key_buf, sizeof(key_buf));
+    return Str((const char*) &key_buf, sizeof(key_buf));
   }
 };
 
-template<typename T>
+template <typename T>
 class MasstreeWrapper<T>::DefaultScanCallback : public ScanCallback {
-  void on_resp_node(const node_type * /*n*/, uint64_t /*version*/) {}
-  bool invoke(const std::string_view & /*k*/, T /*v*/, const node_type * /*n*/,
+  void on_resp_node(const node_type* /*n*/, uint64_t /*version*/) {}
+  bool invoke(const std::string_view& /*k*/, T /*v*/, const node_type* /*n*/,
               uint64_t /*version*/) {
     return true;
   }
 };
 
-template<typename T>
+template <typename T>
 class MasstreeWrapper<T>::SearchRangeScanner {
-  public:
+public:
   using Str = Masstree::Str;
 
-  SearchRangeScanner(const char *const rkey, const std::size_t len_rkey,
-                     const bool r_exclusive, std::vector<T *> *scan_buffer,
+  SearchRangeScanner(const char* const rkey, const std::size_t len_rkey,
+                     const bool r_exclusive, std::vector<T*>* scan_buffer,
                      int64_t max_scan_num, ScanCallback& callback)
-      : rkey_(rkey),
-        len_rkey_(len_rkey),
-        r_exclusive_(r_exclusive),
-        scan_buffer_(scan_buffer),
-        max_scan_num_(max_scan_num),
+      : rkey_(rkey), len_rkey_(len_rkey), r_exclusive_(r_exclusive),
+        scan_buffer_(scan_buffer), max_scan_num_(max_scan_num),
         callback_(callback) {
-    if (max_scan_num_ > 0) {
-      scan_buffer->reserve(max_scan_num_);
-    }
+    if (max_scan_num_ > 0) { scan_buffer->reserve(max_scan_num_); }
   }
 
   void visit_leaf(const Masstree::scanstackelt<table_params>& iter,
-                  const Masstree::key<uint64_t>& /*key*/,
-                  threadinfo& /*ti*/) {
+                  const Masstree::key<uint64_t>& /*key*/, threadinfo& /*ti*/) {
     const Masstree::leaf<table_params>* node = iter.node();
     uint64_t version = iter.full_version_value();
     callback_.on_resp_node(node, version);
   }
 
-  bool visit_value(const Str key, T *val, threadinfo &) {
+  bool visit_value(const Str key, T* val, threadinfo&) {
     if (max_scan_num_ >= 0 &&
         scan_buffer_->size() >= static_cast<std::size_t>(max_scan_num_)) {
       return false;
@@ -298,18 +297,18 @@ class MasstreeWrapper<T>::SearchRangeScanner {
     return false;
   }
 
-  private:
-  const char *const rkey_{};
+private:
+  const char* const rkey_{};
   const std::size_t len_rkey_{};
   const bool r_exclusive_{};
-  std::vector<T *> *scan_buffer_{};
+  std::vector<T*>* scan_buffer_{};
   int64_t max_scan_num_ = -1;
   ScanCallback& callback_;
 };
 
-template<typename T>
-__thread typename MasstreeWrapper<T>::table_params::threadinfo_type *
-        MasstreeWrapper<T>::ti = nullptr;
+template <typename T>
+__thread typename MasstreeWrapper<T>::table_params::threadinfo_type*
+    MasstreeWrapper<T>::ti = nullptr;
 #ifdef GLOBAL_VALUE_DEFINE
 volatile mrcu_epoch_type active_epoch = 1;
 volatile std::uint64_t globalepoch = 1;

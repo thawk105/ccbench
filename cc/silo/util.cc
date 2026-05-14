@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
+#include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
-#include <sys/types.h>  // syscall(SYS_gettid),
-#include <unistd.h>     // syscall(SYS_gettid),
+#include <sys/types.h> // syscall(SYS_gettid),
+#include <unistd.h>    // syscall(SYS_gettid),
 
 #include <bitset>
 #include <cstdint>
@@ -49,10 +49,10 @@ void chkArg() {
   //   ERR;
   // }
 
-  if (posix_memalign((void **) &ThLocalEpoch, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThLocalEpoch, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &CTIDW, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &CTIDW, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
@@ -103,7 +103,7 @@ void displayParameter() {
   }
 }
 
-void genLogFile(std::string &logpath, const int thid) {
+void genLogFile(std::string& logpath, const int thid) {
   genLogFileName(logpath, thid);
   createEmptyFile(logpath);
 }
@@ -147,7 +147,7 @@ void genLogFile(std::string &logpath, const int thid) {
 //   for (auto &th : thv) th.join();
 // }
 
-void siloLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
+void siloLeaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop) {
   epoch_timer_stop = rdtscp();
   if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
                  FLAGS_epoch_time * FLAGS_clocks_per_us * 1000) &&

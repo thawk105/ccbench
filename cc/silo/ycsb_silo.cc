@@ -35,9 +35,9 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
-  Result &myres = std::ref(SiloResult[thid]);
-  TxExecutor trans(thid, (Result *) &myres, quit);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(SiloResult[thid]);
+  TxExecutor trans(thid, (Result*) &myres, quit);
   YcsbWorkload workload;
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
@@ -76,18 +76,18 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) trans.epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("YCSB Silo benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   YcsbWorkload::displayWorkloadParameter();
-  YcsbWorkload::makeDB<Tuple,void>(nullptr);
+  YcsbWorkload::makeDB<Tuple, void>(nullptr);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -100,24 +100,21 @@ int main(int argc, char *argv[]) try {
   waitForReady(readys);
   uint64_t start_tsc = rdtscp();
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
   uint64_t end_tsc = rdtscp();
-  long double actual_extime = round(
-    (end_tsc-start_tsc) /
-    ((long double)FLAGS_clocks_per_us * powl(10.0, 6.0)));
+  long double actual_extime =
+      round((end_tsc - start_tsc) /
+            ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     SiloResult[0].addLocalAllResult(SiloResult[i]);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  SiloResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
+  SiloResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                 TotalThreadNum);
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }

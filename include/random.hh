@@ -13,9 +13,7 @@
 
 class Xoroshiro128Plus {
 public:
-  Xoroshiro128Plus() {
-    init();
-  }
+  Xoroshiro128Plus() { init(); }
 
   uint64_t s[2];
 
@@ -42,8 +40,8 @@ public:
     const uint64_t result = s0 + s1;
 
     s1 ^= s0;
-    s[0] = rotl(s0, 24) ^ s1 ^ (s1 << 16);  // a, b
-    s[1] = rotl(s1, 37);                    // c
+    s[0] = rotl(s0, 24) ^ s1 ^ (s1 << 16); // a, b
+    s[1] = rotl(s1, 37);                   // c
 
     return result;
   }

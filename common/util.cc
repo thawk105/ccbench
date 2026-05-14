@@ -2,7 +2,7 @@
 #include "./../include/atomic_wrapper.hh"
 #include "./../include/util.hh"
 
-bool chkSpan(struct timeval &start, struct timeval &stop, long threshold) {
+bool chkSpan(struct timeval& start, struct timeval& stop, long threshold) {
   long diff = 0;
   diff += (stop.tv_sec - start.tv_sec) * 1000 * 1000 +
           (stop.tv_usec - start.tv_usec);
@@ -18,9 +18,7 @@ size_t decideParallelBuildNumber(size_t tuple_num) {
 
   // else
   for (size_t i = std::thread::hardware_concurrency(); i > 0; --i) {
-    if (tuple_num % i == 0) {
-      return i;
-    }
+    if (tuple_num % i == 0) { return i; }
     if (i == 1) ERR;
   }
 
@@ -44,32 +42,30 @@ size_t decideParallelBuildNumber(size_t tuple_num) {
 // }
 
 void displayRusageRUMaxrss() {
-  struct rusage r{};
+  struct rusage r {};
   if (getrusage(RUSAGE_SELF, &r) != 0) ERR;
   printf("maxrss:\t%ld kB\n", r.ru_maxrss);
 }
 
-void readyAndWaitForReadyOfAllThread(std::atomic<size_t> &running,
+void readyAndWaitForReadyOfAllThread(std::atomic<size_t>& running,
                                      const size_t thnm) {
   running++;
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
 }
 
-void waitForReadyOfAllThread(std::atomic<size_t> &running, const size_t thnm) {
+void waitForReadyOfAllThread(std::atomic<size_t>& running, const size_t thnm) {
   while (running.load(std::memory_order_acquire) != thnm) _mm_pause();
 }
 
-bool isReady(const std::vector<char> &readys) {
-  for (const char &b : readys) {
+bool isReady(const std::vector<char>& readys) {
+  for (const char& b : readys) {
     if (!loadAcquire(b)) return false;
   }
   return true;
 }
 
-void waitForReady(const std::vector<char> &readys) {
-  while (!isReady(readys)) {
-    _mm_pause();
-  }
+void waitForReady(const std::vector<char>& readys) {
+  while (!isReady(readys)) { _mm_pause(); }
 }
 
 void sleepMs(size_t ms) {

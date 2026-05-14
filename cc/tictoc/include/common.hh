@@ -59,4 +59,4 @@ DECLARE_double(zipf_skew);
 GLOBAL uint64_t TotalThreadNum;
 
 alignas(CACHE_LINE_SIZE) GLOBAL uint32_t ReclamationEpoch;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThLocalEpoch;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* ThLocalEpoch;

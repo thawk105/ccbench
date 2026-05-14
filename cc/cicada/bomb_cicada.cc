@@ -36,10 +36,10 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Backoff backoff(FLAGS_clocks_per_us);
-  TxExecutor trans(thid, backoff, (Result *) &CicadaResult[thid], quit);
-  BombWorkload<Tuple,TupleInitParam> workload;
+  TxExecutor trans(thid, backoff, (Result*) &CicadaResult[thid], quit);
+  BombWorkload<Tuple, TupleInitParam> workload;
   workload.prepare(trans, new TupleInitParam());
 
 #ifdef Linux
@@ -47,13 +47,13 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
-#endif  // Linux
+#endif // Linux
 
 #ifdef Darwin
   int nowcpu;
   GETCPU(nowcpu);
   // printf("Thread %d on CPU %d\n", *myid, nowcpu);
-#endif  // Darwin
+#endif // Darwin
 
 #if MASSTREE_USE
   MasstreeWrapper<Tuple>::thread_init(thid);
@@ -62,19 +62,19 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("BOMB Cicada benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
-  BombWorkload<Tuple,TupleInitParam>::displayWorkloadParameter();
+  BombWorkload<Tuple, TupleInitParam>::displayWorkloadParameter();
   TupleInitParam* param = new TupleInitParam();
-  BombWorkload<Tuple,TupleInitParam>::makeDB(param);
+  BombWorkload<Tuple, TupleInitParam>::makeDB(param);
   MinWts.store(param->initial_wts + 2, memory_order_release);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
@@ -83,33 +83,30 @@ int main(int argc, char *argv[]) try {
   std::vector<char> readys(TotalThreadNum + (FLAGS_bomb_mixed_mode ? 1 : 0));
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
-    thv.emplace_back(worker, i, std::ref(readys[i]),
-                     std::ref(start), std::ref(quit));
+    thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
+                     std::ref(quit));
   if (FLAGS_bomb_mixed_mode) {
-    thv.emplace_back(BombWorkload<Tuple,void>::request_dispatcher,
+    thv.emplace_back(BombWorkload<Tuple, void>::request_dispatcher,
                      TotalThreadNum, std::ref(readys[TotalThreadNum]),
                      std::ref(start), std::ref(quit));
   }
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     CicadaResult[0].addLocalAllResult(CicadaResult[i]);
     CicadaResult[0].addLocalPerTxResult(CicadaResult[i], TxTypes);
   }
   ShowOptParameters();
-  CicadaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
+  CicadaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                   TotalThreadNum);
   std::cout << "Details per transaction type:" << std::endl;
   CicadaResult[0].displayPerTxResult(TxTypes);
   // TODO: enable this if really necessary
   // deleteDB();
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }

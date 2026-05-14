@@ -31,10 +31,10 @@
 #include "../../include/util.hh"
 #include "../../include/zipf.hh"
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
-  Result &myres = std::ref(TicTocResult[thid]);
-  TxExecutor trans(thid, (Result *) &myres, quit);
-  BombWorkload<Tuple,void> workload;
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(TicTocResult[thid]);
+  TxExecutor trans(thid, (Result*) &myres, quit);
+  BombWorkload<Tuple, void> workload;
   workload.prepare(trans, nullptr);
 
 #if BACK_OFF
@@ -58,18 +58,18 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("BOMB TicToc benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
-  BombWorkload<Tuple,void>::displayWorkloadParameter();
-  BombWorkload<Tuple,void>::makeDB(nullptr);
+  BombWorkload<Tuple, void>::displayWorkloadParameter();
+  BombWorkload<Tuple, void>::makeDB(nullptr);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -77,20 +77,18 @@ int main(int argc, char *argv[]) try {
   std::vector<char> readys(TotalThreadNum + (FLAGS_bomb_mixed_mode ? 1 : 0));
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
-    thv.emplace_back(worker, i, std::ref(readys[i]),
-                     std::ref(start), std::ref(quit));
+    thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
+                     std::ref(quit));
   if (FLAGS_bomb_mixed_mode) {
-    thv.emplace_back(BombWorkload<Tuple,void>::request_dispatcher,
+    thv.emplace_back(BombWorkload<Tuple, void>::request_dispatcher,
                      TotalThreadNum, std::ref(readys[TotalThreadNum]),
                      std::ref(start), std::ref(quit));
   }
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
     TicTocResult[0].addLocalAllResult(TicTocResult[i]);
@@ -103,6 +101,4 @@ int main(int argc, char *argv[]) try {
   TicTocResult[0].displayPerTxResult(TxTypes);
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }

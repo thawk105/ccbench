@@ -33,7 +33,8 @@
 // EXEC SQL WHENEVER NOT FOUND continue;
 // EXEC SQL FETCH c_no INTO :no_o_id;
 template <typename TxExecutor, typename TxStatus>
-bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id, bool &found) {
+bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t& o_id,
+                  bool& found) {
   found = false;
   std::vector<TupleBody*> result;
   SimpleKey<8> left_key, right_key;
@@ -41,15 +42,12 @@ bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id, b
   NewOrder::CreateKey(w_id, d_id + 1, 1, right_key.ptr());
   // Return value intentionally discarded: the empty-result and aborted
   // checks below cover both Status::OK and Status::WARN_NOT_FOUND.
-  (void)tx.scan(Storage::NewOrder, left_key.view(), false, right_key.view(), true, result, 1);
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  (void) tx.scan(Storage::NewOrder, left_key.view(), false, right_key.view(),
+                 true, result, 1);
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   // Per TPC-C spec: if no NEW-ORDER row exists for this district, skip
   // delivery for this district only (caller continues with the next).
-  if (result.empty()) {
-    return true;
-  }
+  if (result.empty()) { return true; }
   found = true;
   TupleBody* body = *result.begin();
   o_id = body->get_value().cast_to<NewOrder>().NO_O_ID;
@@ -61,16 +59,15 @@ bool get_order_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t &o_id, b
 // EXEC SQL DELETE FROM new_order WHERE CURRENT OF c_no;
 // EXEC SQL CLOSE c_no;
 template <typename TxExecutor, typename TxStatus>
-bool delete_new_order(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id) {
+bool delete_new_order(TxExecutor& tx, uint16_t w_id, uint8_t d_id,
+                      uint32_t o_id) {
   SimpleKey<8> no_key;
   NewOrder::CreateKey(w_id, d_id, o_id, no_key.ptr());
   // Return value intentionally discarded: we already verified the row
   // exists via get_order_id() before calling here, so the only thing left
   // for the caller to react to is an abort.
-  (void)tx.delete_record(Storage::NewOrder, no_key.view());
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  (void) tx.delete_record(Storage::NewOrder, no_key.view());
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   return true;
 }
 
@@ -86,33 +83,29 @@ bool delete_new_order(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id
 // WHERE o_id = :no_o_id AND o_d_id = :d_id AND
 // o_w_id = :w_id;
 template <typename TxExecutor, typename TxStatus>
-bool update_order_and_get_c_id(
-    TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id, uint8_t o_carrier_id, uint32_t &c_id) {
+bool update_order_and_get_c_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id,
+                               uint32_t o_id, uint8_t o_carrier_id,
+                               uint32_t& c_id) {
   SimpleKey<8> o_key;
   Order::CreateKey(w_id, d_id, o_id, o_key.ptr());
-  TupleBody *body;
+  TupleBody* body;
   Status status = tx.read(Storage::Order, o_key.view(), &body);
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   // tx.read leaves *body unchanged on WARN_NOT_FOUND; caller must check.
-  if (status != Status::OK) {
-    return false;
-  }
-  Order &ord = body->get_value().cast_to<Order>();
+  if (status != Status::OK) { return false; }
+  Order& ord = body->get_value().cast_to<Order>();
   c_id = ord.O_C_ID;
 
   HeapObject o_obj;
   o_obj.allocate<Order>();
-  Order &new_ord = o_obj.ref();
+  Order& new_ord = o_obj.ref();
   memcpy(&new_ord, &ord, sizeof(new_ord));
 
   new_ord.O_CARRIER_ID = o_carrier_id;
 
-  status = tx.update(Storage::Order, o_key.view(), TupleBody(o_key.view(), std::move(o_obj)));
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  status = tx.update(Storage::Order, o_key.view(),
+                     TupleBody(o_key.view(), std::move(o_obj)));
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   return true;
 }
 
@@ -131,34 +124,33 @@ bool update_order_and_get_c_id(
 // WHERE ol_o_id = :no_o_id AND ol_d_id = :d_id
 // AND ol_w_id = :w_id;
 template <typename TxExecutor, typename TxStatus>
-bool update_order_line_and_get_ol_total(
-    TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id, uint64_t ol_delivery_d, double &ol_total)
-{
+bool update_order_line_and_get_ol_total(TxExecutor& tx, uint16_t w_id,
+                                        uint8_t d_id, uint32_t o_id,
+                                        uint64_t ol_delivery_d,
+                                        double& ol_total) {
   std::vector<TupleBody*> result;
   SimpleKey<8> left_key, right_key;
   OrderLine::CreateKey(w_id, d_id, o_id, 1, left_key.ptr());
   OrderLine::CreateKey(w_id, d_id, o_id + 1, 1, right_key.ptr());
-  Status status = tx.scan(Storage::OrderLine, left_key.view(), false, right_key.view(), true, result);
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  Status status = tx.scan(Storage::OrderLine, left_key.view(), false,
+                          right_key.view(), true, result);
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   ol_total = 0.0;
-  for (auto& tuple : result)  {
+  for (auto& tuple : result) {
     const std::string_view ol_key = tuple->get_key();
-    const OrderLine &ol = tuple->get_value().cast_to<OrderLine>();
+    const OrderLine& ol = tuple->get_value().cast_to<OrderLine>();
 
     HeapObject ol_obj;
     ol_obj.allocate<OrderLine>();
-    OrderLine &new_ol = ol_obj.ref();
+    OrderLine& new_ol = ol_obj.ref();
     memcpy(&new_ol, &ol, sizeof(new_ol));
 
     new_ol.OL_DELIVERY_D = ol_delivery_d;
 
-    status = tx.update(Storage::OrderLine, ol_key, TupleBody(ol_key, std::move(ol_obj)));
+    status = tx.update(Storage::OrderLine, ol_key,
+                       TupleBody(ol_key, std::move(ol_obj)));
     if (status != Status::OK) ERR;
-    if (tx.status_ == TransactionStatus::aborted) {
-      return false;
-    }
+    if (tx.status_ == TransactionStatus::aborted) { return false; }
     ol_total += ol.OL_AMOUNT;
   }
   return true;
@@ -174,38 +166,32 @@ bool update_order_line_and_get_ol_total(
 // WHERE c_id = :c_id AND c_d_id = :d_id AND
 // c_w_id = :w_id;
 template <typename TxExecutor, typename TxStatus>
-bool update_customer_balance(
-    TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t c_id, double ol_total)
-{
+bool update_customer_balance(TxExecutor& tx, uint16_t w_id, uint8_t d_id,
+                             uint32_t c_id, double ol_total) {
   SimpleKey<8> c_key;
   Customer::CreateKey(w_id, d_id, c_id, c_key.ptr());
-  TupleBody *body;
+  TupleBody* body;
   Status status = tx.read(Storage::Customer, c_key.view(), &body);
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
-  if (status != Status::OK) {
-    return false;
-  }
-  Customer &cust = body->get_value().cast_to<Customer>();
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
+  if (status != Status::OK) { return false; }
+  Customer& cust = body->get_value().cast_to<Customer>();
 
   HeapObject c_obj;
   c_obj.allocate<Customer>();
-  Customer &new_cust = c_obj.ref();
+  Customer& new_cust = c_obj.ref();
   memcpy(&new_cust, &cust, sizeof(new_cust));
 
   new_cust.C_BALANCE += ol_total;
   new_cust.C_DELIVERY_CNT += 1;
 
-  status = tx.update(Storage::Customer, c_key.view(), TupleBody(c_key.view(), std::move(c_obj)));
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  status = tx.update(Storage::Customer, c_key.view(),
+                     TupleBody(c_key.view(), std::move(c_obj)));
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   return true;
 }
 
 template <typename TxExecutor, typename TxStatus>
-bool run_delivery(TxExecutor &tx, TPCCQuery::Delivery *query) {
+bool run_delivery(TxExecutor& tx, TPCCQuery::Delivery* query) {
   uint16_t w_id = query->w_id;
   uint8_t o_carrier_id = query->o_carrier_id;
   uint64_t ol_delivery_d = query->ol_delivery_d;
@@ -213,23 +199,26 @@ bool run_delivery(TxExecutor &tx, TPCCQuery::Delivery *query) {
   for (uint8_t d_id = 1; d_id <= DIST_PER_WARE; ++d_id) {
     uint32_t o_id;
     bool found;
-    if (!get_order_id<TxExecutor,TxStatus>(tx, w_id, d_id, o_id, found))
+    if (!get_order_id<TxExecutor, TxStatus>(tx, w_id, d_id, o_id, found))
       return false;
     // No outstanding new-order in this district: skip per TPC-C spec.
     if (!found) continue;
 
-    if (!delete_new_order<TxExecutor,TxStatus>(tx, w_id, d_id, o_id))
+    if (!delete_new_order<TxExecutor, TxStatus>(tx, w_id, d_id, o_id))
       return false;
 
     uint32_t c_id;
-    if (!update_order_and_get_c_id<TxExecutor,TxStatus>(tx, w_id, d_id, o_id, o_carrier_id, c_id))
+    if (!update_order_and_get_c_id<TxExecutor, TxStatus>(tx, w_id, d_id, o_id,
+                                                         o_carrier_id, c_id))
       return false;
 
     double ol_total = 0.0;
-    if (!update_order_line_and_get_ol_total<TxExecutor,TxStatus>(tx, w_id, d_id, o_id, ol_delivery_d, ol_total))
+    if (!update_order_line_and_get_ol_total<TxExecutor, TxStatus>(
+            tx, w_id, d_id, o_id, ol_delivery_d, ol_total))
       return false;
 
-    if (!update_customer_balance<TxExecutor,TxStatus>(tx, w_id, d_id, c_id, ol_total))
+    if (!update_customer_balance<TxExecutor, TxStatus>(tx, w_id, d_id, c_id,
+                                                       ol_total))
       return false;
   }
 

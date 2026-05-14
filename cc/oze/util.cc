@@ -24,19 +24,17 @@ void init(int32_t table_num) {
 
   // Prepare two (even/odd) scan histories for each table
   // offset = 2 * storage_index + epoch % 2
-  if (posix_memalign((void **) &ScanHistory, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ScanHistory, CACHE_LINE_SIZE,
                      table_num * 2 * sizeof(atomic<ScanEntry*>)) != 0)
     ERR;
-  if (posix_memalign((void **) &ScanRange, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ScanRange, CACHE_LINE_SIZE,
                      table_num * 2 * sizeof(atomic<uint64_t>)) != 0)
     ERR;
 
   // init
   try {
-    ThManagementTable = new ThreadManagementEntry *[TotalThreadNum];
-  } catch (const bad_alloc&) {
-    ERR;
-  }
+    ThManagementTable = new ThreadManagementEntry*[TotalThreadNum];
+  } catch (const bad_alloc&) { ERR; }
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     ThManagementTable[i] = new ThreadManagementEntry(1, FLAGS_cc_mode);
   }
@@ -54,7 +52,8 @@ void displayParameter() {
   cout << "#FLAGS_forwarding:\t" << FLAGS_forwarding << endl;
   if (FLAGS_validation_th_num > 1) {
     cout << "#FLAGS_validation_th_num:\t" << FLAGS_validation_th_num << endl;
-    cout << "#FLAGS_validation_threshold:\t" << FLAGS_validation_threshold << endl;
+    cout << "#FLAGS_validation_threshold:\t" << FLAGS_validation_threshold
+         << endl;
   }
 }
 
@@ -62,14 +61,13 @@ bool chkEpochLoaded() {
   uint64_t nowepo = atomicLoadGE();
   // check if all worker threads read the latest epoch
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    if (ThManagementTable[i]->atomicLoadEpoch() != nowepo)
-      return false;
+    if (ThManagementTable[i]->atomicLoadEpoch() != nowepo) return false;
   }
 
   return true;
 }
 
-void ozeLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop) {
+void ozeLeaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop) {
   epoch_timer_stop = rdtscp();
   if (chkClkSpan(epoch_timer_start, epoch_timer_stop,
                  FLAGS_epoch_time * FLAGS_clocks_per_us * 1000) &&

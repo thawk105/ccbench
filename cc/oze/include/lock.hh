@@ -19,12 +19,10 @@ public:
     int expected, desired;
     for (;;) {
       expected = counter.load(std::memory_order_acquire);
-RETRY_R_LOCK:
+    RETRY_R_LOCK:
       if (expected != -1)
         desired = expected + 1;
-      else {
-        continue;
-      }
+      else { continue; }
       if (counter.compare_exchange_strong(
               expected, desired, memory_order_acq_rel, memory_order_acquire))
         break;
@@ -40,7 +38,7 @@ RETRY_R_LOCK:
     int expected;
     for (;;) {
       expected = counter.load(memory_order_acquire);
-RETRY_W_LOCK:
+    RETRY_W_LOCK:
       if (expected != 0) continue;
       if (counter.compare_exchange_strong(expected, -1, memory_order_acq_rel,
                                           memory_order_acquire))
@@ -56,7 +54,6 @@ RETRY_W_LOCK:
   void upgrade() {
     int one = 1;
     while (!counter.compare_exchange_strong(one, -1, memory_order_acq_rel,
-                                            memory_order_acquire)) {
-    }
+                                            memory_order_acquire)) {}
   }
 };

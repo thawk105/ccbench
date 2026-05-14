@@ -8,7 +8,7 @@
 
 #include "status.hh"
 #include "tuple_body.hh"
-#include "workload.hh"  // for `enum class Storage`
+#include "workload.hh" // for `enum class Storage`
 
 /**
  * @brief Compile-time contract every protocol's `TxExecutor` must satisfy.
@@ -36,18 +36,17 @@
  *    families.
  */
 template <class T>
-concept TxExecutorLike = requires(
-    T t,
-    Storage s,
-    std::string_view k,
-    TupleBody** body,
-    std::vector<TupleBody*>& result) {
-  { t.read(s, k, body) }                                    -> std::same_as<Status>;
-  { t.update(s, k, std::declval<TupleBody&&>()) }           -> std::same_as<Status>;
-  { t.insert(s, k, std::declval<TupleBody&&>()) }           -> std::same_as<Status>;
-  { t.delete_record(s, k) }                                 -> std::same_as<Status>;
-  { t.scan(s, k, false, k, false, result) }                 -> std::same_as<Status>;
-  { t.scan(s, k, false, k, false, result, std::int64_t{}) } -> std::same_as<Status>;
-  { t.commit() }                                            -> std::same_as<bool>;
-  { t.abort() }                                             -> std::same_as<void>;
+concept TxExecutorLike = requires(T t, Storage s, std::string_view k,
+                                  TupleBody** body,
+                                  std::vector<TupleBody*>& result) {
+  { t.read(s, k, body) } -> std::same_as<Status>;
+  { t.update(s, k, std::declval<TupleBody&&>()) } -> std::same_as<Status>;
+  { t.insert(s, k, std::declval<TupleBody&&>()) } -> std::same_as<Status>;
+  { t.delete_record(s, k) } -> std::same_as<Status>;
+  { t.scan(s, k, false, k, false, result) } -> std::same_as<Status>;
+  {
+    t.scan(s, k, false, k, false, result, std::int64_t{})
+    } -> std::same_as<Status>;
+  { t.commit() } -> std::same_as<bool>;
+  { t.abort() } -> std::same_as<void>;
 };

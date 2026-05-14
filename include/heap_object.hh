@@ -9,8 +9,7 @@
  * Heap object manager.
  * The instance can work as a stub object if owner is false.
  */
-struct HeapObject
-{
+struct HeapObject {
 private:
   void* data_;
   size_t size_;
@@ -18,51 +17,68 @@ private:
   bool owner_;
 
 public:
-  HeapObject() : data_(nullptr), size_(0), align_(std::align_val_t(0)), owner_(false) {
-  }
+  HeapObject()
+      : data_(nullptr), size_(0), align_(std::align_val_t(0)), owner_(false) {}
   // call shallow_copy() or deep_copy() explicitly.
   HeapObject(const HeapObject& rhs) = delete;
   HeapObject(HeapObject&& rhs) noexcept : HeapObject() { swap(rhs); }
 
-  HeapObject(const void* data, size_t size, std::align_val_t align) : HeapObject() {
+  HeapObject(const void* data, size_t size, std::align_val_t align)
+      : HeapObject() {
     deep_copy_from(data, size, align);
   }
 
   ~HeapObject() { reset(); }
 
   HeapObject& operator=(const HeapObject&) = delete;
-  HeapObject& operator=(HeapObject&& rhs) noexcept { swap(rhs); return *this; }
+  HeapObject& operator=(HeapObject&& rhs) noexcept {
+    swap(rhs);
+    return *this;
+  }
 
   class TmpRefObj {
     HeapObject* ptr;
+
   public:
     explicit TmpRefObj(HeapObject* ptr0) : ptr(ptr0) {}
-    template <typename T> operator T&() {
+    template <typename T>
+    operator T&() {
       assert(ptr->is_compatible<T>());
       return *reinterpret_cast<T*>(ptr->data());
     }
-    template <typename T> operator const T&() {
+    template <typename T>
+    operator const T&() {
       assert(ptr->is_compatible<T>());
       return *reinterpret_cast<const T*>(ptr->data());
     }
   };
   class ConstTmpRefObj {
     const HeapObject* ptr;
+
   public:
     explicit ConstTmpRefObj(const HeapObject* ptr0) : ptr(ptr0) {}
-    template <typename T> operator const T&() {
+    template <typename T>
+    operator const T&() {
       assert(ptr->is_compatible<T>());
       return *reinterpret_cast<const T*>(ptr->data());
     }
   };
-  TmpRefObj ref() { TmpRefObj obj(this); return obj; }
-  ConstTmpRefObj ref() const { ConstTmpRefObj obj(this); return obj; }
+  TmpRefObj ref() {
+    TmpRefObj obj(this);
+    return obj;
+  }
+  ConstTmpRefObj ref() const {
+    ConstTmpRefObj obj(this);
+    return obj;
+  }
 
-  template <typename T> T& cast_to() {
+  template <typename T>
+  T& cast_to() {
     assert(is_compatible<T>());
     return *reinterpret_cast<T*>(data());
   }
-  template <typename T> const T& cast_to() const {
+  template <typename T>
+  const T& cast_to() const {
     assert(is_compatible<T>());
     return *reinterpret_cast<const T*>(data());
   }
@@ -76,7 +92,8 @@ public:
   size_t size() const { return size_; }
   std::align_val_t align() const { return align_; }
 
-  void allocate(size_t size, std::align_val_t align = std::align_val_t(sizeof(uint8_t))) {
+  void allocate(size_t size,
+                std::align_val_t align = std::align_val_t(sizeof(uint8_t))) {
     reset();
     data_ = ::operator new(size, align);
     size_ = size;
@@ -114,12 +131,15 @@ public:
   template <typename T>
   bool is_compatible() const {
     static_assert(std::is_trivially_copyable_v<T>);
-    return data_ != nullptr && size_ == sizeof(T) && align_ == std::align_val_t(alignof(T));
+    return data_ != nullptr && size_ == sizeof(T) &&
+           align_ == std::align_val_t(alignof(T));
   }
 
   void reset() noexcept {
     if (owner_) {
-      assert(data_!= nullptr); assert(size_ > 0); assert(static_cast<std::size_t>(align_) > 0);
+      assert(data_ != nullptr);
+      assert(size_ > 0);
+      assert(static_cast<std::size_t>(align_) > 0);
       ::operator delete(data_, size_, align_);
     }
     data_ = nullptr;
@@ -132,13 +152,11 @@ public:
 };
 
 
-inline void shallow_copy(HeapObject& lhs, const HeapObject& rhs)
-{
+inline void shallow_copy(HeapObject& lhs, const HeapObject& rhs) {
   lhs.shallow_copy_from(rhs);
 }
 
 
-inline void deep_copy(HeapObject& lhs, const HeapObject& rhs)
-{
+inline void deep_copy(HeapObject& lhs, const HeapObject& rhs) {
   lhs.deep_copy_from(rhs);
 }

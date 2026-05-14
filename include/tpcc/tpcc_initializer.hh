@@ -29,26 +29,27 @@
 template <typename Tuple, typename Param>
 class TPCCInitializaer {
 public:
-  static void db_insert_raw([[maybe_unused]] size_t thid, [[maybe_unused]] Param *param,
-                    Storage st, std::string_view key, HeapObject&& val) {
-      Tuple* tuple = new Tuple();
-      tuple->init(thid, TupleBody(key, std::move(val)), param);
+  static void db_insert_raw([[maybe_unused]] size_t thid,
+                            [[maybe_unused]] Param* param, Storage st,
+                            std::string_view key, HeapObject&& val) {
+    Tuple* tuple = new Tuple();
+    tuple->init(thid, TupleBody(key, std::move(val)), param);
 
-      // TODO:
-      // rec->set_for_load();
+    // TODO:
+    // rec->set_for_load();
 
-      MasstreeWrapper<Tuple>::thread_init(cached_sched_getcpu());
-      Masstrees[get_storage(st)].insert_value(key, tuple);
-      // TODO: status handling
-      // Status sta = kohler_masstree::insert_record(st, key, rec);
-      // if (sta != Status::OK) {
-      //     std::cout << __FILE__ << " : " << __LINE__ << " : "
-      //               << "fatal error. unique key restriction." << std::endl;
-      //     std::cout << "st : " << static_cast<int>(st)
-      //               << ", key : " << str_view_hex(key)
-      //               << ", val : " << str_view_hex(rec->get_tuple().get_val()) << std::endl;
-      //     std::abort();
-      // }
+    MasstreeWrapper<Tuple>::thread_init(cached_sched_getcpu());
+    Masstrees[get_storage(st)].insert_value(key, tuple);
+    // TODO: status handling
+    // Status sta = kohler_masstree::insert_record(st, key, rec);
+    // if (sta != Status::OK) {
+    //     std::cout << __FILE__ << " : " << __LINE__ << " : "
+    //               << "fatal error. unique key restriction." << std::endl;
+    //     std::cout << "st : " << static_cast<int>(st)
+    //               << ", key : " << str_view_hex(key)
+    //               << ", val : " << str_view_hex(rec->get_tuple().get_val()) << std::endl;
+    //     std::abort();
+    // }
   }
 
 
@@ -56,8 +57,8 @@ public:
   static void load_item([[maybe_unused]] Param* param) {
 
     struct S {
-      static void work([[maybe_unused]] Param* param,
-                       std::uint32_t i_id_start, std::uint32_t i_id_end, const IsOriginal& is_original) {
+      static void work([[maybe_unused]] Param* param, std::uint32_t i_id_start,
+                       std::uint32_t i_id_end, const IsOriginal& is_original) {
         for (std::uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
           assert(i_id != 0); // 1-origin
           HeapObject obj;
@@ -70,7 +71,9 @@ public:
           std::size_t dataLen = random_alpha_string(26, 50, ite.I_DATA);
           if (is_original[i_id - 1]) make_original(ite.I_DATA, dataLen);
 #ifdef DEBUG
-          std::cout<<"I_ID:"<<ite.I_ID<<"\tI_IM_ID:"<<ite.I_IM_ID<<"\tI_NAME:"<<ite.I_NAME<<"\tI_PRICE:"<<ite.I_PRICE<<"\tI_DATA:"<<ite.I_DATA<<std::endl;
+          std::cout << "I_ID:" << ite.I_ID << "\tI_IM_ID:" << ite.I_IM_ID
+                    << "\tI_NAME:" << ite.I_NAME << "\tI_PRICE:" << ite.I_PRICE
+                    << "\tI_DATA:" << ite.I_DATA << std::endl;
 #endif
           SimpleKey<8> key{};
           ite.createKey(key.ptr());
@@ -104,35 +107,39 @@ public:
   }
 
   //CREATE Warehouses
-  static void load_warehouse([[maybe_unused]] Param *param, std::uint16_t w_id) {
+  static void load_warehouse([[maybe_unused]] Param* param,
+                             std::uint16_t w_id) {
     assert(w_id != 0); // 1-origin
     HeapObject obj;
     obj.allocate<Warehouse>();
     Warehouse& ware = obj.ref();
     ware.W_ID = w_id;
     random_alpha_string(6, 10, ware.W_NAME);
-    make_address(ware.W_STREET_1,
-                ware.W_STREET_2,
-                ware.W_CITY,
-                ware.W_STATE,
-                ware.W_ZIP);
+    make_address(ware.W_STREET_1, ware.W_STREET_2, ware.W_CITY, ware.W_STATE,
+                 ware.W_ZIP);
     ware.W_TAX = random_double(0, 2000, 10000);
     ware.W_YTD = 300000;
 
 #ifdef DEBUG
-    std::cout<<"W_ID:"<<ware.W_ID<<"\tW_NAME:"<<ware.W_NAME<<"\tW_STREET_1:"<<ware.W_STREET_1<<"\tW_CITY:"<<ware.W_CITY<<"\tW_STATE:"<<ware.W_STATE<<"\tW_ZIP:"<<ware.W_ZIP<<"\tW_TAX:"<<ware.W_TAX<<"\tW_YTD:"<<ware.W_YTD<<std::endl;
+    std::cout << "W_ID:" << ware.W_ID << "\tW_NAME:" << ware.W_NAME
+              << "\tW_STREET_1:" << ware.W_STREET_1
+              << "\tW_CITY:" << ware.W_CITY << "\tW_STATE:" << ware.W_STATE
+              << "\tW_ZIP:" << ware.W_ZIP << "\tW_TAX:" << ware.W_TAX
+              << "\tW_YTD:" << ware.W_YTD << std::endl;
 #endif
     SimpleKey<8> wh_key{};
     ware.createKey(wh_key.ptr());
-    db_insert_raw(w_id, param, Storage::Warehouse, wh_key.view(), std::move(obj));
+    db_insert_raw(w_id, param, Storage::Warehouse, wh_key.view(),
+                  std::move(obj));
   }
 
   //CREATE Stock
-  static void load_stock([[maybe_unused]] Param *param, std::uint16_t w_id) {
+  static void load_stock([[maybe_unused]] Param* param, std::uint16_t w_id) {
 
     struct S {
-      static void work([[maybe_unused]] Param *param,
-                       std::uint32_t i_id_start, std::uint32_t i_id_end, std::uint16_t w_id, const IsOriginal& is_original) {
+      static void work([[maybe_unused]] Param* param, std::uint32_t i_id_start,
+                       std::uint32_t i_id_end, std::uint16_t w_id,
+                       const IsOriginal& is_original) {
         for (std::uint32_t i_id = i_id_start; i_id <= i_id_end; ++i_id) {
           assert(i_id != 0); // 1-origin
           HeapObject obj;
@@ -141,9 +148,10 @@ public:
           st.S_I_ID = i_id;
           st.S_W_ID = w_id;
           st.S_QUANTITY = random_int(10, 100);
-          for (char* out : {
-              st.S_DIST_01, st.S_DIST_02, st.S_DIST_03, st.S_DIST_04, st.S_DIST_05,
-              st.S_DIST_06, st.S_DIST_07, st.S_DIST_08, st.S_DIST_09, st.S_DIST_10}) {
+          for (char* out :
+               {st.S_DIST_01, st.S_DIST_02, st.S_DIST_03, st.S_DIST_04,
+                st.S_DIST_05, st.S_DIST_06, st.S_DIST_07, st.S_DIST_08,
+                st.S_DIST_09, st.S_DIST_10}) {
             random_alpha_string(24, 24, out);
           }
           st.S_YTD = 0;
@@ -154,7 +162,8 @@ public:
 
           SimpleKey<8> st_key{};
           st.createKey(st_key.ptr());
-          db_insert_raw(w_id, param, Storage::Stock, st_key.view(), std::move(obj));
+          db_insert_raw(w_id, param, Storage::Stock, st_key.view(),
+                        std::move(obj));
         }
       }
     };
@@ -181,8 +190,9 @@ public:
   }
 
   //CREATE History
-  static void load_history([[maybe_unused]] Param *param,
-                           std::uint16_t w_id, uint8_t d_id, std::uint32_t c_id, std::string_view key) {
+  static void load_history([[maybe_unused]] Param* param, std::uint16_t w_id,
+                           uint8_t d_id, std::uint32_t c_id,
+                           std::string_view key) {
     std::time_t now = get_lightweight_timestamp();
     HeapObject obj;
     obj.allocate<History>();
@@ -198,8 +208,9 @@ public:
   }
 
   //CREATE Orderline
-  static void load_orderline([[maybe_unused]] Param *param,
-                             std::uint16_t w_id, std::uint16_t d_id, std::uint32_t o_id, uint8_t ol_num) {
+  static void load_orderline([[maybe_unused]] Param* param, std::uint16_t w_id,
+                             std::uint16_t d_id, std::uint32_t o_id,
+                             uint8_t ol_num) {
     std::time_t now = get_lightweight_timestamp();
     HeapObject obj;
     obj.allocate<OrderLine>();
@@ -229,8 +240,8 @@ public:
   }
 
   //CREATE Order
-  static void load_order([[maybe_unused]] Param *param,
-                         std::uint16_t w_id, uint8_t d_id, std::uint32_t o_id, std::uint32_t c_id) {
+  static void load_order([[maybe_unused]] Param* param, std::uint16_t w_id,
+                         uint8_t d_id, std::uint32_t o_id, std::uint32_t c_id) {
     std::time_t now = get_lightweight_timestamp();
     HeapObject obj;
     obj.allocate<Order>();
@@ -256,11 +267,13 @@ public:
       db_insert_raw(w_id, param, Storage::Order, key.view(), std::move(obj));
 
       char o_secondary_key_buf[16];
-      std::string_view o_secondary_key = order.createSecondaryKey(&o_secondary_key_buf[0]);
+      std::string_view o_secondary_key =
+          order.createSecondaryKey(&o_secondary_key_buf[0]);
       // ::printf("o_cust_key %s\n", str_view_hex(o_cust_key).c_str());
 
       // TODO: consider to store o_id directly as value of masstree
-      db_insert_raw(w_id, param, Storage::OrderSecondary, o_secondary_key, std::move(key_obj));
+      db_insert_raw(w_id, param, Storage::OrderSecondary, o_secondary_key,
+                    std::move(key_obj));
     }
     //O_OL_CNT orderlines per order.
     for (uint8_t ol_num = 1; ol_num <= order.O_OL_CNT + 1; ol_num++) {
@@ -278,20 +291,21 @@ public:
       {
         SimpleKey<8> key{};
         new_order.createKey(key.ptr());
-        db_insert_raw(w_id, param, Storage::NewOrder, key.view(), std::move(obj));
+        db_insert_raw(w_id, param, Storage::NewOrder, key.view(),
+                      std::move(obj));
       }
     }
   }
 
 
   //CREATE Customer
-  static void load_customer([[maybe_unused]] Param *param,
-                            uint8_t d_id, std::uint16_t w_id, HistoryKeyGenerator &hkg) {
+  static void load_customer([[maybe_unused]] Param* param, uint8_t d_id,
+                            std::uint16_t w_id, HistoryKeyGenerator& hkg) {
     struct S {
-      static void
-      work([[maybe_unused]] Param *param,
-           std::uint32_t c_id_start, std::uint32_t c_id_end, HistoryKeyGenerator &hkg,
-          uint8_t d_id, std::uint16_t w_id, const Permutation& perm) {
+      static void work([[maybe_unused]] Param* param, std::uint32_t c_id_start,
+                       std::uint32_t c_id_end, HistoryKeyGenerator& hkg,
+                       uint8_t d_id, std::uint16_t w_id,
+                       const Permutation& perm) {
         for (std::uint32_t c_id = c_id_start; c_id <= c_id_end; ++c_id) {
           assert(c_id != 0); // 1-origin.
           std::time_t now = get_lightweight_timestamp();
@@ -304,24 +318,22 @@ public:
           if (c_id <= 1000) {
             // for all c_last patterns [0, 999] to be exist.
             make_c_last(c_id - 1, customer.C_LAST);
-  #ifdef DEBUG
-            std::cout<<"C_LAST:"<<customer.C_LAST<<std::endl;
-  #endif
+#ifdef DEBUG
+            std::cout << "C_LAST:" << customer.C_LAST << std::endl;
+#endif
           } else {
             make_c_last(non_uniform_random<255, true>(0, 999), customer.C_LAST);
           }
           copy_cstr(customer.C_MIDDLE, "OE", sizeof(customer.C_MIDDLE));
           random_alpha_string(8, 16, customer.C_FIRST);
-          make_address(customer.C_STREET_1,
-                      customer.C_STREET_2,
-                      customer.C_CITY,
-                      customer.C_STATE,
-                      customer.C_ZIP);
+          make_address(customer.C_STREET_1, customer.C_STREET_2,
+                       customer.C_CITY, customer.C_STATE, customer.C_ZIP);
           random_number_string(16, 16, customer.C_PHONE);
 
-  #ifdef DEBUG
-          if(c==start&& w==1&& d==2)std::cout<<"C_PHONE:"<<customer.C_PHONE<<std::endl;
-  #endif
+#ifdef DEBUG
+          if (c == start && w == 1 && d == 2)
+            std::cout << "C_PHONE:" << customer.C_PHONE << std::endl;
+#endif
           customer.C_SINCE = now;
           //90% GC 10% BC
           if (random_int(0, 99) < 10) {
@@ -340,14 +352,18 @@ public:
           SimpleKey<8> pkey{};
           customer.createKey(pkey.ptr());
           char c_last_key_buf[Customer::CLastKey::required_size()];
-          std::string_view c_last_key = customer.createSecondaryKey(&c_last_key_buf[0]);
+          std::string_view c_last_key =
+              customer.createSecondaryKey(&c_last_key_buf[0]);
           // ::printf("c_last_key %s\n", str_view_hex(c_last_key).c_str());
 
-          db_insert_raw(w_id, param, Storage::Customer, pkey.view(), std::move(obj));
+          db_insert_raw(w_id, param, Storage::Customer, pkey.view(),
+                        std::move(obj));
 
-          std::vector<SimpleKey<8>> *ctn_ptr;
+          std::vector<SimpleKey<8>>* ctn_ptr;
           MasstreeWrapper<Tuple>::thread_init(cached_sched_getcpu());
-          Tuple* tuple = Masstrees[get_storage(Storage::CustomerSecondary)].get_value(c_last_key);
+          Tuple* tuple =
+              Masstrees[get_storage(Storage::CustomerSecondary)].get_value(
+                  c_last_key);
           if (tuple != nullptr) {
             memcpy(&ctn_ptr, tuple->body_.get_val().data(), sizeof(uintptr_t));
             //::printf("found %p\n", ctn_ptr);
@@ -361,20 +377,25 @@ public:
             obj.allocate<uintptr_t>();
             uintptr_t& p = obj.ref();
             p = uintptr_t(ctn_ptr);
-            db_insert_raw(w_id, param, Storage::CustomerSecondary, c_last_key, std::move(obj));
+            db_insert_raw(w_id, param, Storage::CustomerSecondary, c_last_key,
+                          std::move(obj));
           }
 
           struct S {
-            static Customer *search(const SimpleKey<8> &pkey) {
+            static Customer* search(const SimpleKey<8>& pkey) {
               MasstreeWrapper<Tuple>::thread_init(cached_sched_getcpu());
-              auto *tuple = reinterpret_cast<Tuple*>(Masstrees[get_storage(Storage::Customer)].get_value(pkey.view()));
-              return reinterpret_cast<Customer *>(const_cast<char *>(tuple->body_.get_val().data()));
+              auto* tuple = reinterpret_cast<Tuple*>(
+                  Masstrees[get_storage(Storage::Customer)].get_value(
+                      pkey.view()));
+              return reinterpret_cast<Customer*>(
+                  const_cast<char*>(tuple->body_.get_val().data()));
             }
 
-            static bool less(const SimpleKey<8> &lh, const SimpleKey<8> &rh) {
-              const Customer *lh_cust = search(lh);
-              const Customer *rh_cust = search(rh);
-              return ::strncmp(lh_cust->C_FIRST, rh_cust->C_FIRST, sizeof(Customer::C_FIRST)) < 0;
+            static bool less(const SimpleKey<8>& lh, const SimpleKey<8>& rh) {
+              const Customer* lh_cust = search(lh);
+              const Customer* rh_cust = search(rh);
+              return ::strncmp(lh_cust->C_FIRST, rh_cust->C_FIRST,
+                               sizeof(Customer::C_FIRST)) < 0;
             }
           };
 
@@ -392,7 +413,7 @@ public:
     Permutation perm(1, CUST_PER_DIST);
     S::work(param, 1, CUST_PER_DIST, hkg, d_id, w_id, perm);
 
-  #if 0
+#if 0
     constexpr std::std::size_t cust_num_per_th{500};
     constexpr std::std::size_t para_num{CUST_PER_DIST / cust_num_per_th};
     std::vector<std::thread> thv;
@@ -405,13 +426,13 @@ public:
     for (auto &&th : thv) {
       th.join();
     }
-  #endif
+#endif
   }
 
-  static void load_district([[maybe_unused]] Param *param, std::uint16_t w_id) {
+  static void load_district([[maybe_unused]] Param* param, std::uint16_t w_id) {
     struct S {
-      static void work([[maybe_unused]] Param *param,
-                       uint8_t d_id, std::uint16_t w_id, HistoryKeyGenerator &hkg) {
+      static void work([[maybe_unused]] Param* param, uint8_t d_id,
+                       std::uint16_t w_id, HistoryKeyGenerator& hkg) {
         assert(d_id != 0); // 1-origin.
         HeapObject obj;
         obj.allocate<District>();
@@ -419,21 +440,19 @@ public:
         district.D_ID = d_id;
         district.D_W_ID = w_id;
         random_alpha_string(6, 10, district.D_NAME);
-        make_address(district.D_STREET_1,
-                    district.D_STREET_2,
-                    district.D_CITY,
-                    district.D_STATE,
-                    district.D_ZIP);
+        make_address(district.D_STREET_1, district.D_STREET_2, district.D_CITY,
+                     district.D_STATE, district.D_ZIP);
         district.D_TAX = random_double(0, 2000, 10000);
         district.D_YTD = 30000.00;
         district.D_NEXT_O_ID = 3001;
 
-  #ifdef DEBUG
-        std::cout<<"D_ID:"<<district.D_ID<<std::endl;
-  #endif
+#ifdef DEBUG
+        std::cout << "D_ID:" << district.D_ID << std::endl;
+#endif
         SimpleKey<8> key{};
         district.createKey(key.ptr());
-        db_insert_raw(w_id, param, Storage::District, key.view(), std::move(obj));
+        db_insert_raw(w_id, param, Storage::District, key.view(),
+                      std::move(obj));
 
         // CREATE Customer History Order Orderline. 3000 customers per a district.
         load_customer(param, d_id, w_id, hkg);
@@ -443,7 +462,7 @@ public:
     assert(w_id != 0); // 1-origin.
     hkg.init(w_id - 1, false);
 
-  #if 0
+#if 0
     std::vector<std::thread> thv;
     for (std::size_t d = 1; d <= DIST_PER_WARE; ++d) {
       thv.emplace_back(S::work, d, w, std::ref(hkg));
@@ -451,13 +470,12 @@ public:
     for (auto &&th : thv) {
       th.join();
     }
-  #else
+#else
     // single-threaded.
     for (uint8_t d_id = 1; d_id <= DIST_PER_WARE; ++d_id) {
       S::work(param, d_id, w_id, hkg);
     }
-  #endif
-
+#endif
   }
 
   static void load(Param* param) {
@@ -475,9 +493,7 @@ public:
       thv.emplace_back(load_district, param, w);
     }
 
-    for (auto &&th : thv) {
-      th.join();
-    }
+    for (auto&& th : thv) { th.join(); }
     std::cout << "[end] load." << std::endl;
   }
 };

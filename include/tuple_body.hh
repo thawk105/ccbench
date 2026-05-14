@@ -13,7 +13,7 @@
 #include "heap_object.hh"
 #include "util.hh"
 
-class TupleBody {  // NOLINT
+class TupleBody { // NOLINT
 public:
   TupleBody() = default;
 
@@ -23,17 +23,18 @@ public:
    * @param val
    * @param val_align
    */
-  TupleBody(std::string_view key, std::string_view val, std::align_val_t val_align)
-    : key_(key), val_() {
+  TupleBody(std::string_view key, std::string_view val,
+            std::align_val_t val_align)
+      : key_(key), val_() {
     val_.deep_copy_from(val.data(), val.size(), val_align);
   }
 
-  TupleBody(const TupleBody &right) : TupleBody() {
+  TupleBody(const TupleBody& right) : TupleBody() {
     key_ = right.key_;
     val_.deep_copy_from(right.val_);
   }
 
-  TupleBody(TupleBody &&right) noexcept : TupleBody() {
+  TupleBody(TupleBody&& right) noexcept : TupleBody() {
     key_ = std::move(right.key_);
     val_ = std::move(right.val_);
   }
@@ -42,13 +43,13 @@ public:
     set(key, std::move(obj));
   }
 
-  TupleBody &operator=(const TupleBody &right) {
+  TupleBody& operator=(const TupleBody& right) {
     key_ = right.key_;
     val_.deep_copy_from(right.val_);
     return *this;
   }
 
-  TupleBody &operator=(TupleBody &&right) noexcept {
+  TupleBody& operator=(TupleBody&& right) noexcept {
     key_ = std::move(right.key_);
     val_ = std::move(right.val_);
     return *this;
@@ -58,7 +59,7 @@ public:
 
   [[nodiscard]] std::string_view get_val() const { return val_.view(); }
 
-  [[nodiscard]] void *get_val_ptr() { return val_.data(); }
+  [[nodiscard]] void* get_val_ptr() { return val_.data(); }
 
   [[nodiscard]] std::size_t get_val_size() const { return val_.size(); }
 
@@ -67,9 +68,7 @@ public:
   void set_key(std::string_view key) {
     key_ = key; // copy
   }
-  void set_value(HeapObject&& val) {
-    val_ = std::move(val);
-  }
+  void set_value(HeapObject&& val) { val_ = std::move(val); }
   void set(std::string_view key, HeapObject&& val) {
     set_key(key);
     set_value(std::move(val));
