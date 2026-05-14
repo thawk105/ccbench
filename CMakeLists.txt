@@ -4,6 +4,10 @@ project(ccbench LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+# set_compile_options() — applied to ccbench_common here and to every
+# protocol binary via ccbench_add_protocol() (see cmake/CompileOptions.cmake).
+include(CompileOptions)
+
 set(THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party/")
 
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
@@ -51,6 +55,7 @@ add_library(ccbench_common STATIC
   common/util.cc
 )
 target_compile_features(ccbench_common PUBLIC cxx_std_20)
+set_compile_options(ccbench_common)
 target_include_directories(ccbench_common PUBLIC
   ${CMAKE_SOURCE_DIR}
 )

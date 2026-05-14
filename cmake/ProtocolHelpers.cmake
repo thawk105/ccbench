@@ -42,21 +42,11 @@ function(ccbench_add_protocol name)
       ${_universal_defs}
       ${_extra_defs})
 
-    # Phased -Werror cleanup (see #43). The full -Wall -Wextra -Werror via
-    # set_compile_options() is still gated on Phase 5 — we promote one
-    # warning class to error at a time as the existing offenders get
-    # fixed. Append the next entry here when its source-level cleanup
-    # PR lands.
-    target_compile_options(${target} PRIVATE
-      -Werror=maybe-uninitialized
-      -Werror=unused-but-set-variable
-      -Werror=unused-label
-      -Werror=reorder
-      -Werror=unused-parameter
-      -Werror=catch-value
-      -Werror=unused-variable
-      -Werror=ignored-qualifiers
-      -Werror=sign-compare)
+    # Phased -Werror cleanup complete (see #43). Phases 1-4 promoted nine
+    # individual -Werror=<flag> classes one at a time as the existing
+    # offenders got fixed; Phase 5 replaces that list with the full
+    # -Wall -Wextra -Werror via set_compile_options().
+    set_compile_options(${target})
 
     set_property(TARGET ${target} PROPERTY CCBENCH_PROTOCOL "${name}")
     set_property(TARGET ${target} PROPERTY CCBENCH_WORKLOAD "${wl}")
