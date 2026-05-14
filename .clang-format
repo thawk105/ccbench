@@ -1,66 +1,56 @@
-# Generated from CLion C/C++ Code Style settings
+# clang-format configuration for ccbench.
+#
+# Targets clang-format >= 14 (the version shipped in the devcontainer /
+# ubuntu:24.04). Validate with:  clang-format --dump-config
+#
+# This file is tuned to match the *de-facto* style already used across cc/,
+# include/ and common/ (2-space indent, LLVM-derived, 80 columns, left-aligned
+# pointers). It is intentionally NOT a "reformat the world" config: see the PR
+# for the before/after dry-run measurements.
+
 BasedOnStyle: LLVM
-AccessModifierOffset: -4
-AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignOperands: true
-AllowAllArgumentsOnNextLine: false
-AllowAllConstructorInitializersOnNextLine: false
-AllowAllParametersOfDeclarationOnNextLine: false
-AllowShortBlocksOnASingleLine: Always
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
-AllowShortIfStatementsOnASingleLine: Always
-AllowShortLambdasOnASingleLine: All
-AllowShortLoopsOnASingleLine: true
-AlwaysBreakAfterReturnType: None
-AlwaysBreakTemplateDeclarations: Yes
-BreakBeforeBraces: Custom
-BraceWrapping:
-  AfterCaseLabel: false
-  AfterClass: false
-  AfterControlStatement: Never
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterUnion: false
-  BeforeCatch: false
-  BeforeElse: false
-  IndentBraces: false
-  SplitEmptyFunction: false
-  SplitEmptyRecord: true
-BreakBeforeBinaryOperators: None
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeColon
-BreakInheritanceList: BeforeColon
-ColumnLimit: 80
-CompactNamespaces: false
-ContinuationIndentWidth: 8
-IndentCaseLabels: true
-IndentPPDirectives: None
-IndentWidth: 4
-KeepEmptyLinesAtTheStartOfBlocks: true
-MaxEmptyLinesToKeep: 2
-NamespaceIndentation: None
-ObjCSpaceAfterProperty: false
-ObjCSpaceBeforeProtocolList: true
-PointerAlignment: Left
-ReflowComments: false
-SpaceAfterCStyleCast: true
-SpaceAfterLogicalNot: false
-SpaceAfterTemplateKeyword: false
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeCpp11BracedList: false
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
-SpaceBeforeParens: ControlStatements
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 1
-SpacesInAngles: false
-SpacesInCStyleCastParentheses: false
-SpacesInContainerLiterals: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
-TabWidth: 4
+Standard: c++20
+
+# --- Indentation ------------------------------------------------------------
+# The codebase uses 2-space indentation. (The previous config said 4, which
+# did not match any file and forced a near-total reformat.)
+IndentWidth: 2
+TabWidth: 2
 UseTab: Never
+ContinuationIndentWidth: 4
+# `public:` / `private:` sit one indent level out from class members.
+AccessModifierOffset: -2
+NamespaceIndentation: None
+IndentCaseLabels: true
+
+# --- Line length ------------------------------------------------------------
+ColumnLimit: 80
+
+# --- Pointers / references --------------------------------------------------
+# `int* p`, not `int *p`. Pin it so it does not drift per-file.
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+# --- Short constructs (kept from the historical config) ---------------------
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: Always
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortLambdasOnASingleLine: All
+AlwaysBreakTemplateDeclarations: Yes
+
+# --- Spacing / misc ---------------------------------------------------------
+SpaceAfterCStyleCast: true
+MaxEmptyLinesToKeep: 2
+KeepEmptyLinesAtTheStartOfBlocks: true
+
+# --- Comments ---------------------------------------------------------------
+# Doxygen-style block comments are common; do not let clang-format rewrap them.
+ReflowComments: false
+
+# --- Includes ---------------------------------------------------------------
+# Include ordering in this repo is inconsistent and partly load-bearing
+# (e.g. "include/common.hh" must precede others in some protocol .cc files).
+# Leave include sorting off until a dedicated cleanup pass is done.
+SortIncludes: false
