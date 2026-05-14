@@ -6,7 +6,7 @@
 # Two stages published as two tags:
 #   - `base` -> :ci    (minimal — what CI's build.yml actually needs)
 #   - `dev`  -> :latest (`base` + human-facing tools used in the
-#                       devcontainer: zsh shell, clang-format, sudo,
+#                       devcontainer: zsh shell, clang-format-14, sudo,
 #                       openssh-client, curl)
 #
 # Keeping the CI image slim means container init in GitHub Actions
@@ -69,16 +69,24 @@ FROM base AS dev
 
 ARG USERNAME=vscode
 
+# clang-format is pinned to the major version the repo was reformatted with
+# (PR #75/#76 used clang-format 14). The unversioned `clang-format` meta
+# package on Ubuntu 24.04 points at 18, whose output diverges from 14 — that
+# mismatch would make the format.yml dry-run job fail on an already-formatted
+# tree. update-alternatives restores the plain `clang-format` name so the
+# workflow (and humans) can call it without the version suffix.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
     && apt-get install -y --no-install-recommends \
-        clang-format \
+        clang-format-14 \
         curl \
         htop \
         openssh-client \
         sudo \
         zsh \
+    && update-alternatives --install /usr/bin/clang-format clang-format \
+        /usr/bin/clang-format-14 100 \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 
