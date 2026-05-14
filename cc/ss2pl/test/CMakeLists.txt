@@ -10,49 +10,23 @@ file (GLOB TEST_SOURCES
 "make_db_test.cpp"
 )
 
-if (DEFINED ADD_ANALYSIS)
-    add_definitions(-DADD_ANALYSIS=${ADD_ANALYSIS})
-else ()
-    add_definitions(-DADD_ANALYSIS=0)
-endif ()
-
-if (DEFINED BACK_OFF)
-    add_definitions(-DBACK_OFF=${BACK_OFF})
-else ()
-    add_definitions(-DBACK_OFF=0)
-endif ()
-
-add_definitions(-DDLR1)
-
-if (DEFINED KEY_SIZE)
-    add_definitions(-DKEY_SIZE=${KEY_SIZE})
-else ()
-    add_definitions(-DKEY_SIZE=8)
-endif ()
-
-if (DEFINED KEY_SORT)
-    add_definitions(-DKEY_SORT=${KEY_SORT})
-else ()
-    add_definitions(-DKEY_SORT=0)
-endif ()
-
-if (DEFINED MASSTREE_USE)
-    add_definitions(-DMASSTREE_USE=${MASSTREE_USE})
-else ()
-    add_definitions(-DMASSTREE_USE=1)
-endif ()
-
-if (DEFINED VAL_SIZE)
-    add_definitions(-DVAL_SIZE=${VAL_SIZE})
-else ()
-    add_definitions(-DVAL_SIZE=4)
-endif ()
+# Build-time flags. The universal `-D` set comes from cmake/Options.cmake so
+# the test target uses the same flags as the ss2pl protocol body; DLR1 and
+# KEY_SORT are ss2pl-specific (mirrors cc/ss2pl/CMakeLists.txt).
+ccbench_universal_definitions(SS2PL_TEST_DEFINITIONS)
 
 foreach(src IN LISTS TEST_SOURCES)
     get_filename_component(fname "${src}" NAME_WE)
     set(test_name "${fname}")
 
     add_executable(${test_name} ${src} ${SS2PL_SOURCES})
+
+    target_compile_definitions(${test_name}
+            PRIVATE
+            ${SS2PL_TEST_DEFINITIONS}
+            DLR1
+            KEY_SORT=${CCBENCH_KEY_SORT}
+    )
 
     target_include_directories(${test_name}
             PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
