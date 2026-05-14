@@ -30,13 +30,16 @@ public:
 
   // computeChkSum() below sums every int-sized chunk of *this*, including
   // any trailing struct padding after val_, so both constructors zero
-  // the entire object first to make those reads well-defined.
+  // the entire object first to make those reads well-defined. The memset
+  // goes through a void* because LogRecord is non-trivial (it holds a
+  // std::string_view) — clearing it as raw bytes is intentional here and
+  // -Wclass-memaccess would otherwise flag the typed pointer.
   LogRecord() {
-    memset(this, 0, sizeof(LogRecord));
+    memset(static_cast<void *>(this), 0, sizeof(LogRecord));
   }
 
   LogRecord(uint64_t tid, std::string_view key, char *val) {
-    memset(this, 0, sizeof(LogRecord));
+    memset(static_cast<void *>(this), 0, sizeof(LogRecord));
     tid_ = tid;
     key_ = key;
     memcpy(this->val_, val, VAL_SIZE);

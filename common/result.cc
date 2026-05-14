@@ -544,7 +544,9 @@ void Result::addLocalForwarding1Count(const uint64_t count) { total_forwarding1_
 void Result::addLocalForwarding2Count(const uint64_t count) { total_forwarding1_count_ += count; }
 #endif
 
-void Result::displayOzeAnalysisResult(size_t clocks_per_us, size_t extime, size_t thread_num) {
+void Result::displayOzeAnalysisResult([[maybe_unused]] size_t clocks_per_us,
+                                      [[maybe_unused]] size_t extime,
+                                      [[maybe_unused]] size_t thread_num) {
   // only for oze
 #if ADD_ANALYSIS
   displayReadValidationRate(clocks_per_us, extime, thread_num);
