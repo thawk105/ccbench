@@ -20,3 +20,5 @@ add_executable(replay_test.exe replayTest.cc)
 target_link_libraries(replay_test.exe PRIVATE
   ccbench_common ccbench::masstree ccbench::mimalloc)
 target_compile_definitions(replay_test.exe PRIVATE ${_universal_defs})
+# Same -Wall -Wextra -Werror as the ccbench_add_protocol() binaries (#43).
+set_compile_options(replay_test.exe)

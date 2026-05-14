@@ -47,6 +47,18 @@ inline void fill_random(void* out, size_t size)
 {
   char* p = reinterpret_cast<char*>(out);
 
+  // The word-at-a-time loop only runs while `size >= 8`, so each 8-byte
+  // memcpy stays within `out`; the tail handles the remaining `size % 8`.
+  // GCC 13's interprocedural -Wstringop-overflow still flags the loop
+  // body when this is inlined into random_string_detail() for the
+  // 51-byte I_DATA / S_DATA buffers, because it cannot bound the
+  // random_int()-derived length tightly enough. The callers always pass
+  // a buffer of `max_len + 1`, so this is a false positive — suppress it
+  // locally rather than pessimizing the hot init path.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
   uint64_t buf;
   while (size >= sizeof(uint64_t)) {
     buf = random_64bits();
@@ -58,6 +70,9 @@ inline void fill_random(void* out, size_t size)
     buf = random_64bits();
     ::memcpy(p, &buf, size);
   }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 }
 
 
