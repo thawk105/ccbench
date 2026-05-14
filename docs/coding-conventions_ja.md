@@ -74,6 +74,23 @@ if (stat != Status::OK) return false;   // do not skip this
 `-Werror=unused-variable` で表面化したことがある — レビューで指摘する前に
 ここを読む / 書く側で意識する。
 
+## clang-format
+
+- **commit する前に、変更した C++ ソース (`.cc` / `.hh` / `.cpp`) を
+  `clang-format` で整形する**。設定はリポジトリ直下の
+  [.clang-format](../.clang-format)。手元で揃えておけば、後述の CI チェック
+  (#63) との往復が減る。
+- **基本は `git clang-format` で staged 差分の範囲だけ整形する**。
+  `clang-format -i <file>` はファイル全体を整形してしまうため、まだ
+  format が揃っていないファイルを触ると無関係な大量差分が混ざる
+  (コードベース全体の一括 reformat は #74 で対応中 — それが merge される
+  までは特に `git clang-format` を使うこと)。
+- **大規模な reformat は本来の変更と別 commit / 別 PR にする**。整形差分に
+  本質的な変更が埋もれてレビュー性が落ちるのを防ぐ。
+- format チェックを CI に入れる作業は #63 で追跡している。CI が緑になれば
+  「format 違反のまま merge される」ことはなくなるが、それまでは push 前に
+  手元で当てる運用で防ぐ。
+
 ## Shell スクリプト
 
 - **`set -euo pipefail`** を冒頭に置く (早期失敗 + 未定義変数の検出 + パイプ

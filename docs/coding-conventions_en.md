@@ -85,6 +85,23 @@ This was actually missing in `get_material_cost()` and was surfaced by
 `-Werror=unused-variable` in PR #58 — be aware of it on both the reading
 and writing side, before review has to flag it.
 
+## clang-format
+
+- **Before committing, format the C++ sources (`.cc` / `.hh` / `.cpp`) you
+  changed with `clang-format`**. The config is [.clang-format](../.clang-format)
+  at the repository root. Doing it locally cuts down round-trips with the CI
+  check below (#63).
+- **Prefer `git clang-format` to format only the staged diff**.
+  `clang-format -i <file>` reformats the whole file, so touching a
+  not-yet-formatted file drags in a large unrelated diff (the repository-wide
+  bulk reformat is in progress in #74 — until that merges, use
+  `git clang-format` in particular).
+- **Keep large reformats in a separate commit / PR** from the actual change,
+  so formatting noise doesn't bury the substantive diff.
+- Adding a format check to CI is tracked in #63. Once CI is green, format
+  violations can't slip through to merge; until then, applying it locally
+  before push is the safeguard.
+
 ## Shell scripts
 
 - **`set -euo pipefail`** at the top (early failure + detect unset
