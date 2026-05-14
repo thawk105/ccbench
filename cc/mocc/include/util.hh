@@ -10,7 +10,8 @@ extern void displayParameter();
 
 extern void displayLockedTuple();
 
-extern void moccLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop);
+extern void moccLeaderWork(uint64_t& epoch_timer_start,
+                           uint64_t& epoch_timer_stop);
 
 extern void makeDB();
 

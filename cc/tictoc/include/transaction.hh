@@ -28,7 +28,7 @@ enum class TransactionStatus : uint8_t {
 
 using namespace std;
 
-extern void write_val_Generator(char *write_val_, size_t val_size, size_t thid);
+extern void write_val_Generator(char* write_val_, size_t val_size, size_t thid);
 
 class TxScanCallback;
 
@@ -37,24 +37,24 @@ public:
   int thid_;
   uint64_t commit_ts_;
   uint64_t appro_commit_ts_;
-  Result *result_;
+  Result* result_;
   Backoff backoff_;
   const bool& quit_; // for thread termination control
   bool reconnoitering_ = false;
   bool is_batch_ = false;
   bool is_ronly_ = false;
   bool is_wonly_ = false;
-  vector <Procedure> pro_set_;
+  vector<Procedure> pro_set_;
 
   TransactionStatus status_;
-  vector <SetElement<Tuple>> read_set_;
-  vector <SetElement<Tuple>> write_set_;
-  std::deque <GCElement<Tuple>> gc_records_;
+  vector<SetElement<Tuple>> read_set_;
+  vector<SetElement<Tuple>> write_set_;
+  std::deque<GCElement<Tuple>> gc_records_;
   std::unordered_map<void*, uint64_t> node_map_;
   uint64_t epoch_timer_start, epoch_timer_stop;
   TxScanCallback callback_;
 
-  TxExecutor(int thid, Result *res, const bool &quit)
+  TxExecutor(int thid, Result* res, const bool& quit)
       : thid_(thid), result_(res), backoff_(FLAGS_clocks_per_us), quit_(quit),
         callback_(TxScanCallback(this)) {
     epoch_timer_start = rdtsc();
@@ -81,7 +81,7 @@ public:
    */
   void dispWS();
 
-  Tuple *get_tuple(Tuple *table, uint64_t key) { return &table[key]; }
+  Tuple* get_tuple(Tuple* table, uint64_t key) { return &table[key]; }
 
   /**
    * @brief lock records in local write set.
@@ -99,7 +99,7 @@ public:
    * @return true early abort
    * @return false not abort
    */
-  bool preemptiveAborts(const TsWord &v1);
+  bool preemptiveAborts(const TsWord& v1);
 
   /**
    * @brief Search xxx set
@@ -110,7 +110,7 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  SetElement<Tuple> *searchWriteSet(Storage s, std::string_view key);
+  SetElement<Tuple>* searchWriteSet(Storage s, std::string_view key);
 
   /**
    * @brief Search xxx set
@@ -121,7 +121,7 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  SetElement<Tuple> *searchReadSet(Storage s, std::string_view key);
+  SetElement<Tuple>* searchReadSet(Storage s, std::string_view key);
 
   /**
    * @brief Transaction read function.
@@ -130,15 +130,13 @@ public:
   Status read(Storage s, std::string_view key, TupleBody** body);
   Status read_internal(Storage s, std::string_view key, Tuple* tuple);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result);
+              std::vector<TupleBody*>& result);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result, int64_t limit);
+              std::vector<TupleBody*>& result, int64_t limit);
 
   /**
    * @brief unlock all elements of write set.
@@ -174,8 +172,8 @@ public:
 
   void gc_records();
 
-  void reconnoiter_begin(); 
-  void reconnoiter_end(); 
+  void reconnoiter_begin();
+  void reconnoiter_end();
 
   bool isLeader();
 

@@ -44,9 +44,9 @@ public:
   std::unordered_map<void*, uint64_t> node_map_;
   std::deque<Tuple*> gc_records_;    // for records
   std::deque<GCElement<Tuple>> gcq_; // for versions
-  std::deque<Version *> reuse_version_from_gc_;
+  std::deque<Version*> reuse_version_from_gc_;
   std::vector<Procedure> pro_set_;
-  Result *result_ = nullptr;
+  Result* result_ = nullptr;
   const bool& quit_; // for thread termination control
   TxScanCallback callback_;
   Backoff& backoff_;
@@ -57,15 +57,17 @@ public:
 
   uint8_t thid_ = 0;
   uint64_t rts_;
-  uint64_t start_, stop_;                // for one-sided synchronization
-  uint64_t grpcmt_start_, grpcmt_stop_;  // for group commit
-  uint64_t gcstart_, gcstop_;            // for garbage collection
+  uint64_t start_, stop_;               // for one-sided synchronization
+  uint64_t grpcmt_start_, grpcmt_stop_; // for group commit
+  uint64_t gcstart_, gcstop_;           // for garbage collection
 
-  TxExecutor(uint8_t thid, Backoff& backoff, Result *res, const bool &quit)
-    : result_(res), quit_(quit), callback_(TxScanCallback(this)), backoff_(backoff), thid_(thid) {
+  TxExecutor(uint8_t thid, Backoff& backoff, Result* res, const bool& quit)
+      : result_(res), quit_(quit), callback_(TxScanCallback(this)),
+        backoff_(backoff), thid_(thid) {
 
     // wait to initialize MinWts
-    while (MinWts.load(memory_order_acquire) == 0);
+    while (MinWts.load(memory_order_acquire) == 0)
+      ;
     rts_ = MinWts.load(memory_order_acquire) - 1;
     wts_.generateTimeStampFirst(thid_);
 
@@ -108,15 +110,15 @@ public:
 
   bool chkGcpvTimeout();
 
-  void cpv();  // commit pending versions
+  void cpv(); // commit pending versions
   void displayWriteSet();
 
   void earlyAbort();
 
-  void mainte();  // maintenance
-  void gcpv();    // group commit pending versions
-  void precpv();  // pre-commit pending versions
-  void pwal();    // parallel write ahead log.
+  void mainte(); // maintenance
+  void gcpv();   // group commit pending versions
+  void precpv(); // pre-commit pending versions
+  void pwal();   // parallel write ahead log.
   void swal();
 
   void begin();
@@ -130,15 +132,13 @@ public:
 
   Status delete_record(Storage s, std::string_view key);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result);
+              std::vector<TupleBody*>& result);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result, int64_t limit);
+              std::vector<TupleBody*>& result, int64_t limit);
 
   bool validation();
 
@@ -150,9 +150,9 @@ public:
 
   void leaderWork();
 
-  void reconnoiter_begin(); 
+  void reconnoiter_begin();
 
-  void reconnoiter_end(); 
+  void reconnoiter_end();
 
   void gc_records();
 
@@ -170,27 +170,27 @@ public:
 #endif
   }
 
-  void gcAfterThisVersion([[maybe_unused]] Tuple *tuple, Version *delTarget) {
+  void gcAfterThisVersion([[maybe_unused]] Tuple* tuple, Version* delTarget) {
     while (delTarget != nullptr) {
       // escape next pointer
-      Version *tmp = delTarget->next_.load(std::memory_order_acquire);
+      Version* tmp = delTarget->next_.load(std::memory_order_acquire);
 
 #if INLINE_VERSION_OPT
       if (delTarget == &(tuple->inline_ver_)) {
         tuple->returnInlineVersionRight();
         goto gcAfterThisVersion_NEXT_LOOP;
       }
-#endif  // if INLINE_VERSION_OPT
+#endif // if INLINE_VERSION_OPT
 
 #if REUSE_VERSION
       reuse_version_from_gc_.emplace_back(delTarget);
-#else   // if REUSE_VERSION
+#else  // if REUSE_VERSION
       delete delTarget;
-#endif  // if REUSE_VERSION
+#endif // if REUSE_VERSION
 
-[[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
+      [[maybe_unused]] gcAfterThisVersion_NEXT_LOOP :
 #if ADD_ANALYSIS
-      ++result_->local_gc_version_counts_;
+          ++result_->local_gc_version_counts_;
 #endif
       delTarget = tmp;
     }
@@ -214,7 +214,8 @@ public:
 #endif
 #endif
 
-  Version *newVersionGeneration([[maybe_unused]] Tuple *tuple, TupleBody&& body) {
+  Version* newVersionGeneration([[maybe_unused]] Tuple* tuple,
+                                TupleBody&& body) {
 #if INLINE_VERSION_OPT
     if (tuple->getInlineVersionRight()) {
       tuple->inline_ver_.set(0, this->wts_.ts_, std::move(body));
@@ -223,7 +224,7 @@ public:
 #endif
       return &(tuple->inline_ver_);
     }
-#endif  // if INLINE_VERSION_OPT
+#endif // if INLINE_VERSION_OPT
 
 #if REUSE_VERSION
     if (!reuse_version_from_gc_.empty()) {
@@ -264,7 +265,7 @@ public:
       if ((*itr).op_ == OpType::INSERT) continue;
       if ((*itr).rcdptr_->continuing_commit_.load(memory_order_acquire) <
           CONTINUING_COMMIT_THRESHOLD) {
-        Version *ver;
+        Version* ver;
         if ((*itr).op_ == OpType::RMW || (*itr).op_ == OpType::DELETE) {
           ver = (*itr).rcdptr_->ldAcqLatest();
           if (ver->ldAcqWts() > this->wts_.ts_ ||
@@ -279,8 +280,8 @@ public:
             (*itr).later_ver_ = ver;
             ver = ver->ldAcqNext();
           }
-          while (ver->ldAcqStatus() != VersionStatus::committed
-                  && ver->ldAcqStatus() != VersionStatus::deleted) {
+          while (ver->ldAcqStatus() != VersionStatus::committed &&
+                 ver->ldAcqStatus() != VersionStatus::deleted) {
             ver = ver->ldAcqNext();
           }
           if (ver->ldAcqRts() > this->wts_.ts_) return false;
@@ -313,8 +314,8 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  inline ReadElement<Tuple> *searchReadSet(Storage s, std::string_view key) {
-    for (auto &re : read_set_) {
+  inline ReadElement<Tuple>* searchReadSet(Storage s, std::string_view key) {
+    for (auto& re : read_set_) {
       if (re.storage_ != s) continue;
       if (re.key_ == key) return &re;
     }
@@ -330,8 +331,8 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  inline WriteElement<Tuple> *searchWriteSet(Storage s, std::string_view key) {
-    for (auto &we : write_set_) {
+  inline WriteElement<Tuple>* searchWriteSet(Storage s, std::string_view key) {
+    for (auto& we : write_set_) {
       if (we.storage_ != s) continue;
       if (we.key_ == key) return &we;
     }
@@ -366,7 +367,7 @@ public:
     write_set_.clear();
   }
 
-  static INLINE Tuple *get_tuple(Tuple *table, uint64_t key) {
+  static INLINE Tuple* get_tuple(Tuple* table, uint64_t key) {
     return &table[key];
   }
 };

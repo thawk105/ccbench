@@ -41,7 +41,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Result& myres = std::ref(OccResult[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxnExecutor trans(thid, (Result*)&myres);
+  TxnExecutor trans(thid, (Result*) &myres);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
@@ -158,9 +158,7 @@ int main(int argc, char* argv[]) try {
                      std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
   for (auto& th : thv) th.join();
 
@@ -169,9 +167,7 @@ int main(int argc, char* argv[]) try {
   }
   ShowOptParameters();
   OccResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                 FLAGS_thread_num);
+                                FLAGS_thread_num);
 
   return 0;
-} catch (bad_alloc) {
-  ERR;
-}
+} catch (bad_alloc) { ERR; }

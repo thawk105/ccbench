@@ -17,20 +17,21 @@
 //   FROM orders
 //   ORDER BY o_id DESC;
 template <typename TxExecutor, typename TxStatus, typename Tuple>
-bool get_order_key_by_customer_id(TxExecutor& tx,
-                                  uint16_t w_id, uint8_t d_id, uint32_t c_id,
-                                  SimpleKey<8>& o_key) {
-//  Storage storage = Storage::OrderSecondary;
-//  char left_key_buf[16], right_key_buf[16];
-//  std::string_view left_key = Order::CreateSecondaryKey(w_id, d_id, c_id, 1, &left_key_buf[0]);
-//  std::string_view right_key = Order::CreateSecondaryKey(w_id, d_id, c_id+1, 1, &right_key_buf[0]);
+bool get_order_key_by_customer_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id,
+                                  uint32_t c_id, SimpleKey<8>& o_key) {
+  //  Storage storage = Storage::OrderSecondary;
+  //  char left_key_buf[16], right_key_buf[16];
+  //  std::string_view left_key = Order::CreateSecondaryKey(w_id, d_id, c_id, 1, &left_key_buf[0]);
+  //  std::string_view right_key = Order::CreateSecondaryKey(w_id, d_id, c_id+1, 1, &right_key_buf[0]);
   std::vector<TupleBody*> result;
   SimpleKey<16> left_key, right_key;
   Order::CreateSecondaryKey(w_id, d_id, c_id, 1, left_key.ptr());
-  Order::CreateSecondaryKey(w_id, d_id, c_id+1, 1, right_key.ptr());
-  Status status = tx.scan(Storage::OrderSecondary, left_key.view(), false, right_key.view(), true, result, 1);
+  Order::CreateSecondaryKey(w_id, d_id, c_id + 1, 1, right_key.ptr());
+  Status status = tx.scan(Storage::OrderSecondary, left_key.view(), false,
+                          right_key.view(), true, result, 1);
   if (status != Status::OK || tx.status_ == TransactionStatus::aborted) {
-    dump(tx.thid_, "cannot get order ID by scanning order-secondary with customer ID");
+    dump(tx.thid_,
+         "cannot get order ID by scanning order-secondary with customer ID");
     return false;
   }
   if (result.size() != 1) ERR;
@@ -65,25 +66,24 @@ bool get_orderline(TxExecutor& tx, uint16_t w_id, uint8_t d_id, uint32_t o_id) {
   std::vector<TupleBody*> result;
   SimpleKey<8> left_key, right_key;
   OrderLine::CreateKey(w_id, d_id, o_id, 1, left_key.ptr());
-  OrderLine::CreateKey(w_id, d_id, o_id+1, 1, right_key.ptr());
+  OrderLine::CreateKey(w_id, d_id, o_id + 1, 1, right_key.ptr());
   // Return value intentionally discarded: the empty-result and aborted
   // checks below cover both Status::OK and Status::WARN_NOT_FOUND.
-  (void)tx.scan(
-      Storage::OrderLine, left_key.view(), false, right_key.view(), true, result);
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  (void) tx.scan(Storage::OrderLine, left_key.view(), false, right_key.view(),
+                 true, result);
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   for (auto& tuple : result) {
-    [[maybe_unused]] const OrderLine& ol = tuple->get_value().cast_to<OrderLine>();
+    [[maybe_unused]] const OrderLine& ol =
+        tuple->get_value().cast_to<OrderLine>();
   }
   return true;
 }
 
-bool get_customer_key_by_last_name(
-  uint16_t w_id, uint8_t d_id, const char* c_last, SimpleKey<8>& c_key);
+bool get_customer_key_by_last_name(uint16_t w_id, uint8_t d_id,
+                                   const char* c_last, SimpleKey<8>& c_key);
 
 template <typename TxExecutor, typename TxStatus, typename Tuple>
-bool run_order_status(TxExecutor& tx, TPCCQuery::OrderStatus *query) {
+bool run_order_status(TxExecutor& tx, TPCCQuery::OrderStatus* query) {
   uint16_t w_id = query->w_id;
   uint8_t d_id = query->d_id;
   uint32_t c_id = query->c_id;
@@ -102,24 +102,21 @@ bool run_order_status(TxExecutor& tx, TPCCQuery::OrderStatus *query) {
   }
 
   // get customer
-  TupleBody *body;
+  TupleBody* body;
   Status stat = tx.read(Storage::Customer, key.view(), &body);
   if (FLAGS_tpcc_interactive_ms) sleepMs(FLAGS_tpcc_interactive_ms);
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   const Customer& cust = body->get_value().cast_to<Customer>();
   c_id = cust.C_ID;
 
   // search order by c_id
-  if (!get_order_key_by_customer_id<TxExecutor,TxStatus,Tuple>(tx, w_id, d_id, c_id, key))
+  if (!get_order_key_by_customer_id<TxExecutor, TxStatus, Tuple>(tx, w_id, d_id,
+                                                                 c_id, key))
     return false;
 
   // get order
   stat = tx.read(Storage::Order, key.view(), &body);
-  if (tx.status_ == TransactionStatus::aborted) {
-    return false;
-  }
+  if (tx.status_ == TransactionStatus::aborted) { return false; }
   // The OrderSecondary→Order indirection can return a primary key whose
   // Order row is absent (the secondary index can be momentarily stale
   // under concurrent writes). tx.read leaves *body unchanged on
@@ -127,13 +124,11 @@ bool run_order_status(TxExecutor& tx, TPCCQuery::OrderStatus *query) {
   // body pointed to from the previous tx.read in this transaction —
   // typically the Customer row, which is a different size and triggers
   // a HeapObject::cast_to assertion.
-  if (stat != Status::OK) {
-    return false;
-  }
+  if (stat != Status::OK) { return false; }
   const Order& o = body->get_value().cast_to<Order>();
 
   // scan orderline
-  if (!get_orderline<TxExecutor,TxStatus>(tx, o.O_W_ID, o.O_D_ID, o.O_ID))
+  if (!get_orderline<TxExecutor, TxStatus>(tx, o.O_W_ID, o.O_D_ID, o.O_ID))
     return false;
 
   return true;

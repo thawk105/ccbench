@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
+#include <sys/syscall.h> // syscall(SYS_gettid),
 #include <sys/time.h>
-#include <sys/types.h>  // syscall(SYS_gettid),
-#include <unistd.h>     // syscall(SYS_gettid),
+#include <sys/types.h> // syscall(SYS_gettid),
+#include <unistd.h>    // syscall(SYS_gettid),
 
 #include <bitset>
 #include <cstdint>
@@ -32,19 +32,17 @@
 void chkArg() {
   displayParameter();
 
-  if (FLAGS_rratio > 100) {
-    ERR;
-  }
+  if (FLAGS_rratio > 100) { ERR; }
 
   if (FLAGS_zipf_skew >= 1) {
     cout << "FLAGS_zipf_skew must be 0 ~ 0.999..." << endl;
     ERR;
   }
 
-  if (posix_memalign((void **)&ThLocalEpoch, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThLocalEpoch, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **)&CTIDW, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &CTIDW, CACHE_LINE_SIZE,
                      FLAGS_thread_num * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
@@ -67,10 +65,10 @@ bool chkEpochLoaded() {
 }
 
 void displayDB() {
-  Tuple *tuple;
+  Tuple* tuple;
   for (unsigned int i = 0; i < FLAGS_tuple_num; ++i) {
     tuple = &Table[i];
-    cout << "------------------------------" << endl;  //-は30個
+    cout << "------------------------------" << endl; //-は30個
     cout << "key: " << i << endl;
     cout << "val: " << tuple->val_ << endl;
     cout << endl;
@@ -89,7 +87,7 @@ void displayParameter() {
   cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
 }
 
-void genLogFile(std::string &logpath, const int thid) {
+void genLogFile(std::string& logpath, const int thid) {
   genLogFileName(logpath, thid);
   createEmptyFile(logpath);
 }
@@ -100,7 +98,7 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 #endif
 
   for (auto i = start; i <= end; ++i) {
-    Tuple *tmp;
+    Tuple* tmp;
     tmp = &Table[i];
     tmp->val_[0] = 'a';
     tmp->val_[1] = '\0';
@@ -112,11 +110,11 @@ void partTableInit([[maybe_unused]] size_t thid, uint64_t start, uint64_t end) {
 }
 
 void makeDB() {
-  if (posix_memalign((void **)&Table, PAGE_SIZE,
+  if (posix_memalign((void**) &Table, PAGE_SIZE,
                      (FLAGS_tuple_num) * sizeof(Tuple)) != 0)
     ERR;
 #if dbs11
-  if (madvise((void *)Table, (FLAGS_tuple_num) * sizeof(Tuple),
+  if (madvise((void*) Table, (FLAGS_tuple_num) * sizeof(Tuple),
               MADV_HUGEPAGE) != 0)
     ERR;
 #endif
@@ -127,7 +125,7 @@ void makeDB() {
   for (size_t i = 0; i < maxthread; ++i)
     thv.emplace_back(partTableInit, i, i * (FLAGS_tuple_num / maxthread),
                      (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 }
 
 void leaderWork() {

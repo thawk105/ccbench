@@ -36,40 +36,40 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   YcsbWorkload workload;
   Backoff backoff(FLAGS_clocks_per_us);
-  TxExecutor trans(thid, backoff, (Result *) &CicadaResult[thid], quit);
+  TxExecutor trans(thid, backoff, (Result*) &CicadaResult[thid], quit);
 
 #ifdef Linux
   setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
-#endif  // Linux
+#endif // Linux
 
 #ifdef Darwin
   int nowcpu;
   GETCPU(nowcpu);
   // printf("Thread %d on CPU %d\n", *myid, nowcpu);
-#endif  // Darwin
+#endif // Darwin
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("YCSB Cicada benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
   YcsbWorkload::displayWorkloadParameter();
   TupleInitParam* param = new TupleInitParam();
-  YcsbWorkload::makeDB<Tuple,TupleInitParam>(param);
+  YcsbWorkload::makeDB<Tuple, TupleInitParam>(param);
   MinWts.store(param->initial_wts + 2, memory_order_release);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
@@ -82,23 +82,19 @@ int main(int argc, char *argv[]) try {
                      std::ref(quit));
   waitForReady(readys);
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     CicadaResult[0].addLocalAllResult(CicadaResult[i]);
   }
   ShowOptParameters();
   CicadaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                   TotalThreadNum,
-                                   FLAGS_max_ope, FLAGS_batch_max_ope);
+                                   TotalThreadNum, FLAGS_max_ope,
+                                   FLAGS_batch_max_ope);
   // TODO: enable this if really necessary
   // deleteDB();
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }

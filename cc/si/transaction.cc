@@ -116,16 +116,17 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   /**
    * Search versions from data structure.
    */
-  Tuple *tuple;
+  Tuple* tuple;
   tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
   ++result_->local_tree_traversal_;
 #endif
   if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
-  Version *ver;
+  Version* ver;
   ver = read_internal(s, key, tuple);
-  if (ver == nullptr || ver->status_.load(memory_order_acquire) == VersionStatus::deleted)
+  if (ver == nullptr ||
+      ver->status_.load(memory_order_acquire) == VersionStatus::deleted)
     return Status::WARN_NOT_FOUND;
 
   /**
@@ -143,19 +144,18 @@ FINISH_READ:
   return Status::OK;
 }
 
-Version* TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
+Version* TxExecutor::read_internal(Storage s, std::string_view key,
+                                   Tuple* tuple) {
   /**
    * Move to the points of this view.
    */
-  Version *ver;
+  Version* ver;
   ver = tuple->latest_.load(memory_order_acquire);
-  while ((ver->status_.load(memory_order_acquire) != VersionStatus::committed
-      && ver->status_.load(memory_order_acquire) != VersionStatus::deleted)
-      || txid_ < ver->cstamp_.load(memory_order_acquire)) {
+  while ((ver->status_.load(memory_order_acquire) != VersionStatus::committed &&
+          ver->status_.load(memory_order_acquire) != VersionStatus::deleted) ||
+         txid_ < ver->cstamp_.load(memory_order_acquire)) {
     ver = ver->prev_;
-    if (ver == nullptr) {
-      return nullptr;
-    }
+    if (ver == nullptr) { return nullptr; }
   }
 
   // SI: just record the version we observed in the snapshot.
@@ -189,8 +189,9 @@ Status TxExecutor::install_version(Tuple* tuple, Version* desired) {
 
     // if latest version is not comitted.
     vertmp = expected;
-    while (vertmp->status_.load(memory_order_acquire) != VersionStatus::committed
-        && vertmp->status_.load(memory_order_acquire) != VersionStatus::deleted)
+    while (vertmp->status_.load(memory_order_acquire) !=
+               VersionStatus::committed &&
+           vertmp->status_.load(memory_order_acquire) != VersionStatus::deleted)
       vertmp = vertmp->prev_;
 
     // vertmp is latest committed version.
@@ -233,7 +234,7 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
   /**
    * avoid false positive.
    */
-  Tuple *tuple;
+  Tuple* tuple;
   tuple = nullptr;
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).storage_ == s && (*itr).key_ == key) {
@@ -264,7 +265,7 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
    * Forbid a transaction to update  a record that has a committed head version
    * later than its begin timestamp.
    */
-  Version *desired;
+  Version* desired;
   desired = new Version();
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();
@@ -279,13 +280,12 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
     ++result_->local_version_reuse_;
 #endif
   }
-  desired->cstamp_.store(this->txid_, memory_order_relaxed);  // read operation, write operation,
+  desired->cstamp_.store(
+      this->txid_, memory_order_relaxed); // read operation, write operation,
   // it is also accessed by garbage collection.
 
   stat = install_version(tuple, desired);
-  if (stat != Status::OK) {
-    goto FINISH_WRITE;
-  }
+  if (stat != Status::OK) { goto FINISH_WRITE; }
 
   // SI: no SSN bookkeeping (sstamp/pstamp updates) — just record the write.
   desired->body_ = std::move(body);
@@ -301,7 +301,7 @@ FINISH_WRITE:
 Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   if (searchWriteSet(s, key)) return Status::WARN_ALREADY_EXISTS;
 
@@ -309,22 +309,21 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   ++result_->local_tree_traversal_;
 #endif
-  if (tuple != nullptr) {
-    return Status::WARN_ALREADY_EXISTS;
-  }
+  if (tuple != nullptr) { return Status::WARN_ALREADY_EXISTS; }
 
   tuple = new Tuple();
   tuple->init(this->txid_, std::move(body));
   Version* ver = tuple->latest_.load(std::memory_order_acquire);
   typename MasstreeWrapper<Tuple>::insert_info_t insert_info;
-  Status stat = Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
+  Status stat =
+      Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
   if (stat == Status::WARN_ALREADY_EXISTS) {
     delete tuple;
     return stat;
   }
   if (insert_info.node) {
     if (!node_map_.empty()) {
-      auto it = node_map_.find((void*)insert_info.node);
+      auto it = node_map_.find((void*) insert_info.node);
       if (it != node_map_.end()) {
         if (unlikely(it->second != insert_info.old_version)) {
           status_ = TransactionStatus::aborted;
@@ -342,22 +341,20 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   return Status::OK;
 }
 
 Status TxExecutor::delete_record(Storage s, std::string_view key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   Status stat = Status::OK;
 
   // cancel previous write
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).storage_ != s) continue;
-    if ((*itr).key_ == key) {
-      write_set_.erase(itr);
-    }
+    if ((*itr).key_ == key) { write_set_.erase(itr); }
   }
 
   Tuple* tuple = nullptr;
@@ -374,11 +371,11 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
     tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
     ++result_->local_tree_traversal_;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
     if (tuple == nullptr) return Status::WARN_NOT_FOUND;
   }
 
-  Version *desired;
+  Version* desired;
   desired = new Version();
   if (gcobject_.reuse_version_from_gc_.empty()) {
     desired = new Version();
@@ -393,14 +390,13 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
     ++result_->local_version_reuse_;
 #endif
   }
-  desired->cstamp_.store(this->txid_, memory_order_relaxed);  // read operation, write operation,
+  desired->cstamp_.store(
+      this->txid_, memory_order_relaxed); // read operation, write operation,
 
   // it is also accessed by garbage collection.
 
   stat = install_version(tuple, desired);
-  if (stat != Status::OK) {
-    goto FINISH_DELETE;
-  }
+  if (stat != Status::OK) { goto FINISH_DELETE; }
 
   // SI: no SSN bookkeeping for deletes either.
   write_set_.emplace_back(s, key, tuple, desired, OpType::DELETE);
@@ -412,28 +408,26 @@ FINISH_DELETE:
   return stat;
 }
 
-Status TxExecutor::scan(const Storage s,
-                        std::string_view left_key, bool l_exclusive,
-                        std::string_view right_key, bool r_exclusive,
-                        std::vector<TupleBody*>& result) {
+Status TxExecutor::scan(const Storage s, std::string_view left_key,
+                        bool l_exclusive, std::string_view right_key,
+                        bool r_exclusive, std::vector<TupleBody*>& result) {
   return scan(s, left_key, l_exclusive, right_key, r_exclusive, result, -1);
 }
 
-Status TxExecutor::scan(const Storage s,
-                        std::string_view left_key, bool l_exclusive,
-                        std::string_view right_key, bool r_exclusive,
-                        std::vector<TupleBody*>& result, int64_t limit) {
+Status TxExecutor::scan(const Storage s, std::string_view left_key,
+                        bool l_exclusive, std::string_view right_key,
+                        bool r_exclusive, std::vector<TupleBody*>& result,
+                        int64_t limit) {
   result.clear();
 
   std::vector<Tuple*> scan_res;
   Masstrees[get_storage(s)].scan(
-            left_key.empty() ? nullptr : left_key.data(), left_key.size(),
-            l_exclusive, right_key.empty() ? nullptr : right_key.data(),
-            right_key.size(), r_exclusive, &scan_res, limit,
-            callback_);
+      left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+      l_exclusive, right_key.empty() ? nullptr : right_key.data(),
+      right_key.size(), r_exclusive, &scan_res, limit, callback_);
 
   std::set<Version*> seen;
-  for (auto &&itr : scan_res) {
+  for (auto&& itr : scan_res) {
     // TODO: Tuple should have key? Accessing key through the latest ver is ugly
     // Must be a copy to avoid buffer overflow when changing the latest
     std::string key(itr->latest_.load(memory_order_acquire)->body_.get_key());
@@ -454,7 +448,8 @@ Status TxExecutor::scan(const Storage s,
     Version* v = read_internal(s, key, itr);
     if (this->status_ == TransactionStatus::aborted)
       return Status::ERROR_PREEMPTIVE_ABORT;
-    if (v == nullptr || v->status_.load(memory_order_acquire) == VersionStatus::deleted)
+    if (v == nullptr ||
+        v->status_.load(memory_order_acquire) == VersionStatus::deleted)
       continue;
     if (seen.find(v) == seen.end()) {
       result.emplace_back(&(v->body_));
@@ -478,7 +473,7 @@ void TxExecutor::si_commit() {
   uint64_t start(rdtscp());
 #endif
   this->status_ = TransactionStatus::committing;
-  TransactionTable *tmt = TMT[thid_];
+  TransactionTable* tmt = TMT[thid_];
   tmt->status_.store(TransactionStatus::committing);
 
   this->cstamp_ = ++Lsn;
@@ -488,7 +483,7 @@ void TxExecutor::si_commit() {
   // for scans require that no concurrent insert/delete have changed the
   // structure of nodes we scanned through.
   for (auto it : node_map_) {
-    auto node = (MasstreeWrapper<Tuple>::node_type *) it.first;
+    auto node = (MasstreeWrapper<Tuple>::node_type*) it.first;
     if (node->full_version_value() != it.second) {
       status_ = TransactionStatus::aborted;
       tmt->status_.store(TransactionStatus::aborted, memory_order_release);
@@ -520,10 +515,12 @@ void TxExecutor::si_commit() {
       (*itr).ver_->status_.store(VersionStatus::deleted, memory_order_release);
       gcobject_.gcq_for_record_.push_back((*itr).rcdptr_);
     } else {
-      (*itr).ver_->status_.store(VersionStatus::committed, memory_order_release);
+      (*itr).ver_->status_.store(VersionStatus::committed,
+                                 memory_order_release);
     }
     gcobject_.gcq_for_version_.emplace_back(
-            GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_, (*itr).ver_, this->cstamp_));
+        GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_, (*itr).ver_,
+                  this->cstamp_));
   }
   // After pushing this commit's GCElements, expose the (possibly new)
   // queue front cstamp so other threads' gcRecord can advance safely.
@@ -624,8 +621,7 @@ void TxExecutor::mainte() {
 
 bool TxExecutor::commit() {
   si_commit();
-  if (status_ == TransactionStatus::aborted)
-    return false;
+  if (status_ == TransactionStatus::aborted) return false;
 
   /**
    * Maintenance phase
@@ -634,9 +630,7 @@ bool TxExecutor::commit() {
   return true;
 }
 
-bool TxExecutor::isLeader() {
-  return this->thid_ == 0;
-}
+bool TxExecutor::isLeader() { return this->thid_ == 0; }
 
 void TxExecutor::leaderWork() {
   if (gcob.chkSecondRange()) {
@@ -648,9 +642,7 @@ void TxExecutor::leaderWork() {
 #endif
 }
 
-void TxExecutor::reconnoiter_begin() {
-  reconnoitering_ = true;
-}
+void TxExecutor::reconnoiter_begin() { reconnoitering_ = true; }
 
 void TxExecutor::reconnoiter_end() {
   read_set_.clear();
@@ -659,10 +651,11 @@ void TxExecutor::reconnoiter_end() {
   begin();
 }
 
-void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type *n, uint64_t version) {
-  auto it = tx_->node_map_.find((void*)n);
+void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type* n,
+                                  uint64_t version) {
+  auto it = tx_->node_map_.find((void*) n);
   if (it == tx_->node_map_.end()) {
-    tx_->node_map_.emplace_hint(it, (void*)n, version);
+    tx_->node_map_.emplace_hint(it, (void*) n, version);
   } else if ((*it).second != version) {
     tx_->status_ = TransactionStatus::aborted;
   }

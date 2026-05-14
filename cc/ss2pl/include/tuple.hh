@@ -11,13 +11,14 @@
 using namespace std;
 
 class Tuple {
-  public:
+public:
   alignas(CACHE_LINE_SIZE) ReaderWriteLock lock_;
   TupleBody body_;
 
   Tuple() {}
 
-  void init([[maybe_unused]] size_t thid, TupleBody&& body, [[maybe_unused]] void* p) {
+  void init([[maybe_unused]] size_t thid, TupleBody&& body,
+            [[maybe_unused]] void* p) {
     body_ = std::move(body);
   }
 

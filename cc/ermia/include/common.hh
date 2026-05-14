@@ -30,13 +30,17 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 
 #ifdef GLOBAL_VALUE_DEFINE
-DEFINE_uint64(clocks_per_us, 2100, "CPU_MHz. Use this info for measuring time.");
+DEFINE_uint64(clocks_per_us, 2100,
+              "CPU_MHz. Use this info for measuring time.");
 DEFINE_uint64(extime, 3, "Execution time[sec].");
 DEFINE_uint64(gc_inter_us, 10, "GC interval[us].");
 DEFINE_uint64(max_ope, 10,
               "Total number of operations per single transaction.");
-DEFINE_uint64(pre_reserve_tmt_element, 100, "Pre-allocating memory for the transaction mapping table elements.");
-DEFINE_uint64(pre_reserve_version, 10000, "Pre-allocating memory for the version.");
+DEFINE_uint64(
+    pre_reserve_tmt_element, 100,
+    "Pre-allocating memory for the transaction mapping table elements.");
+DEFINE_uint64(pre_reserve_version, 10000,
+              "Pre-allocating memory for the version.");
 DEFINE_bool(rmw, false,
             "True means read modify write, false means blind write.");
 DEFINE_uint64(rratio, 50, "read ratio of single transaction.");
@@ -51,8 +55,10 @@ DEFINE_uint64(batch_ratio, 0, "ratio of batch transaction.");
 DEFINE_uint64(batch_max_ope, 1000,
               "Total number of operations per single batch transaction.");
 DEFINE_uint64(batch_rratio, 100, "read ratio of single batch transaction.");
-DEFINE_uint64(batch_tuples, 0, "Number of update-only records for batch transaction.");
-DEFINE_bool(batch_simple_rr, false, "No one touches update-only records of batch transaction.");
+DEFINE_uint64(batch_tuples, 0,
+              "Number of update-only records for batch transaction.");
+DEFINE_bool(batch_simple_rr, false,
+            "No one touches update-only records of batch transaction.");
 #else
 DECLARE_uint64(clocks_per_us);
 DECLARE_uint64(extime);
@@ -77,13 +83,13 @@ DECLARE_bool(batch_simple_rr);
 
 GLOBAL uint64_t TotalThreadNum;
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple* Table;
 alignas(CACHE_LINE_SIZE) GLOBAL
-TransactionTable **TMT;  // Transaction Mapping Table
+    TransactionTable** TMT; // Transaction Mapping Table
 
 // See si/include/common.hh for the rationale; same EBR-style guard
 // that prevents gcRecord from freeing a Tuple while another thread
 // still has it in its per-thread gcq_for_version_.
-alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint32_t> *MinQueuedCstamp;
+alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint32_t>* MinQueuedCstamp;
 
 GLOBAL std::mutex SsnLock;

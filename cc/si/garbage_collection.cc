@@ -14,7 +14,7 @@ using std::cout, std::endl;
 
 // start, for leader thread.
 bool GarbageCollection::chkSecondRange() {
-  TransactionTable *tmt;
+  TransactionTable* tmt;
 
   smin_ = UINT32_MAX;
   smax_ = 0;
@@ -35,7 +35,7 @@ bool GarbageCollection::chkSecondRange() {
 }
 
 void GarbageCollection::decideFirstRange() {
-  TransactionTable *tmt;
+  TransactionTable* tmt;
 
   fmin_ = fmax_ = 0;
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
@@ -50,7 +50,7 @@ void GarbageCollection::decideFirstRange() {
 // end, for leader thread.
 
 // for worker thread
-void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
+void GarbageCollection::gcVersion([[maybe_unused]] Result* eres_) {
   uint32_t threshold = getGcThreshold();
 
   // my customized Rapid garbage collection inspired from Cicada (sigmod 2017).
@@ -60,7 +60,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     // (a) acquiring the garbage collection lock succeeds
     uint8_t zero = 0;
     uint8_t one = 1;
-    Tuple *tuple = gcq_for_version_.front().rcdptr_;
+    Tuple* tuple = gcq_for_version_.front().rcdptr_;
     if (!tuple->gc_lock_.compare_exchange_strong(
             zero, one, std::memory_order_acq_rel, std::memory_order_acquire)) {
       // fail acquiring the lock
@@ -79,7 +79,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
     }
     // this pointer may be dangling.
 
-    Version *delTarget = gcq_for_version_.front().ver_->prev_;
+    Version* delTarget = gcq_for_version_.front().ver_->prev_;
     if (delTarget == nullptr) {
       tuple->gc_lock_.store(0, std::memory_order_release);
       gcq_for_version_.pop_front();
@@ -94,7 +94,7 @@ void GarbageCollection::gcVersion([[maybe_unused]] Result *eres_) {
 
     while (delTarget != nullptr) {
       // next pointer escape
-      Version *tmp = delTarget->prev_;
+      Version* tmp = delTarget->prev_;
       reuse_version_from_gc_.emplace_back(delTarget);
       delTarget = tmp;
 #if ADD_ANALYSIS
@@ -143,12 +143,12 @@ void GarbageCollection::gcRecord() {
   return;
 }
 
-void GarbageCollection::gcTMTelement([[maybe_unused]] Result *eres_) {
+void GarbageCollection::gcTMTelement([[maybe_unused]] Result* eres_) {
   uint32_t threshold = getGcThreshold();
   if (gcq_for_TMT_.empty()) return;
 
   for (;;) {
-    TransactionTable *tmt = gcq_for_TMT_.front();
+    TransactionTable* tmt = gcq_for_TMT_.front();
     if (tmt->txid_ < threshold) {
       gcq_for_TMT_.pop_front();
       reuse_TMT_element_from_gc_.emplace_back(tmt);

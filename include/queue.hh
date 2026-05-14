@@ -7,7 +7,7 @@
 #include "lock.hh"
 #include "util.hh"
 
-template<typename T>
+template <typename T>
 class ConcurrentQueue : std::queue<T> {
   typedef std::queue<T> super;
   alignas(CACHE_LINE_SIZE) RWLock lock_;
@@ -33,7 +33,5 @@ public:
     return element;
   }
 
-  size_t size() {
-    return super::size();
-  }
+  size_t size() { return super::size(); }
 };

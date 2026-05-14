@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>  // syscall(SYS_gettid),
+#include <sys/types.h> // syscall(SYS_gettid),
 #include <atomic>
 #include <bitset>
 #include <iostream>
@@ -35,33 +35,33 @@ void chkArg() {
     exit(0);
   }
 
-  if (posix_memalign((void **) &ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThreadRtsArrayForGroup, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &ThreadWtsArray, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThreadWtsArray, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &ThreadRtsArray, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &ThreadRtsArray, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GROUP_COMMIT_INDEX, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GROUP_COMMIT_COUNTER, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GCFlag, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GCFlag, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
-  if (posix_memalign((void **) &GCExecuteFlag, CACHE_LINE_SIZE,
+  if (posix_memalign((void**) &GCExecuteFlag, CACHE_LINE_SIZE,
                      TotalThreadNum * sizeof(uint64_t_64byte)) != 0)
     ERR;
 
-  SLogSet = new Version *[(FLAGS_max_ope) * (FLAGS_group_commit)];
-  PLogSet = new Version **[TotalThreadNum];
+  SLogSet = new Version*[(FLAGS_max_ope) * (FLAGS_group_commit)];
+  PLogSet = new Version**[TotalThreadNum];
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    PLogSet[i] = new Version *[(FLAGS_max_ope) * (FLAGS_group_commit)];
+    PLogSet[i] = new Version*[(FLAGS_max_ope) * (FLAGS_group_commit)];
   }
 
   // init
@@ -133,14 +133,17 @@ void displayParameter() {
   cout << "#FLAGS_extime:\t\t\t\t" << FLAGS_extime << endl;
   cout << "#FLAGS_gc_inter_us:\t\t\t" << FLAGS_gc_inter_us << endl;
   cout << "#FLAGS_group_commit:\t\t\t" << FLAGS_group_commit << endl;
-  cout << "#FLAGS_group_commit_timeout_us:\t\t" << FLAGS_group_commit_timeout_us << endl;
+  cout << "#FLAGS_group_commit_timeout_us:\t\t" << FLAGS_group_commit_timeout_us
+       << endl;
   cout << "#FLAGS_io_time_ns:\t\t\t" << FLAGS_io_time_ns << endl;
-  cout << "#FLAGS_pre_reserve_version:\t\t" << FLAGS_pre_reserve_version << endl;
+  cout << "#FLAGS_pre_reserve_version:\t\t" << FLAGS_pre_reserve_version
+       << endl;
   cout << "#FLAGS_p_wal:\t\t\t\t" << FLAGS_p_wal << endl;
   cout << "#FLAGS_s_wal:\t\t\t\t" << FLAGS_s_wal << endl;
   cout << "#FLAGS_thread_num:\t\t\t" << FLAGS_thread_num << endl;
   cout << "#FLAGS_ycsb:\t\t\t\t" << FLAGS_ycsb << endl;
-  cout << "#FLAGS_worker1_insert_delay_rphase_us:\t" << FLAGS_worker1_insert_delay_rphase_us << endl;
+  cout << "#FLAGS_worker1_insert_delay_rphase_us:\t"
+       << FLAGS_worker1_insert_delay_rphase_us << endl;
   if (FLAGS_batch_th_num > 0 || FLAGS_batch_ratio > 0) {
     cout << "#FLAGS_batch_th_num:\t\t\t" << FLAGS_batch_th_num << endl;
     cout << "#FLAGS_batch_ratio:\t\t\t" << FLAGS_batch_ratio << endl;
@@ -216,9 +219,9 @@ void displayThreadRtsArray() {
 void partTableDelete([[maybe_unused]] size_t thid, uint64_t start,
                      uint64_t end) {
   for (uint64_t i = start; i <= end; ++i) {
-    Tuple *tuple;
+    Tuple* tuple;
     tuple = TxExecutor::get_tuple(Table, i);
-    Version *ver = tuple->latest_;
+    Version* ver = tuple->latest_;
     while (ver != nullptr) {
 #if INLINE_VERSION_OPT
       if (ver == &tuple->inline_ver_) {
@@ -226,7 +229,7 @@ void partTableDelete([[maybe_unused]] size_t thid, uint64_t start,
         continue;
       }
 #endif
-      Version *del = ver;
+      Version* del = ver;
       ver = ver->next_.load(memory_order_acquire);
       delete del;
     }
@@ -239,7 +242,7 @@ void deleteDB() {
   for (size_t i = 0; i < maxthread; ++i)
     thv.emplace_back(partTableDelete, i, i * (FLAGS_tuple_num / maxthread),
                      (i + 1) * (FLAGS_tuple_num / maxthread) - 1);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
 
   delete Table;
   delete ThreadRtsArrayForGroup;
@@ -286,18 +289,18 @@ void cicadaLeaderWork() {
   }
   if (gc_update) {
     uint64_t minw =
-            __atomic_load_n(&(ThreadWtsArray[0].obj_), __ATOMIC_ACQUIRE);
+        __atomic_load_n(&(ThreadWtsArray[0].obj_), __ATOMIC_ACQUIRE);
     uint64_t minr;
     if (FLAGS_group_commit == 0) {
       minr = __atomic_load_n(&(ThreadRtsArray[0].obj_), __ATOMIC_ACQUIRE);
     } else {
       minr =
-              __atomic_load_n(&(ThreadRtsArrayForGroup[0].obj_), __ATOMIC_ACQUIRE);
+          __atomic_load_n(&(ThreadRtsArrayForGroup[0].obj_), __ATOMIC_ACQUIRE);
     }
 
     for (unsigned int i = 1; i < TotalThreadNum; ++i) {
       uint64_t tmp =
-              __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
+          __atomic_load_n(&(ThreadWtsArray[i].obj_), __ATOMIC_ACQUIRE);
       if (minw > tmp) minw = tmp;
       if (FLAGS_group_commit == 0) {
         tmp = __atomic_load_n(&(ThreadRtsArray[i].obj_), __ATOMIC_ACQUIRE);

@@ -46,7 +46,7 @@ public:
   /* lock_num_ ...
    * the number of locks in local write set.
    */
-  Result *result_;
+  Result* result_;
   uint64_t epoch_timer_start, epoch_timer_stop;
   Backoff backoff_;
   const bool& quit_; // for thread termination control
@@ -65,9 +65,9 @@ public:
   // // used by fast approach for benchmark
   // char return_val_[VAL_SIZE];
 
-  TxExecutor(int thid, Result *res, const bool &quit)
-    : thid_(thid), result_(res), backoff_(FLAGS_clocks_per_us), quit_(quit),
-      callback_(TxScanCallback(this)) {
+  TxExecutor(int thid, Result* res, const bool& quit)
+      : thid_(thid), result_(res), backoff_(FLAGS_clocks_per_us), quit_(quit),
+        callback_(TxScanCallback(this)) {
     // latest_log_header_.init();
     max_rset_.obj_ = 0;
     max_wset_.obj_ = 0;
@@ -89,7 +89,7 @@ public:
 
   void displayWriteSet();
 
-  Tuple *get_tuple(Tuple *table, std::uint64_t key) { return &table[key]; }
+  Tuple* get_tuple(Tuple* table, std::uint64_t key) { return &table[key]; }
 
   Status insert(Storage s, std::string_view key, TupleBody&& body);
 
@@ -105,15 +105,13 @@ public:
 
   Status read_internal(Storage s, std::string_view key, Tuple* tuple);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result);
+              std::vector<TupleBody*>& result);
 
-  Status scan(Storage s,
-              std::string_view left_key, bool l_exclusive,
+  Status scan(Storage s, std::string_view left_key, bool l_exclusive,
               std::string_view right_key, bool r_exclusive,
-              std::vector<TupleBody *>&result, int64_t limit);
+              std::vector<TupleBody*>& result, int64_t limit);
 
   /**
    * @brief Search xxx set
@@ -124,7 +122,7 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  ReadElement<Tuple> *searchReadSet(Storage s, std::string_view key);
+  ReadElement<Tuple>* searchReadSet(Storage s, std::string_view key);
 
   /**
    * @brief Search xxx set
@@ -135,7 +133,7 @@ public:
    * @param Key [in] the key of key-value
    * @return Corresponding element of local set
    */
-  WriteElement<Tuple> *searchWriteSet(Storage s, std::string_view key);
+  WriteElement<Tuple>* searchWriteSet(Storage s, std::string_view key);
 
   void unlockWriteSet();
 
@@ -155,8 +153,8 @@ public:
 
   bool commit();
 
-  void reconnoiter_begin(); 
-  void reconnoiter_end(); 
+  void reconnoiter_begin();
+  void reconnoiter_end();
 
   bool isLeader();
 

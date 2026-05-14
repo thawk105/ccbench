@@ -1,12 +1,12 @@
-#include <ctype.h>  // isdigit,
+#include <ctype.h> // isdigit,
 #include <pthread.h>
-#include <string.h>       // strlen,
-#include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/types.h>    // syscall(SYS_gettid),
+#include <string.h>      // strlen,
+#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/types.h>   // syscall(SYS_gettid),
 #include <time.h>
-#include <unistd.h>  // syscall(SYS_gettid),
+#include <unistd.h> // syscall(SYS_gettid),
 #include <iostream>
-#include <string>  // string
+#include <string> // string
 
 #define GLOBAL_VALUE_DEFINE
 
@@ -30,10 +30,10 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
-  Result &myres = std::ref(MoccResult[thid]);
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
+  Result& myres = std::ref(MoccResult[thid]);
   TxExecutor trans(thid, &myres, quit);
-  StaticBombWorkload<Tuple,void> workload;
+  StaticBombWorkload<Tuple, void> workload;
   workload.prepare(trans, nullptr);
 
 #if MASSTREE_USE
@@ -42,24 +42,24 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
 
 #ifdef Linux
   setThreadAffinity(thid);
-#endif  // Linux
+#endif // Linux
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) trans.epoch_timer_start = rdtscp();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("BOMB MOCC benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
-  StaticBombWorkload<Tuple,void>::displayWorkloadParameter();
-  StaticBombWorkload<Tuple,void>::makeDB(nullptr);
+  StaticBombWorkload<Tuple, void>::displayWorkloadParameter();
+  StaticBombWorkload<Tuple, void>::makeDB(nullptr);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -72,15 +72,13 @@ int main(int argc, char *argv[]) try {
   waitForReady(readys);
   uint64_t start_tsc = rdtscp();
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
   uint64_t end_tsc = rdtscp();
-  long double actual_extime = round(
-    (end_tsc-start_tsc) /
-    ((long double)FLAGS_clocks_per_us * powl(10.0, 6.0)));
+  long double actual_extime =
+      round((end_tsc - start_tsc) /
+            ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     MoccResult[0].addLocalAllResult(MoccResult[i]);
@@ -88,11 +86,10 @@ int main(int argc, char *argv[]) try {
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  MoccResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
+  MoccResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                 TotalThreadNum);
   std::cout << "Details per transaction type:" << std::endl;
   MoccResult[0].displayPerTxResult(TxTypes);
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }

@@ -36,35 +36,35 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   YcsbWorkload workload;
   Backoff backoff(FLAGS_clocks_per_us);
-  TxExecutor trans(thid, backoff, (Result *) &OzeResult[thid], quit);
+  TxExecutor trans(thid, backoff, (Result*) &OzeResult[thid], quit);
 
 #ifdef Linux
   setThreadAffinity(thid);
   // printf("Thread #%d: on CPU %d\n", *myid, sched_getcpu());
   // printf("sysconf(_SC_NPROCESSORS_CONF) %d\n",
   // sysconf(_SC_NPROCESSORS_CONF));
-#endif  // Linux
+#endif // Linux
 
 #ifdef Darwin
   int nowcpu;
   GETCPU(nowcpu);
   // printf("Thread %d on CPU %d\n", *myid, nowcpu);
-#endif  // Darwin
+#endif // Darwin
 
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   if (thid == 0) trans.epoch_timer_start_ = rdtscp();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) try {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   init(YcsbWorkload::getTableNum());
   YcsbWorkload::displayWorkloadParameter();
-  YcsbWorkload::makeDB<Tuple,void>(nullptr);
+  YcsbWorkload::makeDB<Tuple, void>(nullptr);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
@@ -85,24 +85,21 @@ int main(int argc, char *argv[]) try {
   waitForReady(readys);
   uint64_t start_tsc = rdtscp();
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
   uint64_t end_tsc = rdtscp();
-  long double actual_extime = round(
-    (end_tsc-start_tsc) /
-    ((long double)FLAGS_clocks_per_us * powl(10.0, 6.0)));
+  long double actual_extime =
+      round((end_tsc - start_tsc) /
+            ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     OzeResult[0].addLocalAllResult(OzeResult[i]);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
+  OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                TotalThreadNum);
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }
