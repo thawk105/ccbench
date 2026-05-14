@@ -30,7 +30,7 @@ vector<WriteSet> ws_list;
 uint64_t deletedTxId = -1;
 vector<int> progress;
 
-TxnExecutor::TxnExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
+TxnExecutor::TxnExecutor(int thid, Result* sres) : thid_(thid), sres_(sres) {
   read_set_.reserve(FLAGS_max_ope);
   write_set_.reserve(FLAGS_max_ope);
   pro_set_.reserve(FLAGS_max_ope);
@@ -38,7 +38,7 @@ TxnExecutor::TxnExecutor(int thid, Result *sres) : thid_(thid), sres_(sres) {
   genStringRepeatedNumber(write_val_, VAL_SIZE, thid);
 }
 
-ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
+ReadElement<Tuple>* TxnExecutor::searchReadSet(uint64_t key) {
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
@@ -46,7 +46,7 @@ ReadElement<Tuple> *TxnExecutor::searchReadSet(uint64_t key) {
   return nullptr;
 }
 
-WriteElement<Tuple> *TxnExecutor::searchWriteSet(uint64_t key) {
+WriteElement<Tuple>* TxnExecutor::searchWriteSet(uint64_t key) {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).key_ == key) return &(*itr);
   }
@@ -54,14 +54,12 @@ WriteElement<Tuple> *TxnExecutor::searchWriteSet(uint64_t key) {
   return nullptr;
 }
 
-void TxnExecutor::begin() {
-  startTxId = loadAcquire(txId);
-}
+void TxnExecutor::begin() { startTxId = loadAcquire(txId); }
 
 void TxnExecutor::read(uint64_t key) {
   if (searchReadSet(key) || searchWriteSet(key)) goto FINISH_READ;
 
-  Tuple *tuple;
+  Tuple* tuple;
 #if MASSTREE_USE
   tuple = MT.get_value(key);
 #else
@@ -76,8 +74,8 @@ FINISH_READ:
 void TxnExecutor::write(uint64_t key) {
   if (searchWriteSet(key)) goto FINISH_WRITE;
 
-  Tuple *tuple;
-  ReadElement<Tuple> *re;
+  Tuple* tuple;
+  ReadElement<Tuple>* re;
   re = searchReadSet(key);
   if (re) {
     tuple = re->rcdptr_;
@@ -100,9 +98,7 @@ bool TxnExecutor::validationPhase() {
   for (int i = begin; i < end; i++) {
     for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
       for (auto wItr = ws_list[i].begin(); wItr != ws_list[i].end(); ++wItr) {
-        if ((*rItr).key_ == (*wItr).key_) {
-          return false;
-        }
+        if ((*rItr).key_ == (*wItr).key_) { return false; }
       }
     }
   }
@@ -150,12 +146,12 @@ void TxnExecutor::wal(uint64_t ctid) {
     latest_log_header_.convertChkSumIntoComplementOnTwo();
 
     // write header
-    logfile_.write((void *)&latest_log_header_, sizeof(LogHeader));
+    logfile_.write((void*) &latest_log_header_, sizeof(LogHeader));
 
     // write log record
     // for (auto itr = log_set_.begin(); itr != log_set_.end(); ++itr)
     //  logfile_.write((void *)&(*itr), sizeof(LogRecord));
-    logfile_.write((void *)&(log_set_[0]),
+    logfile_.write((void*) &(log_set_[0]),
                    sizeof(LogRecord) * latest_log_header_.logRecNum_);
 
     // logfile_.fdatasync();

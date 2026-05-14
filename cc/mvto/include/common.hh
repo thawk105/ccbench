@@ -29,21 +29,25 @@ alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinRts;
 alignas(CACHE_LINE_SIZE) GLOBAL std::atomic<uint64_t> MinWts;
 alignas(
-CACHE_LINE_SIZE) GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
+    CACHE_LINE_SIZE) GLOBAL std::atomic<unsigned int> FirstAllocateTimestamp;
 #if MASSTREE_USE
 alignas(CACHE_LINE_SIZE) GLOBAL MasstreeWrapper<Tuple> MT;
 #endif
 #endif
 
 #ifdef GLOBAL_VALUE_DEFINE
-DEFINE_uint64(clocks_per_us, 2100, "CPU_MHz. Use this info for measuring time.");
+DEFINE_uint64(clocks_per_us, 2100,
+              "CPU_MHz. Use this info for measuring time.");
 DEFINE_uint64(extime, 3, "Execution time[sec].");
 DEFINE_uint64(gc_inter_us, 10, "GC interval[us].");
 DEFINE_uint64(group_commit, 0, "Group commit number of transactions.");
-DEFINE_uint64(group_commit_timeout_us, 2, "Timeout used for deadlock resolution when performing group commit[us].");
+DEFINE_uint64(
+    group_commit_timeout_us, 2,
+    "Timeout used for deadlock resolution when performing group commit[us].");
 DEFINE_uint64(io_time_ns, 5, "Delay inserted instead of IO.");
 DEFINE_uint64(thread_num, 10, "Total number of worker threads.");
-DEFINE_bool(preserve_write, false, "Install pending version in write operation");
+DEFINE_bool(preserve_write, false,
+            "Install pending version in write operation");
 #else
 DECLARE_uint64(clocks_per_us);
 DECLARE_uint64(extime);
@@ -55,25 +59,25 @@ DECLARE_bool(preserve_write);
 
 GLOBAL uint64_t TotalThreadNum;
 
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThreadWtsArray;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *ThreadRtsArray;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte
-        *ThreadRtsArrayForGroup;  // グループコミットをする時，これが必要である．
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* ThreadWtsArray;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* ThreadRtsArray;
+alignas(CACHE_LINE_SIZE) GLOBAL
+    uint64_t_64byte* ThreadRtsArrayForGroup; // グループコミットをする時，これが必要である．
 
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *GROUP_COMMIT_INDEX;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte
-        *GROUP_COMMIT_COUNTER;  // s-walの時は[0]のみ使用。全スレッドで共有。
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* GROUP_COMMIT_INDEX;
+alignas(CACHE_LINE_SIZE) GLOBAL
+    uint64_t_64byte* GROUP_COMMIT_COUNTER; // s-walの時は[0]のみ使用。全スレッドで共有。
 
 alignas(
-CACHE_LINE_SIZE) GLOBAL Version ***PLogSet;  // [thID][index] pointer array
-alignas(CACHE_LINE_SIZE) GLOBAL Version **SLogSet;  // [index] pointer array
+    CACHE_LINE_SIZE) GLOBAL Version*** PLogSet; // [thID][index] pointer array
+alignas(CACHE_LINE_SIZE) GLOBAL Version** SLogSet; // [index] pointer array
 GLOBAL RWLock SwalLock;
 GLOBAL RWLock CtrLock;
 
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *GCFlag;
-alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte *GCExecuteFlag;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* GCFlag;
+alignas(CACHE_LINE_SIZE) GLOBAL uint64_t_64byte* GCExecuteFlag;
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple* Table;
 alignas(CACHE_LINE_SIZE) GLOBAL uint64_t InitialWts;
 
 #define SPIN_WAIT_TIMEOUT_US 2

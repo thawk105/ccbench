@@ -34,12 +34,10 @@ public:
   // goes through a void* because LogRecord is non-trivial (it holds a
   // std::string_view) — clearing it as raw bytes is intentional here and
   // -Wclass-memaccess would otherwise flag the typed pointer.
-  LogRecord() {
-    memset(static_cast<void *>(this), 0, sizeof(LogRecord));
-  }
+  LogRecord() { memset(static_cast<void*>(this), 0, sizeof(LogRecord)); }
 
-  LogRecord(uint64_t tid, std::string_view key, char *val) {
-    memset(static_cast<void *>(this), 0, sizeof(LogRecord));
+  LogRecord(uint64_t tid, std::string_view key, char* val) {
+    memset(static_cast<void*>(this), 0, sizeof(LogRecord));
     tid_ = tid;
     key_ = key;
     memcpy(this->val_, val, VAL_SIZE);
@@ -48,7 +46,7 @@ public:
   int computeChkSum() {
     // compute checksum
     int chkSum = 0;
-    int *itr = (int *) this;
+    int* itr = (int*) this;
     for (unsigned int i = 0; i < sizeof(LogRecord) / sizeof(int); ++i) {
       chkSum += (*itr);
       ++itr;

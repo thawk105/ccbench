@@ -18,8 +18,7 @@ struct Xoroshiro128PlusWrapper : Xoroshiro128Plus {
 /**
  * All thread can use 64bit random number generator.
  */
-inline std::uint64_t random_64bits()
-{
+inline std::uint64_t random_64bits() {
   thread_local Xoroshiro128PlusWrapper rand;
   return rand();
 }
@@ -28,8 +27,7 @@ inline std::uint64_t random_64bits()
 /**
  * returned value is in [min, max]. (both-side inclusive)
  */
-inline std::uint64_t random_int(std::uint64_t min, std::uint64_t max)
-{
+inline std::uint64_t random_int(std::uint64_t min, std::uint64_t max) {
   assert(min <= max);
   assert(max < UINT64_MAX);
 
@@ -37,14 +35,13 @@ inline std::uint64_t random_int(std::uint64_t min, std::uint64_t max)
 }
 
 
-inline double random_double(std::uint64_t min, std::uint64_t max, std::size_t divider)
-{
-  return random_int(min, max) / (double)divider;
+inline double random_double(std::uint64_t min, std::uint64_t max,
+                            std::size_t divider) {
+  return random_int(min, max) / (double) divider;
 }
 
 
-inline void fill_random(void* out, size_t size)
-{
+inline void fill_random(void* out, size_t size) {
   char* p = reinterpret_cast<char*>(out);
 
   // The word-at-a-time loop only runs while `size >= 8`, so each 8-byte
@@ -76,7 +73,8 @@ inline void fill_random(void* out, size_t size)
 }
 
 
-constexpr std::uint64_t get_constant_for_non_uniform_random(std::uint64_t A, bool is_load) {
+constexpr std::uint64_t get_constant_for_non_uniform_random(std::uint64_t A,
+                                                            bool is_load) {
   /*
    * From section 2.1.6 of TPC-C specifiation v5.11.0:
    *
@@ -121,12 +119,10 @@ constexpr std::uint64_t get_constant_for_non_uniform_random(std::uint64_t A, boo
 }
 
 
-template<std::uint64_t A, bool IS_LOAD = false>
+template <std::uint64_t A, bool IS_LOAD = false>
 std::uint64_t non_uniform_random(std::uint64_t x, std::uint64_t y) {
   constexpr std::uint64_t C = get_constant_for_non_uniform_random(A, IS_LOAD);
-  if (C == UINT64_MAX) {
-    throw std::runtime_error("non_uniform_random() bug");
-  }
+  if (C == UINT64_MAX) { throw std::runtime_error("non_uniform_random() bug"); }
   return (((random_int(0, A) | random_int(x, y)) + C) % (y - x + 1)) + x;
 }
 
@@ -136,9 +132,11 @@ std::uint64_t non_uniform_random(std::uint64_t x, std::uint64_t y) {
  * out buffer will be null-terminated.
  * returned value is length of the string excluding the last null-value.
  */
-template<bool is_number_only>
-std::size_t random_string_detail(std::size_t min_len, std::size_t max_len, char *out) {
-  const char c[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+template <bool is_number_only>
+std::size_t random_string_detail(std::size_t min_len, std::size_t max_len,
+                                 char* out) {
+  const char c[] =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const std::size_t max_idx = is_number_only ? 9 : (sizeof(c) - 1);
 
   std::size_t len = random_int(min_len, max_len);
@@ -148,19 +146,19 @@ std::size_t random_string_detail(std::size_t min_len, std::size_t max_len, char 
   }
 #else
   fill_random(out, len);
-  for (size_t i = 0; i < len; i++) {
-    out[i] = c[out[i] % max_idx];
-  }
+  for (size_t i = 0; i < len; i++) { out[i] = c[out[i] % max_idx]; }
 #endif
   out[len] = '\0';
   return len;
 }
 
-inline std::size_t random_alpha_string(std::size_t min_len, std::size_t max_len, char *out) {
+inline std::size_t random_alpha_string(std::size_t min_len, std::size_t max_len,
+                                       char* out) {
   return random_string_detail<false>(min_len, max_len, out);
 }
 
-inline std::size_t random_number_string(std::size_t min_len, std::size_t max_len, char *out) {
+inline std::size_t random_number_string(std::size_t min_len,
+                                        std::size_t max_len, char* out) {
   return random_string_detail<true>(min_len, max_len, out);
 }
 
@@ -170,7 +168,7 @@ inline std::size_t random_number_string(std::size_t min_len, std::size_t max_len
  *
  * See section 4.3.2.7 of TPC-C specification v5.11.0.
  */
-inline void random_zip_code(char *out) {
+inline void random_zip_code(char* out) {
   random_number_string(4, 4, &out[0]);
   out[4] = '1';
   out[5] = '1';
@@ -181,7 +179,8 @@ inline void random_zip_code(char *out) {
 }
 
 
-inline void make_address(char *str1, char *str2, char *city, char *state, char *zip) {
+inline void make_address(char* str1, char* str2, char* city, char* state,
+                         char* zip) {
   random_alpha_string(10, 20, str1); // street 1.
   random_alpha_string(10, 20, str2); // street 2.
   random_alpha_string(10, 20, city);
@@ -195,8 +194,9 @@ inline void make_address(char *str1, char *str2, char *city, char *state, char *
  * out buffer size must 15 + 1 or more.
  * returned value is the length of the c_last name excluding the last null character.
  */
-inline std::size_t make_c_last(std::size_t num, char *out) {
-  const char *chunk[] = {"BAR", "OUGHT", "ABLE", "PRI", "PRES", "ESE", "ANTI", "CALLY", "ATION", "EING"};
+inline std::size_t make_c_last(std::size_t num, char* out) {
+  const char* chunk[] = {"BAR", "OUGHT", "ABLE",  "PRI",   "PRES",
+                         "ESE", "ANTI",  "CALLY", "ATION", "EING"};
   assert(num < 1000);
 
   constexpr std::size_t buf_size = 16;
@@ -220,14 +220,12 @@ private:
 
 public:
   IsOriginal(std::size_t nr_total, std::size_t nr_original)
-          : bitvec_(nr_total), nr_total_(nr_total) {
+      : bitvec_(nr_total), nr_total_(nr_total) {
     assert(nr_total > nr_original);
     // CAUSION: nr_original is too large. the following code will be very very slow.
     for (std::size_t i = 0; i < nr_original; i++) {
       std::size_t id;
-      do {
-        id = random_int(0, nr_total - 1);
-      } while (bitvec_[id]);
+      do { id = random_int(0, nr_total - 1); } while (bitvec_[id]);
       bitvec_[id] = true;
     }
   }
@@ -239,13 +237,11 @@ public:
 };
 
 
-inline void make_original(char *target, std::size_t len) {
+inline void make_original(char* target, std::size_t len) {
   assert(len >= 8);
   const char orig[] = "ORIGINAL";
   std::size_t pos = random_int(0, len - 8);
-  for (std::size_t i = 0; i < 8; i++) {
-    target[pos + i] = orig[i];
-  }
+  for (std::size_t i = 0; i < 8; i++) { target[pos + i] = orig[i]; }
 }
 
 
@@ -259,7 +255,7 @@ struct Permutation {
     assert(min < max);
     {
       std::size_t i = min;
-      for (std::size_t &val : perm_) {
+      for (std::size_t& val : perm_) {
         val = i;
         i++;
       }
@@ -285,7 +281,6 @@ struct Permutation {
 
 
 alignas(CACHE_LINE_SIZE) inline time_t TPCCTimestamp;
-[[maybe_unused]] inline time_t get_lightweight_timestamp()
-{
-    return loadAcquire(TPCCTimestamp);
+[[maybe_unused]] inline time_t get_lightweight_timestamp() {
+  return loadAcquire(TPCCTimestamp);
 }

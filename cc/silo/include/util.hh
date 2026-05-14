@@ -8,9 +8,10 @@ extern void displayDB();
 
 extern void displayParameter();
 
-extern void genLogFile(std::string &logpath, const int thid);
+extern void genLogFile(std::string& logpath, const int thid);
 
-extern void siloLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop);
+extern void siloLeaderWork(uint64_t& epoch_timer_start,
+                           uint64_t& epoch_timer_stop);
 
 extern void makeDB();
 
@@ -21,6 +22,6 @@ extern void ShowOptParameters();
 
 class DefaultInitializer {
 public:
-    DefaultInitializer() {}
-    void makeDB();
+  DefaultInitializer() {}
+  void makeDB();
 };

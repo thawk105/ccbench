@@ -16,7 +16,8 @@
 #include "../../include/masstree_wrapper.hh"
 #include "../../include/tsc.hh"
 
-extern bool chkClkSpan(const uint64_t start, const uint64_t stop, const uint64_t threshold);
+extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
+                       const uint64_t threshold);
 extern void displaySLogSet();
 extern void displayDB();
 extern void cicadaLeaderWork();
@@ -76,7 +77,8 @@ void TxExecutor::begin() {
   */
 }
 
-Version* TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
+Version* TxExecutor::read_internal(Storage s, std::string_view key,
+                                   Tuple* tuple) {
   // Search version
   Version *ver, *later_ver;
   later_ver = nullptr;
@@ -104,13 +106,12 @@ Version* TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple
     ver = ver->ldAcqNext();
     if (ver == nullptr) return nullptr;
   }
-  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed
-    && ver->status_.load(memory_order_acquire) != VersionStatus::deleted) {
+  while (ver->status_.load(memory_order_acquire) != VersionStatus::committed &&
+         ver->status_.load(memory_order_acquire) != VersionStatus::deleted) {
     /**
      * Wait for the result of the pending version in the view.
      */
-    while (ver->status_.load(memory_order_acquire) == VersionStatus::pending) {
-    }
+    while (ver->status_.load(memory_order_acquire) == VersionStatus::pending) {}
     if (ver->status_.load(memory_order_acquire) == VersionStatus::aborted) {
       ver = ver->ldAcqNext();
     }
@@ -129,10 +130,10 @@ Version* TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple
 #if INLINE_VERSION_PROMOTION
 #if ADD_ANALYSIS
   result_->local_read_latency_ += rdtscp() - start;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   inlineVersionPromotion(s, key, tuple, later_ver, ver);
-#endif  // if INLINE_VERSION_PROMOTION
-#endif  // if INLINE_VERSION_OPT
+#endif // if INLINE_VERSION_PROMOTION
+#endif // if INLINE_VERSION_OPT
 
   return ver;
 }
@@ -144,7 +145,7 @@ Version* TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple
 Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   Version* ver;
   ReadElement<Tuple>* re;
@@ -167,11 +168,11 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   /**
    * Search versions from data structure.
    */
-  Tuple *tuple;
+  Tuple* tuple;
   tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
   ++result_->local_tree_traversal_;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
   ver = read_internal(s, key, tuple);
@@ -196,7 +197,7 @@ FINISH_READ:
 Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   /**
    * Update  from local write set.
@@ -204,10 +205,10 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
    */
   if (searchWriteSet(s, key)) goto FINISH_WRITE;
 
-  Tuple *tuple;
+  Tuple* tuple;
   bool rmw;
   rmw = false;
-  ReadElement<Tuple> *re;
+  ReadElement<Tuple>* re;
   re = searchReadSet(s, key);
   if (re) {
     /**
@@ -228,7 +229,7 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
     tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
     ++result_->local_tree_traversal_;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
     if (tuple == nullptr) return Status::WARN_NOT_FOUND;
   }
 
@@ -282,16 +283,17 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
     goto FINISH_WRITE;
   }
 
-  Version *new_ver;
+  Version* new_ver;
   new_ver = newVersionGeneration(tuple, std::move(body));
-  write_set_.emplace_back(s, key, tuple, later_ver, new_ver, rmw? OpType::RMW : OpType::UPDATE);
-#endif  // if SINGLE_EXEC
+  write_set_.emplace_back(s, key, tuple, later_ver, new_ver,
+                          rmw ? OpType::RMW : OpType::UPDATE);
+#endif // if SINGLE_EXEC
 
 FINISH_WRITE:
 
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   return Status::OK;
 }
@@ -299,7 +301,7 @@ FINISH_WRITE:
 Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   if (searchWriteSet(s, key)) return Status::WARN_ALREADY_EXISTS;
 
@@ -307,23 +309,22 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   ++result_->local_tree_traversal_;
 #endif
-  if (tuple != nullptr) {
-    return Status::WARN_ALREADY_EXISTS;
-  }
+  if (tuple != nullptr) { return Status::WARN_ALREADY_EXISTS; }
 
   tuple = new Tuple();
-  Version *new_ver = newVersionGeneration(tuple, std::move(body));
+  Version* new_ver = newVersionGeneration(tuple, std::move(body));
   tuple->init(this->thid_, new_ver, this->wts_.ts_, std::move(body));
 
   typename MasstreeWrapper<Tuple>::insert_info_t insert_info;
-  Status stat = Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
+  Status stat =
+      Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
   if (stat == Status::WARN_ALREADY_EXISTS) {
     delete tuple;
     return stat;
   }
   if (insert_info.node) {
     if (!node_map_.empty()) {
-      auto it = node_map_.find((void*)insert_info.node);
+      auto it = node_map_.find((void*) insert_info.node);
       if (it != node_map_.end()) {
         if (unlikely(it->second != insert_info.old_version)) {
           status_ = TransactionStatus::aborted;
@@ -341,25 +342,23 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   return Status::OK;
 }
 
 Status TxExecutor::delete_record(Storage s, std::string_view key) {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   // cancel previous write
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).storage_ != s) continue;
-    if ((*itr).key_ == key) {
-      write_set_.erase(itr);
-    }
+    if ((*itr).key_ == key) { write_set_.erase(itr); }
   }
 
   Tuple* tuple;
-  ReadElement<Tuple> *re;
+  ReadElement<Tuple>* re;
   re = searchReadSet(s, key);
   if (re) {
     tuple = re->rcdptr_;
@@ -367,7 +366,7 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
     tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
     ++result_->local_tree_traversal_;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
     if (tuple == nullptr) return Status::WARN_NOT_FOUND;
   }
 
@@ -398,39 +397,37 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
     goto FINISH_DELETE;
   }
 
-  Version *new_ver;
+  Version* new_ver;
   new_ver = new Version(this->wts_.ts_);
   write_set_.emplace_back(s, key, tuple, later_ver, new_ver, OpType::DELETE);
 
 FINISH_DELETE:
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   return Status::OK;
 }
 
-Status TxExecutor::scan(const Storage s,
-                        std::string_view left_key, bool l_exclusive,
-                        std::string_view right_key, bool r_exclusive,
-                        std::vector<TupleBody*>& result) {
+Status TxExecutor::scan(const Storage s, std::string_view left_key,
+                        bool l_exclusive, std::string_view right_key,
+                        bool r_exclusive, std::vector<TupleBody*>& result) {
   return scan(s, left_key, l_exclusive, right_key, r_exclusive, result, -1);
 }
 
-Status TxExecutor::scan(const Storage s,
-                      std::string_view left_key, bool l_exclusive,
-                      std::string_view right_key, bool r_exclusive,
-                      std::vector<TupleBody*>& result, int64_t limit) {
+Status TxExecutor::scan(const Storage s, std::string_view left_key,
+                        bool l_exclusive, std::string_view right_key,
+                        bool r_exclusive, std::vector<TupleBody*>& result,
+                        int64_t limit) {
   result.clear();
   auto rset_init_size = read_set_.size();
 
   std::vector<Tuple*> scan_res;
   Masstrees[get_storage(s)].scan(
-            left_key.empty() ? nullptr : left_key.data(), left_key.size(),
-            l_exclusive, right_key.empty() ? nullptr : right_key.data(),
-            right_key.size(), r_exclusive, &scan_res, limit,
-            callback_);
+      left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+      l_exclusive, right_key.empty() ? nullptr : right_key.data(),
+      right_key.size(), r_exclusive, &scan_res, limit, callback_);
 
-  for (auto &&itr : scan_res) {
+  for (auto&& itr : scan_res) {
     // TODO: Tuple should have key? Accessing key through the latest ver is ugly
     // Must be a copy to avoid buffer overflow when changing the latest
     std::string key(itr->latest_.load(memory_order_acquire)->body_.get_key());
@@ -449,14 +446,14 @@ Status TxExecutor::scan(const Storage s,
     // read_internal pushes the visible version into read_set_ on success;
     // the caller appends from read_set_ at the bottom of scan(). The return
     // value is only useful for in-place reads, which scan() does not need.
-    (void)read_internal(s, key, itr);
+    (void) read_internal(s, key, itr);
     if (this->status_ == TransactionStatus::aborted)
       return Status::ERROR_PREEMPTIVE_ABORT;
   }
 
   if (rset_init_size != read_set_.size()) {
-    for (auto itr = read_set_.begin() + rset_init_size;
-         itr != read_set_.end(); ++itr) {
+    for (auto itr = read_set_.begin() + rset_init_size; itr != read_set_.end();
+         ++itr) {
       result.emplace_back(&((*itr).ver_->body_));
     }
   }
@@ -467,7 +464,7 @@ Status TxExecutor::scan(const Storage s,
 bool TxExecutor::validation() {
 #if ADD_ANALYSIS
   uint64_t start = rdtscp();
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
 
   /**
    * Sort write set by contention.
@@ -483,9 +480,7 @@ bool TxExecutor::validation() {
    * Install pending version
    */
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).op_ == OpType::INSERT) {
-      continue;
-    }
+    if ((*itr).op_ == OpType::INSERT) { continue; }
     // pre_ver is only read on the else branch below, which is reachable
     // only after the while-loop has assigned to it — but GCC 13 cannot
     // prove that across the (op != RMW && op != DELETE && !WRITE_LATEST_ONLY
@@ -493,7 +488,8 @@ bool TxExecutor::validation() {
     // without changing runtime behavior.
     Version *expected(nullptr), *ver, *pre_ver = nullptr;
     for (;;) {
-      if ((*itr).op_ == OpType::RMW || (*itr).op_ == OpType::DELETE || WRITE_LATEST_ONLY) {
+      if ((*itr).op_ == OpType::RMW || (*itr).op_ == OpType::DELETE ||
+          WRITE_LATEST_ONLY) {
         ver = expected = (*itr).rcdptr_->ldAcqLatest();
         if (this->wts_.ts_ < ver->ldAcqWts()) {
           result = false;
@@ -513,8 +509,8 @@ bool TxExecutor::validation() {
         }
       }
 
-      if ((*itr).op_ == OpType::RMW || (*itr).op_ == OpType::DELETE
-          || WRITE_LATEST_ONLY || ver == expected) {
+      if ((*itr).op_ == OpType::RMW || (*itr).op_ == OpType::DELETE ||
+          WRITE_LATEST_ONLY || ver == expected) {
         // Latter half of condition meanings that it was not traversaling
         // version list in not rmw mode.
         (*itr).new_ver_->strRelNext(expected);
@@ -546,7 +542,7 @@ bool TxExecutor::validation() {
    * currently visible version to the transaction.
    */
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
-    Version *ver;
+    Version* ver;
     if ((*itr).later_ver_)
       ver = (*itr).later_ver_;
     else
@@ -555,11 +551,13 @@ bool TxExecutor::validation() {
     while (ver->ldAcqWts() >= this->wts_.ts_) ver = ver->ldAcqNext();
     // if write after read occured, it may happen "==".
 
-    while (ver->ldAcqStatus() == VersionStatus::pending);
-    while (ver->ldAcqStatus() != VersionStatus::committed
-           && ver->ldAcqStatus() != VersionStatus::deleted) {
+    while (ver->ldAcqStatus() == VersionStatus::pending)
+      ;
+    while (ver->ldAcqStatus() != VersionStatus::committed &&
+           ver->ldAcqStatus() != VersionStatus::deleted) {
       ver = ver->ldAcqNext();
-      while (ver->ldAcqStatus() == VersionStatus::pending);
+      while (ver->ldAcqStatus() == VersionStatus::pending)
+        ;
     }
     /**
      * This part is different from the original.
@@ -577,18 +575,19 @@ bool TxExecutor::validation() {
    * satisfies (v.rts) <= (tx.ts)
    */
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
-    if ((*itr).op_ == OpType::INSERT) {
-      continue;
-    }
-    Version *ver = (*itr).new_ver_->ldAcqNext();
-    while (ver->ldAcqStatus() == VersionStatus::pending);
-    while (ver->ldAcqStatus() != VersionStatus::committed
-           && ver->ldAcqStatus() != VersionStatus::deleted) {
+    if ((*itr).op_ == OpType::INSERT) { continue; }
+    Version* ver = (*itr).new_ver_->ldAcqNext();
+    while (ver->ldAcqStatus() == VersionStatus::pending)
+      ;
+    while (ver->ldAcqStatus() != VersionStatus::committed &&
+           ver->ldAcqStatus() != VersionStatus::deleted) {
       ver = ver->ldAcqNext();
-      while (ver->ldAcqStatus() == VersionStatus::pending);
+      while (ver->ldAcqStatus() == VersionStatus::pending)
+        ;
     }
 
-    if (ver->ldAcqRts() > this->wts_.ts_ || ver->ldAcqStatus() == VersionStatus::deleted) {
+    if (ver->ldAcqRts() > this->wts_.ts_ ||
+        ver->ldAcqStatus() == VersionStatus::deleted) {
       result = false;
       goto FINISH_VALIDATION;
     }
@@ -596,7 +595,7 @@ bool TxExecutor::validation() {
 
   // validate the node set
   for (auto it : node_map_) {
-    auto node = (MasstreeWrapper<Tuple>::node_type *) it.first;
+    auto node = (MasstreeWrapper<Tuple>::node_type*) it.first;
     if (node->full_version_value() != it.second) {
       result = false;
       goto FINISH_VALIDATION;
@@ -606,12 +605,12 @@ bool TxExecutor::validation() {
 FINISH_VALIDATION:
 #if ADD_ANALYSIS
   result_->local_vali_latency_ += rdtscp() - start;
-#endif  // if ADD_ANALYSIS
+#endif // if ADD_ANALYSIS
   return result;
 }
 
 void TxExecutor::swal() {
-  if (!FLAGS_group_commit) {  // non-group commit
+  if (!FLAGS_group_commit) { // non-group commit
     SwalLock.w_lock();
 
     int i = 0;
@@ -622,11 +621,10 @@ void TxExecutor::swal() {
 
     double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
     uint64_t spinstart = rdtscp();
-    while ((rdtscp() - spinstart) < threshold) {
-    }  // spin-wait
+    while ((rdtscp() - spinstart) < threshold) {} // spin-wait
 
     SwalLock.w_unlock();
-  } else {  // group commit
+  } else { // group commit
     SwalLock.w_lock();
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       SLogSet[GROUP_COMMIT_INDEX[0].obj_] = (*itr).new_ver_;
@@ -634,7 +632,7 @@ void TxExecutor::swal() {
     }
 
     if (GROUP_COMMIT_COUNTER[0].obj_ == 0) {
-      grpcmt_start_ = rdtscp();  // it can also initialize.
+      grpcmt_start_ = rdtscp(); // it can also initialize.
     }
 
     ++GROUP_COMMIT_COUNTER[0].obj_;
@@ -642,8 +640,7 @@ void TxExecutor::swal() {
     if (GROUP_COMMIT_COUNTER[0].obj_ == FLAGS_group_commit) {
       double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
       uint64_t spinstart = rdtscp();
-      while ((rdtscp() - spinstart) < threshold) {
-      }  // spin-wait
+      while ((rdtscp() - spinstart) < threshold) {} // spin-wait
 
       // group commit pending version.
       gcpv();
@@ -663,8 +660,7 @@ void TxExecutor::pwal() {
     // it gives lat ency instead of flush.
     double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
     uint64_t spinstart = rdtscp();
-    while ((rdtscp() - spinstart) < threshold) {
-    }  // spin-wait
+    while ((rdtscp() - spinstart) < threshold) {} // spin-wait
   } else {
     for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
       PLogSet[thid_][GROUP_COMMIT_INDEX[thid_].obj_] = (*itr).new_ver_;
@@ -672,7 +668,7 @@ void TxExecutor::pwal() {
     }
 
     if (GROUP_COMMIT_COUNTER[this->thid_].obj_ == 0) {
-      grpcmt_start_ = rdtscp();  // it can also initialize.
+      grpcmt_start_ = rdtscp(); // it can also initialize.
       ThreadRtsArrayForGroup[this->thid_].obj_ = this->rts_;
     }
 
@@ -682,15 +678,14 @@ void TxExecutor::pwal() {
       // it gives latency instead of flush.
       double threshold = FLAGS_clocks_per_us * FLAGS_io_time_ns / 1000;
       uint64_t spinstart = rdtscp();
-      while ((rdtscp() - spinstart) < threshold) {
-      }  // spin-wait
+      while ((rdtscp() - spinstart) < threshold) {} // spin-wait
 
       gcpv();
     }
   }
 }
 
-inline void TxExecutor::cpv()  // commit pending versions
+inline void TxExecutor::cpv() // commit pending versions
 {
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     /* memcpy は commit 確定前に書くことと，確定後に書くことができる．
@@ -713,13 +708,15 @@ inline void TxExecutor::cpv()  // commit pending versions
 #endif
     if ((*itr).op_ == OpType::DELETE) {
       Masstrees[get_storage((*itr).storage_)].remove_value((*itr).key_);
-      (*itr).new_ver_->status_.store(VersionStatus::deleted, std::memory_order_release);
+      (*itr).new_ver_->status_.store(VersionStatus::deleted,
+                                     std::memory_order_release);
       gc_records_.push_back((*itr).rcdptr_);
     } else {
-      (*itr).new_ver_->status_.store(VersionStatus::committed, std::memory_order_release);
+      (*itr).new_ver_->status_.store(VersionStatus::committed,
+                                     std::memory_order_release);
     }
-    gcq_.emplace_back(GCElement((*itr).storage_, (*itr).key_,
-                                (*itr).rcdptr_, (*itr).new_ver_, this->wts_.ts_));
+    gcq_.emplace_back(GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_,
+                                (*itr).new_ver_, this->wts_.ts_));
     ++(*itr).rcdptr_->continuing_commit_;
   }
 }
@@ -759,9 +756,7 @@ void TxExecutor::abort() {
   read_set_.clear();
   node_map_.clear();
 
-  if (FLAGS_group_commit) {
-    chkGcpvTimeout();
-  }
+  if (FLAGS_group_commit) { chkGcpvTimeout(); }
 
   this->wts_.set_clockBoost(FLAGS_clocks_per_us);
 
@@ -824,7 +819,7 @@ void TxExecutor::gc_versions() {
       continue;
     }
 
-    Tuple *tuple = gcq_.front().rcdptr_;
+    Tuple* tuple = gcq_.front().rcdptr_;
     // (b) v.wts > record.min_wts
     if (gcq_.front().wts_ <= tuple->min_wts_) {
       // releases the lock
@@ -834,8 +829,8 @@ void TxExecutor::gc_versions() {
     }
     // this pointer may be dangling.
 
-    Version *delTarget =
-            gcq_.front().ver_->next_.load(std::memory_order_acquire);
+    Version* delTarget =
+        gcq_.front().ver_->next_.load(std::memory_order_acquire);
 
     // the thread detaches the rest of the version list from v
     gcq_.front().ver_->next_.store(nullptr, std::memory_order_release);
@@ -886,7 +881,8 @@ void TxExecutor::mainte() {
   }
 
   this->gcstop_ = rdtscp();
-  if (chkClkSpan(this->gcstart_, this->gcstop_, FLAGS_gc_inter_us * FLAGS_clocks_per_us) &&
+  if (chkClkSpan(this->gcstart_, this->gcstop_,
+                 FLAGS_gc_inter_us * FLAGS_clocks_per_us) &&
       (loadAcquire(GCFlag[thid_].obj_) == 0)) {
     storeRelease(GCFlag[thid_].obj_, 1);
     this->gcstart_ = this->gcstop_;
@@ -944,9 +940,7 @@ bool TxExecutor::commit() {
     /**
      * Validation phase
      */
-    if (!validation()) {
-      return false;
-    }
+    if (!validation()) { return false; }
 
     /**
      * Write phase
@@ -964,9 +958,7 @@ bool TxExecutor::commit() {
   }
 }
 
-bool TxExecutor::isLeader() {
-  return this->thid_ == 0;
-}
+bool TxExecutor::isLeader() { return this->thid_ == 0; }
 
 void TxExecutor::leaderWork() {
   cicadaLeaderWork();
@@ -975,9 +967,7 @@ void TxExecutor::leaderWork() {
 #endif
 }
 
-void TxExecutor::reconnoiter_begin() {
-  reconnoitering_ = true;
-}
+void TxExecutor::reconnoiter_begin() { reconnoitering_ = true; }
 
 void TxExecutor::reconnoiter_end() {
   read_set_.clear();
@@ -986,10 +976,11 @@ void TxExecutor::reconnoiter_end() {
   begin();
 }
 
-void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type *n, uint64_t version) {
-  auto it = tx_->node_map_.find((void*)n);
+void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type* n,
+                                  uint64_t version) {
+  auto it = tx_->node_map_.find((void*) n);
   if (it == tx_->node_map_.end()) {
-    tx_->node_map_.emplace_hint(it, (void*)n, version);
+    tx_->node_map_.emplace_hint(it, (void*) n, version);
   } else if ((*it).second != version) {
     tx_->status_ = TransactionStatus::aborted;
   }

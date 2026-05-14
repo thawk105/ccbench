@@ -126,17 +126,18 @@ public:
   void displayAllResult(size_t clocks_per_us, size_t extime, size_t thread_num,
                         size_t op_num, size_t batch_op_num);
 
-  void displayPerTxResult(std::map<uint32_t,std::string> tx_types);
+  void displayPerTxResult(std::map<uint32_t, std::string> tx_types);
 
-  void displayOzeAnalysisResult(size_t clocks_per_us, size_t extime, size_t thread_num);
+  void displayOzeAnalysisResult(size_t clocks_per_us, size_t extime,
+                                size_t thread_num);
 
 #if ADD_ANALYSIS
-  void displayAbortByOperationRate();   // abort by operation rate;
-  void displayAbortByValidationRate();  // abort by validation rate;
+  void displayAbortByOperationRate();  // abort by operation rate;
+  void displayAbortByValidationRate(); // abort by validation rate;
   void displayAbortLatencyRate(size_t clocks_per_us, size_t extime,
                                size_t thread_num);
   void displayCommitLatencyRate(size_t clocks_per_us, size_t extime,
-                                 size_t thread_num);
+                                size_t thread_num);
   void displayBackoffLatencyRate(size_t clocks_per_us, size_t extime,
                                  size_t thread_num);
   void displayEarlyAbortRate();
@@ -147,10 +148,10 @@ public:
   void displayGCTMTElementsCounts();
   void displayGCVersionCounts();
   void displayMakeProcedureLatencyRate(size_t clocks_per_us, size_t extime,
-      size_t thread_num);
+                                       size_t thread_num);
   void displayMemcpys();
   void displayOtherWorkLatencyRate(size_t clocks_per_us, size_t extime,
-      size_t thread_num);
+                                   size_t thread_num);
   void displayPreemptiveAbortsCounts();
   void displayRatioOfPreemptiveAbortToTotalAbort();
   void displayReadLatencyRate(size_t clocks_per_us, size_t extime,
@@ -166,8 +167,10 @@ public:
                                size_t thread_num);
   void displayValiLatencyRate(size_t clocks_per_us, size_t extime,
                               size_t thread_num);
-  void displayReadValidationRate(size_t clocks_per_us, size_t extime, size_t thread_num);
-  void displayWriteValidationRate(size_t clocks_per_us, size_t extime, size_t thread_num);
+  void displayReadValidationRate(size_t clocks_per_us, size_t extime,
+                                 size_t thread_num);
+  void displayWriteValidationRate(size_t clocks_per_us, size_t extime,
+                                  size_t thread_num);
   void displayValidationFailureByTidRate();
   void displayValidationFailureByWritelockRate();
   void displayVersionMalloc();
@@ -179,8 +182,9 @@ public:
   void displayForwardingCount();
 #endif
 
-  void addLocalAllResult(const Result &other);
-  void addLocalPerTxResult(const Result &other, std::map<uint32_t,std::string> tx_types);
+  void addLocalAllResult(const Result& other);
+  void addLocalPerTxResult(const Result& other,
+                           std::map<uint32_t, std::string> tx_types);
 
   void addLocalAbortCounts(const uint64_t count);
   void addLocalBatchAbortCounts(const uint64_t count);

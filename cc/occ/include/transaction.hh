@@ -27,7 +27,7 @@ enum class TransactionStatus : uint8_t {
 };
 
 class TxnExecutor {
- public:
+public:
   ReadSet read_set_;
   WriteSet write_set_;
   ProcedureSet pro_set_;

@@ -9,6 +9,6 @@
 #include "../../../include/cache_line_size.hh"
 
 class Tuple {
- public:
+public:
   char val_[VAL_SIZE];
 };

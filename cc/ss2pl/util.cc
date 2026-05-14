@@ -1,8 +1,8 @@
 
 #include <stdlib.h>
-#include <sys/syscall.h>  // syscall(SYS_gettid),
-#include <sys/types.h>    // syscall(SSY_gettid),
-#include <unistd.h>       // syscall(SSY_gettid),
+#include <sys/syscall.h> // syscall(SYS_gettid),
+#include <sys/types.h>   // syscall(SSY_gettid),
+#include <unistd.h>      // syscall(SSY_gettid),
 
 #include <atomic>
 #include <bitset>
@@ -28,9 +28,7 @@
 void chkArg() {
   displayParameter();
 
-  if (FLAGS_rratio > 100) {
-    ERR;
-  }
+  if (FLAGS_rratio > 100) { ERR; }
 
   TotalThreadNum = FLAGS_thread_num;
 
@@ -60,19 +58,14 @@ void partTableInit([[maybe_unused]] size_t thid,
 
 void makeDB() {}
 
-void
-ShowOptParameters() {
+void ShowOptParameters() {
   cout << "#ShowOptParameters()"
-       << ": ADD_ANALYSIS " << ADD_ANALYSIS
-       << ": BACK_OFF " << BACK_OFF
-       #ifdef DLR0
+       << ": ADD_ANALYSIS " << ADD_ANALYSIS << ": BACK_OFF " << BACK_OFF
+#ifdef DLR0
        << ": DLR0 "
-       #elif defined DLR1
+#elif defined DLR1
        << ": DLR1 "
-       #endif
-       << ": MASSTREE_USE " << MASSTREE_USE
-       << ": KEY_SIZE " << KEY_SIZE
-       << ": KEY_SORT " << KEY_SORT
-       << ": VAL_SIZE " << VAL_SIZE
-       << endl;
+#endif
+       << ": MASSTREE_USE " << MASSTREE_USE << ": KEY_SIZE " << KEY_SIZE
+       << ": KEY_SORT " << KEY_SORT << ": VAL_SIZE " << VAL_SIZE << endl;
 }

@@ -16,10 +16,11 @@
 using namespace std;
 
 extern std::vector<Result> TicTocResult;
-extern void tictocLeaderWork(uint64_t &epoch_timer_start, uint64_t &epoch_timer_stop);
+extern void tictocLeaderWork(uint64_t& epoch_timer_start,
+                             uint64_t& epoch_timer_stop);
 
-SetElement<Tuple> *TxExecutor::searchReadSet(Storage s, std::string_view key) {
-  for (auto &re : read_set_) {
+SetElement<Tuple>* TxExecutor::searchReadSet(Storage s, std::string_view key) {
+  for (auto& re : read_set_) {
     if (re.storage_ != s) continue;
     if (re.key_ == key) return &re;
   }
@@ -27,8 +28,8 @@ SetElement<Tuple> *TxExecutor::searchReadSet(Storage s, std::string_view key) {
   return nullptr;
 }
 
-SetElement<Tuple> *TxExecutor::searchWriteSet(Storage s, std::string_view key) {
-  for (auto &we : write_set_) {
+SetElement<Tuple>* TxExecutor::searchWriteSet(Storage s, std::string_view key) {
+  for (auto& we : write_set_) {
     if (we.storage_ != s) continue;
     if (we.key_ == key) return &we;
   }
@@ -43,7 +44,7 @@ void TxExecutor::begin() {
   atomicStoreThLocalEpoch(thid_, atomicLoadGE());
 }
 
-bool TxExecutor::preemptiveAborts(const TsWord &v1) {
+bool TxExecutor::preemptiveAborts(const TsWord& v1) {
   if (v1.rts() < this->appro_commit_ts_) {
     /**
      * it must check whether this write set include the tuple,
@@ -96,7 +97,7 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   /**
    * Search tuple from data structure.
    */
-  Tuple *tuple;
+  Tuple* tuple;
   tuple = Masstrees[get_storage(s)].get_value(key);
 #if ADD_ANALYSIS
   ++result_->local_tree_traversal_;
@@ -104,9 +105,7 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
   stat = read_internal(s, key, tuple);
-  if (stat != Status::OK) {
-    return stat;
-  }
+  if (stat != Status::OK) { return stat; }
   *body = &(read_set_.back().body_);
 
 FINISH_READ:
@@ -117,7 +116,8 @@ FINISH_READ:
   return Status::OK;
 }
 
-Status TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
+Status TxExecutor::read_internal(Storage s, std::string_view key,
+                                 Tuple* tuple) {
   /**
    * these variable cause error (-fpermissive)
    * "crosses initialization of ..."
@@ -139,14 +139,13 @@ Status TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) 
       continue;
     }
 
-    if (v1.absent) {
-      return Status::WARN_NOT_FOUND;
-    }
+    if (v1.absent) { return Status::WARN_NOT_FOUND; }
 
     /**
      * read payload.
      */
-    b = TupleBody(tuple->body_.get_key(), tuple->body_.get_val(), tuple->body_.get_val_align());
+    b = TupleBody(tuple->body_.get_key(), tuple->body_.get_val(),
+                  tuple->body_.get_val_align());
 
     v2.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
     if (v1 == v2 && !v1.lock) break;
@@ -165,28 +164,26 @@ Status TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) 
   return Status::OK;
 }
 
-Status TxExecutor::scan(const Storage s,
-                        std::string_view left_key, bool l_exclusive,
-                        std::string_view right_key, bool r_exclusive,
-                        std::vector<TupleBody*>& result) {
+Status TxExecutor::scan(const Storage s, std::string_view left_key,
+                        bool l_exclusive, std::string_view right_key,
+                        bool r_exclusive, std::vector<TupleBody*>& result) {
   return scan(s, left_key, l_exclusive, right_key, r_exclusive, result, -1);
 }
 
-Status TxExecutor::scan(const Storage s,
-                        std::string_view left_key, bool l_exclusive,
-                        std::string_view right_key, bool r_exclusive,
-                        std::vector<TupleBody*>& result, int64_t limit) {
+Status TxExecutor::scan(const Storage s, std::string_view left_key,
+                        bool l_exclusive, std::string_view right_key,
+                        bool r_exclusive, std::vector<TupleBody*>& result,
+                        int64_t limit) {
   result.clear();
   auto rset_init_size = read_set_.size();
 
   std::vector<Tuple*> scan_res;
   Masstrees[get_storage(s)].scan(
-            left_key.empty() ? nullptr : left_key.data(), left_key.size(),
-            l_exclusive, right_key.empty() ? nullptr : right_key.data(),
-            right_key.size(), r_exclusive, &scan_res, limit,
-            callback_);
+      left_key.empty() ? nullptr : left_key.data(), left_key.size(),
+      l_exclusive, right_key.empty() ? nullptr : right_key.data(),
+      right_key.size(), r_exclusive, &scan_res, limit, callback_);
 
-  for (auto &&itr : scan_res) {
+  for (auto&& itr : scan_res) {
     SetElement<Tuple>* e = searchReadSet(s, itr->body_.get_key());
     if (e) {
       result.emplace_back(&(e->body_));
@@ -200,14 +197,12 @@ Status TxExecutor::scan(const Storage s,
     }
 
     Status stat = read_internal(s, itr->body_.get_key(), itr);
-    if (stat != Status::OK && stat != Status::WARN_NOT_FOUND) {
-      return stat;
-    }
+    if (stat != Status::OK && stat != Status::WARN_NOT_FOUND) { return stat; }
   }
 
   if (rset_init_size != read_set_.size()) {
-    for (auto itr = read_set_.begin() + rset_init_size;
-         itr != read_set_.end(); ++itr) {
+    for (auto itr = read_set_.begin() + rset_init_size; itr != read_set_.end();
+         ++itr) {
       result.emplace_back(&((*itr).body_));
     }
   }
@@ -230,8 +225,8 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
   /**
    * Search tuple from data structure.
    */
-  Tuple *tuple;
-  SetElement<Tuple> *re;
+  Tuple* tuple;
+  SetElement<Tuple>* re;
   re = searchReadSet(s, key);
   if (re) {
     tuple = re->rcdptr_;
@@ -245,7 +240,8 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 
   tsword.obj_ = __atomic_load_n(&(tuple->tsw_.obj_), __ATOMIC_ACQUIRE);
   this->appro_commit_ts_ = max(this->appro_commit_ts_, tsword.rts() + 1);
-  write_set_.emplace_back(s, key, tuple, std::move(body), tsword, OpType::UPDATE);
+  write_set_.emplace_back(s, key, tuple, std::move(body), tsword,
+                          OpType::UPDATE);
 
 FINISH_WRITE:;
 #if ADD_ANALYSIS
@@ -265,22 +261,21 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 #if ADD_ANALYSIS
   ++result_->local_tree_traversal_;
 #endif
-  if (tuple != nullptr) {
-    return Status::WARN_ALREADY_EXISTS;
-  }
+  if (tuple != nullptr) { return Status::WARN_ALREADY_EXISTS; }
 
   tuple = new Tuple();
   tuple->init(std::move(body));
 
   typename MasstreeWrapper<Tuple>::insert_info_t insert_info;
-  Status stat = Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
+  Status stat =
+      Masstrees[get_storage(s)].insert_value(key, tuple, &insert_info);
   if (stat == Status::WARN_ALREADY_EXISTS) {
     delete tuple;
     return stat;
   }
   if (insert_info.node) {
     if (!node_map_.empty()) {
-      auto it = node_map_.find((void*)insert_info.node);
+      auto it = node_map_.find((void*) insert_info.node);
       if (it != node_map_.end()) {
         if (unlikely(it->second != insert_info.old_version)) {
           status_ = TransactionStatus::aborted;
@@ -311,13 +306,11 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
   // cancel previous write
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).storage_ != s) continue;
-    if ((*itr).key_ == key) {
-      write_set_.erase(itr);
-    }
+    if ((*itr).key_ == key) { write_set_.erase(itr); }
   }
 
-  Tuple *tuple;
-  SetElement<Tuple> *re;
+  Tuple* tuple;
+  SetElement<Tuple>* re;
   re = searchReadSet(s, key);
   if (re) {
     tuple = re->rcdptr_;
@@ -360,7 +353,7 @@ bool TxExecutor::validationPhase() {
    * it.
    */
 
-  asm volatile("":: : "memory");
+  asm volatile("" ::: "memory");
 
   // step2, compute the commit timestamp
   for (auto itr = read_set_.begin(); itr != read_set_.end(); ++itr) {
@@ -414,7 +407,7 @@ bool TxExecutor::validationPhase() {
           return false;
         }
 
-        SetElement<Tuple> *inW = searchWriteSet((*itr).storage_, (*itr).key_);
+        SetElement<Tuple>* inW = searchWriteSet((*itr).storage_, (*itr).key_);
         if ((v1.rts()) < commit_ts_ && v1.lock) {
           if (inW == nullptr) {
             /**
@@ -460,7 +453,7 @@ bool TxExecutor::validationPhase() {
   }
   // step 4, validate the node set
   for (auto it : node_map_) {
-    auto node = (MasstreeWrapper<Tuple>::node_type *) it.first;
+    auto node = (MasstreeWrapper<Tuple>::node_type*) it.first;
     if (node->full_version_value() != it.second) {
       this->status_ = TransactionStatus::aborted;
       unlockWriteSet();
@@ -511,10 +504,11 @@ void TxExecutor::writePhase() {
     switch ((*itr).op_) {
       case OpType::UPDATE: {
         result.absent = false;
-        memcpy((*itr).rcdptr_->body_.get_val_ptr(),
-              (*itr).body_.get_val_ptr(), (*itr).body_.get_val_size());
+        memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
+               (*itr).body_.get_val_size());
 #if TIMESTAMP_HISTORY
-        __atomic_store_n(&((*itr).rcdptr_->pre_tsw_.obj_), (*itr).tsw_.obj_, __ATOMIC_RELAXED);
+        __atomic_store_n(&((*itr).rcdptr_->pre_tsw_.obj_), (*itr).tsw_.obj_,
+                         __ATOMIC_RELAXED);
 #endif
         break;
       }
@@ -526,8 +520,10 @@ void TxExecutor::writePhase() {
         result.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // record put on the GC queue below.
-        Masstrees[get_storage((*itr).storage_)].remove_value_if_present((*itr).key_);
-        gc_records_.emplace_back((*itr).storage_, (*itr).key_, (*itr).rcdptr_, ThLocalEpoch[thid_].obj_);
+        Masstrees[get_storage((*itr).storage_)].remove_value_if_present(
+            (*itr).key_);
+        gc_records_.emplace_back((*itr).storage_, (*itr).key_, (*itr).rcdptr_,
+                                 ThLocalEpoch[thid_].obj_);
         break;
       }
       default:
@@ -536,7 +532,8 @@ void TxExecutor::writePhase() {
     result.wts = this->commit_ts_;
     result.delta = 0;
     result.lock = 0;
-    __atomic_store_n(&((*itr).rcdptr_->tsw_.obj_), result.obj_, __ATOMIC_RELEASE);
+    __atomic_store_n(&((*itr).rcdptr_->tsw_.obj_), result.obj_,
+                     __ATOMIC_RELEASE);
   }
 
   gc_records();
@@ -557,12 +554,11 @@ void TxExecutor::lockWriteSet() {
    */
   sort(write_set_.begin(), write_set_.end());
 
-[[maybe_unused]] retry
-  :
-  for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
+  [[maybe_unused]] retry
+      : for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if (itr->op_ == OpType::INSERT) continue;
     expected.obj_ =
-            __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
+        __atomic_load_n(&((*itr).rcdptr_->tsw_.obj_), __ATOMIC_ACQUIRE);
     for (;;) {
       if (expected.lock) {
         if (this->is_wonly_ == false) {
@@ -574,9 +570,7 @@ void TxExecutor::lockWriteSet() {
           /**
            * unlock locked record.
            */
-          if (itr != write_set_.begin()) {
-            unlockWriteSet(itr);
-          }
+          if (itr != write_set_.begin()) { unlockWriteSet(itr); }
           return;
 #elif NO_WAIT_OF_TICTOC
           if (itr != write_set_.begin()) unlockWriteSet(itr);
@@ -625,7 +619,7 @@ void TxExecutor::lockWriteSet() {
           /**
            * end pre-verify
            */
-          sleepTics(FLAGS_clocks_per_us);  // sleep 1us.
+          sleepTics(FLAGS_clocks_per_us); // sleep 1us.
           if (thid_ == 0) std::cout << "lock retry" << std::endl;
           goto retry;
 #endif
@@ -708,9 +702,7 @@ void TxExecutor::gc_records() {
   }
 }
 
-bool TxExecutor::isLeader() {
-  return this->thid_ == 0;
-}
+bool TxExecutor::isLeader() { return this->thid_ == 0; }
 
 void TxExecutor::leaderWork() {
   tictocLeaderWork(this->epoch_timer_start, this->epoch_timer_stop);
@@ -719,9 +711,7 @@ void TxExecutor::leaderWork() {
 #endif
 }
 
-void TxExecutor::reconnoiter_begin() {
-  reconnoitering_ = true;
-}
+void TxExecutor::reconnoiter_begin() { reconnoitering_ = true; }
 
 void TxExecutor::reconnoiter_end() {
   read_set_.clear();
@@ -730,10 +720,11 @@ void TxExecutor::reconnoiter_end() {
   begin();
 }
 
-void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type *n, uint64_t version) {
-  auto it = tx_->node_map_.find((void*)n);
+void TxScanCallback::on_resp_node(const MasstreeWrapper<Tuple>::node_type* n,
+                                  uint64_t version) {
+  auto it = tx_->node_map_.find((void*) n);
   if (it == tx_->node_map_.end()) {
-    tx_->node_map_.emplace_hint(it, (void*)n, version);
+    tx_->node_map_.emplace_hint(it, (void*) n, version);
   } else if ((*it).second != version) {
     tx_->status_ = TransactionStatus::aborted;
   }

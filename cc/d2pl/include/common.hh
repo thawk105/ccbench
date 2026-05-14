@@ -54,4 +54,4 @@ DECLARE_double(zipf_skew);
 
 GLOBAL uint64_t TotalThreadNum;
 
-alignas(CACHE_LINE_SIZE) GLOBAL Tuple *Table;
+alignas(CACHE_LINE_SIZE) GLOBAL Tuple* Table;

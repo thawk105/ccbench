@@ -4,6 +4,6 @@
 
 #include "../../../include/result.hh"
 
-extern std::vector <Result> MvtoResult;
+extern std::vector<Result> MvtoResult;
 
 extern void initResult();

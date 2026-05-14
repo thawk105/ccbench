@@ -27,10 +27,10 @@
 
 using namespace std;
 
-void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
+void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Backoff backoff(FLAGS_clocks_per_us);
-  TxExecutor trans(thid, backoff, (Result *) &MvtoResult[thid], quit);
-  TPCCWorkload<Tuple,TupleInitParam> workload;
+  TxExecutor trans(thid, backoff, (Result*) &MvtoResult[thid], quit);
+  TPCCWorkload<Tuple, TupleInitParam> workload;
   workload.prepare(trans, new TupleInitParam());
 
 #ifdef Linux
@@ -44,19 +44,19 @@ void worker(size_t thid, char &ready, const bool &start, const bool &quit) {
   storeRelease(ready, 1);
   while (!loadAcquire(start)) _mm_pause();
   while (!loadAcquire(quit)) {
-    workload.run<TxExecutor,TransactionStatus>(trans);
+    workload.run<TxExecutor, TransactionStatus>(trans);
   }
 
   return;
 }
 
-int main(int argc, char *argv[]) try {
+int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("TPC-C MVTO benchmark.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   chkArg();
-  TPCCWorkload<Tuple,TupleInitParam>::displayWorkloadParameter();
+  TPCCWorkload<Tuple, TupleInitParam>::displayWorkloadParameter();
   TupleInitParam* param = new TupleInitParam();
-  TPCCWorkload<Tuple,TupleInitParam>::makeDB(param);
+  TPCCWorkload<Tuple, TupleInitParam>::makeDB(param);
   MinWts.store(param->initial_wts + 2, memory_order_release);
 
   alignas(CACHE_LINE_SIZE) bool start = false;
@@ -70,15 +70,13 @@ int main(int argc, char *argv[]) try {
   waitForReady(readys);
   uint64_t start_tsc = rdtscp();
   storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) {
-    sleepMs(1000);
-  }
+  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
   storeRelease(quit, true);
-  for (auto &th : thv) th.join();
+  for (auto& th : thv) th.join();
   uint64_t end_tsc = rdtscp();
-  long double actual_extime = round(
-    (end_tsc-start_tsc) /
-    ((long double)FLAGS_clocks_per_us * powl(10.0, 6.0)));
+  long double actual_extime =
+      round((end_tsc - start_tsc) /
+            ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
     MvtoResult[0].addLocalAllResult(MvtoResult[i]);
@@ -86,11 +84,10 @@ int main(int argc, char *argv[]) try {
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  MvtoResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime, TotalThreadNum);
+  MvtoResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                 TotalThreadNum);
   std::cout << "Details per transaction type:" << std::endl;
   MvtoResult[0].displayPerTxResult(TxTypes);
 
   return 0;
-} catch (const bad_alloc&) {
-  ERR;
-}
+} catch (const bad_alloc&) { ERR; }
