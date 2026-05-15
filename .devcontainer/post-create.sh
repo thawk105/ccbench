@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-git submodule update --init --recursive
-
 cat <<'EOF'
 
 ============================================================
 ccbench devcontainer is ready.
 
-Next steps (run these inside the container):
-
-  ./build_tools/bootstrap.sh             # build masstree
-  ./build_tools/bootstrap_mimalloc.sh    # build mimalloc
-  ./build_tools/bootstrap_googletest.sh  # build googletest
-
-Then build everything in one shot from the repo root:
+Build everything in one shot from the repo root:
 
   cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
   cmake --build build -j
+
+CMake's FetchContent fetches and builds the third-party deps
+(masstree, mimalloc, googletest) at configure time.
 
 Or build a single protocol target, e.g.:
 

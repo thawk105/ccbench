@@ -18,17 +18,17 @@ See [docs/workloads_en.md](docs/workloads_en.md) for the workload specs (tables,
 
 ## Quick start (devcontainer)
 
-The repo ships with a `linux/amd64` devcontainer at [.devcontainer/](.devcontainer/) that pulls a prebuilt image from GHCR. In VS Code, run **`Dev Containers: Reopen in Container`** — submodules and apt deps are set up automatically.
+The repo ships with a `linux/amd64` devcontainer at [.devcontainer/](.devcontainer/) that pulls a prebuilt image from GHCR. In VS Code, run **`Dev Containers: Reopen in Container`** — apt deps are set up automatically.
 
 Then inside the container:
 
 ```sh
-./build_tools/bootstrap.sh             # masstree
-./build_tools/bootstrap_mimalloc.sh    # mimalloc
-./build_tools/bootstrap_googletest.sh  # googletest
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
+
+CMake's FetchContent fetches and builds the third-party dependencies
+(`masstree`, `mimalloc`, `googletest`) at configure time.
 
 > On Apple Silicon the container runs under QEMU emulation: fine for development, **not** for benchmark numbers. Use a real x86_64 Linux host for measurements. See [docs/build_en.md](docs/build_en.md) for the full host setup.
 

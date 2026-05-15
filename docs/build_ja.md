@@ -4,7 +4,7 @@
 
 CCBench は x86_64 Linux (Debian/Ubuntu) を対象とする。x86 intrinsics (`__cpuid_count` in [include/cpu.hh](../include/cpu.hh)) と Linux 専用 API (`sched_setaffinity`, `SYS_gettid`, `<linux/fs.h>` in [include/fileio.hh](../include/fileio.hh)) を使うので、macOS など他のプラットフォームでネイティブにはビルドできない。macOS で開発する場合は [devcontainer](#devcontainer-macos--ubuntu-以外のホスト向け) を使う。
 
-CI は GitHub Actions の `ubuntu-latest` で走る — [.github/workflows/build.yml](../.github/workflows/build.yml) 参照。push (どのブランチでも) と PR でトリガーされ、ccache + apt + bootstrap output は全部キャッシュされる。
+CI は GitHub Actions の `ubuntu-latest` で走る — [.github/workflows/build.yml](../.github/workflows/build.yml) 参照。push (どのブランチでも) と PR でトリガーされ、ccache と apt はキャッシュされる。
 
 ビルド依存をインストール (CI もこれを使っている):
 
@@ -12,18 +12,6 @@ CI は GitHub Actions の `ubuntu-latest` で走る — [.github/workflows/build
 sudo apt-get update
 sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ```
-
-## サードパーティライブラリ
-
-`third_party/` 配下の静的ライブラリを生成する。プロトコルがリンクする対象。clone 後に一度だけ実行:
-
-```sh
-./build_tools/bootstrap.sh             # third_party/masstree
-./build_tools/bootstrap_mimalloc.sh    # third_party/mimalloc
-./build_tools/bootstrap_googletest.sh  # third_party/googletest
-```
-
-実行時に mimalloc が見つからないというエラーが出たら、`third_party/mimalloc/out/release/` を `LD_LIBRARY_PATH` に追加する。
 
 ## 全部ビルドする (トップレベル CMake)
 
@@ -66,8 +54,7 @@ devcontainer (`ubuntu:24.04` ベース、[.devcontainer/Dockerfile](../.devconta
 リポジトリは `linux/amd64` に pin した devcontainer ([.devcontainer/](../.devcontainer/)) を同梱している:
 
 1. VS Code でリポジトリを開いて **Dev Containers: Reopen in Container** を実行
-2. post-create hook が `git submodule update --init --recursive` を実行し、次の手順コマンドを表示する
-3. コンテナ内で上記の 3 つの bootstrap スクリプトとトップレベル `cmake -S . -B build` を実行
+2. コンテナ内でトップレベル `cmake -S . -B build && cmake --build build` を実行 (サードパーティ依存は CMake の FetchContent が configure 時に自動取得・ビルドする)
 
 image は `ghcr.io/thawk105/ccbench-devcontainer:latest` に publish されていて、`.devcontainer/` を変更するたびに [.github/workflows/devcontainer-image.yml](../.github/workflows/devcontainer-image.yml) で rebuild される。
 
