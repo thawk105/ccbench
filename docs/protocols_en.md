@@ -71,13 +71,3 @@ cache options go in [cmake/Options.cmake](../cmake/Options.cmake). An
 
 After adding a new protocol directory, list it in the `foreach(_proto …)`
 loop in the top-level [CMakeLists.txt](../CMakeLists.txt).
-
-## Not built by default
-
-| Directory | Notes |
-|---|---|
-| [cc/occ](../cc/occ/) | K&R OCC (Kung & Robinson, 1981). Uses a plain Makefile (on the legacy uint64-key API), not wired into the CMake tree. |
-
-To enable, port `cc/occ/` to a `ccbench_add_protocol(...)` entry and add
-it to the `foreach(_proto …)` loop in the top-level
-[CMakeLists.txt](../CMakeLists.txt).

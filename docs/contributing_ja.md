@@ -136,6 +136,65 @@
    - `CLAUDE_en.md` (英語) → `docs/<name>_en.md` にリンク
    - `README.md` (英語、原典) → `docs/<name>_en.md` にリンク (英語 reader 向け)
 
+## 新しいプロトコルを追加する
+
+新しい並行性制御プロトコルを `cc/<name>/` として足すときの手順。**行番号ベースの指示は意図的に書かない** — 内部リファクタリングのたびに陳腐化するため。代わりに「どのファイルが何の役割を持つか」「どの仕組みに乗るか」を概念ベースで説明する。アーキテクチャ全体像と TxExecutor 契約の詳細は [architecture_ja.md](architecture_ja.md) を参照。
+
+### 出発点: 既存プロトコルをコピーする
+
+ゼロから書かず、**目的に一番近い既存プロトコルのディレクトリ (`cc/<proto>/`) を丸ごとコピーして出発点にする**。
+
+- 楽観的 (OCC) 系なら [cc/silo/](../cc/silo/) — 一番素直で、ワークロード 4 種すべてに対応している参照実装
+- 多版 (MVCC) 系なら [cc/cicada/](../cc/cicada/) や [cc/mvto/](../cc/mvto/)
+- 悲観的 / ロックベースなら [cc/ss2pl/](../cc/ss2pl/)
+- 決定論的なら [cc/d2pl/](../cc/d2pl/)
+
+かつて `cc_format/` という「単版用テンプレート」ディレクトリがあったが、Makefile ベースで本体 CMake ビルドと乖離し、`README.md` の手順も行番号ベースで陳腐化していたため削除した (#83、議論の経緯は #34)。テンプレートの役割は「既存プロトコルのコピー」と、必要なら AI スキャフォルディング (TxExecutor 契約を満たす雛形を生成させる) で代替する。
+
+### ディレクトリの構成要素
+
+コピーした `cc/<name>/` を新プロトコル名に合わせて書き換える。各ファイルの役割:
+
+| ファイル | 役割 |
+|---|---|
+| `CMakeLists.txt` | `ccbench_add_protocol(<name> ...)` を 1 回呼ぶだけ。詳細は下記 |
+| `<workload>_<name>.cc` | ワークロードごとのエントリポイント (`ycsb_*`, `tpcc_*`, `bomb_*`, `sbomb_*`)。`worker()` を定義し、対応するワークロードテンプレート ([include/ycsb.hh](../include/ycsb.hh), [include/tpcc.hh](../include/tpcc.hh), [include/bomb.hh](../include/bomb.hh) 等) を駆動する。`CMakeLists.txt` の `WORKLOADS` に挙げたタグ分だけ必要 |
+| `include/transaction.hh` | プロトコルの中核。`TxExecutor` クラスを定義する。クラス定義の直後で `static_assert(TxExecutorLike<TxExecutor>);` を書く ([include/tx_executor_concept.hh](../include/tx_executor_concept.hh)) |
+| `transaction.cc` | `TxExecutor` のメソッド実装 (`read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort` など) |
+| `result.cc` | スレッドごとの集計結果バッファ (`<Name>Result` ベクタ) と `initResult()` の定義 |
+| `util.cc` / `include/util.hh` | DB 初期化、レコードの初期値設定、リーダースレッドの仕事 (`leaderWork`) など |
+| `include/` のその他ヘッダ | `Tuple` のメタデータ、read/write set 要素、ログレコード、グローバル変数宣言など。プロトコル固有 |
+
+### `ccbench_add_protocol()` に乗せる
+
+ビルドは [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) の `ccbench_add_protocol()` ヘルパーが宣言的に組み立てる。`cc/<name>/CMakeLists.txt` はこのヘルパーを 1 回呼ぶだけで済む:
+
+```cmake
+ccbench_add_protocol(<name>
+  SOURCES   transaction.cc util.cc result.cc   # ワークロード間で共有する .cc。エントリポイントは入れない
+  WORKLOADS ycsb tpcc bomb sbomb               # サポートするワークロードタグの部分集合
+  OPTIONS                                      # プロトコル固有の -D defines (任意)
+    FOO=${CCBENCH_FOO}
+)
+```
+
+- ヘルパーは `WORKLOADS` の各タグ `W` について `W_<name>.exe` を `W_<name>.cc` + `SOURCES` からビルドし、`ccbench_common` + `ccbench::masstree` + `ccbench::mimalloc` をリンクする。
+- 汎用 `-D` フラグ (`KEY_SIZE`, `VAL_SIZE`, `BACK_OFF`, `ADD_ANALYSIS`, `MASSTREE_USE` 等) と `-Wall -Wextra -Werror` は自動で付く。プロトコル固有の cache オプションを増やすときは [cmake/Options.cmake](../cmake/Options.cmake) に追加する。
+- 最後に、トップレベル [CMakeLists.txt](../CMakeLists.txt) の `foreach(_proto …)` ループに新しいディレクトリ名を 1 つ追加する。これで configure 時に [build/PROTOCOL_MATRIX.md](../build/PROTOCOL_MATRIX.md) にも自動で行が増える。
+
+### TxExecutor 契約を満たす
+
+全プロトコルは、ワークロードテンプレートが期待する `TxExecutor` API を実装しなければならない。この契約は [include/tx_executor_concept.hh](../include/tx_executor_concept.hh) の `TxExecutorLike` concept として表現され、各プロトコルが `transaction.hh` 末尾の `static_assert(TxExecutorLike<TxExecutor>);` で**コンパイル時に強制**する。メソッドの欠落やシグネチャ不一致は、そのプロトコル自身のビルドが named diagnostic 付きで失敗するので、実行時クラッシュにはならない。契約の各メソッドの意味は [architecture_ja.md](architecture_ja.md) を参照。
+
+### チェックリスト
+
+- [ ] `cc/<name>/` を既存プロトコルからコピーして名前を書き換えた
+- [ ] `cc/<name>/CMakeLists.txt` が `ccbench_add_protocol(<name> ...)` を呼んでいる
+- [ ] トップレベル `CMakeLists.txt` の `foreach(_proto …)` に `<name>` を追加した
+- [ ] `transaction.hh` 末尾に `static_assert(TxExecutorLike<TxExecutor>);` がある
+- [ ] `cmake -S . -B build` が通り、`WORKLOADS` に挙げた各バイナリがビルドできる
+- [ ] [docs/protocols_ja.md](protocols_ja.md) のプロトコル表に行を足した (原典なので `_en` もセットで)
+
 ## PR を出すとき (TODO)
 
 PR の出し方の規約はまだ書いていない。気付いた点があれば追記。
