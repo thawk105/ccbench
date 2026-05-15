@@ -23,8 +23,6 @@ sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ./build_tools/bootstrap_googletest.sh  # third_party/googletest
 ```
 
-`bootstrap_tbb.sh` も存在するが、`third_party/tbb` は submodule 登録 **されていない** — 自分で tbb を入れた場合以外は skip。
-
 実行時に mimalloc が見つからないというエラーが出たら、`third_party/mimalloc/out/release/` を `LD_LIBRARY_PATH` に追加する。
 
 ## 全部ビルドする (トップレベル CMake)
@@ -51,6 +49,8 @@ sanitizer 付きの debug build (デフォルト) なら `-DCMAKE_BUILD_TYPE=Deb
 各 `cc/<protocol>/CMakeLists.txt` は単一の宣言的 `ccbench_add_protocol(...)` 呼び出し — 関数定義は [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake)、汎用のビルド時 tunable (`CCBENCH_KEY_SIZE`, `CCBENCH_BACK_OFF` など) は [cmake/Options.cmake](../cmake/Options.cmake) を参照。これらは cmake コマンドラインから上書きできる。各プロトコルとそれがサポートするワークロードのリストは [protocols_ja.md](protocols_ja.md) を参照。
 
 トップレベル CMake は `ccache` が PATH にあれば **ccache** を自動でコンパイラランチャに設定する。約 34 バイナリ間のコンパイル重複を排除する (full warm rebuild ≈ 3 秒 vs cold で 30+ 秒)。`-DCCBENCH_CCACHE=OFF` で無効化可能。
+
+`include/` 部品のコスト測定用マイクロベンチ ([microbench/](../microbench/)) はデフォルトでビルドされない。`-DCCBENCH_BUILD_MICROBENCH=ON` でオプトイン有効化する。
 
 ## 開発のためのビルドモード
 

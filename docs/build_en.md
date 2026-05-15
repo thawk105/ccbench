@@ -31,9 +31,6 @@ against. Run them once after cloning:
 ./build_tools/bootstrap_googletest.sh  # third_party/googletest
 ```
 
-A `bootstrap_tbb.sh` exists but `third_party/tbb` is **not** registered as a
-submodule — skip it unless you add tbb manually.
-
 If a binary fails to find mimalloc at runtime, add
 `third_party/mimalloc/out/release/` to `LD_LIBRARY_PATH`.
 
@@ -74,6 +71,10 @@ they support.
 The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache`
 is on PATH, deduplicating compilations across the ~34 binaries (full warm
 rebuild ≈ 3 sec vs 30+ sec cold). Disable with `-DCCBENCH_CCACHE=OFF`.
+
+The instruction-cost microbenchmarks ([microbench/](../microbench/)) that
+measure the cost of `include/` components are not built by default; opt in
+with `-DCCBENCH_BUILD_MICROBENCH=ON`.
 
 ## Build modes for development
 
