@@ -37,8 +37,8 @@ using namespace std;
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Xoroshiro128Plus rnd;
   rnd.init();
-  TxExecutor trans(thid, (Result*) &OzeResult[thid], quit);
-  Result& myres = std::ref(OzeResult[thid]);
+  TxExecutor trans(thid, (Result*) &CCBenchResults[thid], quit);
+  Result& myres = std::ref(CCBenchResults[thid]);
   uint64_t epoch_timer_start, epoch_timer_stop;
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   Backoff backoff(FLAGS_clocks_per_us);
@@ -92,7 +92,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
     if (thid == 0) {
       leaderWork(epoch_timer_start, epoch_timer_stop);
 #if BACK_OFF
-      leaderBackoffWork(backoff, CicadaResult);
+      leaderBackoffWork(backoff, CCBenchResults);
 #endif
     }
     if (loadAcquire(quit)) break;
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -206,13 +206,13 @@ int main(int argc, char* argv[]) try {
             ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    OzeResult[0].addLocalAllResult(OzeResult[i]);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  OzeResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                TotalThreadNum, FLAGS_max_ope,
-                                FLAGS_batch_max_ope);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     TotalThreadNum, FLAGS_max_ope,
+                                     FLAGS_batch_max_ope);
   deleteDB();
 
   return 0;

@@ -12,7 +12,6 @@
 
 using namespace std;
 
-extern std::vector<Result> MoccResult;
 extern void moccLeaderWork(uint64_t& epoch_timer_start,
                            uint64_t& epoch_timer_stop);
 
@@ -1086,7 +1085,7 @@ bool TxExecutor::isLeader() { return this->thid_ == 0; }
 void TxExecutor::leaderWork() {
   moccLeaderWork(this->epoch_timer_start, this->epoch_timer_stop);
 #if BACK_OFF
-  leaderBackoffWork(backoff_, MoccResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 

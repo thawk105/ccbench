@@ -29,7 +29,7 @@ using namespace std;
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   Backoff backoff(FLAGS_clocks_per_us);
-  TxExecutor trans(thid, backoff, (Result*) &MvtoResult[thid], quit);
+  TxExecutor trans(thid, backoff, (Result*) &CCBenchResults[thid], quit);
   TPCCWorkload<Tuple, TupleInitParam> workload;
   workload.prepare(trans, new TupleInitParam());
 
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -79,15 +79,15 @@ int main(int argc, char* argv[]) try {
             ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    MvtoResult[0].addLocalAllResult(MvtoResult[i]);
-    MvtoResult[0].addLocalPerTxResult(MvtoResult[i], TxTypes);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
+    CCBenchResults[0].addLocalPerTxResult(CCBenchResults[i], TxTypes);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  MvtoResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                 TotalThreadNum);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     TotalThreadNum);
   std::cout << "Details per transaction type:" << std::endl;
-  MvtoResult[0].displayPerTxResult(TxTypes);
+  CCBenchResults[0].displayPerTxResult(TxTypes);
 
   return 0;
 } catch (const bad_alloc&) { ERR; }

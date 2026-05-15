@@ -1,5 +1,5 @@
 ccbench_add_protocol(oze
-  SOURCES   transaction.cc util.cc result.cc debug.cc
+  SOURCES   transaction.cc util.cc debug.cc
   WORKLOADS ycsb tpcc bomb
   OPTIONS
     INLINE_VERSION_OPT=${CCBENCH_INLINE_VERSION_OPT_OZE}

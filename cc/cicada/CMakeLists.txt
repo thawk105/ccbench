@@ -1,5 +1,5 @@
 ccbench_add_protocol(cicada
-  SOURCES   transaction.cc util.cc result.cc
+  SOURCES   transaction.cc util.cc
   WORKLOADS ycsb tpcc bomb sbomb
   OPTIONS
     INLINE_VERSION_OPT=${CCBENCH_INLINE_VERSION_OPT_CICADA}

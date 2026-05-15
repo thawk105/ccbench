@@ -1,5 +1,5 @@
 ccbench_add_protocol(silo
-  SOURCES   transaction.cc util.cc result.cc
+  SOURCES   transaction.cc util.cc
   WORKLOADS ycsb tpcc bomb sbomb
   OPTIONS
     NO_WAIT_LOCKING_IN_VALIDATION=${CCBENCH_NO_WAIT_LOCKING_IN_VALIDATION}

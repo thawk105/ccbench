@@ -36,7 +36,7 @@
 using namespace std;
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(SiloResult[thid]);
+  Result& myres = std::ref(CCBenchResults[thid]);
   // Xoroshiro128Plus rnd;
   // rnd.init();
   TxExecutor trans(thid, (Result*) &myres, quit);
@@ -119,7 +119,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
     //     if (thid == 0) {
     //       leaderWork(epoch_timer_start, epoch_timer_stop);
     // #if BACK_OFF
-    //       leaderBackoffWork(backoff, SiloResult);
+    //       leaderBackoffWork(backoff, CCBenchResults);
     // #endif
     //       // printf("Thread #%d: on CPU %d\n", thid, sched_getcpu());
     //     }
@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -207,12 +207,12 @@ int main(int argc, char* argv[]) try {
             ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    SiloResult[0].addLocalAllResult(SiloResult[i]);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  SiloResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                 TotalThreadNum);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     TotalThreadNum);
 
   return 0;
 } catch (bad_alloc) { ERR; }

@@ -11,7 +11,6 @@
 #include "include/transaction.hh"
 #include "include/version.hh"
 
-extern std::vector<Result> ErmiaResult;
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
 
@@ -922,7 +921,7 @@ void TxExecutor::leaderWork() {
     gcob.mvSecondRangeToFirstRange();
   }
 #if BACK_OFF
-  leaderBackoffWork(backoff_, ErmiaResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 

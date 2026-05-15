@@ -373,6 +373,6 @@ bool TxExecutor::isLeader() { return this->thid_ == 0; }
 
 void TxExecutor::leaderWork() {
 #if BACK_OFF
-  leaderBackoffWork(backoff_, D2PLResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }

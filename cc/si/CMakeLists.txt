@@ -1,5 +1,5 @@
 ccbench_add_protocol(si
-  SOURCES   transaction.cc util.cc result.cc garbage_collection.cc
+  SOURCES   transaction.cc util.cc garbage_collection.cc
   WORKLOADS ycsb tpcc bomb sbomb
   OPTIONS
     KEY_SORT=${CCBENCH_KEY_SORT}

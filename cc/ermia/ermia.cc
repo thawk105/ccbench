@@ -32,10 +32,10 @@
 using namespace std;
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  TxExecutor trans(thid, (Result*) &ErmiaResult[thid]);
+  TxExecutor trans(thid, (Result*) &CCBenchResults[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
-  Result& myres = std::ref(ErmiaResult[thid]);
+  Result& myres = std::ref(CCBenchResults[thid]);
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
   GarbageCollection gcob;
   /**
@@ -84,7 +84,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   RETRY:
     if (thid == 0) {
       leaderWork(std::ref(gcob));
-      leaderBackoffWork(backoff, ErmiaResult);
+      leaderBackoffWork(backoff, CCBenchResults);
     }
     if (loadAcquire(quit)) break;
 
@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -187,13 +187,13 @@ int main(int argc, char* argv[]) try {
             ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    ErmiaResult[0].addLocalAllResult(ErmiaResult[i]);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  ErmiaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                  TotalThreadNum, FLAGS_max_ope,
-                                  FLAGS_batch_max_ope);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     TotalThreadNum, FLAGS_max_ope,
+                                     FLAGS_batch_max_ope);
 
   return 0;
 } catch (bad_alloc) { ERR; }

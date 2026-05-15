@@ -1,5 +1,5 @@
 ccbench_add_protocol(ss2pl
-  SOURCES   transaction.cc util.cc result.cc
+  SOURCES   transaction.cc util.cc
   WORKLOADS bomb tpcc
   OPTIONS
     DLR1

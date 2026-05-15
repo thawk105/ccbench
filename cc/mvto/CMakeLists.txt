@@ -1,5 +1,5 @@
 ccbench_add_protocol(mvto
-  SOURCES   transaction.cc util.cc result.cc
+  SOURCES   transaction.cc util.cc
   WORKLOADS bomb tpcc
   OPTIONS
     INSERT_READ_DELAY_MS=${CCBENCH_INSERT_READ_DELAY_MS}

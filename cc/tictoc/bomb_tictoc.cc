@@ -32,7 +32,7 @@
 #include "../../include/zipf.hh"
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(TicTocResult[thid]);
+  Result& myres = std::ref(CCBenchResults[thid]);
   TxExecutor trans(thid, (Result*) &myres, quit);
   BombWorkload<Tuple, void> workload;
   workload.prepare(trans, nullptr);
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum + (FLAGS_bomb_mixed_mode ? 1 : 0));
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -91,14 +91,14 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
-    TicTocResult[0].addLocalAllResult(TicTocResult[i]);
-    TicTocResult[0].addLocalPerTxResult(TicTocResult[i], TxTypes);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
+    CCBenchResults[0].addLocalPerTxResult(CCBenchResults[i], TxTypes);
   }
   ShowOptParameters();
-  TicTocResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                   FLAGS_thread_num);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     FLAGS_thread_num);
   std::cout << "Details per transaction type:" << std::endl;
-  TicTocResult[0].displayPerTxResult(TxTypes);
+  CCBenchResults[0].displayPerTxResult(TxTypes);
 
   return 0;
 } catch (const bad_alloc&) { ERR; }

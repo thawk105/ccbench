@@ -15,7 +15,6 @@
 
 using namespace std;
 
-extern std::vector<Result> TicTocResult;
 extern void tictocLeaderWork(uint64_t& epoch_timer_start,
                              uint64_t& epoch_timer_stop);
 
@@ -707,7 +706,7 @@ bool TxExecutor::isLeader() { return this->thid_ == 0; }
 void TxExecutor::leaderWork() {
   tictocLeaderWork(this->epoch_timer_start, this->epoch_timer_stop);
 #if BACK_OFF
-  leaderBackoffWork(backoff_, TicTocResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 
