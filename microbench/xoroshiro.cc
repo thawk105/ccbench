@@ -4,15 +4,11 @@
 
 #include "../include/random.hh"
 #include "../include/tsc.hh"
-#include "../include/util.hh"
-
-#define CLOCKS_PER_US 2100
-#define LOOP 1000000
-#define EX_TIME 3
 
 using std::cout;
 using std::endl;
 
+// Measures the average clock count of one Xoroshiro128Plus::next() call.
 int main() {
   Xoroshiro128Plus rnd;
   rnd.init();

@@ -25,7 +25,7 @@ Workload specs are in [workloads.md](workloads_en.md).
 - [build_tools/](../build_tools/) — bootstrap scripts and `ubuntu.deps` (apt package list)
 - [cmake/](../cmake/) — shared CMake modules: `CompileOptions.cmake`, [Options.cmake](../cmake/Options.cmake) (universal `-D` flags), [ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`)
 - [docs/](.) — this directory
-- [instruction/](../instruction/) — micro-benchmarks for individual instructions (cache, fetch_add, etc.)
+- [microbench/](../microbench/) — microbenchmarks measuring the cost of instructions / operations (`fetch_add`, `membench`, etc.); not built by default, opt in with `-DCCBENCH_BUILD_MICROBENCH=ON`
 
 ## Common transaction API (compile-time enforced)
 

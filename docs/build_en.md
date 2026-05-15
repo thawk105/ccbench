@@ -72,6 +72,10 @@ The top-level CMake auto-enables **ccache** as a compiler launcher if `ccache`
 is on PATH, deduplicating compilations across the ~34 binaries (full warm
 rebuild ≈ 3 sec vs 30+ sec cold). Disable with `-DCCBENCH_CCACHE=OFF`.
 
+The instruction-cost microbenchmarks ([microbench/](../microbench/)) that
+measure the cost of `include/` components are not built by default; opt in
+with `-DCCBENCH_BUILD_MICROBENCH=ON`.
+
 ## Build modes for development
 
 - **Debug+ASan** (the default top-level Debug build) is the right mode for

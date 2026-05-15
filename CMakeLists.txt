@@ -76,3 +76,11 @@ endforeach()
 # Dump the protocol × workload support matrix into the build dir, so the
 # table in CLAUDE.md / docs/protocols.md can be refreshed mechanically.
 ccbench_write_protocol_matrix("${CMAKE_BINARY_DIR}/PROTOCOL_MATRIX.md")
+
+# Instruction-cost microbenchmarks under microbench/. Opt-in and OFF by
+# default so the regular build (and CI) stays exactly as it is; turn on
+# with `cmake -S . -B build -DCCBENCH_BUILD_MICROBENCH=ON`.
+option(CCBENCH_BUILD_MICROBENCH "build instruction-cost microbenchmarks" OFF)
+if(CCBENCH_BUILD_MICROBENCH)
+  add_subdirectory(microbench)
+endif()

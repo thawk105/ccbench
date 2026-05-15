@@ -50,6 +50,8 @@ sanitizer 付きの debug build (デフォルト) なら `-DCMAKE_BUILD_TYPE=Deb
 
 トップレベル CMake は `ccache` が PATH にあれば **ccache** を自動でコンパイラランチャに設定する。約 34 バイナリ間のコンパイル重複を排除する (full warm rebuild ≈ 3 秒 vs cold で 30+ 秒)。`-DCCBENCH_CCACHE=OFF` で無効化可能。
 
+`include/` 部品のコスト測定用マイクロベンチ ([microbench/](../microbench/)) はデフォルトでビルドされない。`-DCCBENCH_BUILD_MICROBENCH=ON` でオプトイン有効化する。
+
 ## 開発のためのビルドモード
 
 - **Debug+ASan** (トップレベル Debug ビルドのデフォルト) は correctness 系の作業に最適 — 過去に捕まえた TPC-C バグ (`get_and_update_*` の use-after-free、`cast_to<Order>` の assertion、gcRecord UAF) はすべて最初にこのモードで顕在化した。Release ビルドでは見えなかった。
