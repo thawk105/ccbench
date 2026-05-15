@@ -139,6 +139,65 @@ Concretely:
    - From `CLAUDE_en.md` (English): link to `docs/<name>_en.md`
    - From `README.md` (English, canonical): link to `docs/<name>_en.md` (for English readers)
 
+## Adding a new protocol
+
+How to add a new concurrency-control protocol as `cc/<name>/`. **Line-number-based instructions are deliberately avoided** — they go stale on every internal refactor. Instead this section is conceptual: "which file plays which role" and "which mechanism you plug into". For the full architecture overview and the TxExecutor contract details, see [architecture_en.md](architecture_en.md).
+
+### Starting point: copy an existing protocol
+
+Don't write from scratch. **Copy the whole directory (`cc/<proto>/`) of the existing protocol closest to your goal** and use it as the starting point.
+
+- Optimistic (OCC) family → [cc/silo/](../cc/silo/) — the most straightforward reference implementation, supports all four workloads
+- Multi-version (MVCC) family → [cc/cicada/](../cc/cicada/) or [cc/mvto/](../cc/mvto/)
+- Pessimistic / lock-based → [cc/ss2pl/](../cc/ss2pl/)
+- Deterministic → [cc/d2pl/](../cc/d2pl/)
+
+There used to be a `cc_format/` "single-version template" directory, but it was Makefile-based and diverged from the main CMake build, and its `README.md` steps were line-number-based and went stale — so it was removed (#83; see #34 for the discussion history). The template's role is replaced by "copy an existing protocol" plus, if needed, AI scaffolding (have it generate a skeleton that satisfies the TxExecutor contract).
+
+### Directory components
+
+Rewrite the copied `cc/<name>/` to match the new protocol name. Each file's role:
+
+| File | Role |
+|---|---|
+| `CMakeLists.txt` | Just one call to `ccbench_add_protocol(<name> ...)`. Details below |
+| `<workload>_<name>.cc` | Per-workload entry point (`ycsb_*`, `tpcc_*`, `bomb_*`, `sbomb_*`). Defines `worker()` and drives the matching workload template ([include/ycsb.hh](../include/ycsb.hh), [include/tpcc.hh](../include/tpcc.hh), [include/bomb.hh](../include/bomb.hh), etc.). You need one per tag listed in the `CMakeLists.txt` `WORKLOADS` |
+| `include/transaction.hh` | The protocol's core. Defines the `TxExecutor` class. Right after the class definition, write `static_assert(TxExecutorLike<TxExecutor>);` ([include/tx_executor_concept.hh](../include/tx_executor_concept.hh)) |
+| `transaction.cc` | Implements the `TxExecutor` methods (`read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort`, etc.) |
+| `result.cc` | Defines the per-thread result buffer (the `<Name>Result` vector) and `initResult()` |
+| `util.cc` / `include/util.hh` | DB initialization, record initial-value setup, the leader thread's job (`leaderWork`), etc. |
+| Other `include/` headers | `Tuple` metadata, read/write set elements, log records, global variable declarations, etc. Protocol-specific |
+
+### Plug into `ccbench_add_protocol()`
+
+The build is assembled declaratively by the `ccbench_add_protocol()` helper in [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake). A `cc/<name>/CMakeLists.txt` is just a single call to this helper:
+
+```cmake
+ccbench_add_protocol(<name>
+  SOURCES   transaction.cc util.cc result.cc   # .cc shared across workloads; don't put entry points here
+  WORKLOADS ycsb tpcc bomb sbomb               # a subset of the supported workload tags
+  OPTIONS                                      # protocol-specific -D defines (optional)
+    FOO=${CCBENCH_FOO}
+)
+```
+
+- For each tag `W` in `WORKLOADS`, the helper builds `W_<name>.exe` from `W_<name>.cc` + `SOURCES` and links `ccbench_common` + `ccbench::masstree` + `ccbench::mimalloc`.
+- The universal `-D` flags (`KEY_SIZE`, `VAL_SIZE`, `BACK_OFF`, `ADD_ANALYSIS`, `MASSTREE_USE`, etc.) and `-Wall -Wextra -Werror` are added automatically. To add a protocol-specific cache option, add it to [cmake/Options.cmake](../cmake/Options.cmake).
+- Finally, add the new directory name to the `foreach(_proto …)` loop in the top-level [CMakeLists.txt](../CMakeLists.txt). This also makes a row appear automatically in [build/PROTOCOL_MATRIX.md](../build/PROTOCOL_MATRIX.md) at configure time.
+
+### Satisfy the TxExecutor contract
+
+Every protocol must implement the `TxExecutor` API the workload templates expect. This contract is expressed as the `TxExecutorLike` concept in [include/tx_executor_concept.hh](../include/tx_executor_concept.hh), and each protocol **enforces it at compile time** via `static_assert(TxExecutorLike<TxExecutor>);` at the end of `transaction.hh`. A missing method or a signature mismatch fails that protocol's own build with a named diagnostic, so it never becomes a runtime crash. For the meaning of each contract method, see [architecture_en.md](architecture_en.md).
+
+### Checklist
+
+- [ ] Copied `cc/<name>/` from an existing protocol and renamed it
+- [ ] `cc/<name>/CMakeLists.txt` calls `ccbench_add_protocol(<name> ...)`
+- [ ] Added `<name>` to the `foreach(_proto …)` loop in the top-level `CMakeLists.txt`
+- [ ] `transaction.hh` ends with `static_assert(TxExecutorLike<TxExecutor>);`
+- [ ] `cmake -S . -B build` passes and each binary listed in `WORKLOADS` builds
+- [ ] Added a row to the protocol table in [docs/protocols_en.md](protocols_en.md) (canonical is `_ja`, so update it as a pair)
+
 ## Sending a PR (TODO)
 
 PR conventions are not yet written up. Add as you notice patterns.
