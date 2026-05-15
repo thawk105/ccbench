@@ -8,8 +8,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 # protocol binary via ccbench_add_protocol() (see cmake/CompileOptions.cmake).
 include(CompileOptions)
 
-set(THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party/")
-
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
@@ -32,17 +30,12 @@ find_package(glog REQUIRED)
 find_package(Boost COMPONENTS filesystem)
 
 # ---------------------------------------------------------------------------
-# Imported targets for the bootstrap-built third-party static libraries.
-# Replaces the raw ${THIRD_PARTY_DIR}/.../*.a paths previously copy-pasted
-# into every protocol's target_link_libraries(...).
+# Third-party dependencies (masstree / mimalloc / googletest) are pulled in
+# via FetchContent — see cmake/ThirdParty.cmake. Exposes ccbench::masstree
+# / ccbench::mimalloc / GTest::gtest{,_main}, which replace the static
+# IMPORTED targets and raw third_party/*.a paths used previously.
 # ---------------------------------------------------------------------------
-add_library(ccbench::masstree STATIC IMPORTED GLOBAL)
-set_target_properties(ccbench::masstree PROPERTIES
-  IMPORTED_LOCATION "${THIRD_PARTY_DIR}/masstree/libkohler_masstree_json.a")
-
-add_library(ccbench::mimalloc STATIC IMPORTED GLOBAL)
-set_target_properties(ccbench::mimalloc PROPERTIES
-  IMPORTED_LOCATION "${THIRD_PARTY_DIR}/mimalloc/out/release/libmimalloc.a")
+include(ThirdParty)
 
 # ---------------------------------------------------------------------------
 # common/ as a real shared static library — replaces the per-binary
