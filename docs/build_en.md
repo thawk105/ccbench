@@ -31,9 +31,6 @@ against. Run them once after cloning:
 ./build_tools/bootstrap_googletest.sh  # third_party/googletest
 ```
 
-A `bootstrap_tbb.sh` exists but `third_party/tbb` is **not** registered as a
-submodule — skip it unless you add tbb manually.
-
 If a binary fails to find mimalloc at runtime, add
 `third_party/mimalloc/out/release/` to `LD_LIBRARY_PATH`.
 
