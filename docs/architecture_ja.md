@@ -21,9 +21,8 @@ CCBench は主要な in-memory 並行性制御プロトコルを **共通の基�
 - [include/ycsb.hh](../include/ycsb.hh), [include/bomb.hh](../include/bomb.hh), [include/bomb_pessimistic.hh](../include/bomb_pessimistic.hh), [include/dbomb_deterministic.hh](../include/dbomb_deterministic.hh), [include/sbomb_deterministic.hh](../include/sbomb_deterministic.hh), [include/workload.hh](../include/workload.hh) — 各ワークロードのエントリポイント
 - [common/](../common/) — 全プロトコル共通のソース
 - [cc/](../cc/) — 各 CC プロトコルのサブディレクトリ (`cc/silo/`, `cc/cicada/`, ...)。各々 1 行で済む `CMakeLists.txt` と `<workload>_<protocol>.cc` のエントリポイントを持つ
-- [third_party/](../third_party/) — submodules: `masstree`, `mimalloc`, `googletest`
-- [build_tools/](../build_tools/) — bootstrap スクリプトと `ubuntu.deps` (apt パッケージリスト)
-- [cmake/](../cmake/) — 共有 CMake モジュール: `CompileOptions.cmake`、[Options.cmake](../cmake/Options.cmake) (汎用の `-D` フラグ群)、[ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`)
+- [build_tools/](../build_tools/) — `ubuntu.deps` (apt パッケージリスト)
+- [cmake/](../cmake/) — 共有 CMake モジュール: `CompileOptions.cmake`、[Options.cmake](../cmake/Options.cmake) (汎用の `-D` フラグ群)、[ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`)、[ThirdParty.cmake](../cmake/ThirdParty.cmake) (`masstree` / `mimalloc` / `googletest` を FetchContent で取得)
 - [docs/](.) — このディレクトリ
 - [microbench/](../microbench/) — 命令・操作のコストを測るマイクロベンチ (`fetch_add`, `membench`, など)。デフォルトではビルドされず、`-DCCBENCH_BUILD_MICROBENCH=ON` でオプトイン
 

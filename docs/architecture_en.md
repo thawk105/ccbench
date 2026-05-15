@@ -21,9 +21,8 @@ Workload specs are in [workloads.md](workloads_en.md).
 - [include/ycsb.hh](../include/ycsb.hh), [include/bomb.hh](../include/bomb.hh), [include/bomb_pessimistic.hh](../include/bomb_pessimistic.hh), [include/dbomb_deterministic.hh](../include/dbomb_deterministic.hh), [include/sbomb_deterministic.hh](../include/sbomb_deterministic.hh), [include/workload.hh](../include/workload.hh) — workload entry points
 - [common/](../common/) — shared sources used across protocols
 - [cc/](../cc/) — one subdirectory per concurrency control protocol (`cc/silo/`, `cc/cicada/`, …), each with a single-call `CMakeLists.txt` and the `<workload>_<protocol>.cc` entry points
-- [third_party/](../third_party/) — submodules: `masstree`, `mimalloc`, `googletest`
-- [build_tools/](../build_tools/) — bootstrap scripts and `ubuntu.deps` (apt package list)
-- [cmake/](../cmake/) — shared CMake modules: `CompileOptions.cmake`, [Options.cmake](../cmake/Options.cmake) (universal `-D` flags), [ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`)
+- [build_tools/](../build_tools/) — `ubuntu.deps` (apt package list)
+- [cmake/](../cmake/) — shared CMake modules: `CompileOptions.cmake`, [Options.cmake](../cmake/Options.cmake) (universal `-D` flags), [ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`), [ThirdParty.cmake](../cmake/ThirdParty.cmake) (fetches `masstree` / `mimalloc` / `googletest` via FetchContent)
 - [docs/](.) — this directory
 - [microbench/](../microbench/) — microbenchmarks measuring the cost of instructions / operations (`fetch_add`, `membench`, etc.); not built by default, opt in with `-DCCBENCH_BUILD_MICROBENCH=ON`
 

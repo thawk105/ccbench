@@ -10,8 +10,7 @@ on macOS, use the [devcontainer](#devcontainer-on-macos--non-ubuntu-hosts).
 
 CI runs on GitHub Actions `ubuntu-latest` — see
 [.github/workflows/build.yml](../.github/workflows/build.yml). It triggers
-on push to any branch and on PRs; ccache + apt + bootstrap output are all
-cached.
+on push to any branch and on PRs; ccache and apt are cached.
 
 Install build dependencies (this is what CI uses):
 
@@ -19,20 +18,6 @@ Install build dependencies (this is what CI uses):
 sudo apt-get update
 sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ```
-
-## Third-party libraries
-
-These produce static libraries under `third_party/` that the protocols link
-against. Run them once after cloning:
-
-```sh
-./build_tools/bootstrap.sh             # third_party/masstree
-./build_tools/bootstrap_mimalloc.sh    # third_party/mimalloc
-./build_tools/bootstrap_googletest.sh  # third_party/googletest
-```
-
-If a binary fails to find mimalloc at runtime, add
-`third_party/mimalloc/out/release/` to `LD_LIBRARY_PATH`.
 
 ## Building everything (top-level CMake)
 
@@ -101,10 +86,9 @@ The repo ships a devcontainer at [.devcontainer/](../.devcontainer/) pinned
 to `linux/amd64`:
 
 1. Open the repo in VS Code and run **Dev Containers: Reopen in Container**.
-2. The post-create hook runs `git submodule update --init --recursive` and
-   prints the next-step commands.
-3. Inside the container, run the three bootstrap scripts above and the
-   top-level `cmake -S . -B build` build.
+2. Inside the container, run the top-level
+   `cmake -S . -B build && cmake --build build`. CMake's FetchContent
+   fetches and builds the third-party dependencies at configure time.
 
 The image is published to `ghcr.io/thawk105/ccbench-devcontainer:latest` and
 rebuilt by [.github/workflows/devcontainer-image.yml](../.github/workflows/devcontainer-image.yml)
