@@ -141,11 +141,39 @@ Concretely:
 
 ## Adding a new protocol
 
-How to add a new concurrency-control protocol as `cc/<name>/`. **Line-number-based instructions are deliberately avoided** — they go stale on every internal refactor. Instead this section is conceptual: "which file plays which role" and "which mechanism you plug into". For the full architecture overview and the TxExecutor contract details, see [architecture_en.md](architecture_en.md).
+How to add a new concurrency-control (CC) protocol as `cc/<name>/`. **Line-number-based instructions are deliberately avoided** — they go stale on every internal refactor. Instead this section is conceptual: "what the real work is", "which file plays which role", and "which mechanism you plug into". For the full architecture overview and the TxExecutor contract details, see [architecture_en.md](architecture_en.md).
 
-### Starting point: copy an existing protocol
+### The real work: implement the CC algorithm in the tx operations
 
-Don't write from scratch. **Copy the whole directory (`cc/<proto>/`) of the existing protocol closest to your goal** and use it as the starting point.
+**Adding a new protocol means implementing the concurrency-control algorithm itself in `TxExecutor`'s transaction operations.** ccbench's mission is to *compare CC protocols on a shared foundation* (the Masstree index, the workload templates, the measurement harness), and the differences between protocols live precisely in the bodies of these operations. Copying an existing protocol's directory only **erects the scaffolding (a starting point)** — it is not the work itself. Copying, renaming, and registering with CMake does not produce a "new protocol" if the bodies are still those of the original protocol.
+
+The operations to implement, their responsibilities, and how their bodies change with the CC algorithm:
+
+| Operation | Common responsibility | What changes with the algorithm |
+|---|---|---|
+| `read` | Fetch the visible data for a key and return it to the caller. Read-own-writes (return from the local write set if present) also belongs here | **What counts as "visible"**. OCC reads the latest version while recording its TID into the read set / 2PL takes a read lock at access time / MVCC picks, from the version chain, the latest version at or before its own timestamp |
+| `update` | Reserve an update to an existing record (`WARN_NOT_FOUND` if it does not exist) | **When the update becomes visible**. OCC just stages it into the write set, deferred until commit / 2PL takes a write lock here (upgrading if it holds a read lock) / MVCC creates and links a new version in the pending state |
+| `insert` | Create a new record (`WARN_ALREADY_EXISTS` if it exists) | How the new `Tuple` is initialized. OCC creates it with the `absent` bit and sets it at commit / 2PL creates it already write-locked / MVCC gives it a first version. May need a Masstree node version check (silo's `node_map_`) |
+| `delete_record` | Reserve a record deletion | OCC sets `absent` and pushes to the GC queue / 2PL takes a write lock and unlinks from the index at commit / MVCC stages a delete-marked new version |
+| `scan` | Walk a key range and return each visible record. **Both the `int64_t limit` overload and the one without are required** (the concept demands it) | For each tuple in the range, apply essentially the same decision as `read`, per the CC algorithm |
+| `commit` | Finalize the transaction; return success/failure as `bool` | **The heart of the protocol**. OCC validates the read set → locks the write set → write phase / 2PL (assuming it already holds every lock) applies writes and releases locks / MVCC runs a version consistency check → promotes pending versions to committed |
+| `abort` | Roll the transaction back and release the resources it acquired | OCC removes inserted rows and clears the read/write sets / 2PL releases every held lock / MVCC discards pending versions |
+
+`begin` (timestamp allocation, etc.), the tuple/version memory layout, the lock/validation logic, and GC (garbage collection) are **likewise things you redesign to fit the algorithm**. Take the tuple layout alone: silo's `Tuple` carries a `Tidword` (lock bit + epoch + TID), ss2pl's carries a `ReaderWriteLock`, and mvto's `Tuple` carries the head of an `atomic<Version*>` version chain plus `min_wts_`. Designing "what to write in `read`/`commit`, and what to put in the tuple, for my algorithm" is the center of this work.
+
+The CC families in one line each:
+
+- **OCC (optimistic, e.g. [cc/silo/](../cc/silo/))** — takes no locks during access and validates everything at `commit`. `read` records the TID, and `commit` only writes after confirming "the versions I read have not changed".
+- **2PL (pessimistic, e.g. [cc/ss2pl/](../cc/ss2pl/))** — takes a lock the moment it accesses (shared for read, exclusive for update). All `commit` does is apply the writes and release the locks.
+- **MVCC (multi-version, e.g. [cc/cicada/](../cc/cicada/), [cc/mvto/](../cc/mvto/))** — keeps a version chain per record and decides visibility by timestamp order. `read` selects a version, `update` creates a new version, `commit` runs a version consistency check. GC of old versions is mandatory.
+
+For the deterministic family, see [cc/d2pl/](../cc/d2pl/).
+
+### Starting point: copy an existing protocol as scaffolding
+
+Doing the real work above *together with* creating files from scratch is painful, so **copy the whole directory (`cc/<proto>/`) of the existing protocol closest to your goal and use it as scaffolding (a starting point)**. What the copy gives you is "a `TxExecutor` skeleton that builds", "the wiring to the workload templates", and "boilerplate like `result.cc` / `util.cc`" — **the CC algorithm does not come with it**. Right after copying, you have nothing but "a working copy of the original protocol"; the work is to actually rewrite the tx operations, tuple layout, lock/validation logic, and GC from the table above to fit the CC algorithm you want to implement. "Copy and rename and done" does not yield a new protocol.
+
+Pick what to scaffold from by which family your target algorithm is closest to:
 
 - Optimistic (OCC) family → [cc/silo/](../cc/silo/) — the most straightforward reference implementation, supports all four workloads
 - Multi-version (MVCC) family → [cc/cicada/](../cc/cicada/) or [cc/mvto/](../cc/mvto/)
@@ -156,19 +184,19 @@ There used to be a `cc_format/` "single-version template" directory, but it was 
 
 ### Directory components
 
-Rewrite the copied `cc/<name>/` to match the new protocol name. Each file's role:
+Rewrite the scaffolded `cc/<name>/` to match the new protocol name and the CC algorithm. Each file's role:
 
 | File | Role |
 |---|---|
+| `transaction.cc` / `include/transaction.hh` | **The protocol's core**. `include/transaction.hh` defines the `TxExecutor` class (with `static_assert(TxExecutorLike<TxExecutor>);` right after the class definition — [include/tx_executor_concept.hh](../include/tx_executor_concept.hh)), and `transaction.cc` holds the implementations of `read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort`. The "real work" above is mostly rewriting here |
+| `include/tuple.hh` / `include/version.hh`, etc. | The `Tuple` / `Version` memory layout. Design here the metadata your algorithm needs — lock bits, timestamps, version chains, etc. |
+| `include/*_op_element.hh` | The read/write set element types. Determined by what `commit`'s validation needs to remember |
 | `CMakeLists.txt` | Just one call to `ccbench_add_protocol(<name> ...)`. Details below |
 | `<workload>_<name>.cc` | Per-workload entry point (`ycsb_*`, `tpcc_*`, `bomb_*`, `sbomb_*`). Defines `worker()` and drives the matching workload template ([include/ycsb.hh](../include/ycsb.hh), [include/tpcc.hh](../include/tpcc.hh), [include/bomb.hh](../include/bomb.hh), etc.). You need one per tag listed in the `CMakeLists.txt` `WORKLOADS` |
-| `include/transaction.hh` | The protocol's core. Defines the `TxExecutor` class. Right after the class definition, write `static_assert(TxExecutorLike<TxExecutor>);` ([include/tx_executor_concept.hh](../include/tx_executor_concept.hh)) |
-| `transaction.cc` | Implements the `TxExecutor` methods (`read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort`, etc.) |
 | `result.cc` | Defines the per-thread result buffer (the `<Name>Result` vector) and `initResult()` |
 | `util.cc` / `include/util.hh` | DB initialization, record initial-value setup, the leader thread's job (`leaderWork`), etc. |
-| Other `include/` headers | `Tuple` metadata, read/write set elements, log records, global variable declarations, etc. Protocol-specific |
 
-### Plug into `ccbench_add_protocol()`
+### Wiring after the scaffolding: plug into `ccbench_add_protocol()`
 
 The build is assembled declaratively by the `ccbench_add_protocol()` helper in [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake). A `cc/<name>/CMakeLists.txt` is just a single call to this helper:
 
@@ -185,13 +213,21 @@ ccbench_add_protocol(<name>
 - The universal `-D` flags (`KEY_SIZE`, `VAL_SIZE`, `BACK_OFF`, `ADD_ANALYSIS`, `MASSTREE_USE`, etc.) and `-Wall -Wextra -Werror` are added automatically. To add a protocol-specific cache option, add it to [cmake/Options.cmake](../cmake/Options.cmake).
 - Finally, add the new directory name to the `foreach(_proto …)` loop in the top-level [CMakeLists.txt](../CMakeLists.txt). This also makes a row appear automatically in [build/PROTOCOL_MATRIX.md](../build/PROTOCOL_MATRIX.md) at configure time.
 
-### Satisfy the TxExecutor contract
+### Enforced by the TxExecutor contract
 
-Every protocol must implement the `TxExecutor` API the workload templates expect. This contract is expressed as the `TxExecutorLike` concept in [include/tx_executor_concept.hh](../include/tx_executor_concept.hh), and each protocol **enforces it at compile time** via `static_assert(TxExecutorLike<TxExecutor>);` at the end of `transaction.hh`. A missing method or a signature mismatch fails that protocol's own build with a named diagnostic, so it never becomes a runtime crash. For the meaning of each contract method, see [architecture_en.md](architecture_en.md).
+The tx operations you rewrite in "the real work" above must satisfy the `TxExecutor` API the workload templates expect. This contract is expressed as the `TxExecutorLike` concept in [include/tx_executor_concept.hh](../include/tx_executor_concept.hh), and each protocol **enforces it at compile time** via `static_assert(TxExecutorLike<TxExecutor>);` at the end of `transaction.hh`. A missing method or a signature mismatch (e.g. forgetting the `int64_t limit` overload of `scan`) fails that protocol's own build with a named diagnostic, so it never becomes a runtime crash. The concept only constrains "the outward shape, the signatures" — it does *not* guarantee that the body of each operation contains a correct CC algorithm; that is the implementer's responsibility. For the meaning of each contract method, see [architecture_en.md](architecture_en.md).
 
 ### Checklist
 
-- [ ] Copied `cc/<name>/` from an existing protocol and renamed it
+CC algorithm implementation (the real work):
+
+- [ ] Rewrote `read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort` to fit the CC algorithm being implemented (no logic left over from the copy source)
+- [ ] Redesigned the tuple/version layout, lock/validation logic, and GC to fit the algorithm
+- [ ] Have both the `int64_t limit` overload of `scan` and the one without
+
+Scaffolding / wiring:
+
+- [ ] Copied `cc/<name>/` from the existing protocol closest to the goal and renamed it
 - [ ] `cc/<name>/CMakeLists.txt` calls `ccbench_add_protocol(<name> ...)`
 - [ ] Added `<name>` to the `foreach(_proto …)` loop in the top-level `CMakeLists.txt`
 - [ ] `transaction.hh` ends with `static_assert(TxExecutorLike<TxExecutor>);`
