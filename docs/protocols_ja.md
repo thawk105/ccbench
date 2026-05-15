@@ -53,11 +53,3 @@ ccbench_add_protocol(<name>
 汎用の `-D` フラグ (`KEY_SIZE`, `VAL_SIZE`, `BACK_OFF`, `ADD_ANALYSIS`, `MASSTREE_USE`) と `ccbench_common` + `ccbench::masstree` + `ccbench::mimalloc` への link は自動的に追加される。新しい cache オプションは [cmake/Options.cmake](../cmake/Options.cmake) に書く。値が空文字列の `OPTIONS` エントリは無視される — 旧式の `remove_definitions(-DFLAG)` と同じ意味。
 
 新プロトコルのディレクトリを追加したら、トップレベル [CMakeLists.txt](../CMakeLists.txt) の `foreach(_proto …)` ループにも追加すること。
-
-## デフォルトではビルドしないもの
-
-| Directory | 備考 |
-|---|---|
-| [cc/occ](../cc/occ/) | K&R OCC (Kung & Robinson, 1981)。plain Makefile で書かれていて (legacy uint64-key API)、CMake ツリーに組み込まれていない。 |
-
-有効にするには、`cc/occ/` を `ccbench_add_protocol(...)` エントリに port して、トップレベル [CMakeLists.txt](../CMakeLists.txt) の `foreach(_proto …)` ループに追加する。
