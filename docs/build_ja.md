@@ -23,8 +23,6 @@ sudo apt-get install -y $(cat build_tools/ubuntu.deps)
 ./build_tools/bootstrap_googletest.sh  # third_party/googletest
 ```
 
-`bootstrap_tbb.sh` も存在するが、`third_party/tbb` は submodule 登録 **されていない** — 自分で tbb を入れた場合以外は skip。
-
 実行時に mimalloc が見つからないというエラーが出たら、`third_party/mimalloc/out/release/` を `LD_LIBRARY_PATH` に追加する。
 
 ## 全部ビルドする (トップレベル CMake)
