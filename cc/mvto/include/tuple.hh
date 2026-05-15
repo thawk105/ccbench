@@ -58,8 +58,7 @@ public:
     body_ = std::ref((latest_.load(std::memory_order_acquire))->body_);
   }
 
-  void init([[maybe_unused]] size_t thid, Version* ver, uint64_t initial_wts,
-            [[maybe_unused]] TupleBody&& body) {
+  void init([[maybe_unused]] size_t thid, Version* ver, uint64_t initial_wts) {
     min_wts_ = initial_wts;
     gc_lock_.store(0, std::memory_order_release);
     latest_.store(ver, std::memory_order_release);
