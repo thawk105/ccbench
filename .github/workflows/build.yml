@@ -41,14 +41,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       # actions/checkout writes its own safe.directory, but later steps
       # invoke git from a fresh shell (`sh -e {0}`) where that scoped
       # config is not always picked up. Set it once globally so every
-      # `git ...` call in this job — checkout's submodule walk, the
-      # bootstrap-key step, etc. — sees the workspace as safe.
+      # `git ...` call in this job sees the workspace as safe.
       - name: Mark workspace as safe for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
@@ -67,37 +64,6 @@ jobs:
         run: |
           ccache --max-size=400M
           ccache --zero-stats
-
-      # Cache key invalidates when any submodule SHA or bootstrap script changes.
-      - name: Compute bootstrap cache key
-        id: bootstrap-key
-        run: |
-          git submodule status > .submodule-state
-          echo "hash=$(sha256sum .submodule-state build_tools/bootstrap*.sh | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore third_party build cache
-        id: tp-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            third_party/masstree/lib*.a
-            third_party/masstree/config.h
-            third_party/masstree/config.status
-            third_party/mimalloc/out
-            third_party/googletest/build
-          key: tp-${{ runner.os }}-${{ steps.bootstrap-key.outputs.hash }}
-
-      - name: Build third-party (masstree)
-        if: steps.tp-cache.outputs.cache-hit != 'true'
-        run: ./build_tools/bootstrap.sh
-
-      - name: Build third-party (mimalloc)
-        if: steps.tp-cache.outputs.cache-hit != 'true'
-        run: ./build_tools/bootstrap_mimalloc.sh
-
-      - name: Build third-party (googletest)
-        if: steps.tp-cache.outputs.cache-hit != 'true'
-        run: ./build_tools/bootstrap_googletest.sh
 
       - name: Configure (top-level cmake)
         # Sanitizer adds significant link-time memory/cpu cost and CI does
