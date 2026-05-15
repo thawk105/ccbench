@@ -13,19 +13,23 @@
 // フォーマッターを利用すると，辞書順のために下記2行が入れ替わる．
 // しかし，依存関係があるため，config -> compiler の順にしなければ
 // 大量のエラーが出てしまう． そのため，改行を防ぐため空行を空けている
-#include "../third_party/masstree/config.h"
+//
+// masstree のヘッダは ccbench::masstree (cmake/ThirdParty.cmake) の
+// INTERFACE_INCLUDE_DIRECTORIES から angle-bracket 形式で引き当てる。
+// FetchContent によりソースは build/_deps/masstree-src/ に置かれる。
+#include <config.h>
 
-#include "../third_party/masstree/compiler.hh"
+#include <compiler.hh>
 
-#include "../third_party/masstree/kvthread.hh"
-#include "../third_party/masstree/masstree.hh"
-#include "../third_party/masstree/masstree_insert.hh"
-#include "../third_party/masstree/masstree_print.hh"
-#include "../third_party/masstree/masstree_remove.hh"
-#include "../third_party/masstree/masstree_scan.hh"
-#include "../third_party/masstree/masstree_stats.hh"
-#include "../third_party/masstree/masstree_tcursor.hh"
-#include "../third_party/masstree/string.hh"
+#include <kvthread.hh>
+#include <masstree.hh>
+#include <masstree_insert.hh>
+#include <masstree_print.hh>
+#include <masstree_remove.hh>
+#include <masstree_scan.hh>
+#include <masstree_stats.hh>
+#include <masstree_tcursor.hh>
+#include <string.hh>
 
 #include "atomic_wrapper.hh"
 #include "debug.hh"

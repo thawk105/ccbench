@@ -28,19 +28,18 @@ foreach(src IN LISTS TEST_SOURCES)
             KEY_SORT=${CCBENCH_KEY_SORT}
     )
 
-    target_include_directories(${test_name}
-            PRIVATE ${PROJECT_SOURCE_DIR}/../third_party/googletest/googletest/include
-    )
-
+    # All three deps now come from FetchContent (cmake/ThirdParty.cmake) —
+    # GTest::gtest{,_main} carry their own INTERFACE_INCLUDE_DIRECTORIES so
+    # we no longer need the manual include path override.
     target_link_libraries(${test_name}
             Boost::filesystem
             gflags::gflags
             glog::glog
-            ${PROJECT_SOURCE_DIR}/../third_party/mimalloc/out/release/libmimalloc.a
-            ${PROJECT_SOURCE_DIR}/../third_party/masstree/libkohler_masstree_json.a
+            ccbench::mimalloc
+            ccbench::masstree
             Threads::Threads
-            ${PROJECT_SOURCE_DIR}/../third_party/googletest/build/lib/libgtest.a
-            ${PROJECT_SOURCE_DIR}/../third_party/googletest/build/lib/libgtest_main.a
+            GTest::gtest
+            GTest::gtest_main
             )
     set_compile_options(${test_name})
     add_test(
