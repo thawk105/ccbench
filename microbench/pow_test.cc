@@ -26,6 +26,4 @@ int main() try {
     cout << j << " " << time << endl;
   }
   return 0;
-} catch (const std::bad_alloc &) {
-  ERR;
-}
+} catch (const std::bad_alloc&) { ERR; }

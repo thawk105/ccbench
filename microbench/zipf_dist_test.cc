@@ -11,7 +11,7 @@ double SKEW;
 size_t TRIAL;
 
 // Dumps the histogram of FastZipf output to check the skew matches.
-int main(const int argc, const char *argv[]) try {
+int main(const int argc, const char* argv[]) try {
   if (argc != 4) {
     cout << "./zipf_dist_test.exe LENGTH SKEW TRIAL" << endl;
     exit(0);
@@ -33,6 +33,4 @@ int main(const int argc, const char *argv[]) try {
   }
 
   return 0;
-} catch (const std::bad_alloc &) {
-  ERR;
-}
+} catch (const std::bad_alloc&) { ERR; }
