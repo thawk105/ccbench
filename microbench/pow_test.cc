@@ -1,6 +1,6 @@
 
-#include <cmath>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 
 #include "../include/debug.hh"
@@ -9,18 +9,23 @@
 
 using namespace std;
 
-int main(const int argc, const char *argv[]) try {
+// Measures the wall-clock time of std::pow(2, x) for x in [0, 3].
+int main() try {
   cout << "#pow_arg, time" << endl;
   for (double j = 0; j <= 3; j += 0.1) {
     chrono::system_clock::time_point start, end;
     start = chrono::system_clock::now();
-    for (size_t i = 0; i < TRIAL; ++i)
-      pow(2, j);
+    // volatile sink so the loop body is not optimized away.
+    volatile double sink = 0.0;
+    for (size_t i = 0; i < TRIAL; ++i) sink = pow(2, j);
+    (void) sink;
     end = chrono::system_clock::now();
-    double time = static_cast<double>(chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000.0);
+    double time = static_cast<double>(
+        chrono::duration_cast<chrono::microseconds>(end - start).count() /
+        1000.0);
     cout << j << " " << time << endl;
   }
   return 0;
-} catch (std::bad_alloc) {
+} catch (const std::bad_alloc &) {
   ERR;
 }

@@ -66,16 +66,6 @@ void fillArray(void *data, size_t size) {
   }
 }
 
-void writeFromCacheline(void *dst, const void *src, size_t size) {
-  char *p = (char *) dst;
-  while (size > CACHE_LINE_SIZE) {
-    ::memcpy(p, src, CACHE_LINE_SIZE);
-    p += CACHE_LINE_SIZE;
-    size -= CACHE_LINE_SIZE;
-  }
-  ::memcpy(p, src, size);
-}
-
 struct Config {
   size_t nr_threads;
   size_t run_sec;
@@ -326,15 +316,6 @@ void runExpr(const Config &cfg) {
           cfg.nr_threads, cfg.run_sec, cfg.workload, cfg.bulk_size,
           total / cfg.run_sec, total / cfg.bulk_size / cfg.run_sec, latency_ns);
   ::fflush(::stdout);
-}
-
-void put8(const uint64_t *p) {
-  for (size_t i = 0; i < 24; ++i) {
-    ::printf("%"
-    PRIu64
-    "", p[i]);
-  }
-  ::printf("\n");
 }
 
 int main(int argc, char *argv[]) try {
