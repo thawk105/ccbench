@@ -312,7 +312,7 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 
   tuple = new Tuple();
   Version* new_ver = newVersionGeneration(tuple, std::move(body));
-  tuple->init(this->thid_, new_ver, this->wts_.ts_, std::move(body));
+  tuple->init(this->thid_, new_ver, this->wts_.ts_);
 
   typename MasstreeWrapper<Tuple>::insert_info_t insert_info;
   Status stat =

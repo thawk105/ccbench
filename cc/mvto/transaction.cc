@@ -166,7 +166,7 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
 
   tuple = new Tuple();
   Version* new_ver = newVersionGeneration(tuple, std::move(body));
-  tuple->init(this->thid_, new_ver, this->wts_.ts_, std::move(body));
+  tuple->init(this->thid_, new_ver, this->wts_.ts_);
 
   Status stat = Masstrees[get_storage(s)].insert_value(key, tuple);
   if (stat == Status::WARN_ALREADY_EXISTS) {
