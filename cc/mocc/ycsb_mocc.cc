@@ -1,13 +1,3 @@
-#include <ctype.h> // isdigit,
-#include <pthread.h>
-#include <string.h>      // strlen,
-#include <sys/syscall.h> // syscall(SYS_gettid),
-#include <sys/types.h>   // syscall(SYS_gettid),
-#include <time.h>
-#include <unistd.h> // syscall(SYS_gettid),
-#include <iostream>
-#include <string> // string
-
 #define GLOBAL_VALUE_DEFINE
 
 #include "include/atomic_tool.hh"
@@ -16,42 +6,17 @@
 #include "include/transaction.hh"
 #include "include/util.hh"
 
-#include "../../include/atomic_wrapper.hh"
-#include "../../include/backoff.hh"
 #include "../../include/cpu.hh"
 #include "../../include/debug.hh"
-#include "../../include/int64byte.hh"
 #include "../../include/masstree_wrapper.hh"
 #include "../../include/result.hh"
 #include "../../include/tsc.hh"
 #include "../../include/util.hh"
 #include "../../include/ycsb.hh"
-#include "../../include/zipf.hh"
+
+#include "../../common/runner.hh"
 
 using namespace std;
-
-void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(CCBenchResults[thid]);
-  TxExecutor trans(thid, &myres, quit);
-  YcsbWorkload workload;
-
-#if MASSTREE_USE
-  MasstreeWrapper<Tuple>::thread_init(int(thid));
-#endif
-
-#ifdef Linux
-  setThreadAffinity(thid);
-#endif // Linux
-
-  storeRelease(ready, 1);
-  while (!loadAcquire(start)) _mm_pause();
-  if (thid == 0) trans.epoch_timer_start = rdtscp();
-  while (!loadAcquire(quit)) {
-    workload.run<TxExecutor, TransactionStatus>(trans);
-  }
-
-  return;
-}
 
 int main(int argc, char* argv[]) try {
   gflags::SetUsageMessage("YCSB MOCC benchmark.");
@@ -60,32 +25,24 @@ int main(int argc, char* argv[]) try {
   YcsbWorkload::displayWorkloadParameter();
   YcsbWorkload::makeDB<Tuple, void>(nullptr);
 
-  alignas(CACHE_LINE_SIZE) bool start = false;
-  alignas(CACHE_LINE_SIZE) bool quit = false;
   initResult(TotalThreadNum);
-  std::vector<char> readys(TotalThreadNum);
-  std::vector<std::thread> thv;
-  for (size_t i = 0; i < TotalThreadNum; ++i)
-    thv.emplace_back(worker, i, std::ref(readys[i]), std::ref(start),
-                     std::ref(quit));
-  waitForReady(readys);
-  uint64_t start_tsc = rdtscp();
-  storeRelease(start, true);
-  for (size_t i = 0; i < FLAGS_extime; ++i) { sleepMs(1000); }
-  storeRelease(quit, true);
-  for (auto& th : thv) th.join();
-  uint64_t end_tsc = rdtscp();
-  long double actual_extime =
-      round((end_tsc - start_tsc) /
-            ((long double) FLAGS_clocks_per_us * powl(10.0, 6.0)));
 
-  for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
-  }
-  ShowOptParameters();
-  std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                     TotalThreadNum);
+  ccbench::run<TxExecutor, TransactionStatus, YcsbWorkload>(
+      TotalThreadNum, ccbench::RunnerOptions{},
+      [](size_t thid, const bool& quit, Backoff& /*unused*/) {
+        return TxExecutor(thid, &CCBenchResults[thid], quit);
+      },
+      [](TxExecutor& /*trans*/, size_t thid) {
+#if MASSTREE_USE
+        MasstreeWrapper<Tuple>::thread_init(int(thid));
+#endif
+#ifdef Linux
+        setThreadAffinity(thid);
+#endif
+      },
+      [](TxExecutor& trans, size_t thid) {
+        if (thid == 0) trans.epoch_timer_start = rdtscp();
+      });
 
   return 0;
 } catch (const bad_alloc&) { ERR; }
