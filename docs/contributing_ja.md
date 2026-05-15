@@ -138,11 +138,39 @@
 
 ## 新しいプロトコルを追加する
 
-新しい並行性制御プロトコルを `cc/<name>/` として足すときの手順。**行番号ベースの指示は意図的に書かない** — 内部リファクタリングのたびに陳腐化するため。代わりに「どのファイルが何の役割を持つか」「どの仕組みに乗るか」を概念ベースで説明する。アーキテクチャ全体像と TxExecutor 契約の詳細は [architecture_ja.md](architecture_ja.md) を参照。
+新しい並行性制御 (CC) プロトコルを `cc/<name>/` として足すときの手順。**行番号ベースの指示は意図的に書かない** — 内部リファクタリングのたびに陳腐化するため。代わりに「作業の本体は何か」「どのファイルが何の役割を持つか」「どの仕組みに乗るか」を概念ベースで説明する。アーキテクチャ全体像と TxExecutor 契約の詳細は [architecture_ja.md](architecture_ja.md) を参照。
 
-### 出発点: 既存プロトコルをコピーする
+### 作業の本体: tx 操作に CC アルゴリズムを実装する
 
-ゼロから書かず、**目的に一番近い既存プロトコルのディレクトリ (`cc/<proto>/`) を丸ごとコピーして出発点にする**。
+**新プロトコルの追加とは、`TxExecutor` のトランザクション操作に並行制御アルゴリズムそのものを実装すること。** ccbench の使命は「共通基盤 (Masstree インデックス、ワークロードテンプレート、計測ハーネス) の上で CC プロトコルを比較する」ことであり、プロトコル間の差分はまさにこれらの操作の中身に宿る。既存プロトコルのディレクトリをコピーするのは**足場 (出発点) を組むだけ**であって、それ自体は作業ではない。コピーして改名して CMake に登録しても、中身が元のプロトコルのままなら「新プロトコル」は存在しない。
+
+実装すべき操作と、その責務、CC アルゴリズムによって中身がどう変わるか:
+
+| 操作 | 共通の責務 | アルゴリズムによって変わるところ |
+|---|---|---|
+| `read` | キーから可視なデータを取り出して呼び出し側に返す。read-own-writes (自分の write set にあればそれを返す) もここ | **何を「可視」とみなすか**。OCC は最新版を読みつつ TID を read set に控える / 2PL はアクセス時に read ロックを取る / MVCC は自分のタイムスタンプ以前の最新バージョンをバージョンチェーンから選ぶ |
+| `update` | 既存レコードへの更新を予約する (レコードが無ければ `WARN_NOT_FOUND`) | **更新をいつ可視にするか**。OCC は write set に積むだけで commit まで遅延 / 2PL はここで write ロック (read ロック保持中なら昇格) / MVCC は pending 状態の新バージョンを生成・連結 |
+| `insert` | 新規レコードを作る (既存なら `WARN_ALREADY_EXISTS`) | 新規 `Tuple` の初期化方法。OCC は `absent` ビット付きで作り commit 時に立てる / 2PL は生成時に write ロック済み / MVCC は最初のバージョンを持たせる。Masstree ノードの版数チェックが要るかも (silo の `node_map_`) |
+| `delete_record` | レコード削除を予約する | OCC は `absent` を立てて GC キューへ / 2PL は write ロックを取り commit 時にインデックスから外す / MVCC は削除マークの新バージョンを積む |
+| `scan` | キー範囲を走査し可視な各レコードを返す。`int64_t limit` 付きと無しの**両方の overload が必須** (concept が要求) | 範囲内の各タプルに対して実質 `read` と同じ判断を、CC アルゴリズムごとに適用する |
+| `commit` | トランザクションを確定し、成否を `bool` で返す | **プロトコルの心臓部**。OCC は read set 検証 → write ロック → write phase / 2PL は (ロックは既に全部持っている前提で) write を反映してロック解放 / MVCC は version consistency check → pending バージョンを committed に昇格 |
+| `abort` | トランザクションを巻き戻し、確保した資源を解放する | OCC は insert した行を消し read/write set をクリア / 2PL は保持ロックを全解放 / MVCC は pending バージョンを破棄 |
+
+`begin` (タイムスタンプ確保など) や、tuple/version のメモリレイアウト、ロック・検証ロジック、GC (Garbage Collection) も**同じくアルゴリズムに応じて設計し直す対象**。例えば tuple のレイアウトひとつ取っても: silo は `Tuple` に `Tidword` (ロックビット + epoch + TID) を持ち、ss2pl は `ReaderWriteLock` を持ち、mvto は `Tuple` が `atomic<Version*>` のバージョンチェーン先頭と `min_wts_` を持つ。「自分のアルゴリズムでは read/commit に何を書くか、tuple に何を持たせるか」を設計するのがこの作業の中心。
+
+CC ファミリ間の違いを一言でまとめると:
+
+- **OCC (楽観, 例: [cc/silo/](../cc/silo/))** — アクセス中はロックを取らず、`commit` 時にまとめて検証する。`read` は TID を控え、`commit` で「読んだ版が変わっていないか」を確かめて初めて書き込む。
+- **2PL (悲観, 例: [cc/ss2pl/](../cc/ss2pl/))** — アクセスした瞬間にロックを取る (read は共有、update は排他)。`commit` 時にやることは write の反映とロック解放だけ。
+- **MVCC (多版, 例: [cc/cicada/](../cc/cicada/), [cc/mvto/](../cc/mvto/))** — レコードごとにバージョンチェーンを持ち、タイムスタンプ順序で可視性を決める。`read` はバージョン選択、`update` は新バージョン生成、`commit` は version consistency check。古いバージョンの GC が必須。
+
+決定論的なものは [cc/d2pl/](../cc/d2pl/) を参照。
+
+### 出発点: 既存プロトコルをコピーして足場にする
+
+上記の本体作業をゼロからのファイル作成と一緒にやると大変なので、**目的に一番近い既存プロトコルのディレクトリ (`cc/<proto>/`) を丸ごとコピーし、足場 (出発点) として使う**。コピーが提供してくれるのは「ビルドが通る `TxExecutor` の雛形」「ワークロードテンプレートとの配線」「`result.cc` / `util.cc` などの定型部分」であって、**CC アルゴリズムは付いてこない**。コピー直後の状態は「元のプロトコルの動くコピー」にすぎず、ここから上表の tx 操作・tuple レイアウト・ロック/検証ロジック・GC を、実装したい CC アルゴリズムに合わせて実際に書き換えていくのが作業。「コピーして改名して終わり」では新プロトコルにならない。
+
+どれを足場にするかは、実装したいアルゴリズムが上記どのファミリに近いかで選ぶ:
 
 - 楽観的 (OCC) 系なら [cc/silo/](../cc/silo/) — 一番素直で、ワークロード 4 種すべてに対応している参照実装
 - 多版 (MVCC) 系なら [cc/cicada/](../cc/cicada/) や [cc/mvto/](../cc/mvto/)
@@ -153,19 +181,19 @@
 
 ### ディレクトリの構成要素
 
-コピーした `cc/<name>/` を新プロトコル名に合わせて書き換える。各ファイルの役割:
+足場としてコピーした `cc/<name>/` を、新プロトコル名と CC アルゴリズムに合わせて書き換える。各ファイルの役割:
 
 | ファイル | 役割 |
 |---|---|
+| `transaction.cc` / `include/transaction.hh` | **プロトコルの中核**。`include/transaction.hh` が `TxExecutor` クラスを定義し (クラス定義の直後で `static_assert(TxExecutorLike<TxExecutor>);` — [include/tx_executor_concept.hh](../include/tx_executor_concept.hh))、`transaction.cc` が `read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort` の実装を持つ。上記「作業の本体」で書き換えるのは主にここ |
+| `include/tuple.hh` / `include/version.hh` 等 | `Tuple` / `Version` のメモリレイアウト。ロックビット・タイムスタンプ・バージョンチェーンなど、アルゴリズムが必要とするメタデータをここで設計する |
+| `include/*_op_element.hh` | read/write set の要素型。`commit` の検証で何を覚えておく必要があるかで決まる |
 | `CMakeLists.txt` | `ccbench_add_protocol(<name> ...)` を 1 回呼ぶだけ。詳細は下記 |
 | `<workload>_<name>.cc` | ワークロードごとのエントリポイント (`ycsb_*`, `tpcc_*`, `bomb_*`, `sbomb_*`)。`worker()` を定義し、対応するワークロードテンプレート ([include/ycsb.hh](../include/ycsb.hh), [include/tpcc.hh](../include/tpcc.hh), [include/bomb.hh](../include/bomb.hh) 等) を駆動する。`CMakeLists.txt` の `WORKLOADS` に挙げたタグ分だけ必要 |
-| `include/transaction.hh` | プロトコルの中核。`TxExecutor` クラスを定義する。クラス定義の直後で `static_assert(TxExecutorLike<TxExecutor>);` を書く ([include/tx_executor_concept.hh](../include/tx_executor_concept.hh)) |
-| `transaction.cc` | `TxExecutor` のメソッド実装 (`read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort` など) |
 | `result.cc` | スレッドごとの集計結果バッファ (`<Name>Result` ベクタ) と `initResult()` の定義 |
 | `util.cc` / `include/util.hh` | DB 初期化、レコードの初期値設定、リーダースレッドの仕事 (`leaderWork`) など |
-| `include/` のその他ヘッダ | `Tuple` のメタデータ、read/write set 要素、ログレコード、グローバル変数宣言など。プロトコル固有 |
 
-### `ccbench_add_protocol()` に乗せる
+### 足場を組んだ後の配線: `ccbench_add_protocol()` に乗せる
 
 ビルドは [cmake/ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) の `ccbench_add_protocol()` ヘルパーが宣言的に組み立てる。`cc/<name>/CMakeLists.txt` はこのヘルパーを 1 回呼ぶだけで済む:
 
@@ -182,13 +210,21 @@ ccbench_add_protocol(<name>
 - 汎用 `-D` フラグ (`KEY_SIZE`, `VAL_SIZE`, `BACK_OFF`, `ADD_ANALYSIS`, `MASSTREE_USE` 等) と `-Wall -Wextra -Werror` は自動で付く。プロトコル固有の cache オプションを増やすときは [cmake/Options.cmake](../cmake/Options.cmake) に追加する。
 - 最後に、トップレベル [CMakeLists.txt](../CMakeLists.txt) の `foreach(_proto …)` ループに新しいディレクトリ名を 1 つ追加する。これで configure 時に [build/PROTOCOL_MATRIX.md](../build/PROTOCOL_MATRIX.md) にも自動で行が増える。
 
-### TxExecutor 契約を満たす
+### TxExecutor 契約による強制
 
-全プロトコルは、ワークロードテンプレートが期待する `TxExecutor` API を実装しなければならない。この契約は [include/tx_executor_concept.hh](../include/tx_executor_concept.hh) の `TxExecutorLike` concept として表現され、各プロトコルが `transaction.hh` 末尾の `static_assert(TxExecutorLike<TxExecutor>);` で**コンパイル時に強制**する。メソッドの欠落やシグネチャ不一致は、そのプロトコル自身のビルドが named diagnostic 付きで失敗するので、実行時クラッシュにはならない。契約の各メソッドの意味は [architecture_ja.md](architecture_ja.md) を参照。
+上記「作業の本体」で書き換える tx 操作は、ワークロードテンプレートが期待する `TxExecutor` API を満たさなければならない。この契約は [include/tx_executor_concept.hh](../include/tx_executor_concept.hh) の `TxExecutorLike` concept として表現され、各プロトコルが `transaction.hh` 末尾の `static_assert(TxExecutorLike<TxExecutor>);` で**コンパイル時に強制**する。メソッドの欠落やシグネチャ不一致 (例: `scan` の `int64_t limit` 付き overload 忘れ) は、そのプロトコル自身のビルドが named diagnostic 付きで失敗するので、実行時クラッシュにはならない。concept はあくまで「シグネチャという外形」を縛るだけで、各操作の中身に正しい CC アルゴリズムが入っているかは保証しない — そこは実装者の責任。契約の各メソッドの意味は [architecture_ja.md](architecture_ja.md) を参照。
 
 ### チェックリスト
 
-- [ ] `cc/<name>/` を既存プロトコルからコピーして名前を書き換えた
+CC アルゴリズムの実装 (本体):
+
+- [ ] `read` / `update` / `insert` / `delete_record` / `scan` / `commit` / `abort` を、実装する CC アルゴリズムに合わせて書き換えた (コピー元のロジックが残っていない)
+- [ ] tuple/version レイアウト・ロック/検証ロジック・GC をアルゴリズムに合わせて設計し直した
+- [ ] `scan` の `int64_t limit` 付き・無し両 overload がある
+
+足場・配線:
+
+- [ ] `cc/<name>/` を目的に近い既存プロトコルからコピーして名前を書き換えた
 - [ ] `cc/<name>/CMakeLists.txt` が `ccbench_add_protocol(<name> ...)` を呼んでいる
 - [ ] トップレベル `CMakeLists.txt` の `foreach(_proto …)` に `<name>` を追加した
 - [ ] `transaction.hh` 末尾に `static_assert(TxExecutorLike<TxExecutor>);` がある
