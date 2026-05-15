@@ -25,7 +25,7 @@ CCBench は主要な in-memory 並行性制御プロトコルを **共通の基�
 - [build_tools/](../build_tools/) — bootstrap スクリプトと `ubuntu.deps` (apt パッケージリスト)
 - [cmake/](../cmake/) — 共有 CMake モジュール: `CompileOptions.cmake`、[Options.cmake](../cmake/Options.cmake) (汎用の `-D` フラグ群)、[ProtocolHelpers.cmake](../cmake/ProtocolHelpers.cmake) (`ccbench_add_protocol`)
 - [docs/](.) — このディレクトリ
-- [instruction/](../instruction/) — 個別 instruction のマイクロベンチマーク (cache, fetch_add, など)
+- [microbench/](../microbench/) — 命令・操作のコストを測るマイクロベンチ (`fetch_add`, `membench`, など)。デフォルトではビルドされず、`-DCCBENCH_BUILD_MICROBENCH=ON` でオプトイン
 
 ## 共通の Transaction API (コンパイル時に強制)
 
