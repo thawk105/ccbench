@@ -13,8 +13,6 @@
 #include "d2pl_op_element.hh"
 #include "tuple.hh"
 
-extern std::vector<Result> D2PLResult;
-
 enum class TransactionStatus : uint8_t {
   invalid,
   inflight,

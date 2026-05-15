@@ -39,7 +39,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 #endif
 
   Backoff backoff(FLAGS_clocks_per_us); // Cicada's backoff opt.
-  TxExecutor trans(thid, backoff, (Result*) &SIResult[thid], quit);
+  TxExecutor trans(thid, backoff, (Result*) &CCBenchResults[thid], quit);
   BombWorkload<Tuple, void> workload;
 
 #ifdef Linux
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum + (FLAGS_bomb_mixed_mode ? 1 : 0));
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -95,15 +95,15 @@ int main(int argc, char* argv[]) try {
 
   std::cout << "done" << std::endl;
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    SIResult[0].addLocalAllResult(SIResult[i]);
-    SIResult[0].addLocalPerTxResult(SIResult[i], TxTypes);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
+    CCBenchResults[0].addLocalPerTxResult(CCBenchResults[i], TxTypes);
   }
   ShowOptParameters();
   std::cout << "actual_extime:\t" << actual_extime << std::endl;
-  SIResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                               TotalThreadNum);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     TotalThreadNum);
   std::cout << "Details per transaction type:" << std::endl;
-  SIResult[0].displayPerTxResult(TxTypes);
+  CCBenchResults[0].displayPerTxResult(TxTypes);
 
   return 0;
 } catch (const bad_alloc&) { ERR; }

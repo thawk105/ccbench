@@ -7,7 +7,6 @@
 #include "include/transaction.hh"
 #include "include/scan_callback.hh"
 
-extern std::vector<Result> SiloResult;
 extern void displayDB();
 extern void siloLeaderWork(uint64_t& epoch_timer_start,
                            uint64_t& epoch_timer_stop);
@@ -569,7 +568,7 @@ bool TxExecutor::isLeader() { return this->thid_ == 0; }
 void TxExecutor::leaderWork() {
   siloLeaderWork(this->epoch_timer_start, this->epoch_timer_stop);
 #if BACK_OFF
-  leaderBackoffWork(backoff_, SiloResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 

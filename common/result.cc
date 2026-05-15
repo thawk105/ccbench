@@ -1,8 +1,11 @@
 
 #include <cmath>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <vector>
 
+#include "../include/cache_line_size.hh"
 #include "../include/debug.hh"
 #include "../include/result.hh"
 
@@ -13,6 +16,15 @@ using std::setprecision;
 using namespace std;
 
 extern void displayRusageRUMaxrss();
+
+// Project-wide per-thread result accumulator. See `include/result.hh`
+// for the rationale (#101 collapsed 10 identical per-protocol shells
+// into this single definition).
+alignas(CACHE_LINE_SIZE) std::vector<Result> CCBenchResults;
+
+void initResult(std::size_t thread_count) {
+  CCBenchResults.resize(thread_count);
+}
 
 void Result::displaySuccessForwarding() {
   cout << "success_forwarding_:\t" << total_success_fw_ << endl;

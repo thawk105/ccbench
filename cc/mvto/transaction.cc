@@ -15,7 +15,6 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern void displaySLogSet();
 extern void displayDB();
 extern void mvtoLeaderWork();
-extern std::vector<Result> MvtoResult;
 
 using namespace std;
 
@@ -490,7 +489,7 @@ bool TxExecutor::isLeader() { return this->thid_ == 0; }
 void TxExecutor::leaderWork() {
   mvtoLeaderWork();
 #if BACK_OFF
-  leaderBackoffWork(backoff_, MvtoResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 

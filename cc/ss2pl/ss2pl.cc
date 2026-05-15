@@ -32,7 +32,7 @@
 #include "include/util.hh"
 
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
-  Result& myres = std::ref(SS2PLResult[thid]);
+  Result& myres = std::ref(CCBenchResults[thid]);
   Xoroshiro128Plus rnd;
   rnd.init();
   TxExecutor trans(thid, (Result*) &myres);
@@ -58,7 +58,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
                   thid, myres);
   RETRY:
     if (loadAcquire(quit)) break;
-    if (thid == 0) leaderBackoffWork(backoff, SS2PLResult);
+    if (thid == 0) leaderBackoffWork(backoff, CCBenchResults);
 
     trans.begin();
     for (auto itr = trans.pro_set_.begin(); itr != trans.pro_set_.end();
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(FLAGS_thread_num);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < FLAGS_thread_num; ++i)
@@ -112,11 +112,11 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
-    SS2PLResult[0].addLocalAllResult(SS2PLResult[i]);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
   }
   ShowOptParameters();
-  SS2PLResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                  FLAGS_thread_num);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     FLAGS_thread_num);
 
   return 0;
 } catch (bad_alloc) { ERR; }

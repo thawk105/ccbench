@@ -1,5 +1,5 @@
 ccbench_add_protocol(mocc
-  SOURCES   transaction.cc util.cc result.cc lock.cc
+  SOURCES   transaction.cc util.cc lock.cc
   WORKLOADS ycsb tpcc bomb sbomb
   OPTIONS
     RWLOCK

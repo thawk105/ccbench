@@ -35,8 +35,8 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
 
   FastZipf zipf(&rnd, FLAGS_zipf_skew, FLAGS_tuple_num);
 
-  Result& myres = std::ref(TicTocResult[thid]);
-  TxExecutor trans(thid, (Result*) &TicTocResult[thid]);
+  Result& myres = std::ref(CCBenchResults[thid]);
+  TxExecutor trans(thid, (Result*) &CCBenchResults[thid]);
 
 #if BACK_OFF
   Backoff backoff(FLAGS_clocks_per_us);
@@ -64,7 +64,7 @@ void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
                   thid, myres);
   RETRY:
 #if BACK_OFF
-    if (thid == 0) leaderBackoffWork(std::ref(backoff), TicTocResult);
+    if (thid == 0) leaderBackoffWork(std::ref(backoff), CCBenchResults);
 #endif
     if (loadAcquire(quit)) break;
 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(FLAGS_thread_num);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < FLAGS_thread_num; ++i)
@@ -126,11 +126,11 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < FLAGS_thread_num; ++i) {
-    TicTocResult[0].addLocalAllResult(TicTocResult[i]);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
   }
   ShowOptParameters();
-  TicTocResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                   FLAGS_thread_num);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     FLAGS_thread_num);
 
   return 0;
 } catch (bad_alloc) { ERR; }

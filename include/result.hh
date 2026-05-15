@@ -1,9 +1,11 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <vector>
 
 #include "./cache_line_size.hh"
 
@@ -234,3 +236,24 @@ public:
   void addLocalForwarding2Count(const uint64_t count);
 #endif
 };
+
+// Per-thread result accumulator shared across all CC protocols.
+//
+// Previously each protocol owned its own `<Proto>Result` global (e.g.
+// `SiloResult`, `CicadaResult`) plus a `cc/<proto>/result.cc` that did
+// nothing but declare it and resize it in `initResult()`. Those 10
+// files were identical except for the symbol name, so they have been
+// collapsed into this single project-wide vector defined in
+// `common/result.cc` and linked from `ccbench_common` (#101).
+//
+// `initResult(n)` resizes the vector to `n` (= every worker thread,
+// including batch threads if the protocol uses them). The caller in
+// each workload entry point passes the protocol's `TotalThreadNum`,
+// which already accounts for `FLAGS_thread_num + FLAGS_batch_th_num`
+// in protocols that have batch threads and equals `FLAGS_thread_num`
+// in the rest. Taking the count as a parameter (rather than reading
+// `TotalThreadNum` from `common/result.cc`) avoids a link-time
+// dependency on a symbol whose underlying type differs per protocol
+// (`uint32_t` in silo/mocc/ss2pl, `uint64_t` elsewhere).
+extern std::vector<Result> CCBenchResults;
+void initResult(std::size_t thread_count);

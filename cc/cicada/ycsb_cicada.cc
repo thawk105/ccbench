@@ -39,7 +39,7 @@ using namespace std;
 void worker(size_t thid, char& ready, const bool& start, const bool& quit) {
   YcsbWorkload workload;
   Backoff backoff(FLAGS_clocks_per_us);
-  TxExecutor trans(thid, backoff, (Result*) &CicadaResult[thid], quit);
+  TxExecutor trans(thid, backoff, (Result*) &CCBenchResults[thid], quit);
 
 #ifdef Linux
   setThreadAffinity(thid);
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) try {
 
   alignas(CACHE_LINE_SIZE) bool start = false;
   alignas(CACHE_LINE_SIZE) bool quit = false;
-  initResult();
+  initResult(TotalThreadNum);
   std::vector<char> readys(TotalThreadNum);
   std::vector<std::thread> thv;
   for (size_t i = 0; i < TotalThreadNum; ++i)
@@ -87,12 +87,12 @@ int main(int argc, char* argv[]) try {
   for (auto& th : thv) th.join();
 
   for (unsigned int i = 0; i < TotalThreadNum; ++i) {
-    CicadaResult[0].addLocalAllResult(CicadaResult[i]);
+    CCBenchResults[0].addLocalAllResult(CCBenchResults[i]);
   }
   ShowOptParameters();
-  CicadaResult[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
-                                   TotalThreadNum, FLAGS_max_ope,
-                                   FLAGS_batch_max_ope);
+  CCBenchResults[0].displayAllResult(FLAGS_clocks_per_us, FLAGS_extime,
+                                     TotalThreadNum, FLAGS_max_ope,
+                                     FLAGS_batch_max_ope);
   // TODO: enable this if really necessary
   // deleteDB();
 

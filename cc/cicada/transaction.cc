@@ -21,7 +21,6 @@ extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
 extern void displaySLogSet();
 extern void displayDB();
 extern void cicadaLeaderWork();
-extern std::vector<Result> CicadaResult;
 
 using namespace std;
 
@@ -963,7 +962,7 @@ bool TxExecutor::isLeader() { return this->thid_ == 0; }
 void TxExecutor::leaderWork() {
   cicadaLeaderWork();
 #if BACK_OFF
-  leaderBackoffWork(backoff_, CicadaResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 

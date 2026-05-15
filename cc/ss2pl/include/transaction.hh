@@ -13,8 +13,6 @@
 #include "ss2pl_op_element.hh"
 #include "tuple.hh"
 
-extern std::vector<Result> SS2PLResult;
-
 enum class TransactionStatus : uint8_t {
   invalid,
   inflight,

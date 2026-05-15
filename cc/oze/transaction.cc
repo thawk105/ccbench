@@ -20,7 +20,6 @@ extern void displaySLogSet();
 extern void displayDB();
 extern void ozeLeaderWork(uint64_t& epoch_timer_start,
                           uint64_t& epoch_timer_stop);
-extern std::vector<Result> OzeResult;
 
 using namespace std;
 
@@ -1167,7 +1166,7 @@ bool TxExecutor::isLeader() { return this->thid_ == 1; }
 void TxExecutor::leaderWork() {
   ozeLeaderWork(epoch_timer_start_, epoch_timer_stop_);
 #if BACK_OFF
-  leaderBackoffWork(backoff_, OzeResult);
+  leaderBackoffWork(backoff_, CCBenchResults);
 #endif
 }
 
