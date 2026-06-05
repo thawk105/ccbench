@@ -1,0 +1,3 @@
+[submodule "third_party/shirakami"]
+	path = third_party/shirakami
+	url = https://github.com/thawk105/shirakami.git
