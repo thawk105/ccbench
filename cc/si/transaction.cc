@@ -10,6 +10,7 @@
 #include "include/scan_callback.hh"
 #include "include/transaction.hh"
 #include "include/version.hh"
+#include "../../include/trace.hh"  // izanagi: #if TRACE-guarded correctness trace
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
@@ -521,6 +522,37 @@ void TxExecutor::si_commit() {
         GCElement((*itr).storage_, (*itr).key_, (*itr).rcdptr_, (*itr).ver_,
                   this->cstamp_));
   }
+
+#if TRACE
+  // izanagi correctness trace (SI; observer-effect isolated, compiled out when
+  // TRACE==0). cstamp_ is this txn's commit order AND the version id stamped
+  // into every written version (ver_->cstamp_, set just above). The read set
+  // holds the snapshot versions actually read; ver_->cstamp_ is the creating
+  // txn's commit (0 = initial/genesis version, since Lsn starts at 0 and real
+  // commits use ++Lsn >= 1). Encode the version id as (epoch=1, tid=cstamp) so
+  // the verifier's (epoch,tid) model applies directly and an initial-version
+  // read maps to genesis (1,0). All data is CC-native (cstamp_ already exists
+  // for SI/GC). Emitted only on the committed path (node-validation abort goes
+  // to FINISH_SI_COMMIT and never reaches here). read_set_/write_set_ are still
+  // intact (cleared just below).
+  {
+    const std::uint64_t txid = izanagi_trace::next_txid();
+    izanagi_trace::emit_commit(thid_, txid, 1, this->cstamp_);
+    for (auto& re : read_set_) {
+      const std::uint32_t vc = re.ver_->cstamp_.load(std::memory_order_acquire);
+      izanagi_trace::emit_read(thid_, txid, izanagi_trace::key_to_hex(re.key_),
+                               1, vc);
+    }
+    for (auto& we : write_set_) {
+      const char op = (we.op_ == OpType::INSERT)   ? 'I'
+                      : (we.op_ == OpType::DELETE) ? 'D'
+                                                   : 'U';
+      izanagi_trace::emit_write(thid_, txid, izanagi_trace::key_to_hex(we.key_),
+                                op, 1, this->cstamp_);
+    }
+  }
+#endif
+
   // After pushing this commit's GCElements, expose the (possibly new)
   // queue front cstamp so other threads' gcRecord can advance safely.
   gcobject_.publishMinQueuedCstamp();
