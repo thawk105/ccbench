@@ -42,6 +42,19 @@ function(ccbench_add_protocol name)
       ${_universal_defs}
       ${_extra_defs})
 
+    # cpu.hh's setThreadAffinity() (and util.hh's Linux-only paths) are gated
+    # behind `#ifdef Linux`. The old hand-written Makefile supplied this via
+    # `-D$(shell uname)`; ccbench_add_protocol never did, so as-built the
+    # protocol binaries leave every worker thread UNPINNED. On a 2-socket host
+    # the scheduler then migrates workers across sockets, giving noisy runs in
+    # which many-core cache contention is not faithfully reproduced (Izanagi
+    # 絶対規律4). Mirror the microbench contract (MicrobenchHelpers.cmake:43-45)
+    # so measurement builds pin threads. CC-orthogonal: applies uniformly to
+    # baseline and every variant, so it does not perturb relative comparisons.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      target_compile_definitions(${target} PRIVATE Linux)
+    endif()
+
     # Phased -Werror cleanup complete (see #43). Phases 1-4 promoted nine
     # individual -Werror=<flag> classes one at a time as the existing
     # offenders got fixed; Phase 5 replaces that list with the full
