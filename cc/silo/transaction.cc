@@ -6,6 +6,7 @@
 #include "include/log.hh"
 #include "include/transaction.hh"
 #include "include/scan_callback.hh"
+#include "../../include/trace.hh"  // izanagi: #if TRACE-guarded correctness trace
 
 extern void displayDB();
 extern void siloLeaderWork(uint64_t& epoch_timer_start,
@@ -512,6 +513,31 @@ void TxExecutor::writePhase() {
   maxtid.lock = 0;
   maxtid.latest = 1;
   mrctid_ = maxtid;
+
+#if TRACE
+  // izanagi correctness trace (observer-effect isolated; compiled out when
+  // TRACE==0). maxtid is this txn's serialization point AND the new version
+  // stamped into every written tuple, so (epoch,tid) is both the commit-order
+  // key and the produced version id. read_set_/write_set_ are still intact
+  // here (cleared at the end of writePhase). All data is CC-native -- no
+  // verification-only tuple field is added (docs/ccbench-anatomy.md  4-5).
+  {
+    const std::uint64_t txid = izanagi_trace::next_txid();
+    izanagi_trace::emit_commit(thid_, txid, maxtid.epoch, maxtid.tid);
+    for (auto& re : read_set_) {
+      const Tidword v = re.get_tidword();
+      izanagi_trace::emit_read(thid_, txid, izanagi_trace::key_to_hex(re.key_),
+                               v.epoch, v.tid);
+    }
+    for (auto& we : write_set_) {
+      const char op = (we.op_ == OpType::INSERT)   ? 'I'
+                      : (we.op_ == OpType::DELETE) ? 'D'
+                                                   : 'U';
+      izanagi_trace::emit_write(thid_, txid, izanagi_trace::key_to_hex(we.key_),
+                                op, maxtid.epoch, maxtid.tid);
+    }
+  }
+#endif
 
 #if WAL
   wal(maxtid.obj_);

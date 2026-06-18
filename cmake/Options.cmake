@@ -12,6 +12,11 @@
 
 # ----- universal (every protocol uses these) -----
 set(CCBENCH_ADD_ANALYSIS  0 CACHE STRING "extra per-tx analysis counters")
+# izanagi: correctness trace. Tested with `#if TRACE` (NOT #ifdef), so 0 (perf
+# build, the default) compiles the trace hooks out entirely. Build the
+# trace-enabled correctness binary with -DCCBENCH_TRACE=1 in a SEPARATE build
+# dir; never mix into a perf build (absolute discipline #1 / decisions.md D14).
+set(CCBENCH_TRACE         0 CACHE STRING "izanagi correctness trace (0=off, perf)")
 set(CCBENCH_BACK_OFF      1 CACHE STRING "exponential backoff on abort")
 set(CCBENCH_KEY_SIZE      8 CACHE STRING "key size in bytes (YCSB)")
 set(CCBENCH_MASSTREE_USE  1 CACHE STRING "use Masstree as the index")
@@ -59,6 +64,7 @@ function(ccbench_universal_definitions out_var)
     KEY_SIZE=${CCBENCH_KEY_SIZE}
     MASSTREE_USE=${CCBENCH_MASSTREE_USE}
     VAL_SIZE=${CCBENCH_VAL_SIZE}
+    TRACE=${CCBENCH_TRACE}
     PARENT_SCOPE)
 endfunction()
 
