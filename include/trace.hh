@@ -88,12 +88,12 @@ inline void emit_read(std::size_t thid, std::uint64_t txid,
 }
 
 inline void emit_write(std::size_t thid, std::uint64_t txid,
-                       const std::string& key_hex, char op,
-                       std::uint64_t epoch, std::uint64_t tid) {
+                       const std::string& key_hex, char op, std::uint64_t epoch,
+                       std::uint64_t tid) {
   stream(thid) << "W " << txid << ' ' << key_hex << ' ' << op << ' ' << epoch
                << ' ' << tid << '\n';
 }
 
-}  // namespace izanagi_trace
+} // namespace izanagi_trace
 
-#endif  // TRACE
+#endif // TRACE

@@ -6,7 +6,7 @@
 #include "include/log.hh"
 #include "include/transaction.hh"
 #include "include/scan_callback.hh"
-#include "../../include/trace.hh"  // izanagi: #if TRACE-guarded correctness trace
+#include "../../include/trace.hh" // izanagi: #if TRACE-guarded correctness trace
 
 extern void displayDB();
 extern void siloLeaderWork(uint64_t& epoch_timer_start,

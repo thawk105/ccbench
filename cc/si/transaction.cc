@@ -10,7 +10,7 @@
 #include "include/scan_callback.hh"
 #include "include/transaction.hh"
 #include "include/version.hh"
-#include "../../include/trace.hh"  // izanagi: #if TRACE-guarded correctness trace
+#include "../../include/trace.hh" // izanagi: #if TRACE-guarded correctness trace
 
 extern bool chkClkSpan(const uint64_t start, const uint64_t stop,
                        const uint64_t threshold);
