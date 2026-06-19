@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) try {
         std::string logpath;
         genLogFile(logpath, thid);
         trans.logfile_.open(logpath, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-        trans.logfile_.ftruncate(10 ^ 9);
+        trans.logfile_.ftruncate(1000000000);
 #else
         (void) trans;
 #endif
