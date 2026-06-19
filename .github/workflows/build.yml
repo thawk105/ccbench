@@ -40,7 +40,7 @@ jobs:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # actions/checkout writes its own safe.directory, but later steps
       # invoke git from a fresh shell (`sh -e {0}`) where that scoped
