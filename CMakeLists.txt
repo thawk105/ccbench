@@ -7,6 +7,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 # set_compile_options() — applied to ccbench_common here and to every
 # protocol binary via ccbench_add_protocol() (see cmake/CompileOptions.cmake).
 include(CompileOptions)
+# Options defines ccbench_universal_definitions(); ProtocolHelpers also includes
+# it, but ccbench_common (below) needs the universal defines too (see comment
+# there), so pull it in early. include() is idempotent for these cache/function
+# defs.
+include(Options)
 
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
@@ -48,6 +53,17 @@ add_library(ccbench_common STATIC
   common/util.cc
 )
 target_compile_features(ccbench_common PUBLIC cxx_std_20)
+# ccbench_common compiles common/result.cc, which defines and resize()s the
+# global CCBenchResults (std::vector<Result>). The Result struct grows under
+# `#if ADD_ANALYSIS` (and other universal flags can affect shared layout/behavior),
+# so ccbench_common MUST see the same universal definitions as the protocol
+# targets that link it. Without this, ccbench_common built Result with the
+# default flags (e.g. ADD_ANALYSIS=0 -> small Result) while a protocol built with
+# ADD_ANALYSIS=1 iterated CCBenchResults with the larger stride -> ODR violation /
+# heap-buffer-overflow (e.g. BACK_OFF=1 + ADD_ANALYSIS=1 crashed in
+# leaderBackoffWork's range-for over CCBenchResults).
+ccbench_universal_definitions(_common_universal_defs)
+target_compile_definitions(ccbench_common PRIVATE ${_common_universal_defs})
 set_compile_options(ccbench_common)
 target_include_directories(ccbench_common PUBLIC
   ${CMAKE_SOURCE_DIR}

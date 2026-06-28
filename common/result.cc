@@ -411,7 +411,10 @@ void Result::displayCycleCheckCount() {
 }
 
 void Result::displayForwardingCount() {
-  uint64_t num_txns = total_commit_counts_ + total_abort_counts_;
+  // num_txns is only referenced by the commented-out per-tx rate below; keep it
+  // (preserving the author's intent) but mark maybe_unused so -Werror is happy.
+  [[maybe_unused]] uint64_t num_txns =
+      total_commit_counts_ + total_abort_counts_;
   auto n = total_forwarding1_count_; // / (long double)num_txns;
   cout << "1st_forwarding_count: " << n << endl;
   auto m = total_forwarding2_count_; // / (long double)num_txns;
