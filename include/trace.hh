@@ -30,6 +30,7 @@
 #include <fstream>
 #include <ios>
 #include <string>
+#include <unordered_set>
 
 namespace izanagi_trace {
 
@@ -92,6 +93,30 @@ inline void emit_write(std::size_t thid, std::uint64_t txid,
                        std::uint64_t tid) {
   stream(thid) << "W " << txid << ' ' << key_hex << ' ' << op << ' ' << epoch
                << ' ' << tid << '\n';
+}
+
+// --- Lock-coverage shadow set (izanagi 後続段 3, D38) ---
+// Records which tuples THIS worker CAS-locked in lockWriteSet, so writePhase
+// can verify every written tuple is still covered by a lock this thread holds.
+// Verification-only: entirely inside `#if TRACE`, so the perf build has none of
+// it (絶対規律1). Kept in namespace izanagi_trace so the perf-build nm guard
+// (buildcache._has_trace_symbols = "izanagi_trace" substring) deterministically
+// covers any accidental leak of this TU's symbols (D38/OBS-1).
+inline std::unordered_set<const void*>& lock_shadow() {
+  thread_local std::unordered_set<const void*> s;
+  return s;
+}
+inline void record_lock(const void* rcd) { lock_shadow().insert(rcd); }
+inline void clear_shadow() { lock_shadow().clear(); }
+inline bool holds_lock(const void* rcd) { return lock_shadow().count(rcd) != 0; }
+
+// A lock-coverage violation: writePhase wrote (or is about to write) a tuple
+// without holding its lock. reason in {not-locked-at-entry, lock-lost-before-write}.
+// The verifier maps X lines to Integrity.lock_coverage_violations -> indeterminate
+// (a torn-read window makes version stamps untrustworthy; not a cycle). D38.
+inline void emit_lock_violation(std::size_t thid, std::uint64_t txid,
+                                const std::string& key_hex, const char* reason) {
+  stream(thid) << "X " << txid << ' ' << key_hex << ' ' << reason << '\n';
 }
 
 } // namespace izanagi_trace
