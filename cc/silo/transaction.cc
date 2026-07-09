@@ -387,7 +387,53 @@ bool TxExecutor::validationPhase() { // Validation Phase
 
   /* Phase 1
    * lock write_set_ sorted.*/
+#if TRACE
+  // Permutation-preservation check, pre-sort snapshot (D41 決定2, 死角 1
+  // countermeasure). std::sort with a non-strict-weak-order comparator is
+  // undefined behavior and can corrupt write_set_'s contents (element
+  // loss/duplication), not just its order -- silently breaking the lock
+  // coverage the sort exists to establish. Capture identity (size + rcdptr_
+  // multiset) now so it can be compared after sort runs. Outside the
+  // EVOLVE-BLOCK below (skeleton, not the coder edit surface) so a variant
+  // cannot suppress this check without an auditor seeing #if TRACE code
+  // touched outside the marker (D41 決定4). #if TRACE only (絶対規律1). Emits
+  // via the existing izanagi_trace::stream() directly (no new trace.hh
+  // helper) so this whole check lives inside the EVOLVE_BLOCK_SOURCES edit
+  // surface (cc/silo/transaction.cc only, D23/D24).
+  const std::size_t izanagi_pre_sort_size = write_set_.size();
+  std::multiset<const void*> izanagi_pre_sort_rcdptrs;
+  for (auto& we : write_set_) izanagi_pre_sort_rcdptrs.insert(we.rcdptr_);
+#endif
+
   sort(write_set_.begin(), write_set_.end());
+
+#if TRACE
+  // Permutation-preservation check, post-sort verdict (D41 決定2). Outside
+  // the EVOLVE-BLOCK above for the same reason as the pre-sort snapshot.
+  // reason in {size-changed, rcdptr-set-changed}. No txid correlation:
+  // validationPhase runs before writePhase assigns the txn its trace id, and
+  // can itself abort (read-set/node-map validation failure below) before
+  // ever reaching writePhase, so there is no txn context to attach this to.
+  // The verifier maps P lines to Integrity.permutation_violations ->
+  // indeterminate (CC correctness violation, not a trace-hook fault; does
+  // not itself produce a cycle so it does not belong in anomalies).
+  {
+    bool izanagi_perm_ok = (write_set_.size() == izanagi_pre_sort_size);
+    const char* izanagi_perm_reason = "size-changed";
+    if (izanagi_perm_ok) {
+      std::multiset<const void*> izanagi_post_sort_rcdptrs;
+      for (auto& we : write_set_) izanagi_post_sort_rcdptrs.insert(we.rcdptr_);
+      if (izanagi_post_sort_rcdptrs != izanagi_pre_sort_rcdptrs) {
+        izanagi_perm_ok = false;
+        izanagi_perm_reason = "rcdptr-set-changed";
+      }
+    }
+    if (!izanagi_perm_ok) {
+      izanagi_trace::stream(thid_) << "P " << izanagi_perm_reason << '\n';
+    }
+  }
+#endif
+
   lockWriteSet();
   if (this->status_ == TransactionStatus::aborted) return false;
 
