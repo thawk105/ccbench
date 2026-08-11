@@ -591,8 +591,18 @@ void TxExecutor::writePhase() {
   // txid is hoisted to writePhase scope (D38) so the per-storeRelease retention
   // check in the write loop below shares this txn's id (keeps X lines correlated
   // with this txn's C/R/W; a fresh next_txid() would orphan them).
+  // Silo trace v2 frames each txn as
+  //   C <txid> <thid> <epoch> <tid> <read_count> <write_count>
+  //   ... existing R/W records ...
+  //   E <txid>
+  // emit_commit intentionally remains the v1 helper used by SI: trace.hh is
+  // outside this change's permitted edit surface, so Silo writes its v2 C line
+  // directly while the existing R/W helpers remain unchanged.
   const std::uint64_t izanagi_txid = izanagi_trace::next_txid();
-  izanagi_trace::emit_commit(thid_, izanagi_txid, maxtid.epoch, maxtid.tid);
+  izanagi_trace::stream(thid_) << "C " << izanagi_txid << ' ' << thid_ << ' '
+                               << maxtid.epoch << ' ' << maxtid.tid << ' '
+                               << read_set_.size() << ' ' << write_set_.size()
+                               << '\n';
   for (auto& re : read_set_) {
     const Tidword v = re.get_tidword();
     izanagi_trace::emit_read(thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_),
@@ -683,6 +693,9 @@ void TxExecutor::writePhase() {
 
 #if TRACE
   izanagi_trace::clear_shadow();  // success path -> reset coverage shadow (D38, 裁定7)
+  // E follows every entry/retention X check and clear_shadow(), so interruption
+  // anywhere in the write loop leaves this v2 transaction detectably unterminated.
+  izanagi_trace::stream(thid_) << "E " << izanagi_txid << '\n';
 #endif
   gc_records();
   read_set_.clear();
