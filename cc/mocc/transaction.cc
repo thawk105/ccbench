@@ -10,6 +10,10 @@
 #include "include/transaction.hh"
 #include "include/tuple.hh"
 
+#if TRACE
+#include "../../include/trace.hh" // izanagi: #if TRACE-guarded correctness trace
+#endif
+
 using namespace std;
 
 extern void moccLeaderWork(uint64_t& epoch_timer_start,
@@ -1033,6 +1037,29 @@ void TxExecutor::writePhase() {
   Tidword maxtid = max({tid_a, tid_b, tid_c});
   mrctid_ = maxtid;
 
+#if TRACE
+  const std::uint64_t izanagi_txid = izanagi_trace::next_txid();
+  izanagi_trace::stream(thid_) << "C " << izanagi_txid << ' ' << thid_ << ' '
+                               << maxtid.epoch << ' ' << maxtid.tid << ' '
+                               << read_set_.size() << ' ' << write_set_.size()
+                               << '\n';
+
+  for (auto& re : read_set_) {
+    const Tidword v = re.tidword_;
+    izanagi_trace::emit_read(
+        thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_), v.epoch, v.tid);
+  }
+
+  for (auto& we : write_set_) {
+    const char op = (we.op_ == OpType::INSERT)   ? 'I'
+                    : (we.op_ == OpType::DELETE) ? 'D'
+                                                 : 'U';
+    izanagi_trace::emit_write(
+        thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_), op,
+        maxtid.epoch, maxtid.tid);
+  }
+#endif
+
   // write (record, commit-tid)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     // update and down lockBit
@@ -1062,6 +1089,10 @@ void TxExecutor::writePhase() {
     __atomic_store_n(&((*itr).rcdptr_->tidword_.obj_), maxtid.obj_,
                      __ATOMIC_RELEASE);
   }
+
+#if TRACE
+  izanagi_trace::stream(thid_) << "E " << izanagi_txid << '\n';
+#endif
 
   unlockCLL();
   RLL_.clear();
