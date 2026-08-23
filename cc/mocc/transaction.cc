@@ -11,7 +11,8 @@
 #include "include/tuple.hh"
 
 #if TRACE
-#include "../../include/trace.hh" // izanagi: #if TRACE-guarded correctness trace
+// izanagi: #if TRACE-guarded correctness trace
+#include "../../include/trace.hh"
 #endif
 
 using namespace std;
