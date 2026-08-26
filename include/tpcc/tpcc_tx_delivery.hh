@@ -149,8 +149,8 @@ bool update_order_line_and_get_ol_total(TxExecutor& tx, uint16_t w_id,
 
     status = tx.update(Storage::OrderLine, ol_key,
                        TupleBody(ol_key, std::move(ol_obj)));
-    if (status != Status::OK) ERR;
     if (tx.status_ == TransactionStatus::aborted) { return false; }
+    if (status != Status::OK) ERR;
     ol_total += ol.OL_AMOUNT;
   }
   return true;

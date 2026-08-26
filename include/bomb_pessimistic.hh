@@ -695,8 +695,10 @@ public:
     for (auto& m_id : query.args.i_id_set) {
       SimpleKey<8> key;
       MaterialCostMaster::CreateKey(query.args.f_id, m_id, key.ptr());
-      TupleBody* body;
-      tx.read(Storage::MaterialCostMaster, key.view(), &body);
+      TupleBody* body = nullptr;
+      Status stat = tx.read(Storage::MaterialCostMaster, key.view(), &body);
+      if (tx.status_ == TransactionStatus::aborted) return;
+      if (stat != Status::OK) return;
       MaterialCostMaster& old = body->get_value().cast_to<MaterialCostMaster>();
       HeapObject obj;
       obj.template allocate<MaterialCostMaster>();
