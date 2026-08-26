@@ -42,6 +42,7 @@ set(CCBENCH_PROCEDURE_SORT                0 CACHE STRING "silo")
 set(CCBENCH_WAL                           0 CACHE STRING "silo")
 set(CCBENCH_TEMPERATURE_RESET_OPT         1 CACHE STRING "mocc")
 set(CCBENCH_WORKER1_INSERT_DELAY_RPHASE   0 CACHE STRING "cicada")
+set(CCBENCH_SS2PL_DLR                     1 CACHE STRING "ss2pl: 0=timeout, 1=no-wait")
 
 # Cicada and Oze share many flags but disagree on this one's default.
 # Keep two separate cache entries; protocols pick the one they want.

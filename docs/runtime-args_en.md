@@ -64,6 +64,17 @@ BoMB has many knobs; the ones below are the most common. See
 | `-bomb_use_cache` | `false` | Use cached BoM tree (static setting). |
 | `-bomb_rate_control` | `false` | Enable rate-limited request injection. |
 
+## SS2PL-specific flags (`*_ss2pl.exe`, only when built with `CCBENCH_SS2PL_DLR=0`)
+
+The deadlock resolution strategy is chosen at configure time with
+`-DCCBENCH_SS2PL_DLR=<0|1>`. The default is `1` (no-wait), which is the
+historical behaviour. Only a binary built with `0` (timeout) accepts the flag
+below.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `-ss2pl_dlr0_timeout_us` | `1000` | Upper bound, in microseconds, on how long a single record lock acquisition waits. The transaction aborts when it expires. The bound is converted to TSC ticks with `-clocks_per_us`, so that value has to be correct. |
+
 ## Examples
 
 TPC-C on Silo with 8 warehouses:

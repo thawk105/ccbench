@@ -52,4 +52,13 @@ DECLARE_bool(ycsb);
 DECLARE_double(zipf_skew);
 #endif
 
+#if defined(DLR0)
+#ifdef GLOBAL_VALUE_DEFINE
+DEFINE_uint64(ss2pl_dlr0_timeout_us, 1000,
+              "ss2pl DLR0 lock timeout in microseconds.");
+#else
+DECLARE_uint64(ss2pl_dlr0_timeout_us);
+#endif
+#endif
+
 alignas(CACHE_LINE_SIZE) GLOBAL uint32_t TotalThreadNum;

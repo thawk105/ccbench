@@ -9,6 +9,9 @@
 #include "../../include/procedure.hh"
 #include "../../include/result.hh"
 #include "include/common.hh"
+#if defined(DLR0)
+#include "include/dlr0_timeout.hh"
+#endif
 #include "include/transaction.hh"
 
 using namespace std;
@@ -155,6 +158,11 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
   read_internal(s, key, tuple);
+#if defined(DLR0)
+  if (this->status_ == TransactionStatus::aborted) {
+    return Status::ERROR_LOCK_FAILED;
+  }
+#endif
   *body = &(read_set_.back().body_);
 
 FINISH_READ:
@@ -169,11 +177,12 @@ void TxExecutor::read_internal(Storage s, std::string_view key, Tuple* tuple) {
 
   if (reconnoitering_) goto FINISH_READ_LOCK;
 
-#ifdef DLR0
-  /**
-   * Acquire lock with wait.
-   */
-  tuple->lock_.r_lock();
+#if defined(DLR0)
+  if (!ss2pl_dlr0_lock_until_timeout(
+          [&]() { return ss2pl_dlr0_try_read_once(tuple->lock_); })) {
+    this->status_ = TransactionStatus::aborted;
+    goto FINISH_READ;
+  }
   r_lock_list_.emplace_back(&tuple->lock_);
 #elif defined(DLR1)
   if (tuple->lock_.r_trylock()) {
@@ -260,9 +269,10 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
   for (auto rItr = read_set_.begin(); rItr != read_set_.end(); ++rItr) {
     if ((*rItr).storage_ != s) continue;
     if ((*rItr).key_ == key) { // hit
-#if DLR0
-      // Workaround for handling static BoMB properly
-      if (!(*rItr).rcdptr_->lock_.tryupgrade()) {
+#if defined(DLR0)
+      if (!ss2pl_dlr0_lock_until_timeout([&]() {
+            return ss2pl_dlr0_try_upgrade_once((*rItr).rcdptr_->lock_);
+          })) {
         this->status_ = TransactionStatus::aborted;
         goto FINISH_WRITE;
       }
@@ -306,11 +316,12 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
 #endif
   if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
-#if DLR0
-  /**
-   * Lock with wait.
-   */
-  tuple->lock_.w_lock();
+#if defined(DLR0)
+  if (!ss2pl_dlr0_lock_until_timeout(
+          [&]() { return ss2pl_dlr0_try_write_once(tuple->lock_); })) {
+    this->status_ = TransactionStatus::aborted;
+    goto FINISH_WRITE;
+  }
 #elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
     /**
@@ -331,6 +342,11 @@ FINISH_WRITE:
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
 #endif // ADD_ANALYSIS
+#if defined(DLR0)
+  if (this->status_ == TransactionStatus::aborted) {
+    return Status::ERROR_LOCK_FAILED;
+  }
+#endif
   return Status::OK;
 }
 
@@ -408,8 +424,12 @@ Status TxExecutor::read_lock(Storage s, std::string_view key) {
     if (w_lock == &tuple->lock_) { return Status::OK; }
   }
 
-#ifdef DLR0
-  tuple->lock_.r_lock();
+#if defined(DLR0)
+  if (!ss2pl_dlr0_lock_until_timeout(
+          [&]() { return ss2pl_dlr0_try_read_once(tuple->lock_); })) {
+    this->status_ = TransactionStatus::aborted;
+    return Status::ERROR_LOCK_FAILED;
+  }
 #elif defined(DLR1)
   if (!tuple->lock_.r_trylock()) {
     this->status_ = TransactionStatus::aborted;
@@ -433,8 +453,12 @@ Status TxExecutor::write_lock(Storage s, std::string_view key) {
     if (w_lock == &tuple->lock_) { return Status::OK; }
   }
 
-#if DLR0
-  tuple->lock_.w_lock();
+#if defined(DLR0)
+  if (!ss2pl_dlr0_lock_until_timeout(
+          [&]() { return ss2pl_dlr0_try_write_once(tuple->lock_); })) {
+    this->status_ = TransactionStatus::aborted;
+    return Status::ERROR_LOCK_FAILED;
+  }
 #elif defined(DLR1)
   if (!tuple->lock_.w_trylock()) {
     this->status_ = TransactionStatus::aborted;
