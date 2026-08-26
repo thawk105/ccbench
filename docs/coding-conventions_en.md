@@ -69,7 +69,10 @@ Starts thin. Add as you learn.
 ### `tx.read` returns Status — *check it*
 
 `tx.read` returns `Status::OK` on hit and `Status::WARN_NOT_FOUND` on miss.
-On miss, `*body` is **left unchanged** (it does not get nullified). Checking
+Some protocols return other errors as well (`Status::ERROR_LOCK_FAILED` for
+SS2PL and MOCC, `Status::ERROR_PREEMPTIVE_ABORT` for TicToc). **Reject every
+non-`Status::OK` value** — do not test for one specific value. On any non-OK
+result, `*body` is **left unchanged** (it does not get nullified). Checking
 only `tx.status_ == TransactionStatus::aborted` is not enough — a stale
 `body` pointer from a previous read will silently get dereferenced, which
 manifests as a `HeapObject::cast_to` assertion under Debug+ASan and as

@@ -158,11 +158,9 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   if (tuple == nullptr) return Status::WARN_NOT_FOUND;
 
   read_internal(s, key, tuple);
-#if defined(DLR0)
   if (this->status_ == TransactionStatus::aborted) {
     return Status::ERROR_LOCK_FAILED;
   }
-#endif
   *body = &(read_set_.back().body_);
 
 FINISH_READ:
@@ -342,11 +340,9 @@ FINISH_WRITE:
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
 #endif // ADD_ANALYSIS
-#if defined(DLR0)
   if (this->status_ == TransactionStatus::aborted) {
     return Status::ERROR_LOCK_FAILED;
   }
-#endif
   return Status::OK;
 }
 

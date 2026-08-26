@@ -62,7 +62,7 @@
 
 ### `tx.read` の戻り値 Status は **必ず check する**
 
-`tx.read` はヒット時に `Status::OK`、ミス時に `Status::WARN_NOT_FOUND` を返す。ミス時には `*body` は **そのまま** (= nullify されない) なので、`tx.status_ == TransactionStatus::aborted` だけチェックしても不十分 — 前回の read で得た古い `body` ポインタがそのまま deref されてしまい、Debug+ASan では `HeapObject::cast_to` の assertion で死に、Release では garbage data を読む。必ず次の形で書く:
+`tx.read` はヒット時に `Status::OK`、ミス時に `Status::WARN_NOT_FOUND` を返す。protocol によっては、これ以外の error も返る (SS2PL と MOCC の `Status::ERROR_LOCK_FAILED`、TicToc の `Status::ERROR_PREEMPTIVE_ABORT` など)。**`Status::OK` 以外は全部拒否すること** — 特定の値だけを見てはいけない。`Status::OK` 以外のとき `*body` は **そのまま** (= nullify されない) なので、`tx.status_ == TransactionStatus::aborted` だけチェックしても不十分 — 前回の read で得た古い `body` ポインタがそのまま deref されてしまい、Debug+ASan では `HeapObject::cast_to` の assertion で死に、Release では garbage data を読む。必ず次の形で書く:
 
 ```cpp
 Status stat = tx.read(s, key, &body);
