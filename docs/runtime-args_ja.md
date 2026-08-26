@@ -56,6 +56,16 @@ BoMB には多くの knob がある。下記はよく使うものだけ。ワー
 | `-bomb_use_cache` | `false` | キャッシュ済みの BoM tree を使う (静的設定)。 |
 | `-bomb_rate_control` | `false` | レート制限付きの request injection を有効化。 |
 
+## SS2PL 固有のフラグ (`*_ss2pl.exe`、`CCBENCH_SS2PL_DLR=0` でビルドしたときだけ)
+
+デッドロック解決方式は configure 時に `-DCCBENCH_SS2PL_DLR=<0|1>` で選ぶ。既定は `1`
+(no-wait) で、これは従来の挙動である。`0` (timeout) でビルドしたバイナリだけが下記の
+フラグを受け付ける。
+
+| Flag | デフォルト | 意味 |
+|---|---|---|
+| `-ss2pl_dlr0_timeout_us` | `1000` | 1 回のレコードロック取得を待つ上限 (マイクロ秒)。到達するとトランザクションを abort する。`-clocks_per_us` を使って TSC tick へ換算するので、その値が正しいことが前提。 |
+
 ## 例
 
 8 warehouse で Silo の TPC-C:

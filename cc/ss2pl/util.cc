@@ -30,6 +30,14 @@ void chkArg() {
 
   if (FLAGS_rratio > 100) { ERR; }
 
+#if defined(DLR0)
+  if (FLAGS_clocks_per_us == 0 ||
+      FLAGS_ss2pl_dlr0_timeout_us >
+          std::numeric_limits<std::uint64_t>::max() / FLAGS_clocks_per_us) {
+    ERR;
+  }
+#endif
+
   TotalThreadNum = FLAGS_thread_num;
 
   if (FLAGS_clocks_per_us < 100) {
@@ -50,6 +58,10 @@ void displayParameter() {
   cout << "#FLAGS_tuple_num:\t" << FLAGS_tuple_num << endl;
   cout << "#FLAGS_ycsb:\t\t" << FLAGS_ycsb << endl;
   cout << "#FLAGS_zipf_skew:\t" << FLAGS_zipf_skew << endl;
+#if defined(DLR0)
+  cout << "#FLAGS_ss2pl_dlr0_timeout_us:\t" << FLAGS_ss2pl_dlr0_timeout_us
+       << endl;
+#endif
 }
 
 void partTableInit([[maybe_unused]] size_t thid,

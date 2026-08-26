@@ -40,8 +40,15 @@ default : `0`
 default : `1`
 - `VAL_SIZE` : Value of key-value size. In other words, payload size.<br>
 default : `4`
-- `DLR0` : Dead lock resolution is timeout.
-- `DLR1` : Dead lock resolution is no-wait.
+- Dead lock resolution is selected at configure time with the
+`CCBENCH_SS2PL_DLR` cache variable, which defines exactly one of the
+markers below.<br>
+default : `1`
+- `DLR0` : Timeout. Every record lock acquisition retries until it
+succeeds or `-ss2pl_dlr0_timeout_us` elapses; on expiry the transaction
+aborts through the same path as a no-wait abort.
+- `DLR1` : No-wait. A lock acquisition that cannot succeed immediately
+aborts the transaction.
 
 ## Optimizations
 - Backoff.
