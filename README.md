@@ -9,7 +9,8 @@ The repository now also bundles the **TPC-C** and **BoMB** workloads, and severa
 | Protocol | YCSB | TPC-C | BoMB |
 |---|:-:|:-:|:-:|
 | Silo, MOCC, Cicada, ERMIA, TicToc, Oze, SI | ✓ | ✓ | ✓ |
-| SS2PL, MVTO | — | ✓ | ✓ |
+| SS2PL | ✓ | ✓ | ✓ |
+| MVTO | — | ✓ | ✓ |
 | D2PL | — | — | ✓ |
 
 See [docs/workloads_en.md](docs/workloads_en.md) for the workload specs (tables, transactions, parameters) and [docs/protocols_en.md](docs/protocols_en.md) for the full protocol matrix.

@@ -11,7 +11,7 @@
 | [cc/ermia](../cc/ermia/)   | ERMIA (with SSN / latch-free SSN)   | ✓ | ✓ | ✓ | Kim et al., SIGMOD 2016; Wang et al., VLDB 2017 |
 | [cc/oze](../cc/oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC の派生 |
 | [cc/si](../cc/si/)         | Snapshot Isolation                  | ✓ | ✓ | ✓ | ERMIA から SSN レイヤを剥がしたもの (anti-dependency チェック無し) |
-| [cc/ss2pl](../cc/ss2pl/)   | Strong Strict 2-Phase Locking       | — | ✓ | ✓ | ベースラインのロック方式 |
+| [cc/ss2pl](../cc/ss2pl/)   | Strong Strict 2-Phase Locking       | ✓ | ✓ | ✓ | ベースラインのロック方式 |
 | [cc/d2pl](../cc/d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB と dBoMB のみサポート。pre-declared lock entries が必要なため TPC-C テンプレートには適用不能 |
 | [cc/mvto](../cc/mvto/)     | Multi-Version Timestamp Ordering    | — | ✓ | ✓ | Reed, 1978 |
 
@@ -30,7 +30,7 @@
 | `cc/tictoc/` | ✓ | ✓ | ✓ | ✓ | — |
 | `cc/oze/`    | ✓ | ✓ | ✓ | — | — |
 | `cc/si/`     | ✓ | ✓ | ✓ | ✓ | — |
-| `cc/ss2pl/`  | — | ✓ | ✓ | — | — |
+| `cc/ss2pl/`  | ✓ | ✓ | ✓ | — | — |
 | `cc/mvto/`   | — | ✓ | ✓ | — | — |
 | `cc/d2pl/`   | — | — | ✓ | ✓ | ✓ |
 
