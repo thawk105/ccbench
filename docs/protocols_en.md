@@ -15,7 +15,7 @@ for the declarative helper). All are driven from the top-level
 | [cc/ermia](../cc/ermia/)   | ERMIA (with SSN / latch-free SSN)   | ✓ | ✓ | ✓ | Kim et al., SIGMOD 2016; Wang et al., VLDB 2017 |
 | [cc/oze](../cc/oze/)       | Oze                                 | ✓ | ✓ | ✓ | Multi-version OCC variant |
 | [cc/si](../cc/si/)         | Snapshot Isolation                  | ✓ | ✓ | ✓ | ERMIA without the SSN layer (no anti-dependency check) |
-| [cc/ss2pl](../cc/ss2pl/)   | Strong Strict 2-Phase Locking       | — | ✓ | ✓ | Baseline locking |
+| [cc/ss2pl](../cc/ss2pl/)   | Strong Strict 2-Phase Locking       | ✓ | ✓ | ✓ | Baseline locking |
 | [cc/d2pl](../cc/d2pl/)     | Deterministic 2PL                   | — | — | ✓ | sBoMB and dBoMB only; pre-declared lock entries make TPC-C templates inapplicable |
 | [cc/mvto](../cc/mvto/)     | Multi-Version Timestamp Ordering    | — | ✓ | ✓ | Reed, 1978 |
 
@@ -41,7 +41,7 @@ argument of every `ccbench_add_protocol(...)` call. The current snapshot:
 | `cc/tictoc/` | ✓ | ✓ | ✓ | ✓ | — |
 | `cc/oze/`    | ✓ | ✓ | ✓ | — | — |
 | `cc/si/`     | ✓ | ✓ | ✓ | ✓ | — |
-| `cc/ss2pl/`  | — | ✓ | ✓ | — | — |
+| `cc/ss2pl/`  | ✓ | ✓ | ✓ | — | — |
 | `cc/mvto/`   | — | ✓ | ✓ | — | — |
 | `cc/d2pl/`   | — | — | ✓ | ✓ | ✓ |
 
