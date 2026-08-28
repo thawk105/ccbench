@@ -13,9 +13,6 @@
 #if TRACE
 // izanagi: #if TRACE-guarded correctness trace
 #include "../../include/trace.hh"
-
-#include <cstdlib>
-#include <cstring>
 #endif
 
 using namespace std;
@@ -36,11 +33,12 @@ bool izanagi_mocc_g2_enabled() {
   static const bool enabled = [] {
     const char* raw = std::getenv("IZANAGI_MOCC_G2_WITNESS");
     if (raw == nullptr) return false;
-    if (std::strcmp(raw, "1") != 0) std::abort();
+    if (raw[0] != '1' || raw[1] != '\0') std::abort();
     const char* dir = std::getenv("IZANAGI_MOCC_G2_WITNESS_DIR");
-    if (dir == nullptr || dir[0] != '/' || dir[1] == '\0' ||
-        std::strchr(dir, '\n') != nullptr || std::strchr(dir, '\r') != nullptr)
-      std::abort();
+    if (dir == nullptr || dir[0] != '/' || dir[1] == '\0') std::abort();
+    for (const char* cursor = dir; *cursor != '\0'; ++cursor) {
+      if (*cursor == '\n' || *cursor == '\r') std::abort();
+    }
     return true;
   }();
   return enabled;
@@ -71,7 +69,7 @@ bool izanagi_mocc_g2_decode(const TupleBody& body, std::uint64_t& producer) {
   if (body.get_val_size() < sizeof(std::uint64_t)) std::abort();
   std::uint64_t token = 0;
   const std::string_view value = body.get_val();
-  std::memcpy(&token, value.data(), sizeof(token));
+  memcpy(&token, value.data(), sizeof(token));
   if ((token >> 48) != izanagi_mocc_g2_magic) return false;
   producer = token & izanagi_mocc_g2_txid_mask;
   return true;
@@ -80,7 +78,7 @@ bool izanagi_mocc_g2_decode(const TupleBody& body, std::uint64_t& producer) {
 void izanagi_mocc_g2_stamp(TupleBody& body, std::uint64_t txid) {
   if (body.get_val_size() < sizeof(std::uint64_t)) std::abort();
   const std::uint64_t token = izanagi_mocc_g2_encode(txid);
-  std::memcpy(body.get_val_ptr(), &token, sizeof(token));
+  memcpy(body.get_val_ptr(), &token, sizeof(token));
 }
 
 void izanagi_mocc_g2_emit_lineage(std::size_t thid, std::uint64_t reader_txid,
