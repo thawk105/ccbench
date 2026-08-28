@@ -13,12 +13,107 @@
 #if TRACE
 // izanagi: #if TRACE-guarded correctness trace
 #include "../../include/trace.hh"
+
+#include <cstdlib>
+#include <cstring>
 #endif
 
 using namespace std;
 
 extern void moccLeaderWork(uint64_t& epoch_timer_start,
                            uint64_t& epoch_timer_stop);
+
+#if TRACE
+namespace {
+
+constexpr std::uint64_t izanagi_mocc_g2_magic = UINT64_C(0x495a);
+constexpr std::uint64_t izanagi_mocc_g2_txid_mask =
+    (UINT64_C(1) << 48) - 1;
+constexpr const char* izanagi_mocc_g2_marker =
+    "IZANAGI_MOCC_G2_WATERMARK_V1";
+
+bool izanagi_mocc_g2_enabled() {
+  static const bool enabled = [] {
+    const char* raw = std::getenv("IZANAGI_MOCC_G2_WITNESS");
+    if (raw == nullptr) return false;
+    if (std::strcmp(raw, "1") != 0) std::abort();
+    const char* dir = std::getenv("IZANAGI_MOCC_G2_WITNESS_DIR");
+    if (dir == nullptr || dir[0] != '/' || dir[1] == '\0' ||
+        std::strchr(dir, '\n') != nullptr || std::strchr(dir, '\r') != nullptr)
+      std::abort();
+    return true;
+  }();
+  return enabled;
+}
+
+std::ofstream& izanagi_mocc_g2_stream(std::size_t thid) {
+  thread_local std::ofstream ofs;
+  if (!ofs.is_open()) {
+    const char* dir = std::getenv("IZANAGI_MOCC_G2_WITNESS_DIR");
+    if (dir == nullptr) std::abort();
+    std::string path(dir);
+    path += "/witness_";
+    path += std::to_string(thid);
+    path += ".log";
+    ofs.open(path, std::ios::out | std::ios::trunc);
+    if (!ofs.is_open()) std::abort();
+    ofs << "H " << izanagi_mocc_g2_marker << " 1\n";
+  }
+  return ofs;
+}
+
+std::uint64_t izanagi_mocc_g2_encode(std::uint64_t txid) {
+  if (txid > izanagi_mocc_g2_txid_mask) std::abort();
+  return (izanagi_mocc_g2_magic << 48) | txid;
+}
+
+bool izanagi_mocc_g2_decode(const TupleBody& body, std::uint64_t& producer) {
+  if (body.get_val_size() < sizeof(std::uint64_t)) std::abort();
+  std::uint64_t token = 0;
+  const std::string_view value = body.get_val();
+  std::memcpy(&token, value.data(), sizeof(token));
+  if ((token >> 48) != izanagi_mocc_g2_magic) return false;
+  producer = token & izanagi_mocc_g2_txid_mask;
+  return true;
+}
+
+void izanagi_mocc_g2_stamp(TupleBody& body, std::uint64_t txid) {
+  if (body.get_val_size() < sizeof(std::uint64_t)) std::abort();
+  const std::uint64_t token = izanagi_mocc_g2_encode(txid);
+  std::memcpy(body.get_val_ptr(), &token, sizeof(token));
+}
+
+void izanagi_mocc_g2_emit_lineage(std::size_t thid, std::uint64_t reader_txid,
+                                  const ReadElement<Tuple>& read) {
+  std::uint64_t producer = 0;
+  const bool has_producer = izanagi_mocc_g2_decode(read.body_, producer);
+  const Tidword version = read.tidword_;
+  auto& witness = izanagi_mocc_g2_stream(thid);
+  witness << "L " << reader_txid << ' '
+          << izanagi_trace::key_to_hex(read.key_) << ' ' << version.epoch << ' '
+          << version.tid << ' ';
+  if (has_producer)
+    witness << "T " << producer;
+  else
+    witness << "G -";
+  witness << '\n';
+}
+
+void izanagi_mocc_g2_emit_post_store(std::size_t thid,
+                                     std::uint64_t writer_txid,
+                                     const WriteElement<Tuple>& write,
+                                     const Tidword& version) {
+  std::uint64_t stored_producer = 0;
+  if (!izanagi_mocc_g2_decode(write.rcdptr_->body_, stored_producer))
+    std::abort();
+  izanagi_mocc_g2_stream(thid)
+      << "S " << writer_txid << ' '
+      << izanagi_trace::key_to_hex(write.key_) << ' ' << version.epoch << ' '
+      << version.tid << ' ' << stored_producer << '\n';
+}
+
+} // namespace
+#endif
 
 /**
  * @brief Search xxx set
@@ -1049,6 +1144,8 @@ void TxExecutor::writePhase() {
     const Tidword v = re.tidword_;
     izanagi_trace::emit_read(
         thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_), v.epoch, v.tid);
+    if (izanagi_mocc_g2_enabled())
+      izanagi_mocc_g2_emit_lineage(thid_, izanagi_txid, re);
   }
 
   for (auto& we : write_set_) {
@@ -1067,15 +1164,25 @@ void TxExecutor::writePhase() {
     switch ((*itr).op_) {
       case OpType::UPDATE: {
         maxtid.absent = false;
+#if TRACE
+        if (izanagi_mocc_g2_enabled())
+          izanagi_mocc_g2_stamp((*itr).body_, izanagi_txid);
+#endif
         memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
                (*itr).body_.get_val_size());
         break;
       }
       case OpType::INSERT: {
+#if TRACE
+        if (izanagi_mocc_g2_enabled()) std::abort();
+#endif
         maxtid.absent = false;
         break;
       }
       case OpType::DELETE: {
+#if TRACE
+        if (izanagi_mocc_g2_enabled()) std::abort();
+#endif
         maxtid.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // record put on the GC queue below.
@@ -1089,6 +1196,10 @@ void TxExecutor::writePhase() {
     }
     __atomic_store_n(&((*itr).rcdptr_->tidword_.obj_), maxtid.obj_,
                      __ATOMIC_RELEASE);
+#if TRACE
+    if (izanagi_mocc_g2_enabled())
+      izanagi_mocc_g2_emit_post_store(thid_, izanagi_txid, *itr, maxtid);
+#endif
   }
 
 #if TRACE
