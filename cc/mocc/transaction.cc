@@ -14,6 +14,7 @@
 // izanagi: #if TRACE-guarded correctness trace
 #include "../../include/trace.hh"
 #endif
+#line 17
 
 using namespace std;
 
@@ -987,7 +988,31 @@ bool TxExecutor::validation() {
   Tidword expected, desired;
 
   // phase 1 lock write set.
+#if TRACE
+  const std::size_t izanagi_pre_sort_size = write_set_.size();
+  std::unordered_multiset<const void*> izanagi_pre_sort_rcdptrs;
+  for (auto& we : write_set_) izanagi_pre_sort_rcdptrs.insert(we.rcdptr_);
+#endif
+#line 990
   sort(write_set_.begin(), write_set_.end());
+#if TRACE
+  {
+    bool izanagi_perm_ok = (write_set_.size() == izanagi_pre_sort_size);
+    const char* izanagi_perm_reason = "size-changed";
+    if (izanagi_perm_ok) {
+      std::unordered_multiset<const void*> izanagi_post_sort_rcdptrs;
+      for (auto& we : write_set_) izanagi_post_sort_rcdptrs.insert(we.rcdptr_);
+      if (izanagi_post_sort_rcdptrs != izanagi_pre_sort_rcdptrs) {
+        izanagi_perm_ok = false;
+        izanagi_perm_reason = "rcdptr-set-changed";
+      }
+    }
+    if (!izanagi_perm_ok) {
+      izanagi_trace::stream(thid_) << "P " << izanagi_perm_reason << '\n';
+    }
+  }
+#endif
+#line 991
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if (itr->op_ == OpType::INSERT) continue;
     lock((*itr).rcdptr_, true);
@@ -1154,7 +1179,26 @@ void TxExecutor::writePhase() {
         thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_), op,
         maxtid.epoch, maxtid.tid);
   }
+
+  for (auto& we : write_set_) {
+    if (we.op_ == OpType::INSERT) continue;
+    bool izanagi_cll_has_writer = false;
+    for (const auto& lock_element : CLL_) {
+      if (lock_element.key_ == we.rcdptr_ && lock_element.mode_ &&
+          lock_element.lock_ == &we.rcdptr_->rwlock_) {
+        izanagi_cll_has_writer = true;
+        break;
+      }
+    }
+    if (!izanagi_cll_has_writer ||
+        we.rcdptr_->rwlock_.ldAcqCounter() != W_LOCKED) {
+      izanagi_trace::emit_lock_violation(
+          thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_),
+          "not-locked-at-entry");
+    }
+  }
 #endif
+#line 1158
 
   // write (record, commit-tid)
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
@@ -1165,7 +1209,12 @@ void TxExecutor::writePhase() {
 #if TRACE
         if (izanagi_mocc_g2_enabled())
           izanagi_mocc_g2_stamp((*itr).body_, izanagi_txid);
+        if ((*itr).rcdptr_->rwlock_.ldAcqCounter() != W_LOCKED)
+          izanagi_trace::emit_lock_violation(
+              thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+              "lock-lost-before-write");
 #endif
+#line 1169
         memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
                (*itr).body_.get_val_size());
         break;
@@ -1184,6 +1233,13 @@ void TxExecutor::writePhase() {
         maxtid.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // record put on the GC queue below.
+#if TRACE
+        if ((*itr).rcdptr_->rwlock_.ldAcqCounter() != W_LOCKED)
+          izanagi_trace::emit_lock_violation(
+              thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+              "lock-lost-before-write");
+#endif
+#line 1187
         Masstrees[get_storage((*itr).storage_)].remove_value_if_present(
             (*itr).key_);
         gc_records_.push_back((*itr).rcdptr_);
@@ -1192,6 +1248,14 @@ void TxExecutor::writePhase() {
       default:
         ERR;
     }
+#if TRACE
+    if ((*itr).op_ != OpType::INSERT &&
+        (*itr).rcdptr_->rwlock_.ldAcqCounter() != W_LOCKED)
+      izanagi_trace::emit_lock_violation(
+          thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+          "lock-lost-before-publish");
+#endif
+#line 1195
     __atomic_store_n(&((*itr).rcdptr_->tidword_.obj_), maxtid.obj_,
                      __ATOMIC_RELEASE);
 #if TRACE
