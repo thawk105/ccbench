@@ -599,21 +599,40 @@ void TxExecutor::writePhase() {
   // outside this change's permitted edit surface, so Silo writes its v2 C line
   // directly while the existing R/W helpers remain unchanged.
   const std::uint64_t izanagi_txid = izanagi_trace::next_txid();
-  izanagi_trace::stream(thid_) << "C " << izanagi_txid << ' ' << thid_ << ' '
-                               << maxtid.epoch << ' ' << maxtid.tid << ' '
-                               << read_set_.size() << ' ' << write_set_.size()
-                               << '\n';
+  const std::uint32_t izanagi_tx_type = izanagi_trace::tpcc_tx_type();
+  if (izanagi_tx_type != 0) {
+    izanagi_trace::emit_commit_v3(
+        thid_, izanagi_txid, maxtid.epoch, maxtid.tid,
+        read_set_.size(), write_set_.size(), 0, 0, izanagi_tx_type);
+  } else {
+    izanagi_trace::stream(thid_) << "C " << izanagi_txid << ' ' << thid_ << ' '
+                                 << maxtid.epoch << ' ' << maxtid.tid << ' '
+                                 << read_set_.size() << ' ' << write_set_.size()
+                                 << '\n';
+  }
   for (auto& re : read_set_) {
     const Tidword v = re.get_tidword();
-    izanagi_trace::emit_read(thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_),
-                             v.epoch, v.tid);
+    if (izanagi_tx_type != 0) {
+      izanagi_trace::emit_read_v3(
+          thid_, izanagi_txid, get_storage(re.storage_),
+          izanagi_trace::key_to_hex(re.key_), v.epoch, v.tid);
+    } else {
+      izanagi_trace::emit_read(thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_),
+                               v.epoch, v.tid);
+    }
   }
   for (auto& we : write_set_) {
     const char op = (we.op_ == OpType::INSERT)   ? 'I'
                     : (we.op_ == OpType::DELETE) ? 'D'
                                                  : 'U';
-    izanagi_trace::emit_write(thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_),
-                              op, maxtid.epoch, maxtid.tid);
+    if (izanagi_tx_type != 0) {
+      izanagi_trace::emit_write_v3(
+          thid_, izanagi_txid, get_storage(we.storage_),
+          izanagi_trace::key_to_hex(we.key_), op, maxtid.epoch, maxtid.tid);
+    } else {
+      izanagi_trace::emit_write(thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_),
+                                op, maxtid.epoch, maxtid.tid);
+    }
   }
   // Entry lock-coverage check (D38, 裁定4 point 1 = acquisition coverage).
   // Every non-INSERT write must be covered, right now at writePhase entry, by a
@@ -626,12 +645,19 @@ void TxExecutor::writePhase() {
     Tidword cur;
     cur.obj_ = loadAcquire(we.rcdptr_->tidword_.obj_);
     if (!cur.lock || !izanagi_trace::holds_lock(we.rcdptr_)) {
-      izanagi_trace::emit_lock_violation(thid_, izanagi_txid,
-                                         izanagi_trace::key_to_hex(we.key_),
-                                         "not-locked-at-entry");
+      if (izanagi_tx_type != 0) {
+        izanagi_trace::emit_lock_violation_v3(
+            thid_, izanagi_txid, get_storage(we.storage_),
+            izanagi_trace::key_to_hex(we.key_), "not-locked-at-entry");
+      } else {
+        izanagi_trace::emit_lock_violation(thid_, izanagi_txid,
+                                           izanagi_trace::key_to_hex(we.key_),
+                                           "not-locked-at-entry");
+      }
     }
   }
 #endif
+#line 635
 
 #if WAL
   wal(maxtid.obj_);
@@ -649,12 +675,21 @@ void TxExecutor::writePhase() {
         {
           Tidword cur;
           cur.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-          if (!cur.lock)
-            izanagi_trace::emit_lock_violation(
-                thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
-                "lock-lost-before-write");
+          if (!cur.lock) {
+            if (izanagi_tx_type != 0) {
+              izanagi_trace::emit_lock_violation_v3(
+                  thid_, izanagi_txid, get_storage((*itr).storage_),
+                  izanagi_trace::key_to_hex((*itr).key_),
+                  "lock-lost-before-write");
+            } else {
+              izanagi_trace::emit_lock_violation(
+                  thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+                  "lock-lost-before-write");
+            }
+          }
         }
 #endif
+#line 658
         memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
                (*itr).body_.get_val_size());
         storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
@@ -670,12 +705,21 @@ void TxExecutor::writePhase() {
         {
           Tidword cur;
           cur.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
-          if (!cur.lock)
-            izanagi_trace::emit_lock_violation(
-                thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
-                "lock-lost-before-write");
+          if (!cur.lock) {
+            if (izanagi_tx_type != 0) {
+              izanagi_trace::emit_lock_violation_v3(
+                  thid_, izanagi_txid, get_storage((*itr).storage_),
+                  izanagi_trace::key_to_hex((*itr).key_),
+                  "lock-lost-before-write");
+            } else {
+              izanagi_trace::emit_lock_violation(
+                  thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+                  "lock-lost-before-write");
+            }
+          }
         }
 #endif
+#line 679
         maxtid.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // tid bump and gc_records_ push below.
@@ -696,7 +740,9 @@ void TxExecutor::writePhase() {
   // E follows every entry/retention X check and clear_shadow(), so interruption
   // anywhere in the write loop leaves this v2 transaction detectably unterminated.
   izanagi_trace::stream(thid_) << "E " << izanagi_txid << '\n';
+  izanagi_trace::clear_tpcc_tx_type();
 #endif
+#line 700
   gc_records();
   read_set_.clear();
   write_set_.clear();
