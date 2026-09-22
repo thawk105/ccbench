@@ -24,6 +24,10 @@
 #include "./tpcc/tpcc_tx_orderstatus.hh"
 #include "./tpcc/tpcc_tx_delivery.hh"
 #include "./tpcc/tpcc_tx_stocklevel.hh"
+#if TRACE
+#include "trace.hh"
+#endif
+#line 27
 
 template <typename Tuple, typename Param>
 class TPCCWorkload {
@@ -53,6 +57,10 @@ public:
     if (loadAcquire(tx.quit_)) return;
 
     tx.begin();
+#if TRACE
+    izanagi_trace::set_tpcc_tx_type(get_tx_type(query.type));
+#endif
+#line 56
 
     switch (query.type) {
       case TxType::NewOrder:
@@ -107,7 +115,11 @@ public:
       goto RETRY;
     }
 
+#if !TRACE
+#line 110
     if (loadAcquire(tx.quit_)) return;
+#endif
+#line 111
     tx.result_->local_commit_counts_++;
     tx.result_->local_commit_counts_per_tx_[get_tx_type(query.type)]++;
 
