@@ -850,7 +850,11 @@ void TxExecutor::gc_records() {
     Tuple* rec = gc_records_.front();
     Version* latest = rec->ldAcqLatest();
     if (latest->ldAcqWts() >= MinRts.load(memory_order_acquire)) break;
-    if (latest->ldAcqStatus() != VersionStatus::deleted) ERR;
+    // Later delete attempts can abort while their versions remain in the chain.
+    while (latest != nullptr && latest->ldAcqStatus() == VersionStatus::aborted)
+      latest = latest->ldAcqNext();
+    if (latest == nullptr || latest->ldAcqStatus() != VersionStatus::deleted)
+      ERR;
     delete rec;
     gc_records_.pop_front();
   }
