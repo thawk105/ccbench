@@ -204,10 +204,10 @@ public:
         MinRts.load(std::memory_order_acquire) > ver->ldAcqWts() &&
         tuple->inline_ver_.status_.load(std::memory_order_acquire) ==
             VersionStatus::unused) {
-      write(s, key, TupleBody(ver->body_));
+      update(s, key, TupleBody(ver->body_));
       if (this->is_ronly_) {
         this->is_ronly_ = false;
-        read_set_.emplace_back(s, key, tuple, later_ver, ver);
+        (void) later_ver; // read_internal() already recorded this read.
       }
     }
   }

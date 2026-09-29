@@ -128,7 +128,7 @@ Version* TxExecutor::read_internal(Storage s, std::string_view key,
 #if INLINE_VERSION_OPT
 #if INLINE_VERSION_PROMOTION
 #if ADD_ANALYSIS
-  result_->local_read_latency_ += rdtscp() - start;
+  // No start timer here; read() times its own call.
 #endif // if ADD_ANALYSIS
   inlineVersionPromotion(s, key, tuple, later_ver, ver);
 #endif // if INLINE_VERSION_PROMOTION
@@ -921,8 +921,8 @@ bool TxExecutor::commit() {
    * Tanabe Optimization for analysis
    */
 #if WORKER1_INSERT_DELAY_RPHASE
-  if (unlikely(thid == 1) && WORKER1_INSERT_DELAY_RPHASE_US != 0) {
-    clock_delay(WORKER1_INSERT_DELAY_RPHASE_US * FLAGS_clocks_per_us);
+  if (unlikely(thid_ == 1) && FLAGS_worker1_insert_delay_rphase_us != 0) {
+    sleepTics(FLAGS_worker1_insert_delay_rphase_us * FLAGS_clocks_per_us);
   }
 #endif
 
