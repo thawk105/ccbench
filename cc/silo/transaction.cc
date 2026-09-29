@@ -208,14 +208,14 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   /**
    * read-own-writes or re-read from local read set.
    */
-  re = searchReadSet(s, key);
-  if (re) {
-    *body = &(re->body_);
-    goto FINISH_READ;
-  }
   we = searchWriteSet(s, key);
   if (we) {
     *body = &(we->body_);
+    goto FINISH_READ;
+  }
+  re = searchReadSet(s, key);
+  if (re) {
+    *body = &(re->body_);
     goto FINISH_READ;
   }
 
@@ -530,7 +530,10 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
   std::uint64_t start = rdtscp();
 #endif
 
-  if (searchWriteSet(s, key)) goto FINISH_WRITE;
+  if (auto* we = searchWriteSet(s, key)) {
+    we->body_ = std::move(body);
+    goto FINISH_WRITE;
+  }
 
   /**
    * Search tuple from data structure.
