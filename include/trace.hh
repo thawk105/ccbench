@@ -108,14 +108,17 @@ inline std::unordered_set<const void*>& lock_shadow() {
 }
 inline void record_lock(const void* rcd) { lock_shadow().insert(rcd); }
 inline void clear_shadow() { lock_shadow().clear(); }
-inline bool holds_lock(const void* rcd) { return lock_shadow().count(rcd) != 0; }
+inline bool holds_lock(const void* rcd) {
+  return lock_shadow().count(rcd) != 0;
+}
 
 // A lock-coverage violation: writePhase wrote (or is about to write) a tuple
 // without holding its lock. reason in {not-locked-at-entry, lock-lost-before-write}.
 // The verifier maps X lines to Integrity.lock_coverage_violations -> indeterminate
 // (a torn-read window makes version stamps untrustworthy; not a cycle). D38.
 inline void emit_lock_violation(std::size_t thid, std::uint64_t txid,
-                                const std::string& key_hex, const char* reason) {
+                                const std::string& key_hex,
+                                const char* reason) {
   stream(thid) << "X " << txid << ' ' << key_hex << ' ' << reason << '\n';
 }
 
@@ -128,42 +131,36 @@ inline std::uint32_t& tpcc_tx_type_context() {
 inline void set_tpcc_tx_type(std::uint32_t value) {
   tpcc_tx_type_context() = value;
 }
-inline std::uint32_t tpcc_tx_type() {
-  return tpcc_tx_type_context();
-}
-inline void clear_tpcc_tx_type() {
-  tpcc_tx_type_context() = 0;
-}
+inline std::uint32_t tpcc_tx_type() { return tpcc_tx_type_context(); }
+inline void clear_tpcc_tx_type() { tpcc_tx_type_context() = 0; }
 
-inline void emit_commit_v3(
-    std::size_t thid, std::uint64_t txid,
-    std::uint64_t epoch, std::uint64_t tid,
-    std::size_t nR, std::size_t nW,
-    std::size_t nS, std::size_t nQ, std::uint32_t tx_type) {
+inline void emit_commit_v3(std::size_t thid, std::uint64_t txid,
+                           std::uint64_t epoch, std::uint64_t tid,
+                           std::size_t nR, std::size_t nW, std::size_t nS,
+                           std::size_t nQ, std::uint32_t tx_type) {
   stream(thid) << "C " << txid << ' ' << thid << ' ' << epoch << ' ' << tid
                << ' ' << nR << ' ' << nW << ' ' << nS << ' ' << nQ << ' '
                << tx_type << '\n';
 }
 
-inline void emit_read_v3(
-    std::size_t thid, std::uint64_t txid, std::uint32_t table,
-    const std::string& key_hex,
-    std::uint64_t ver_epoch, std::uint64_t ver_tid) {
+inline void emit_read_v3(std::size_t thid, std::uint64_t txid,
+                         std::uint32_t table, const std::string& key_hex,
+                         std::uint64_t ver_epoch, std::uint64_t ver_tid) {
   stream(thid) << "R " << txid << ' ' << table << ' ' << key_hex << ' '
                << ver_epoch << ' ' << ver_tid << '\n';
 }
 
-inline void emit_write_v3(
-    std::size_t thid, std::uint64_t txid, std::uint32_t table,
-    const std::string& key_hex, char op,
-    std::uint64_t epoch, std::uint64_t tid) {
+inline void emit_write_v3(std::size_t thid, std::uint64_t txid,
+                          std::uint32_t table, const std::string& key_hex,
+                          char op, std::uint64_t epoch, std::uint64_t tid) {
   stream(thid) << "W " << txid << ' ' << table << ' ' << key_hex << ' ' << op
                << ' ' << epoch << ' ' << tid << '\n';
 }
 
-inline void emit_lock_violation_v3(
-    std::size_t thid, std::uint64_t txid, std::uint32_t table,
-    const std::string& key_hex, const char* reason) {
+inline void emit_lock_violation_v3(std::size_t thid, std::uint64_t txid,
+                                   std::uint32_t table,
+                                   const std::string& key_hex,
+                                   const char* reason) {
   stream(thid) << "X " << txid << ' ' << table << ' ' << key_hex << ' '
                << reason << '\n';
 }

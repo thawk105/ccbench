@@ -25,10 +25,8 @@ extern void moccLeaderWork(uint64_t& epoch_timer_start,
 namespace {
 
 constexpr std::uint64_t izanagi_mocc_g2_magic = UINT64_C(0x495a);
-constexpr std::uint64_t izanagi_mocc_g2_txid_mask =
-    (UINT64_C(1) << 48) - 1;
-constexpr const char* izanagi_mocc_g2_marker =
-    "IZANAGI_MOCC_G2_WATERMARK_V1";
+constexpr std::uint64_t izanagi_mocc_g2_txid_mask = (UINT64_C(1) << 48) - 1;
+constexpr const char* izanagi_mocc_g2_marker = "IZANAGI_MOCC_G2_WATERMARK_V1";
 
 bool izanagi_mocc_g2_enabled() {
   static const bool enabled = [] {
@@ -88,9 +86,8 @@ void izanagi_mocc_g2_emit_lineage(std::size_t thid, std::uint64_t reader_txid,
   const bool has_producer = izanagi_mocc_g2_decode(read.body_, producer);
   const Tidword version = read.tidword_;
   auto& witness = izanagi_mocc_g2_stream(thid);
-  witness << "L " << reader_txid << ' '
-          << izanagi_trace::key_to_hex(read.key_) << ' ' << version.epoch << ' '
-          << version.tid << ' ';
+  witness << "L " << reader_txid << ' ' << izanagi_trace::key_to_hex(read.key_)
+          << ' ' << version.epoch << ' ' << version.tid << ' ';
   if (has_producer)
     witness << "T " << producer;
   else
@@ -106,13 +103,14 @@ void izanagi_mocc_g2_emit_post_store(std::size_t thid,
   if (!izanagi_mocc_g2_decode(write.rcdptr_->body_, stored_producer))
     std::abort();
   izanagi_mocc_g2_stream(thid)
-      << "S " << writer_txid << ' '
-      << izanagi_trace::key_to_hex(write.key_) << ' ' << version.epoch << ' '
-      << version.tid << ' ' << stored_producer << '\n';
+      << "S " << writer_txid << ' ' << izanagi_trace::key_to_hex(write.key_)
+      << ' ' << version.epoch << ' ' << version.tid << ' ' << stored_producer
+      << '\n';
 }
 
 } // namespace
 #endif
+#line 115
 
 /**
  * @brief Search xxx set
@@ -1160,25 +1158,26 @@ void TxExecutor::writePhase() {
   const std::uint64_t izanagi_txid = izanagi_trace::next_txid();
   const std::uint32_t izanagi_tx_type = izanagi_trace::tpcc_tx_type();
   if (izanagi_tx_type != 0) {
-    izanagi_trace::emit_commit_v3(
-        thid_, izanagi_txid, maxtid.epoch, maxtid.tid,
-        read_set_.size(), write_set_.size(), 0, 0, izanagi_tx_type);
+    izanagi_trace::emit_commit_v3(thid_, izanagi_txid, maxtid.epoch, maxtid.tid,
+                                  read_set_.size(), write_set_.size(), 0, 0,
+                                  izanagi_tx_type);
   } else {
-    izanagi_trace::stream(thid_) << "C " << izanagi_txid << ' ' << thid_ << ' '
-                               << maxtid.epoch << ' ' << maxtid.tid << ' '
-                               << read_set_.size() << ' ' << write_set_.size()
-                               << '\n';
+    izanagi_trace::stream(thid_)
+        << "C " << izanagi_txid << ' ' << thid_ << ' ' << maxtid.epoch << ' '
+        << maxtid.tid << ' ' << read_set_.size() << ' ' << write_set_.size()
+        << '\n';
   }
 
   for (auto& re : read_set_) {
     const Tidword v = re.tidword_;
     if (izanagi_tx_type != 0) {
-      izanagi_trace::emit_read_v3(
-          thid_, izanagi_txid, get_storage(re.storage_),
-          izanagi_trace::key_to_hex(re.key_), v.epoch, v.tid);
+      izanagi_trace::emit_read_v3(thid_, izanagi_txid, get_storage(re.storage_),
+                                  izanagi_trace::key_to_hex(re.key_), v.epoch,
+                                  v.tid);
     } else {
-      izanagi_trace::emit_read(
-        thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_), v.epoch, v.tid);
+      izanagi_trace::emit_read(thid_, izanagi_txid,
+                               izanagi_trace::key_to_hex(re.key_), v.epoch,
+                               v.tid);
     }
     if (izanagi_mocc_g2_enabled())
       izanagi_mocc_g2_emit_lineage(thid_, izanagi_txid, re);
@@ -1193,9 +1192,9 @@ void TxExecutor::writePhase() {
           thid_, izanagi_txid, get_storage(we.storage_),
           izanagi_trace::key_to_hex(we.key_), op, maxtid.epoch, maxtid.tid);
     } else {
-      izanagi_trace::emit_write(
-        thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_), op,
-        maxtid.epoch, maxtid.tid);
+      izanagi_trace::emit_write(thid_, izanagi_txid,
+                                izanagi_trace::key_to_hex(we.key_), op,
+                                maxtid.epoch, maxtid.tid);
     }
   }
 
@@ -1216,9 +1215,9 @@ void TxExecutor::writePhase() {
             thid_, izanagi_txid, get_storage(we.storage_),
             izanagi_trace::key_to_hex(we.key_), "not-locked-at-entry");
       } else {
-        izanagi_trace::emit_lock_violation(
-          thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_),
-          "not-locked-at-entry");
+        izanagi_trace::emit_lock_violation(thid_, izanagi_txid,
+                                           izanagi_trace::key_to_hex(we.key_),
+                                           "not-locked-at-entry");
       }
     }
   }
@@ -1242,8 +1241,8 @@ void TxExecutor::writePhase() {
                 "lock-lost-before-write");
           } else {
             izanagi_trace::emit_lock_violation(
-              thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
-              "lock-lost-before-write");
+                thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+                "lock-lost-before-write");
           }
         }
 #endif
@@ -1275,8 +1274,8 @@ void TxExecutor::writePhase() {
                 "lock-lost-before-write");
           } else {
             izanagi_trace::emit_lock_violation(
-              thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
-              "lock-lost-before-write");
+                thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+                "lock-lost-before-write");
           }
         }
 #endif
@@ -1295,12 +1294,11 @@ void TxExecutor::writePhase() {
       if (izanagi_tx_type != 0) {
         izanagi_trace::emit_lock_violation_v3(
             thid_, izanagi_txid, get_storage((*itr).storage_),
-            izanagi_trace::key_to_hex((*itr).key_),
-            "lock-lost-before-publish");
+            izanagi_trace::key_to_hex((*itr).key_), "lock-lost-before-publish");
       } else {
         izanagi_trace::emit_lock_violation(
-          thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
-          "lock-lost-before-publish");
+            thid_, izanagi_txid, izanagi_trace::key_to_hex((*itr).key_),
+            "lock-lost-before-publish");
       }
     }
 #endif

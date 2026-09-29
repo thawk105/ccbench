@@ -360,8 +360,10 @@ void TxExecutor::unlockWriteSet() {
     storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
   }
 #if TRACE
-  izanagi_trace::clear_shadow();  // abort/retry exit -> reset coverage shadow (D38, 裁定7)
+  izanagi_trace::
+      clear_shadow(); // abort/retry exit -> reset coverage shadow (D38, 裁定7)
 #endif
+#line 365
 }
 
 void TxExecutor::unlockWriteSet(
@@ -376,8 +378,10 @@ void TxExecutor::unlockWriteSet(
     storeRelease((*itr).rcdptr_->tidword_.obj_, desired.obj_);
   }
 #if TRACE
-  izanagi_trace::clear_shadow();  // partial unlock (retry/abort) -> reset shadow (D38, 裁定7)
+  izanagi_trace::
+      clear_shadow(); // partial unlock (retry/abort) -> reset shadow (D38, 裁定7)
 #endif
+#line 381
 }
 
 bool TxExecutor::validationPhase() { // Validation Phase
@@ -601,24 +605,25 @@ void TxExecutor::writePhase() {
   const std::uint64_t izanagi_txid = izanagi_trace::next_txid();
   const std::uint32_t izanagi_tx_type = izanagi_trace::tpcc_tx_type();
   if (izanagi_tx_type != 0) {
-    izanagi_trace::emit_commit_v3(
-        thid_, izanagi_txid, maxtid.epoch, maxtid.tid,
-        read_set_.size(), write_set_.size(), 0, 0, izanagi_tx_type);
+    izanagi_trace::emit_commit_v3(thid_, izanagi_txid, maxtid.epoch, maxtid.tid,
+                                  read_set_.size(), write_set_.size(), 0, 0,
+                                  izanagi_tx_type);
   } else {
-    izanagi_trace::stream(thid_) << "C " << izanagi_txid << ' ' << thid_ << ' '
-                                 << maxtid.epoch << ' ' << maxtid.tid << ' '
-                                 << read_set_.size() << ' ' << write_set_.size()
-                                 << '\n';
+    izanagi_trace::stream(thid_)
+        << "C " << izanagi_txid << ' ' << thid_ << ' ' << maxtid.epoch << ' '
+        << maxtid.tid << ' ' << read_set_.size() << ' ' << write_set_.size()
+        << '\n';
   }
   for (auto& re : read_set_) {
     const Tidword v = re.get_tidword();
     if (izanagi_tx_type != 0) {
-      izanagi_trace::emit_read_v3(
-          thid_, izanagi_txid, get_storage(re.storage_),
-          izanagi_trace::key_to_hex(re.key_), v.epoch, v.tid);
+      izanagi_trace::emit_read_v3(thid_, izanagi_txid, get_storage(re.storage_),
+                                  izanagi_trace::key_to_hex(re.key_), v.epoch,
+                                  v.tid);
     } else {
-      izanagi_trace::emit_read(thid_, izanagi_txid, izanagi_trace::key_to_hex(re.key_),
-                               v.epoch, v.tid);
+      izanagi_trace::emit_read(thid_, izanagi_txid,
+                               izanagi_trace::key_to_hex(re.key_), v.epoch,
+                               v.tid);
     }
   }
   for (auto& we : write_set_) {
@@ -630,8 +635,9 @@ void TxExecutor::writePhase() {
           thid_, izanagi_txid, get_storage(we.storage_),
           izanagi_trace::key_to_hex(we.key_), op, maxtid.epoch, maxtid.tid);
     } else {
-      izanagi_trace::emit_write(thid_, izanagi_txid, izanagi_trace::key_to_hex(we.key_),
-                                op, maxtid.epoch, maxtid.tid);
+      izanagi_trace::emit_write(thid_, izanagi_txid,
+                                izanagi_trace::key_to_hex(we.key_), op,
+                                maxtid.epoch, maxtid.tid);
     }
   }
   // Entry lock-coverage check (D38, 裁定4 point 1 = acquisition coverage).
@@ -736,7 +742,8 @@ void TxExecutor::writePhase() {
   }
 
 #if TRACE
-  izanagi_trace::clear_shadow();  // success path -> reset coverage shadow (D38, 裁定7)
+  izanagi_trace::
+      clear_shadow(); // success path -> reset coverage shadow (D38, 裁定7)
   // E follows every entry/retention X check and clear_shadow(), so interruption
   // anywhere in the write loop leaves this v2 transaction detectably unterminated.
   izanagi_trace::stream(thid_) << "E " << izanagi_txid << '\n';
