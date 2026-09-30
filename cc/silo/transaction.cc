@@ -612,6 +612,7 @@ void TxExecutor::writePhase() {
                                   read_set_.size(), write_set_.size(), 0, 0,
                                   izanagi_tx_type);
   } else {
+    izanagi_trace::set_gate_txid(izanagi_txid);
     izanagi_trace::stream(thid_)
         << "C " << izanagi_txid << ' ' << thid_ << ' ' << maxtid.epoch << ' '
         << maxtid.tid << ' ' << read_set_.size() << ' ' << write_set_.size()
@@ -696,6 +697,15 @@ void TxExecutor::writePhase() {
                   "lock-lost-before-write");
             }
           }
+        }
+        if (izanagi_tx_type == 0) {
+          if ((*itr).body_.get_val_size() < sizeof(std::uint64_t)) std::abort();
+          std::uint64_t izanagi_stamp;
+          memcpy(&izanagi_stamp, (*itr).body_.get_val_ptr(),
+                 sizeof(izanagi_stamp));
+          izanagi_trace::emit_stored(thid_, izanagi_txid,
+                                     izanagi_trace::key_to_hex((*itr).key_),
+                                     izanagi_stamp);
         }
 #endif
 #line 661
