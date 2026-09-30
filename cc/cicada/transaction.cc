@@ -753,14 +753,16 @@ void TxExecutor::gcpv() {
  */
 void TxExecutor::abort() {
   // remove inserted records
+  std::vector<Tuple*> inserted_tuples;
   for (auto& we : write_set_) {
     if (we.op_ == OpType::INSERT) {
+      inserted_tuples.push_back(we.rcdptr_);
       Masstrees[get_storage(we.storage_)].remove_value(we.key_);
-      delete we.rcdptr_;
     }
   }
 
   writeSetClean();
+  for (Tuple* tuple : inserted_tuples) { delete tuple; }
   read_set_.clear();
   node_map_.clear();
 
