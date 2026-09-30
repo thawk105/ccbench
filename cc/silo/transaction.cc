@@ -208,14 +208,14 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   /**
    * read-own-writes or re-read from local read set.
    */
-  re = searchReadSet(s, key);
-  if (re) {
-    *body = &(re->body_);
-    goto FINISH_READ;
-  }
   we = searchWriteSet(s, key);
   if (we) {
     *body = &(we->body_);
+    goto FINISH_READ;
+  }
+  re = searchReadSet(s, key);
+  if (re) {
+    *body = &(re->body_);
     goto FINISH_READ;
   }
 
@@ -530,7 +530,10 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
   std::uint64_t start = rdtscp();
 #endif
 
-  if (searchWriteSet(s, key)) goto FINISH_WRITE;
+  if (auto* we = searchWriteSet(s, key)) {
+    we->body_ = std::move(body);
+    goto FINISH_WRITE;
+  }
 
   /**
    * Search tuple from data structure.
@@ -663,7 +666,7 @@ void TxExecutor::writePhase() {
     }
   }
 #endif
-#line 635
+#line 638
 
 #if WAL
   wal(maxtid.obj_);
@@ -695,7 +698,7 @@ void TxExecutor::writePhase() {
           }
         }
 #endif
-#line 658
+#line 661
         memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
                (*itr).body_.get_val_size());
         storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
@@ -725,7 +728,7 @@ void TxExecutor::writePhase() {
           }
         }
 #endif
-#line 679
+#line 682
         maxtid.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // tid bump and gc_records_ push below.
@@ -749,7 +752,7 @@ void TxExecutor::writePhase() {
   izanagi_trace::stream(thid_) << "E " << izanagi_txid << '\n';
   izanagi_trace::clear_tpcc_tx_type();
 #endif
-#line 700
+#line 703
   gc_records();
   read_set_.clear();
   write_set_.clear();
