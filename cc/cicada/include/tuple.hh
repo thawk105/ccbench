@@ -99,8 +99,8 @@ public:
     continuing_commit_.store(0, std::memory_order_release);
 
 #if INLINE_VERSION_OPT
-    latest_ = &inline_ver_;
-    body_ = std::ref(inline_ver_.body_);
+    latest_ = ver;
+    body_ = std::ref(ver->body_);
 #else
     latest_.store(ver, std::memory_order_release);
     body_ = std::ref((latest_.load(std::memory_order_acquire))->body_);

@@ -202,14 +202,19 @@ public:
                               Version* later_ver, Version* ver) {
     if (ver != &(tuple->inline_ver_) &&
         MinRts.load(std::memory_order_acquire) > ver->ldAcqWts() &&
+        !is_ronly_ &&
         tuple->inline_ver_.status_.load(std::memory_order_acquire) ==
             VersionStatus::unused) {
-      write(s, key, TupleBody(ver->body_));
-      if (this->is_ronly_) {
-        this->is_ronly_ = false;
-        read_set_.emplace_back(s, key, tuple, later_ver, ver);
+      // Read-only transactions use an rts snapshot and do not validate reads;
+      // promotion would turn that snapshot read into an unvalidated write.
+      const size_t write_set_size = write_set_.size();
+      update(s, key, TupleBody(ver->body_));
+      if (status_ != TransactionStatus::aborted &&
+          write_set_.size() == write_set_size + 1) {
+        write_set_.back().from_promotion_ = true;
       }
     }
+    (void) later_ver; // read_internal() already recorded this read.
   }
 #endif
 #endif

@@ -128,7 +128,7 @@ Version* TxExecutor::read_internal(Storage s, std::string_view key,
 #if INLINE_VERSION_OPT
 #if INLINE_VERSION_PROMOTION
 #if ADD_ANALYSIS
-  result_->local_read_latency_ += rdtscp() - start;
+  // No start timer here; read() times its own call.
 #endif // if ADD_ANALYSIS
   inlineVersionPromotion(s, key, tuple, later_ver, ver);
 #endif // if INLINE_VERSION_PROMOTION
@@ -202,7 +202,14 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
    * Update  from local write set.
    * Special treat due to performance.
    */
+#if INLINE_VERSION_OPT && INLINE_VERSION_PROMOTION
+  if (auto* we = searchWriteSet(s, key)) {
+    if (we->from_promotion_) { we->new_ver_->body_ = std::move(body); }
+    goto FINISH_WRITE;
+  }
+#else
   if (searchWriteSet(s, key)) goto FINISH_WRITE;
+#endif
 
   Tuple* tuple;
   bool rmw;
@@ -427,9 +434,11 @@ Status TxExecutor::scan(const Storage s, std::string_view left_key,
       right_key.size(), r_exclusive, &scan_res, limit, callback_);
 
   for (auto&& itr : scan_res) {
-    // TODO: Tuple should have key? Accessing key through the latest ver is ugly
-    // Must be a copy to avoid buffer overflow when changing the latest
-    std::string key(itr->latest_.load(memory_order_acquire)->body_.get_key());
+    // Inline inserts can leave the tuple's copied key empty.
+    std::string key(itr->body_.get_key());
+    if (key.empty())
+      key =
+          std::string(itr->latest_.load(memory_order_acquire)->body_.get_key());
     ReadElement<Tuple>* re = searchReadSet(s, key);
     if (re) {
       result.emplace_back(&(re->ver_->body_));
@@ -744,14 +753,16 @@ void TxExecutor::gcpv() {
  */
 void TxExecutor::abort() {
   // remove inserted records
+  std::vector<Tuple*> inserted_tuples;
   for (auto& we : write_set_) {
     if (we.op_ == OpType::INSERT) {
+      inserted_tuples.push_back(we.rcdptr_);
       Masstrees[get_storage(we.storage_)].remove_value(we.key_);
-      delete we.rcdptr_;
     }
   }
 
   writeSetClean();
+  for (Tuple* tuple : inserted_tuples) { delete tuple; }
   read_set_.clear();
   node_map_.clear();
 
@@ -850,7 +861,11 @@ void TxExecutor::gc_records() {
     Tuple* rec = gc_records_.front();
     Version* latest = rec->ldAcqLatest();
     if (latest->ldAcqWts() >= MinRts.load(memory_order_acquire)) break;
-    if (latest->ldAcqStatus() != VersionStatus::deleted) ERR;
+    // Later delete attempts can abort while their versions remain in the chain.
+    while (latest != nullptr && latest->ldAcqStatus() == VersionStatus::aborted)
+      latest = latest->ldAcqNext();
+    if (latest == nullptr || latest->ldAcqStatus() != VersionStatus::deleted)
+      ERR;
     delete rec;
     gc_records_.pop_front();
   }
@@ -921,8 +936,8 @@ bool TxExecutor::commit() {
    * Tanabe Optimization for analysis
    */
 #if WORKER1_INSERT_DELAY_RPHASE
-  if (unlikely(thid == 1) && WORKER1_INSERT_DELAY_RPHASE_US != 0) {
-    clock_delay(WORKER1_INSERT_DELAY_RPHASE_US * FLAGS_clocks_per_us);
+  if (unlikely(thid_ == 1) && FLAGS_worker1_insert_delay_rphase_us != 0) {
+    sleepTics(FLAGS_worker1_insert_delay_rphase_us * FLAGS_clocks_per_us);
   }
 #endif
 
