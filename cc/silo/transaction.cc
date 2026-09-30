@@ -666,7 +666,7 @@ void TxExecutor::writePhase() {
     }
   }
 #endif
-#line 635
+#line 638
 
 #if WAL
   wal(maxtid.obj_);
@@ -698,7 +698,7 @@ void TxExecutor::writePhase() {
           }
         }
 #endif
-#line 658
+#line 661
         memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
                (*itr).body_.get_val_size());
         storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
@@ -728,7 +728,7 @@ void TxExecutor::writePhase() {
           }
         }
 #endif
-#line 679
+#line 682
         maxtid.absent = true;
         // Return value intentionally ignored: a missing key still needs the
         // tid bump and gc_records_ push below.
@@ -752,7 +752,7 @@ void TxExecutor::writePhase() {
   izanagi_trace::stream(thid_) << "E " << izanagi_txid << '\n';
   izanagi_trace::clear_tpcc_tx_type();
 #endif
-#line 700
+#line 703
   gc_records();
   read_set_.clear();
   write_set_.clear();
