@@ -207,7 +207,12 @@ public:
             VersionStatus::unused) {
       // Read-only transactions use an rts snapshot and do not validate reads;
       // promotion would turn that snapshot read into an unvalidated write.
+      const size_t write_set_size = write_set_.size();
       update(s, key, TupleBody(ver->body_));
+      if (status_ != TransactionStatus::aborted &&
+          write_set_.size() == write_set_size + 1) {
+        write_set_.back().from_promotion_ = true;
+      }
     }
     (void) later_ver; // read_internal() already recorded this read.
   }

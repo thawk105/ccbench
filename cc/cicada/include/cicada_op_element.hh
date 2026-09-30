@@ -32,6 +32,9 @@ public:
 
   Version *later_ver_, *new_ver_;
   bool finish_version_install_;
+#if INLINE_VERSION_OPT && INLINE_VERSION_PROMOTION
+  bool from_promotion_ = false;
+#endif
 
   WriteElement(Storage s, std::string_view key, T* rcdptr, Version* later_ver,
                Version* new_ver, OpType op)

@@ -202,7 +202,14 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
    * Update  from local write set.
    * Special treat due to performance.
    */
+#if INLINE_VERSION_OPT && INLINE_VERSION_PROMOTION
+  if (auto* we = searchWriteSet(s, key)) {
+    if (we->from_promotion_) { we->new_ver_->body_ = std::move(body); }
+    goto FINISH_WRITE;
+  }
+#else
   if (searchWriteSet(s, key)) goto FINISH_WRITE;
+#endif
 
   Tuple* tuple;
   bool rmw;
