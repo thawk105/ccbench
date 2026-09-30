@@ -427,9 +427,11 @@ Status TxExecutor::scan(const Storage s, std::string_view left_key,
       right_key.size(), r_exclusive, &scan_res, limit, callback_);
 
   for (auto&& itr : scan_res) {
-    // TODO: Tuple should have key? Accessing key through the latest ver is ugly
-    // Must be a copy to avoid buffer overflow when changing the latest
-    std::string key(itr->latest_.load(memory_order_acquire)->body_.get_key());
+    // Inline inserts can leave the tuple's copied key empty.
+    std::string key(itr->body_.get_key());
+    if (key.empty())
+      key =
+          std::string(itr->latest_.load(memory_order_acquire)->body_.get_key());
     ReadElement<Tuple>* re = searchReadSet(s, key);
     if (re) {
       result.emplace_back(&(re->ver_->body_));
@@ -850,7 +852,11 @@ void TxExecutor::gc_records() {
     Tuple* rec = gc_records_.front();
     Version* latest = rec->ldAcqLatest();
     if (latest->ldAcqWts() >= MinRts.load(memory_order_acquire)) break;
-    if (latest->ldAcqStatus() != VersionStatus::deleted) ERR;
+    // Later delete attempts can abort while their versions remain in the chain.
+    while (latest != nullptr && latest->ldAcqStatus() == VersionStatus::aborted)
+      latest = latest->ldAcqNext();
+    if (latest == nullptr || latest->ldAcqStatus() != VersionStatus::deleted)
+      ERR;
     delete rec;
     gc_records_.pop_front();
   }
