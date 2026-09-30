@@ -31,6 +31,7 @@
 #include <ios>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 namespace izanagi_trace {
 
@@ -73,6 +74,58 @@ inline std::string key_to_hex(const std::string& key) {
     out.push_back(H[c & 0x0f]);
   }
   return out;
+}
+
+inline std::ofstream& gate_stream(std::size_t thid) {
+  thread_local std::ofstream ofs;
+  if (!ofs.is_open()) {
+    const char* dir = std::getenv("IZANAGI_TRACE_DIR");
+    std::string path = dir ? dir : ".";
+    ofs.open(path + "/gate_" + std::to_string(thid) + ".log",
+             std::ios::out | std::ios::trunc);
+  }
+  return ofs;
+}
+inline bool& silo_ycsb_gate_enabled() {
+  thread_local bool enabled = false;
+  return enabled;
+}
+inline std::string& pending_gate_txid() {
+  thread_local std::string txid;
+  return txid;
+}
+inline void set_gate_txid(std::uint64_t txid) {
+  silo_ycsb_gate_enabled() = true;
+  pending_gate_txid() = std::to_string(txid);
+}
+inline void discard_gate_txid() { pending_gate_txid().clear(); }
+inline std::string take_gate_txid() {
+  std::string txid = pending_gate_txid();
+  pending_gate_txid().clear();
+  return txid.empty() ? "-" : txid;
+}
+inline std::uint64_t next_gate_stamp(std::size_t thid) {
+  thread_local std::uint64_t seq = 0;
+  if (thid >= 0xffff || seq >= ((std::uint64_t{1} << 48) - 1)) std::abort();
+  return ((std::uint64_t(thid) + 1) << 48) | ++seq;
+}
+struct GateOp {
+  char op;
+  std::string key;
+  std::string observed;
+  std::string written;
+};
+inline void emit_steps(std::size_t thid, const std::vector<GateOp>& steps) {
+  auto& out = gate_stream(thid);
+  out << "Q " << take_gate_txid() << ' ' << thid << ' ' << steps.size();
+  for (const auto& step : steps)
+    out << ' ' << step.op << ':' << step.key << ':' << step.observed << ':'
+        << step.written;
+  out << '\n';
+}
+inline void emit_stored(std::size_t thid, std::uint64_t txid,
+                        const std::string& key, std::uint64_t stamp) {
+  gate_stream(thid) << "V " << txid << ' ' << key << ' ' << stamp << '\n';
 }
 
 inline void emit_commit(std::size_t thid, std::uint64_t txid,

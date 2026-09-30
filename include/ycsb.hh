@@ -13,6 +13,10 @@
 #include "util.hh"
 #include "workload.hh"
 #include "zipf.hh"
+#if TRACE
+#include "trace.hh"
+#endif
+#line 16
 
 #include "gflags/gflags.h"
 
@@ -105,7 +109,16 @@ public:
 #endif
     tx.is_ronly_ = (*tx.pro_set_.begin()).ronly_;
 
+#if TRACE
+    std::vector<izanagi_trace::GateOp> izanagi_steps;
+#endif
+#line 108
   RETRY:
+#if TRACE
+    izanagi_steps.clear();
+    izanagi_trace::discard_gate_txid();
+#endif
+#line 109
     if (tx.isLeader()) { tx.leaderWork(); }
 
     if (loadAcquire(tx.quit_)) return;
@@ -124,11 +137,24 @@ public:
         if (tx.status_ != TransactionStatus::aborted) {
           // Touch the value so the read is not optimized away.
           [[maybe_unused]] YCSB& t = body->get_value().cast_to<YCSB>();
+#if TRACE
+          izanagi_steps.push_back(
+              {'R', izanagi_trace::key_to_hex(std::string(key[i].view())),
+               std::to_string(t.id_), "-"});
+#endif
+#line 127
         }
       } else if (pro.ope_ == Ope::WRITE) {
         obj[i].template allocate<YCSB>();
         // Materialize the payload before it gets std::move'd into update.
         [[maybe_unused]] YCSB& t = obj[i].ref();
+#if TRACE
+        t.id_ = izanagi_trace::next_gate_stamp(tx.thid_);
+        izanagi_steps.push_back(
+            {'W', izanagi_trace::key_to_hex(std::string(key[i].view())), "-",
+             std::to_string(t.id_)});
+#endif
+#line 132
         tx.update(Storage::YCSB, key[i].view(),
                   TupleBody(key[i].view(), std::move(obj[i])));
       } else if (pro.ope_ == Ope::READ_MODIFY_WRITE) {
@@ -139,6 +165,15 @@ public:
           obj[i].template allocate<YCSB>();
           YCSB& new_tuple = obj[i].ref();
           memcpy(new_tuple.val_, old_tuple.val_, VAL_SIZE);
+#if TRACE
+          const std::uint64_t izanagi_observed = old_tuple.id_;
+          new_tuple.id_ = izanagi_trace::next_gate_stamp(tx.thid_);
+          izanagi_steps.push_back(
+              {'M', izanagi_trace::key_to_hex(std::string(key[i].view())),
+               std::to_string(izanagi_observed),
+               std::to_string(new_tuple.id_)});
+#endif
+#line 142
           tx.update(Storage::YCSB, key[i].view(),
                     TupleBody(key[i].view(), std::move(obj[i])));
         }
@@ -163,6 +198,11 @@ public:
       ++tx.result_->local_abort_counts_;
       goto RETRY;
     }
+#if TRACE
+    if (izanagi_trace::silo_ycsb_gate_enabled())
+      izanagi_trace::emit_steps(tx.thid_, izanagi_steps);
+#endif
+#line 166
     storeRelease(tx.result_->local_commit_counts_,
                  loadAcquire(tx.result_->local_commit_counts_) + 1);
 
