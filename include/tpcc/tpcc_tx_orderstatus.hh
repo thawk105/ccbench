@@ -34,7 +34,7 @@ bool get_order_key_by_customer_id(TxExecutor& tx, uint16_t w_id, uint8_t d_id,
          "cannot get order ID by scanning order-secondary with customer ID");
     return false;
   }
-  if (result.size() != 1) ERR;
+  if (result.size() != 1) { return false; }
   TupleBody* body = *result.begin();
   o_key = body->get_value().cast_to<SimpleKey<8>>();
   return true;

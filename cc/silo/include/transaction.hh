@@ -32,10 +32,15 @@ class TxScanCallback;
 
 class TxExecutor {
 public:
+  struct RetiredRecord {
+    Tuple* record;
+    uint64_t epoch;
+  };
+
   std::vector<ReadElement<Tuple>> read_set_;
   std::vector<WriteElement<Tuple>> write_set_;
   std::vector<Procedure> pro_set_;
-  std::deque<Tuple*> gc_records_;
+  std::deque<RetiredRecord> gc_records_;
   std::unordered_map<void*, uint64_t> node_map_;
 
   std::vector<LogRecord> log_set_;
@@ -161,6 +166,9 @@ public:
   void leaderWork();
 
   void gc_records();
+
+private:
+  void retire_insert(WriteElement<Tuple>& element);
 };
 
 static_assert(TxExecutorLike<TxExecutor>);

@@ -12,24 +12,35 @@ extern void siloLeaderWork(uint64_t& epoch_timer_start,
                            uint64_t& epoch_timer_stop);
 
 void TxExecutor::gc_records() {
-  const auto r_epoch = ReclamationEpoch;
+  const auto r_epoch = __atomic_load_n(&ReclamationEpoch, __ATOMIC_ACQUIRE);
 
   // for records
   while (!gc_records_.empty()) {
-    Tuple* rec = gc_records_.front();
-    if (rec->tidword_.epoch > r_epoch) break;
-    delete rec;
+    const auto& retired = gc_records_.front();
+    if (retired.epoch > r_epoch) break;
+    delete retired.record;
     gc_records_.pop_front();
   }
+}
+
+void TxExecutor::retire_insert(WriteElement<Tuple>& element) {
+  Masstrees[get_storage(element.storage_)].remove_value_if_present(
+      element.key_);
+  // Readers may already hold this pointer. Publish a tombstone before
+  // reclaiming it after every transaction has left its protected epoch.
+  Tidword removed;
+  removed.obj_ = loadAcquire(element.rcdptr_->tidword_.obj_);
+  removed.epoch = atomicLoadGE();
+  removed.absent = true;
+  removed.lock = false;
+  storeRelease(element.rcdptr_->tidword_.obj_, removed.obj_);
+  gc_records_.push_back({element.rcdptr_, removed.epoch});
 }
 
 void TxExecutor::abort() {
   // remove inserted records
   for (auto& we : write_set_) {
-    if (we.op_ == OpType::INSERT) {
-      Masstrees[get_storage(we.storage_)].remove_value_if_present(we.key_);
-      delete we.rcdptr_;
-    }
+    if (we.op_ == OpType::INSERT) { retire_insert(we); }
   }
 
   gc_records();
@@ -52,6 +63,10 @@ void TxExecutor::abort() {
 }
 
 void TxExecutor::begin() {
+  // Announce the epoch before obtaining index pointers, and keep it pinned
+  // until this transaction has finished using its read/write sets.
+  atomicStoreThLocalEpoch(thid_, atomicLoadGE());
+  __atomic_thread_fence(__ATOMIC_SEQ_CST);
   status_ = TransactionStatus::inflight;
   max_wset_.obj_ = 0;
   max_rset_.obj_ = 0;
@@ -89,6 +104,9 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
     delete tuple;
     return stat;
   }
+  // The index now exposes this tuple. Abort must own it even if the node
+  // version check below fails; otherwise its INSERT lock is never released.
+  write_set_.emplace_back(s, key, tuple, OpType::INSERT);
   if (insert_info.node) {
     if (!node_map_.empty()) {
       auto it = node_map_.find((void*) insert_info.node);
@@ -105,8 +123,6 @@ Status TxExecutor::insert(Storage s, std::string_view key, TupleBody&& body) {
     ERR;
   }
 
-  write_set_.emplace_back(s, key, tuple, OpType::INSERT);
-
 #if ADD_ANALYSIS
   result_->local_write_latency_ += rdtscp() - start;
 #endif
@@ -119,10 +135,18 @@ Status TxExecutor::delete_record(Storage s, std::string_view key) {
 #endif
   Tidword tidw;
 
-  // cancel previous write
+  // Coalesce a previous write without invalidating an iterator or losing
+  // ownership of an uncommitted INSERT.
   for (auto itr = write_set_.begin(); itr != write_set_.end(); ++itr) {
     if ((*itr).storage_ != s) continue;
-    if ((*itr).key_ == key) { write_set_.erase(itr); }
+    if ((*itr).key_ != key) continue;
+    if (itr->op_ == OpType::INSERT) {
+      retire_insert(*itr);
+      write_set_.erase(itr);
+    } else {
+      itr->op_ = OpType::DELETE;
+    }
+    return Status::OK;
   }
 
   Tuple* tuple = Masstrees[get_storage(s)].get_value(key);
@@ -149,6 +173,11 @@ void TxExecutor::lockWriteSet() {
     if (itr->op_ == OpType::INSERT) continue;
     expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
     for (;;) {
+      if (loadAcquire(quit_)) {
+        this->status_ = TransactionStatus::aborted;
+        unlockWriteSet(itr);
+        return;
+      }
       if (expected.lock) {
 #if NO_WAIT_LOCKING_IN_VALIDATION
         this->status_ = TransactionStatus::aborted;
@@ -158,6 +187,8 @@ void TxExecutor::lockWriteSet() {
         if (itr != write_set_.begin()) unlockWriteSet(itr);
         goto retry;
 #endif
+        _mm_pause();
+        expected.obj_ = loadAcquire((*itr).rcdptr_->tidword_.obj_);
       } else {
         desired = expected;
         desired.lock = 1;
@@ -166,8 +197,8 @@ void TxExecutor::lockWriteSet() {
           break;
       }
     }
-    if (itr->op_ == OpType::UPDATE && itr->rcdptr_->tidword_.absent) {
-      unlockWriteSet(itr);
+    if (expected.absent) {
+      unlockWriteSet(itr + 1);
       this->status_ = TransactionStatus::aborted;
       return;
     }
@@ -192,14 +223,15 @@ Status TxExecutor::read(Storage s, std::string_view key, TupleBody** body) {
   /**
    * read-own-writes or re-read from local read set.
    */
+  we = searchWriteSet(s, key);
+  if (we) {
+    if (we->op_ == OpType::DELETE) return Status::WARN_NOT_FOUND;
+    *body = we->op_ == OpType::INSERT ? &(we->rcdptr_->body_) : &(we->body_);
+    goto FINISH_READ;
+  }
   re = searchReadSet(s, key);
   if (re) {
     *body = &(re->body_);
-    goto FINISH_READ;
-  }
-  we = searchWriteSet(s, key);
-  if (we) {
-    *body = &(we->body_);
     goto FINISH_READ;
   }
 
@@ -236,7 +268,24 @@ Status TxExecutor::read_internal(Storage s, std::string_view key,
   // spinning until the lock is clear
 
   for (;;) {
-    while (expected.lock) { expected.obj_ = loadAcquire(tuple->tidword_.obj_); }
+    if (loadAcquire(quit_)) {
+      status_ = TransactionStatus::aborted;
+      return Status::ERROR_PREEMPTIVE_ABORT;
+    }
+    while (expected.lock) {
+      // Uncommitted INSERTs are owned before validation, so waiting here
+      // can prevent their owning transactions from making progress.
+      if (expected.absent) {
+        status_ = TransactionStatus::aborted;
+        return Status::ERROR_CONCURRENT_WRITE_OR_DELETE;
+      }
+      if (loadAcquire(quit_)) {
+        status_ = TransactionStatus::aborted;
+        return Status::ERROR_PREEMPTIVE_ABORT;
+      }
+      _mm_pause();
+      expected.obj_ = loadAcquire(tuple->tidword_.obj_);
+    }
 
     //(b) checks whether the record is the latest version
     // omit. because this is implemented by single version
@@ -277,7 +326,6 @@ Status TxExecutor::scan(const Storage s, std::string_view left_key,
                         bool r_exclusive, std::vector<TupleBody*>& result,
                         int64_t limit) {
   result.clear();
-  auto rset_init_size = read_set_.size();
 
   std::vector<Tuple*> scan_res;
   Masstrees[get_storage(s)].scan(
@@ -285,27 +333,30 @@ Status TxExecutor::scan(const Storage s, std::string_view left_key,
       l_exclusive, right_key.empty() ? nullptr : right_key.data(),
       right_key.size(), r_exclusive, &scan_res, limit, callback_);
 
-  for (auto&& itr : scan_res) {
-    ReadElement<Tuple>* re = searchReadSet(s, itr->body_.get_key());
-    if (re) {
-      result.emplace_back(&(re->body_));
-      continue;
-    }
+  if (status_ == TransactionStatus::aborted) {
+    return Status::ERROR_CONCURRENT_WRITE_OR_DELETE;
+  }
 
+  for (auto&& itr : scan_res) {
     WriteElement<Tuple>* we = searchWriteSet(s, itr->body_.get_key());
-    if (we) {
-      result.emplace_back(&(we->body_));
-      continue;
-    }
+    if (we) continue;
+    if (searchReadSet(s, itr->body_.get_key())) continue;
 
     Status stat = read_internal(s, itr->body_.get_key(), itr);
     if (stat != Status::OK && stat != Status::WARN_NOT_FOUND) { return stat; }
   }
 
-  if (rset_init_size != read_set_.size()) {
-    for (auto itr = read_set_.begin() + rset_init_size; itr != read_set_.end();
-         ++itr) {
-      result.emplace_back(&((*itr).body_));
+  // Adding reads can relocate read_set_ elements. Materialize pointers only
+  // after all reads are collected, preserving the index scan's key order.
+  for (auto* tuple : scan_res) {
+    if (auto* we = searchWriteSet(s, tuple->body_.get_key())) {
+      if (we->op_ == OpType::INSERT) {
+        result.emplace_back(&we->rcdptr_->body_);
+      } else if (we->op_ == OpType::UPDATE) {
+        result.emplace_back(&we->body_);
+      }
+    } else if (auto* re = searchReadSet(s, tuple->body_.get_key())) {
+      result.emplace_back(&re->body_);
     }
   }
 
@@ -368,10 +419,6 @@ bool TxExecutor::validationPhase() { // Validation Phase
   sort(write_set_.begin(), write_set_.end());
   lockWriteSet();
   if (this->status_ == TransactionStatus::aborted) return false;
-
-  asm volatile("" ::: "memory");
-  atomicStoreThLocalEpoch(thid_, atomicLoadGE());
-  asm volatile("" ::: "memory");
 
   /* Phase 2 abort if any condition of below is satisfied.
    * 1. tid of read_set_ changed from it that was got in Read Phase.
@@ -458,7 +505,17 @@ Status TxExecutor::update(Storage s, std::string_view key, TupleBody&& body) {
   std::uint64_t start = rdtscp();
 #endif
 
-  if (searchWriteSet(s, key)) goto FINISH_WRITE;
+  if (auto* we = searchWriteSet(s, key)) {
+    if (we->op_ == OpType::DELETE) return Status::WARN_NOT_FOUND;
+    if (we->op_ == OpType::INSERT) {
+      // The index exposes this key even while the INSERT is locked.
+      // Keep it immutable for concurrent scans.
+      we->rcdptr_->body_.swap_value(body);
+    } else {
+      we->body_ = std::move(body);
+    }
+    goto FINISH_WRITE;
+  }
 
   /**
    * Search tuple from data structure.
@@ -505,7 +562,7 @@ void TxExecutor::writePhase() {
   tid_b.tid++;
 
   // calculates (c)
-  tid_c.epoch = ThLocalEpoch[thid_].obj_;
+  tid_c.epoch = atomicLoadGE();
 
   // compare a, b, c
   Tidword maxtid = std::max({tid_a, tid_b, tid_c});
@@ -522,6 +579,7 @@ void TxExecutor::writePhase() {
     // update and unlock
     switch ((*itr).op_) {
       case OpType::UPDATE: {
+        maxtid.absent = false;
         memcpy((*itr).rcdptr_->body_.get_val_ptr(), (*itr).body_.get_val_ptr(),
                (*itr).body_.get_val_size());
         storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
@@ -540,7 +598,9 @@ void TxExecutor::writePhase() {
             (*itr).key_);
         storeRelease((*itr).rcdptr_->tidword_.obj_, maxtid.obj_);
         // create information for garbage collection
-        gc_records_.push_back((*itr).rcdptr_);
+        // A commit TID can have been chosen before the epoch advanced.
+        // Tag retirement after removal, independently of the commit TID.
+        gc_records_.push_back({(*itr).rcdptr_, atomicLoadGE()});
         break;
       }
       default:
