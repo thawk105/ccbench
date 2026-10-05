@@ -16,6 +16,10 @@ include(Options)
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
+option(CCBENCH_BUILD_SILO_TESTS "build deterministic Silo regression tests" OFF)
+if(CCBENCH_BUILD_SILO_TESTS)
+  enable_testing()
+endif()
 
 # Auto-enable ccache when available — local builds also benefit from
 # the cross-target dedup we get in CI. Override with -DCCBENCH_CCACHE=OFF.

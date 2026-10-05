@@ -154,7 +154,8 @@ void siloLeaderWork(uint64_t& epoch_timer_start, uint64_t& epoch_timer_stop) {
       chkEpochLoaded()) {
     atomicAddGE();
     uint32_t cur_epoch = atomicLoadGE();
-    ReclamationEpoch = cur_epoch > 2 ? cur_epoch - 2 : 0;
+    __atomic_store_n(&ReclamationEpoch, cur_epoch > 2 ? cur_epoch - 2 : 0,
+                     __ATOMIC_RELEASE);
     epoch_timer_start = epoch_timer_stop;
   }
 }

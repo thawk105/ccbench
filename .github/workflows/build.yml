@@ -66,13 +66,14 @@ jobs:
           ccache --zero-stats
 
       - name: Configure (top-level cmake)
-        # Sanitizer adds significant link-time memory/cpu cost and CI does
-        # not run binaries, so it adds no value here. Use Release for the
-        # build verification. Wire ccache via compiler launchers.
+        # Keep the full-protocol build and deterministic regressions in
+        # Release mode. Debug+ASan workload checks run separately.
+        # Wire ccache via compiler launchers.
         run: |
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_SANITIZER=OFF \
+            -DCCBENCH_BUILD_SILO_TESTS=ON \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -81,6 +82,9 @@ jobs:
         # parallelism. (Debug+ASan needed -j2 to avoid OOM, but we no
         # longer build that here.)
         run: cmake --build build -j $(nproc)
+
+      - name: Test Silo transaction regressions
+        run: ctest --test-dir build -R '^silo_regression_test$' --output-on-failure
 
       - name: ccache stats
         if: always()
